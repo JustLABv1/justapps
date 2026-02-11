@@ -11,7 +11,7 @@ stages:
   - build
   # - rollout
 
-build-ckan:
+build-app-store:
   stage: build
   image: ${ARTIFACTORY_DOMAIN}/custom-shared-images/podman/openshift-rootless:v1.3.0
   variables:

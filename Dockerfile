@@ -1,5 +1,5 @@
 # Base image
-FROM --platform=$BUILDPLATFORM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/node:25 AS base
+FROM --platform=$BUILDPLATFORM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/docker-remote/node:22-alpine AS base
 RUN apk upgrade --no-cache && npm install -g pnpm
 
 # Install dependencies only when needed
@@ -22,24 +22,21 @@ COPY . .
 RUN pnpm build
 
 # Production image, copy all the files and run next
-FROM base AS runner
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/gcr-remote/distroless/nodejs22-debian12 AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
 COPY --from=builder /app/public ./public
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/config.yaml ./config.yaml
+COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
+COPY --from=builder --chown=nonroot:nonroot /app/.next/static ./.next/static
+COPY --from=builder --chown=nonroot:nonroot /app/config.yaml ./config.yaml
 
-USER nextjs
+USER nonroot
 
 EXPOSE 3000
 
@@ -49,4 +46,4 @@ ENV HOSTNAME "0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+CMD ["server.js"]
