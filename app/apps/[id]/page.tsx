@@ -1,5 +1,8 @@
 import { getApps } from "@/config/apps";
 import { notFound } from "next/navigation";
+
+export const dynamic = 'force-dynamic';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link, Chip, Separator } from "@heroui/react";

@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plain-app-store
+  labels:
+    app: plain-app-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plain-app-store
+  template:
+    metadata:
+      labels:
+        app: plain-app-store
+    spec:
+      containers:
+        - name: app
+          image: plain-app-store:latest # Replace with your actual image
+          ports:
+            - containerPort: 3000
+          env:
+            - name: APP_CONFIG_PATH
+              value: "/app/config/config.yaml"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config

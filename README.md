@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PLAIN App-Store
 
-## Getting Started
+## Kubernetes Deployment
 
-First, run the development server:
+This application supports deployment on Kubernetes with dynamic configuration via ConfigMaps.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Configuration
+
+The app store's content is defined in `config.yaml`. In a Kubernetes environment, this can be managed via a ConfigMap.
+
+1. **Apply the ConfigMap**:
+   ```bash
+   kubectl apply -f k8s/configmap.yaml
+   ```
+
+2. **Deploy the Application**:
+   ```bash
+   kubectl apply -f k8s/deployment.yaml
+   kubectl apply -f k8s/service.yaml
+   ```
+
+### Overriding the Config Path
+
+By default, the app looks for `config.yaml` in the root directory. In the provided Kubernetes manifests, we mount the ConfigMap to `/app/config/config.yaml` and set the `APP_CONFIG_PATH` environment variable:
+
+```yaml
+env:
+  - name: APP_CONFIG_PATH
+    value: "/app/config/config.yaml"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Dynamic Updates
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The pages are configured with `force-dynamic`, meaning they will read the `config.yaml` from the mounted volume on every request. Note that Kubernetes ConfigMap updates to mounted volumes can take some time to propagate to the container's file system.

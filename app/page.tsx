@@ -1,6 +1,8 @@
 import { getApps } from "@/config/apps";
 import { AppGrid } from "@/components/AppGrid";
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const apps = getApps();
   

@@ -20,12 +20,21 @@ export interface AppConfig {
 
 export const getApps = (): AppConfig[] => {
   try {
-    const filePath = path.join(process.cwd(), 'config.yaml');
+    const configPath = process.env.APP_CONFIG_PATH || 'config.yaml';
+    const filePath = path.isAbsolute(configPath) 
+      ? configPath 
+      : path.join(process.cwd(), configPath);
+    
+    if (!fs.existsSync(filePath)) {
+      console.warn(`Config file not found at ${filePath}, returning empty list`);
+      return [];
+    }
+
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const data = yaml.load(fileContents) as { apps: AppConfig[] };
     return data.apps || [];
   } catch (error) {
-    console.error('Error loading apps from config.yaml:', error);
+    console.error('Error loading apps from config:', error);
     return [];
   }
 };
