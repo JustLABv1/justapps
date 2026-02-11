@@ -1,0 +1,14 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: app-store-route
+  namespace: app-store
+spec:
+  to:
+    kind: Service
+    name: plain-app-store
+  port:
+    targetPort: http
+  tls:
+    termination: edge
