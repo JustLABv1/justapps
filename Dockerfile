@@ -1,6 +1,6 @@
 # Base image
-FROM --platform=$BUILDPLATFORM node:22-alpine AS base
-RUN npm install -g pnpm
+FROM --platform=$BUILDPLATFORM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/node:25 AS base
+RUN apk upgrade --no-cache && npm install -g pnpm
 
 # Install dependencies only when needed
 FROM base AS deps

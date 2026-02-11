@@ -1,0 +1,62 @@
+# required external vars (e.g. provided via Gitlab CI settings):
+# - DOCKER_AUTH_CONFIG
+# - PIP_INDEX
+# - ALPINE_REPO_MIRROR_AUTH
+
+variables:
+  ARTIFACTORY_DOMAIN: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de
+  ARTIFACTORY_REPO: custom-shared-images/jneubert
+
+stages:
+  - build
+  # - rollout
+
+build-ckan:
+  stage: build
+  image: ${ARTIFACTORY_DOMAIN}/custom-shared-images/podman/openshift-rootless:v1.3.0
+  variables:
+    KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: gitlab-runner-app-sa
+    KUBERNETES_POD_ANNOTATIONS_1: "openshift.io/required-scc=gitlab-runner-scc"
+  before_script:
+    - /home/user/entrypoint.sh
+    - mkdir -p $HOME/.config/containers/
+    - echo ${DOCKER_AUTH_CONFIG} > $HOME/.config/containers/auth.json
+    - export REGISTRY_AUTH_FILE=$HOME/.config/containers/auth.json
+    - podman login ${ARTIFACTORY_DOMAIN}
+  script:
+    - podman build
+        --secret id=ca-bundle,src=/etc/ssl/cert.pem
+        -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
+        -f Dockerfile
+      .
+    # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
+
+# rollout:
+#   stage: rollout
+#   # rules:
+#   #   - changes:
+#   #       - k8s/*
+#   #   # Default fallback behaviour
+#   #   - when: never
+#   image: ${ARTIFACTORY_DOMAIN}/docker-remote/library/busybox:1.37.0
+#   variables:
+#     # Disable proxy for cluster communication
+#     NO_PROXY: '*'
+#     # Path to kubeconfig inside the project
+#     KUBECONFIG: $CI_PROJECT_DIR/auth/kubeconfig
+#   before_script:
+#     # Download oc (Linux AMD64) and login.
+#     - wget -O oc_client.tar "https://downloads-openshift-console.apps.ocp4.m017-1.ten.prod.pl2cloud.de/amd64/linux/oc.tar"
+#     - tar xavf oc_client.tar
+#     - ./oc login --server="${OSE_ENDPOINT}" --token="${OSE_TOKEN}" --certificate-authority=/etc/ssl/cert.pem --kubeconfig="${KUBECONFIG}"
+#     - cd k8s
+#   script:
+#     - ../oc apply -f configmap.yaml -n ckan
+#     - ../oc apply -f pvc.yaml -n ckan
+#     - ../oc apply -f redis.yaml -n ckan
+#     - ../oc apply -f db.yaml -n ckan
+#     - sleep 15s
+#     - ../oc apply -f solr.yaml -n ckan
+#     - ../oc apply -f datapusher.yaml -n ckan
+#     - ../oc apply -f ckan.yaml -n ckan
+#     - ../oc apply -f nginx.yaml -n ckan
