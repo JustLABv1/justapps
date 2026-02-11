@@ -15,8 +15,8 @@ data:
         icon: "✍️"
         techStack: ["Next.js", "Redis", "WebCrypto API"]
         license: "EUPL-1.2"
-        dockerRepo: "ghcr.io/bund/digi-sign:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # DigiSign Pro
           Digital signatures for the public sector. Supports eIDAS QES.
@@ -27,8 +27,8 @@ data:
         icon: "📊"
         techStack: ["Go", "PostgreSQL", "React"]
         license: "Apache-2.0"
-        dockerRepo: "ghcr.io/bund/open-data-hub:v2.4"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # Open Data Hub
           Transparency through data. Built-in visualizers and API-first design.
@@ -39,8 +39,8 @@ data:
         icon: "💬"
         techStack: ["Node.js", "Matrix.org", "React Native"]
         license: "GPL-3.0"
-        dockerRepo: "ghcr.io/bund/gov-messenger:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # GovMessenger
           End-to-end encrypted chat based on the Matrix protocol.
@@ -51,8 +51,8 @@ data:
         icon: "🗳️"
         techStack: ["Vue.js", "Django", "PostGIS"]
         license: "AGPL-3.0"
-        dockerRepo: "ghcr.io/bund/e-part:stable"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # E-Partizipation
           Citizen involvement made easy with mapping and survey tools.
@@ -63,8 +63,8 @@ data:
         icon: "🏙️"
         techStack: ["Rust", "TimescaleDB", "MQTT"]
         license: "MIT"
-        dockerRepo: "ghcr.io/bund/smart-city-monitor:3.0"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # Smart City Monitor
           Visualizing air quality, traffic, and energy sensors in real-time.
@@ -75,8 +75,8 @@ data:
         icon: "👥"
         techStack: ["Java", "Spring Boot", "Angular"]
         license: "Proprietary"
-        dockerRepo: "ghcr.io/bund/hr-portal:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # PersonalPortal+
           Modular HR system for working hours, leave, and payroll.
@@ -87,8 +87,8 @@ data:
         icon: "🗺️"
         techStack: ["Python", "FastAPI", "OpenLayers"]
         license: "BSD-3-Clause"
-        dockerRepo: "ghcr.io/bund/geohub:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # GeoHub Bund
           Spatial data infrastructure with vector tiles and WMS support.
@@ -99,8 +99,8 @@ data:
         icon: "🔑"
         techStack: ["Go", "OIDC", "Keycloak"]
         license: "Apache-2.0"
-        dockerRepo: "ghcr.io/bund/secure-auth:v1.2"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # Secure Auth Service
           SSO and 2FA for all citizen services via OIDC.
@@ -111,8 +111,8 @@ data:
         icon: "🏛️"
         techStack: ["PHP", "Laravel", "S3 Storage"]
         license: "GPL-2.0"
-        dockerRepo: "ghcr.io/bund/archiv-meister:stable"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # ArchivMeister
           Compliant digital archiving following TR-ESOR and PDF/A standards.
@@ -123,8 +123,8 @@ data:
         icon: "💰"
         techStack: ["React", "FastAPI", "PostgreSQL"]
         license: "EUPL-1.2"
-        dockerRepo: "ghcr.io/bund/budget-planner:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # BudgetPlanner
           Collaborative budgeting with AI forecasting and visual reports.
@@ -135,8 +135,8 @@ data:
         icon: "🚌"
         techStack: ["Node.js", "TypeScript", "GTFS"]
         license: "MIT"
-        dockerRepo: "ghcr.io/bund/mobility-connect:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # MobilityConnect
           Connecting mobility providers through standardized GTFS-RT APIs.
@@ -147,8 +147,8 @@ data:
         icon: "🌡️"
         techStack: ["D3.js", "Python", "NetCDF"]
         license: "CC-BY-4.0"
-        dockerRepo: "ghcr.io/bund/climate-map:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # ClimateMap
           Analyzing heat islands and flooding scenarios for city planning.
@@ -159,8 +159,8 @@ data:
         icon: "⚖️"
         techStack: ["Java", "Hibernate", "Vaadin"]
         license: "EUPL-1.2"
-        dockerRepo: "ghcr.io/bund/justice-docket:v4"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # Justice Docket
           Managing court cases, scheduling, and electronic records safely.
@@ -171,8 +171,8 @@ data:
         icon: "🆘"
         techStack: ["React", "Go", "WebSockets"]
         license: "Apache-2.0"
-        dockerRepo: "ghcr.io/bund/resource-flow:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # ResourceFlow
           Real-time emergency supply tracking and responder coordination.
@@ -183,8 +183,8 @@ data:
         icon: "🎓"
         techStack: ["Next.js", "Prisma", "Tailwind CSS"]
         license: "AGPL-3.0"
-        dockerRepo: "ghcr.io/bund/school-admin:latest"
-        helmRepo: "https://charts.bund.de"
+        dockerRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+        helmRepo: "https://app-store-route-app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
         markdownContent: |
           # SchoolAdmin
           Everything from student records to teacher-parent communication.
