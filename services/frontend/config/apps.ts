@@ -1,6 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
+import path from 'path';
 
 export interface AppConfig {
   id: string;
@@ -16,6 +16,13 @@ export interface AppConfig {
   techStack?: string[];
   license?: string;
   markdownContent?: string;
+  customDockerCommand?: string;
+  customComposeCommand?: string;
+  customHelmCommand?: string;
+  customDockerNote?: string;
+  customComposeNote?: string;
+  customHelmNote?: string;
+  updatedAt?: string;
 }
 
 export const getApps = (): AppConfig[] => {

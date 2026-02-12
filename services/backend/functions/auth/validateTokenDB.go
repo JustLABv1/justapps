@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"errors"
 
 	"justwms-backend/functions/httperror"
@@ -12,9 +13,14 @@ import (
 )
 
 func ValidateTokenDBEntry(token string, db *bun.DB, ctx *gin.Context) (valid bool, err error) {
+	token = CleanToken(token)
 	var dbToken models.Tokens
 	err = db.NewSelect().Model(&dbToken).Where("key = ?", token).Scan(ctx)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			httperror.Unauthorized(ctx, "The provided token is not valid (DB: Not found)", err)
+			return false, err
+		}
 		httperror.InternalServerError(ctx, "Error receiving token from db", err)
 		return false, err
 	}

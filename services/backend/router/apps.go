@@ -20,7 +20,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 
 		// Protected routes
 		protected := appsGroup.Group("")
-		protected.Use(middlewares.Auth(db))
+		protected.Use(middlewares.Admin(db))
 		{
 			protected.POST("", func(c *gin.Context) {
 				apps.CreateApp(c, db)

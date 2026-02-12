@@ -15,9 +15,9 @@ func GenerateJWT(id uuid.UUID, rememberMe bool) (tokenString string, ExpiresAt i
 	var expirationTime time.Time
 
 	if rememberMe {
-		expirationTime = time.Now().Add(7 * 24 * time.Hour)
+		expirationTime = time.Now().Add(30 * 24 * time.Hour)
 	} else {
-		expirationTime = time.Now().Add(12 * time.Hour)
+		expirationTime = time.Now().Add(7 * 24 * time.Hour)
 	}
 
 	claims := &models.JWTClaim{

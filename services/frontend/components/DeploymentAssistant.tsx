@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Tabs, Button } from '@heroui/react';
-import { Terminal, Copy, Check, Box, Ship } from 'lucide-react';
 import { AppConfig } from '@/config/apps';
+import { Button, Tabs } from '@heroui/react';
+import { Box, Check, Copy, Ship, Terminal } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface DeploymentAssistantProps {
   app: AppConfig;
@@ -12,19 +12,19 @@ interface DeploymentAssistantProps {
 export const DeploymentAssistant: React.FC<DeploymentAssistantProps> = ({ app }) => {
   const [copied, setCopied] = useState(false);
 
-  const dockerCommand = `docker run -d \\
+  const dockerCommand = app.customDockerCommand || `docker run -d \\
   --name ${app.id} \\
   -p 8080:80 \\
   ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}`;
 
-  const dockerCompose = `services:
+  const dockerCompose = app.customComposeCommand || `services:
   ${app.id}:
     image: ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
     ports:
       - "8080:80"
     restart: always`;
 
-  const helmCommand = `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}
+  const helmCommand = app.customHelmCommand || `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}
 helm install ${app.id} bund/${app.id}`;
 
   const copyToClipboard = (text: string) => {
@@ -82,9 +82,15 @@ helm install ${app.id} bund/${app.id}`;
               {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
             </Button>
           </div>
-          <p className="text-xs text-default-400 mt-2 italic px-1">
-            Standard-Deployment mit Port 8080 mapping.
-          </p>
+          {app.customDockerNote ? (
+            <p className="text-xs text-default-400 mt-2 italic px-1">
+              {app.customDockerNote}
+            </p>
+          ) : (
+            <p className="text-xs text-default-400 mt-2 italic px-1">
+              Standard-Deployment mit Port 8080 mapping.
+            </p>
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel id="compose" className="pt-4">
@@ -102,6 +108,11 @@ helm install ${app.id} bund/${app.id}`;
               {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
             </Button>
           </div>
+          {app.customComposeNote && (
+            <p className="text-xs text-default-400 mt-2 italic px-1">
+              {app.customComposeNote}
+            </p>
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel id="helm" className="pt-4">
@@ -119,9 +130,15 @@ helm install ${app.id} bund/${app.id}`;
               {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
             </Button>
           </div>
-          <p className="text-xs text-default-400 mt-2 italic px-1">
-            Empfohlen für Kubernetes Umgebungen.
-          </p>
+          {app.customHelmNote ? (
+            <p className="text-xs text-default-400 mt-2 italic px-1">
+              {app.customHelmNote}
+            </p>
+          ) : (
+            <p className="text-xs text-default-400 mt-2 italic px-1">
+              Empfohlen für Kubernetes Umgebungen.
+            </p>
+          )}
         </Tabs.Panel>
       </Tabs>
     </div>
