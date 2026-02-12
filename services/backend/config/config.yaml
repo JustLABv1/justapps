@@ -1,0 +1,15 @@
+---
+
+log_level: info
+
+port: 8080
+
+database:
+  server: localhost
+  port: 5432
+  name: postgres
+  user: postgres
+  password: postgres
+
+jwt:
+  secret: null
