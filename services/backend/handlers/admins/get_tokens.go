@@ -12,7 +12,7 @@ import (
 )
 
 func GetTokens(context *gin.Context, db *bun.DB) {
-	var tokens []models.Tokens
+	tokens := make([]models.Tokens, 0)
 	err := db.NewSelect().Model(&tokens).Order("expires_at ASC").Scan(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error collecting tokens on db", err)

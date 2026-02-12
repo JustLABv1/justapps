@@ -22,6 +22,11 @@ export interface AppConfig {
   customDockerNote?: string;
   customComposeNote?: string;
   customHelmNote?: string;
+  tags?: string[];
+  collections?: string[];
+  isFeatured?: boolean;
+  ratingAvg?: number;
+  ratingCount?: number;
   updatedAt?: string;
 }
 

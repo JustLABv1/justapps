@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@heroui/react/styles";
+@import "@heroui/styles";
 
 @theme {
   --color-bund-black: #000000;
@@ -10,13 +10,24 @@
 }
 
 :root {
-  --background: #fafafa;
-  --foreground: #1a1a1a;
+  --background: #ffffff;
+  --foreground: #11181c;
+  --color-bund-black: #000000;
+  --color-bund-light-blue: #E6ECF2;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ecf0f1;
+  --color-bund-black: #ffffff;
+  --color-bund-light-blue: #1a202c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-bund-black: var(--color-bund-black);
+  --color-bund-light-blue: var(--color-bund-light-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -27,17 +38,17 @@ body {
 }
 
 /* Markdown Styling */
-.prose-bund h1 { @apply text-3xl font-bold text-bund-black mb-6 mt-8; }
-.prose-bund h2 { @apply text-2xl font-bold text-bund-black mb-4 mt-8 pb-2 border-b border-stone-200; }
-.prose-bund h3 { @apply text-xl font-bold text-bund-black mb-3 mt-6; }
-.prose-bund p { @apply text-stone-600 leading-relaxed mb-4; }
-.prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-stone-600; }
-.prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-stone-600; }
+.prose-bund h1 { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
+.prose-bund h2 { @apply text-2xl font-bold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
+.prose-bund h3 { @apply text-xl font-bold text-foreground mb-3 mt-6; }
+.prose-bund p { @apply text-muted leading-relaxed mb-4; }
+.prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-muted; }
+.prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-muted; }
 .prose-bund li { @apply pl-1; }
-.prose-bund code { @apply bg-stone-100 px-1.5 py-0.5 rounded text-sm font-mono text-bund-blue; }
-.prose-bund pre { @apply bg-stone-900 text-stone-50 p-4 rounded-xl font-mono text-sm overflow-x-auto my-6 shadow-inner; }
+.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-bund-blue; }
+.prose-bund pre { @apply bg-bund-black text-white p-4 rounded-xl font-mono text-sm overflow-x-auto my-6 shadow-inner; }
 .prose-bund pre code { @apply bg-transparent p-0 text-inherit; }
 .prose-bund a { @apply text-bund-blue hover:underline font-medium; }
-.prose-bund blockquote { @apply border-l-4 border-bund-gold pl-4 italic text-stone-500 my-4; }
-.prose-bund hr { @apply my-8 border-stone-200; }
-.prose-bund strong { @apply font-bold text-bund-black; }
+.prose-bund blockquote { @apply border-l-4 border-bund-gold pl-4 italic text-muted my-4; }
+.prose-bund hr { @apply my-8 border-separator; }
+.prose-bund strong { @apply font-bold text-foreground; }

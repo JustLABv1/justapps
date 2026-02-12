@@ -102,9 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     if (status === 'authenticated') {
-      nextAuthSignOut();
+      nextAuthSignOut({ callbackUrl: '/login' });
     }
   };
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth:unauthorized', handleUnauthorized);
+      return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    }
+  }, [status]); // Add status as dependency to ensure logout logic has latest status
 
   const oidcLogin = () => {
     nextAuthSignIn('keycloak', { callbackUrl: '/' });

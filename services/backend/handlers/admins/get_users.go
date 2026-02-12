@@ -12,7 +12,7 @@ import (
 )
 
 func GetUsers(context *gin.Context, db *bun.DB) {
-	var users []models.Users
+	users := make([]models.Users, 0)
 	err := db.NewSelect().Model(&users).ExcludeColumn("password").Scan(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error collecting users on db", err)

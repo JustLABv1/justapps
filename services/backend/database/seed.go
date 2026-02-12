@@ -37,6 +37,11 @@ func SeedDatabase(db *bun.DB) {
 			DockerRepo:      "ghcr.io/bund/digi-sign:latest",
 			HelmRepo:        "https://charts.bund.de",
 			MarkdownContent: "# DigiSign Pro\nDigital signatures for the public sector. Supports eIDAS QES.",
+			Tags:            []string{"Security", "Legal", "Web3"},
+			Collections:     []string{"Starter Pack"},
+			IsFeatured:      true,
+			RatingAvg:       4.8,
+			RatingCount:     12,
 		},
 		{
 			ID:              "open-data-hub",
@@ -49,6 +54,10 @@ func SeedDatabase(db *bun.DB) {
 			DockerRepo:      "ghcr.io/bund/open-data-hub:v2.4",
 			HelmRepo:        "https://charts.bund.de",
 			MarkdownContent: "# Open Data Hub\nTransparency through data. Built-in visualizers and API-first design.",
+			Tags:            []string{"Data", "OpenSource", "API"},
+			Collections:     []string{"Transparency Tools"},
+			RatingAvg:       4.2,
+			RatingCount:     5,
 		},
 		{
 			ID:              "gov-messenger",
@@ -61,6 +70,9 @@ func SeedDatabase(db *bun.DB) {
 			DockerRepo:      "ghcr.io/bund/gov-messenger:latest",
 			HelmRepo:        "https://charts.bund.de",
 			MarkdownContent: "# GovMessenger\nEnd-to-end encrypted chat based on the Matrix protocol.",
+			Tags:            []string{"Communication", "Encryption", "Mobile"},
+			Collections:     []string{"Starter Pack"},
+			IsFeatured:      true,
 		},
 	}
 

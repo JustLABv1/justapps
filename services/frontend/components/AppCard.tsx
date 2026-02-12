@@ -1,8 +1,8 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
-import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chip, Dropdown, Label, Link, Separator, Tooltip } from "@heroui/react";
-import { BookOpen, Check, ChevronDown, ExternalLink, Github, Layers, Scale } from "lucide-react";
+import { Button, Card, Chip, Dropdown, Label, Link, Tooltip } from "@heroui/react";
+import { BookOpen, Check, ChevronDown, ExternalLink, Github, Star } from "lucide-react";
 import NextLink from "next/link";
 import { useState } from "react";
 
@@ -36,48 +36,46 @@ export function AppCard({ app }: { app: AppConfig }) {
   };
 
   return (
-    <Card className="w-full h-full flex flex-col hover:shadow-lg transition-shadow duration-300" variant="default">
-      <CardHeader className="flex flex-row items-center gap-4 p-6">
-        <div className="w-12 h-12 rounded-xl bg-bund-light-blue flex items-center justify-center text-2xl shadow-inner">
+    <Card className="w-full h-full flex flex-col" variant="default">
+      <Card.Header className="flex flex-row items-center gap-4 p-6 pb-2">
+        <div className="w-12 h-12 rounded-xl bg-surface-secondary flex items-center justify-center text-2xl border border-border">
           {app.icon || "🏛️"}
         </div>
         <div className="flex flex-col">
-          <CardTitle className="text-lg font-bold text-bund-black leading-tight">{app.name}</CardTitle>
-          <CardDescription className="text-xs font-semibold text-bund-blue uppercase tracking-wider">{app.category}</CardDescription>
+          <div className="flex items-center gap-2">
+            <Card.Title className="text-lg font-bold text-foreground leading-tight">{app.name}</Card.Title>
+            {app.isFeatured && (
+              <Chip size="sm" color="accent" variant="soft" className="h-5 text-[10px] font-bold uppercase py-0 border-none">Curated</Chip>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <Card.Description className="text-xs font-semibold text-bund-blue dark:text-bund-gold uppercase tracking-wider">{app.category}</Card.Description>
+            {app.ratingCount !== undefined && app.ratingCount > 0 && (
+              <div className="flex items-center gap-1 ml-2">
+                <Star className="w-3 h-3 fill-bund-gold text-bund-gold" />
+                <span className="text-[10px] font-bold text-muted">{(app.ratingAvg || 0).toFixed(1)}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </CardHeader>
-      <Separator />
-      <CardContent className="p-6 flex-grow">
-        <p className="text-sm text-default-600 leading-relaxed mb-4 line-clamp-3">
+      </Card.Header>
+
+      <Card.Content className="px-6 py-4 flex-grow">
+        <p className="text-sm text-muted leading-relaxed mb-4 line-clamp-3">
           {app.description}
         </p>
 
-        <div className="flex flex-col gap-2 mb-6">
-          {app.techStack && (
-            <div className="flex items-start gap-2">
-              <Layers className="w-3.5 h-3.5 text-default-400 mt-0.5 flex-shrink-0" />
-              <div className="flex flex-wrap gap-1">
-                {app.techStack.map(tech => (
-                  <span key={tech} className="text-[10px] px-1.5 py-0.5 bg-default-100 text-default-600 rounded border border-default-200">
-                    {tech}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {app.license && (
-            <div className="flex items-center gap-2">
-              <Scale className="w-3.5 h-3.5 text-default-400 flex-shrink-0" />
-              <span className="text-[10px] text-default-500 font-medium truncate">
-                {app.license}
-              </span>
-            </div>
-          )}
-        </div>
+        {app.tags && app.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {app.tags.map(tag => (
+              <Chip key={tag} size="sm" variant="secondary" className="h-5 text-[9px] font-bold uppercase py-0">{tag}</Chip>
+            ))}
+          </div>
+        )}
 
-        <div className="flex flex-wrap gap-2 mt-auto">
+        <div className="flex flex-wrap gap-2 mt-auto min-h-[40px]">
           {app.liveUrl && (
-            <Chip size="sm" variant="soft" color="accent" className="font-medium">
+            <Chip size="sm" variant="soft" color="accent" className="font-bold border-none text-[10px] uppercase">
               Live Demo
             </Chip>
           )}
@@ -87,14 +85,14 @@ export function AppCard({ app }: { app: AppConfig }) {
                 <Button 
                   size="sm" 
                   variant="tertiary"
-                  className="h-7 px-2 min-w-0 bg-default-100 hover:bg-default-200 text-default-600 rounded-md gap-1.5"
+                  className="h-7 px-2 min-w-0 bg-surface-secondary hover:bg-default text-muted rounded-md gap-1.5"
                   onPress={() => {
                     copyToClipboard(`helm pull ${app.helmRepo}`, 'helm');
                   }}
                 >
-                  <HelmIcon className="w-3 h-3" />
-                  <span className="text-[11px] font-medium">
-                    {copied === 'helm' ? "Copied!" : "Helm"}
+                  <HelmIcon className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold">
+                    {copied === 'helm' ? "COPIED" : "HELM"}
                   </span>
                   {copied === 'helm' && <Check className="w-3 h-3 text-success" />}
                 </Button>
@@ -110,14 +108,14 @@ export function AppCard({ app }: { app: AppConfig }) {
                 <Button 
                   size="sm" 
                   variant="tertiary"
-                  className="h-7 px-2 min-w-0 bg-warning-50 hover:bg-warning-100 text-warning-700 rounded-md gap-1.5"
+                  className="h-7 px-2 min-w-0 bg-surface-secondary hover:bg-default text-muted rounded-md gap-1.5"
                   onPress={() => {
                     copyToClipboard(`docker pull ${app.dockerRepo}`, 'docker');
                   }}
                 >
-                  <DockerIcon className="w-3 h-3" />
-                  <span className="text-[11px] font-medium">
-                    {copied === 'docker' ? "Copied!" : "Docker"}
+                  <DockerIcon className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold">
+                    {copied === 'docker' ? "COPIED" : "DOCKER"}
                   </span>
                   {copied === 'docker' && <Check className="w-3 h-3 text-success" />}
                 </Button>
@@ -128,16 +126,16 @@ export function AppCard({ app }: { app: AppConfig }) {
             </Tooltip>
           )}
         </div>
-      </CardContent>
-      <Separator />
-      <CardFooter className="p-4 bg-default-50/30">
+      </Card.Content>
+
+      <Card.Footer className="px-6 pb-6 pt-2">
         <div className="flex flex-col gap-3 w-full">
           <div className={app.liveUrl ? "grid grid-cols-2 gap-3 w-full" : "w-full"}>
             {app.liveUrl && (
               <Link 
                 href={app.liveUrl} 
                 target="_blank"
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 bg-bund-blue text-white hover:bg-bund-blue/90 no-underline transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 bg-bund-blue text-white hover:bg-bund-blue/90 dark:bg-bund-gold dark:text-bund-black dark:hover:bg-bund-gold/90 no-underline transition-all shadow-sm active:scale-95"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 Besuchen
@@ -145,7 +143,7 @@ export function AppCard({ app }: { app: AppConfig }) {
             )}
             <NextLink 
               href={`/apps/${app.id}`} 
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95 ${!app.liveUrl ? 'w-full' : ''}`}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-border bg-surface hover:bg-surface-secondary no-underline text-foreground transition-all shadow-sm active:scale-95 ${!app.liveUrl ? 'w-full' : ''}`}
             >
               <BookOpen className="w-3.5 h-3.5" />
               Details
@@ -159,7 +157,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                   <Dropdown.Trigger className="w-full">
                     <Button 
                       variant="secondary" 
-                      className="w-full h-10 text-xs font-bold gap-2 rounded-lg border border-default-300 bg-white hover:bg-default-50 transition-all shadow-sm"
+                      className="w-full h-10 text-xs font-bold gap-2 rounded-lg border border-border bg-background hover:bg-surface-secondary transition-all shadow-sm"
                     >
                       <Github className="w-3.5 h-3.5" />
                       Source & Repository
@@ -170,7 +168,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                     <Dropdown.Menu onAction={handleRepoAction}>
                       {app.repoUrl && (
                         <Dropdown.Item id="repo" textValue="Git Repository">
-                          <Github className="w-4 h-4 text-default-500" />
+                          <Github className="w-4 h-4 text-muted" />
                           <Label className="flex-grow">Git Repository</Label>
                         </Dropdown.Item>
                       )}
@@ -193,7 +191,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                 <Link 
                   href={app.repoUrl || app.helmRepo || app.dockerRepo} 
                   target="_blank"
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-border bg-background hover:bg-surface-secondary no-underline text-foreground transition-all shadow-sm active:scale-95"
                 >
                   {app.repoUrl ? <Github className="w-3.5 h-3.5" /> : app.helmRepo ? <HelmIcon className="w-3.5 h-3.5 text-bund-blue" /> : <DockerIcon className="w-3.5 h-3.5 text-[#2496ED]" />}
                   {app.repoUrl ? "Repository" : app.helmRepo ? "Helm Chart" : "Docker Registry"}
@@ -202,7 +200,7 @@ export function AppCard({ app }: { app: AppConfig }) {
             </div>
           )}
         </div>
-      </CardFooter>
+      </Card.Footer>
     </Card>
   );
 }

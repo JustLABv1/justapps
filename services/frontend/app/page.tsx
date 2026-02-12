@@ -25,7 +25,7 @@ export default async function Home() {
             App-Store für die <br />
             <span className="text-bund-blue">PLAIN Plattform</span>
           </h1>
-          <p className="text-xl text-default-600">
+          <p className="text-xl text-muted">
             Entdecken Sie Open-Source-Lösungen, Cloud-Native Applikationen und Standards <br className="hidden md:inline" /> 
             für die Digitalisierung staatlicher Leistungen und die digitale Souveränität.
           </p>
