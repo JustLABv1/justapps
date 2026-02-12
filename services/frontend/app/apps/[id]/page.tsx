@@ -239,8 +239,86 @@ export default function AppPage() {
                   </Link>
                 </div>
               )}
+            </div>
+          </div>
 
-              {(app.helmRepo || app.dockerRepo) && (
+          <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
+            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Fachliche Details</h3>
+            
+            <div className="space-y-4">
+              {app.focus && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Themenfeld / Schwerpunkt</div>
+                  <div className="text-sm font-bold text-foreground">{app.focus}</div>
+                </div>
+              )}
+              {app.appType && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Anwendungstyp</div>
+                  <div className="text-sm font-bold text-foreground">{app.appType}</div>
+                </div>
+              )}
+              {app.status && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Status</div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${app.status.toLowerCase().includes('produktiv') ? 'bg-success' : 'bg-bund-gold'}`} />
+                    <div className="text-sm font-bold text-foreground">{app.status}</div>
+                  </div>
+                </div>
+              )}
+              {app.useCase && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Ziel Anwendungsfall</div>
+                  <div className="text-sm font-medium text-muted leading-snug">{app.useCase}</div>
+                </div>
+              )}
+              {app.contactPerson && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Ansprechpartner</div>
+                  <div className="text-sm font-bold text-bund-blue">{app.contactPerson}</div>
+                </div>
+              )}
+              {app.visualization && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Visualisierung</div>
+                  <div className="text-sm font-bold text-foreground">{app.visualization}</div>
+                </div>
+              )}
+              {app.deployment && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Deployment</div>
+                  <div className="text-sm font-bold text-foreground">{app.deployment}</div>
+                </div>
+              )}
+              {app.infrastructure && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Infrastruktur</div>
+                  <div className="text-sm font-bold text-foreground">{app.infrastructure}</div>
+                </div>
+              )}
+              {app.database && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Datenbasis</div>
+                  <div className="text-sm font-bold text-foreground">{app.database}</div>
+                </div>
+              )}
+              {app.transferability && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Übertragbarkeit</div>
+                  <div className="text-sm font-medium text-muted leading-snug">{app.transferability}</div>
+                </div>
+              )}
+              {app.additionalInfo && (
+                <div>
+                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Sonstiges</div>
+                  <div className="text-sm text-muted italic leading-snug">{app.additionalInfo}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {(app.helmRepo || app.dockerRepo) && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -310,7 +388,5 @@ export default function AppPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
   );
 }

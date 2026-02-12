@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 )
 
@@ -39,9 +40,19 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	_, err := db.NewUpdate().
 		Model(&app).
 		Where("id = ?", id).
-		Column("name", "description", "category", "live_url", "repo_url", "helm_repo", "docker_repo", "docs_url", "icon", "tech_stack", "license", "markdown_content", "custom_docker_command", "custom_compose_command", "custom_helm_command", "custom_docker_note", "custom_compose_note", "custom_helm_note", "tags", "collections", "is_featured", "updated_at").
+		Column(
+			"name", "description", "category", "live_url", "repo_url",
+			"helm_repo", "docker_repo", "docs_url", "icon", "tech_stack",
+			"license", "markdown_content", "focus", "app_type", "use_case",
+			"visualization", "deployment", "infrastructure", "database",
+			"additional_info", "status", "transferability", "contact_person",
+			"custom_docker_command", "custom_compose_command", "custom_helm_command",
+			"custom_docker_note", "custom_compose_note", "custom_helm_note",
+			"tags", "collections", "is_featured", "updated_at",
+		).
 		Exec(c)
 	if err != nil {
+		log.Errorf("Database error during app update (ID: %s): %v", id, err)
 		httperror.InternalServerError(c, "Error updating app", err)
 		return
 	}
