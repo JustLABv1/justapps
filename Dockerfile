@@ -1,5 +1,4 @@
 FROM node:24.7-alpine AS base
-LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 
 # Stage 1: Build the frontend
 FROM node:24.7-alpine AS frontend-builder
@@ -20,11 +19,10 @@ WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
-RUN go build -o justwms-backend
+RUN go build -o app-store-backend
 
 # Stage 3: Create the final image
 FROM base AS runner
-LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 WORKDIR /app
 
 # Install necessary packages
@@ -38,7 +36,7 @@ RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 # Copy the backend binary
-COPY --from=backend-builder /app/backend/justwms-backend /app/
+COPY --from=backend-builder /app/backend/app-store-backend /app/
 
 # Copy the frontend build
 COPY --from=frontend-builder /app/frontend/public /app/public
@@ -56,8 +54,8 @@ COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.env /app/.env
 
 RUN chown -R nextjs:nodejs /app
 
-RUN mkdir -p /etc/justwms \
-    && chown -R nextjs:nodejs /etc/justwms
+RUN mkdir -p /etc/app-store \
+    && chown -R nextjs:nodejs /etc/app-store
 
 RUN mkdir -p /app/data \
     && chown -R nextjs:nodejs /app/data
@@ -65,7 +63,7 @@ RUN mkdir -p /app/data \
 # Set environment variables
 ENV NODE_ENV=production
 
-VOLUME [ "/etc/justwms", "/app/data" ]
+VOLUME [ "/etc/app-store", "/app/data" ]
 
 # Expose ports
 EXPOSE 8080 3000
@@ -76,4 +74,4 @@ USER nextjs
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the backend and frontend
-CMD ["sh", "-c", "./justwms-backend --config /etc/justwms/config.yaml & node /app/server.js"]
+CMD ["sh", "-c", "./app-store-backend --config /etc/app-store/config.yaml & node /app/server.js"]
