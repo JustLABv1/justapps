@@ -3,6 +3,7 @@ package apps
 import (
 	"justwms-backend/functions/httperror"
 	"justwms-backend/pkg/models"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
@@ -14,6 +15,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
 	}
+	app.UpdatedAt = time.Now()
 
 	_, err := db.NewInsert().Model(&app).Exec(c)
 	if err != nil {
@@ -32,8 +34,13 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 	app.ID = id
+	app.UpdatedAt = time.Now()
 
-	_, err := db.NewUpdate().Model(&app).Where("id = ?", id).Exec(c)
+	_, err := db.NewUpdate().
+		Model(&app).
+		Where("id = ?", id).
+		Column("name", "description", "category", "live_url", "repo_url", "helm_repo", "docker_repo", "docs_url", "icon", "tech_stack", "license", "markdown_content", "custom_docker_command", "custom_compose_command", "custom_helm_command", "custom_docker_note", "custom_compose_note", "custom_helm_note", "updated_at").
+		Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error updating app", err)
 		return

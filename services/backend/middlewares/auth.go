@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"database/sql"
 	"errors"
 
 	"justwms-backend/functions/auth"
@@ -19,6 +20,7 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 			httperror.Unauthorized(context, "Request does not contain an access token", errors.New("request does not contain an access token"))
 			return
 		}
+
 		err := auth.ValidateToken(tokenString)
 		if err != nil {
 			httperror.Unauthorized(context, "Token is not valid", err)
@@ -27,12 +29,13 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 
 		valid, err := auth.ValidateTokenDBEntry(tokenString, db, context)
 		if err != nil {
-			httperror.InternalServerError(context, "Error receiving token from db", err)
+			if err != sql.ErrNoRows {
+				httperror.InternalServerError(context, "Error receiving token from db", err)
+			}
 			return
 		}
 
 		if !valid {
-			httperror.Unauthorized(context, "The provided token is not valid", errors.New("the provided token is not valid"))
 			return
 		}
 

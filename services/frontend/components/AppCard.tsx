@@ -1,10 +1,10 @@
 'use client';
 
-import { Card, CardHeader, CardContent, CardFooter, Separator, Link, Chip, CardTitle, CardDescription, Button, Tooltip, Dropdown, Label } from "@heroui/react";
 import { AppConfig } from "@/config/apps";
-import { ExternalLink, BookOpen, Check, Github, ChevronDown, Layers, Scale } from "lucide-react";
-import { useState } from "react";
+import { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Chip, Dropdown, Label, Link, Separator, Tooltip } from "@heroui/react";
+import { BookOpen, Check, ChevronDown, ExternalLink, Github, Layers, Scale } from "lucide-react";
 import NextLink from "next/link";
+import { useState } from "react";
 
 const HelmIcon = ({ className }: { className?: string }) => (
   <svg role="img" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -77,46 +77,50 @@ export function AppCard({ app }: { app: AppConfig }) {
 
         <div className="flex flex-wrap gap-2 mt-auto">
           {app.liveUrl && (
-            <Chip size="sm" variant="soft" color="accent" className="font-medium">Live Demo</Chip>
+            <Chip size="sm" variant="soft" color="accent" className="font-medium">
+              Live Demo
+            </Chip>
           )}
           {app.helmRepo && (
             <Tooltip delay={0}>
-              <Chip 
-                size="sm" 
-                variant="soft" 
-                color="default"
-                className="cursor-pointer hover:bg-default-200 transition-colors"
-                onPress={(e) => {
-                  copyToClipboard(`helm pull ${app.helmRepo}`, 'helm');
-                }}
-              >
-                <HelmIcon className="w-3 h-3" />
-                {copied === 'helm' ? <Check className="w-3 h-3 text-success" /> : "Helm"}
-              </Chip>
+              <Tooltip.Trigger>
+                <Button 
+                  size="sm" 
+                  variant="tertiary"
+                  className="h-7 px-2 min-w-0 bg-default-100 hover:bg-default-200 text-default-600 rounded-md gap-1.5"
+                  onPress={() => {
+                    copyToClipboard(`helm pull ${app.helmRepo}`, 'helm');
+                  }}
+                >
+                  <HelmIcon className="w-3 h-3" />
+                  <span className="text-[11px] font-medium">
+                    {copied === 'helm' ? "Copied!" : "Helm"}
+                  </span>
+                  {copied === 'helm' && <Check className="w-3 h-3 text-success" />}
+                </Button>
+              </Tooltip.Trigger>
               <Tooltip.Content placement="bottom">
                 Copy Helm Pull Command
-              </Tooltip.Content>
-            </Tooltip>
-          )}
               </Tooltip.Content>
             </Tooltip>
           )}
           {app.dockerRepo && (
             <Tooltip delay={0}>
               <Tooltip.Trigger>
-                <Chip 
+                <Button 
                   size="sm" 
-                  variant="soft" 
-                  color="warning"
-                  className="cursor-pointer hover:bg-warning-200 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  variant="tertiary"
+                  className="h-7 px-2 min-w-0 bg-warning-50 hover:bg-warning-100 text-warning-700 rounded-md gap-1.5"
+                  onPress={() => {
                     copyToClipboard(`docker pull ${app.dockerRepo}`, 'docker');
                   }}
                 >
                   <DockerIcon className="w-3 h-3" />
-                  {copied === 'docker' ? <Check className="w-3 h-3 text-success" /> : "Docker"}
-                </Chip>
+                  <span className="text-[11px] font-medium">
+                    {copied === 'docker' ? "Copied!" : "Docker"}
+                  </span>
+                  {copied === 'docker' && <Check className="w-3 h-3 text-success" />}
+                </Button>
               </Tooltip.Trigger>
               <Tooltip.Content placement="bottom">
                 Copy Docker Pull Command
@@ -128,7 +132,7 @@ export function AppCard({ app }: { app: AppConfig }) {
       <Separator />
       <CardFooter className="p-4 bg-default-50/30">
         <div className="flex flex-col gap-3 w-full">
-          <div className="grid grid-cols-2 gap-3 w-full">
+          <div className={app.liveUrl ? "grid grid-cols-2 gap-3 w-full" : "w-full"}>
             {app.liveUrl && (
               <Link 
                 href={app.liveUrl} 
@@ -141,7 +145,7 @@ export function AppCard({ app }: { app: AppConfig }) {
             )}
             <NextLink 
               href={`/apps/${app.id}`} 
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95 ${!app.liveUrl ? 'w-full' : ''}`}
             >
               <BookOpen className="w-3.5 h-3.5" />
               Details
@@ -152,7 +156,7 @@ export function AppCard({ app }: { app: AppConfig }) {
             <div className="w-full">
               {hasMultipleRepos ? (
                 <Dropdown>
-                  <Dropdown.Trigger>
+                  <Dropdown.Trigger className="w-full">
                     <Button 
                       variant="secondary" 
                       className="w-full h-10 text-xs font-bold gap-2 rounded-lg border border-default-300 bg-white hover:bg-default-50 transition-all shadow-sm"
@@ -191,8 +195,8 @@ export function AppCard({ app }: { app: AppConfig }) {
                   target="_blank"
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg text-xs font-bold h-10 px-4 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
                 >
-                  <Github className="w-3.5 h-3.5" />
-                  Code Repository
+                  {app.repoUrl ? <Github className="w-3.5 h-3.5" /> : app.helmRepo ? <HelmIcon className="w-3.5 h-3.5 text-bund-blue" /> : <DockerIcon className="w-3.5 h-3.5 text-[#2496ED]" />}
+                  {app.repoUrl ? "Repository" : app.helmRepo ? "Helm Chart" : "Docker Registry"}
                 </Link>
               )}
             </div>

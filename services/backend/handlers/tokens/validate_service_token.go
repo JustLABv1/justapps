@@ -16,7 +16,7 @@ func ValidateServiceToken(context *gin.Context, db *bun.DB) {
 	token := context.GetHeader("Authorization")
 
 	var key models.Tokens
-	err := db.NewSelect().Model(&key).Where("key = ?", token).Scan(context)
+	err := db.NewSelect().Model(&key).Where("key = ?", auth.CleanToken(token)).Scan(context)
 	if err != nil {
 		httperror.Unauthorized(context, "Token is invalid or expired", errors.New("token invalid or expired"))
 		return

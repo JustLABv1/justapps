@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"justwms-backend/config"
@@ -11,7 +12,16 @@ import (
 	"github.com/google/uuid"
 )
 
+func CleanToken(token string) string {
+	token = strings.TrimSpace(token)
+	if len(token) > 7 && strings.HasPrefix(strings.ToLower(token), "bearer ") {
+		return strings.TrimSpace(token[7:])
+	}
+	return token
+}
+
 func ValidateToken(signedToken string) (err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
@@ -37,6 +47,7 @@ func ValidateToken(signedToken string) (err error) {
 }
 
 func GetTypeFromToken(signedToken string) (tokenType string, err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
@@ -59,6 +70,7 @@ func GetTypeFromToken(signedToken string) (tokenType string, err error) {
 }
 
 func GetIDFromToken(signedToken string) (tokenID string, err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
@@ -81,6 +93,7 @@ func GetIDFromToken(signedToken string) (tokenID string, err error) {
 }
 
 func GetUserIDFromToken(signedToken string) (id uuid.UUID, err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
@@ -103,6 +116,7 @@ func GetUserIDFromToken(signedToken string) (id uuid.UUID, err error) {
 }
 
 func RefreshToken(signedToken string) (newToken string, ExpiresAt int64, err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
@@ -133,6 +147,7 @@ func RefreshToken(signedToken string) (newToken string, ExpiresAt int64, err err
 }
 
 func GetBridgeDataFromToken(signedToken string) (bridgeID string, bridgeType string, err error) {
+	signedToken = CleanToken(signedToken)
 	var jwtKey = []byte(config.Config.JWT.Secret)
 
 	token, err := jwt.ParseWithClaims(
