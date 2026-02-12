@@ -85,6 +85,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, status]);
 
+  // Check token validity on mount or when token changes
+  useEffect(() => {
+    const checkTokenValidity = async () => {
+      if (token) {
+        try {
+          const { fetchApi } = await import('@/lib/api');
+          const response = await fetchApi('/token/validate');
+          if (response.status === 401) {
+            logout();
+          }
+        } catch (error) {
+          console.error('Failed to validate token:', error);
+        }
+      }
+    };
+
+    if (token) {
+      checkTokenValidity();
+    }
+  }, [token]);
+
   const login = (token: string, userData: User) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('token', token);
