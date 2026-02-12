@@ -61,6 +61,7 @@ services/backend/data/
 # Go workspace file
 services/backend/go.work
 
+services/backend/.env
 services/backend/.envrc
 services/backend/alertflow-backend
 
