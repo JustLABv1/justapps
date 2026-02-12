@@ -1,0 +1,76 @@
+package auths
+
+import (
+	"errors"
+	"net/http"
+
+	"justwms-backend/functions/httperror"
+	"justwms-backend/pkg/models"
+
+	"github.com/google/uuid"
+
+	_ "github.com/lib/pq"
+	"github.com/uptrace/bun"
+
+	"github.com/gin-gonic/gin"
+)
+
+func CheckUserTaken(context *gin.Context, db *bun.DB) {
+	var user models.Users
+	if err := context.ShouldBindJSON(&user); err != nil {
+		httperror.StatusBadRequest(context, "Error parsing incoming data", err)
+		return
+	}
+
+	var checkEmail bool
+	var checkUsername bool
+
+	checkEmail = true
+	checkUsername = true
+
+	if user.ID != uuid.Nil {
+		// get user data from db
+		var userFromDb models.Users
+		err := db.NewSelect().Model(&userFromDb).Where("id = ?", user.ID).Scan(context)
+		if err != nil {
+			httperror.InternalServerError(context, "Error getting user data from db", err)
+			return
+		}
+
+		if userFromDb.Email == user.Email {
+			checkEmail = false
+		}
+
+		if userFromDb.Username == user.Username {
+			checkUsername = false
+		}
+	}
+
+	// check if username exists
+	if checkUsername {
+		usernameCount, err := db.NewSelect().Model(&user).Where("username = ?", user.Username).Count(context)
+		if err != nil {
+			httperror.InternalServerError(context, "Error checking for username on db", err)
+			return
+		}
+		if usernameCount > 0 {
+			httperror.StatusConflict(context, "Benutzername bereits vergeben", errors.New("benutzername bereits vergeben"))
+			return
+		}
+	}
+
+	// check if email exists
+	if checkEmail {
+		emailCount, err := db.NewSelect().Model(&user).Where("email = ?", user.Email).Count(context)
+		if err != nil {
+			httperror.InternalServerError(context, "Error checking for email on db", err)
+			return
+		}
+		if emailCount > 0 {
+			httperror.StatusConflict(context, "Email bereits vergeben", errors.New("email bereits vergeben"))
+			return
+		}
+	}
+
+	context.JSON(http.StatusCreated, gin.H{"result": "success"})
+}

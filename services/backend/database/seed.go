@@ -1,0 +1,73 @@
+package database
+
+import (
+	"context"
+	"justwms-backend/pkg/models"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/uptrace/bun"
+)
+
+func SeedDatabase(db *bun.DB) {
+	ctx := context.Background()
+
+	// Check if apps already exist
+	exists, err := db.NewSelect().Model((*models.Apps)(nil)).Exists(ctx)
+	if err != nil {
+		log.Errorf("Failed to check if apps exist: %v", err)
+		return
+	}
+
+	if exists {
+		log.Info("Apps already exist in database, skipping seed.")
+		return
+	}
+
+	log.Info("Seeding database with default apps...")
+
+	apps := []models.Apps{
+		{
+			ID:              "digi-sign-pro",
+			Name:            "DigiSign Pro",
+			Description:     "Digital signatures and automated workflow validation for government officials.",
+			Category:        "Verwaltung",
+			Icon:            "✍️",
+			TechStack:       []string{"Next.js", "Redis", "WebCrypto API"},
+			License:         "EUPL-1.2",
+			DockerRepo:      "ghcr.io/bund/digi-sign:latest",
+			HelmRepo:        "https://charts.bund.de",
+			MarkdownContent: "# DigiSign Pro\nDigital signatures for the public sector. Supports eIDAS QES.",
+		},
+		{
+			ID:              "open-data-hub",
+			Name:            "Open Data Hub",
+			Description:     "Central platform for publishing and analyzing urban open data sets.",
+			Category:        "Infrastruktur",
+			Icon:            "📊",
+			TechStack:       []string{"Go", "PostgreSQL", "React"},
+			License:         "Apache-2.0",
+			DockerRepo:      "ghcr.io/bund/open-data-hub:v2.4",
+			HelmRepo:        "https://charts.bund.de",
+			MarkdownContent: "# Open Data Hub\nTransparency through data. Built-in visualizers and API-first design.",
+		},
+		{
+			ID:              "gov-messenger",
+			Name:            "GovMessenger",
+			Description:     "Secure, encrypted communication for inter-agency coordination.",
+			Category:        "Zusammenarbeit",
+			Icon:            "💬",
+			TechStack:       []string{"Node.js", "Matrix.org", "React Native"},
+			License:         "GPL-3.0",
+			DockerRepo:      "ghcr.io/bund/gov-messenger:latest",
+			HelmRepo:        "https://charts.bund.de",
+			MarkdownContent: "# GovMessenger\nEnd-to-end encrypted chat based on the Matrix protocol.",
+		},
+	}
+
+	_, err = db.NewInsert().Model(&apps).Exec(ctx)
+	if err != nil {
+		log.Errorf("Failed to seed apps: %v", err)
+	} else {
+		log.Info("Database seeded successfully.")
+	}
+}

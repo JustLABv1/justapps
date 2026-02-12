@@ -1,55 +1,79 @@
-# Base image
-FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:22-alpine AS base
+FROM node:24.7-alpine AS base
+LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 
-# Install dependencies only when needed
-FROM base AS deps
+# Stage 1: Build the frontend
+FROM node:24.7-alpine AS frontend-builder
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
+WORKDIR /app/frontend
+COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
+RUN corepack enable pnpm && pnpm --version
+RUN pnpm install
+COPY services/frontend/ ./
 
-# Install pnpm and dependencies
-COPY package.json ./
-RUN npm install
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# BUILD TIME: No environment variables needed anymore!
-# The app will read them at runtime from the container environment.
-RUN npm run build
+RUN pnpm run build
 
-# Production image, copy all the files and run next
+# Stage 2: Build the backend
+FROM golang:1.24-alpine AS backend-builder
+WORKDIR /app/backend
+COPY services/backend/go.mod services/backend/go.sum ./
+RUN go mod download
+COPY services/backend/ ./
+RUN go build -o justwms-backend
+
+# Stage 3: Create the final image
 FROM base AS runner
+LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Install necessary packages
+RUN apk update && apk add --no-cache \
+    ca-certificates \
+    tini \
+    postgresql-client
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create user and group
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# Copy the backend binary
+COPY --from=backend-builder /app/backend/justwms-backend /app/
+
+# Copy the frontend build
+COPY --from=frontend-builder /app/frontend/public /app/public
+
+# Set the correct permission for prerender cache
+RUN mkdir .next \
+    && chown nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/config.yaml ./config.yaml
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+
+# Copy .env file to the working directory
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.env /app/.env
+
+RUN chown -R nextjs:nodejs /app
+
+RUN mkdir -p /etc/justwms \
+    && chown -R nextjs:nodejs /etc/justwms
+
+RUN mkdir -p /app/data \
+    && chown -R nextjs:nodejs /app/data
+
+# Set environment variables
+ENV NODE_ENV=production
+
+VOLUME [ "/etc/justwms", "/app/data" ]
+
+# Expose ports
+EXPOSE 8080 3000
 
 USER nextjs
 
-EXPOSE 3000
+# Use tini as the entrypoint
+ENTRYPOINT ["/sbin/tini", "--"]
 
-ENV PORT 3000
-# set hostname to localhost
-ENV HOSTNAME "0.0.0.0"
-
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+# Start the backend and frontend
+CMD ["sh", "-c", "./justwms-backend --config /etc/justwms/config.yaml & node /app/server.js"]
