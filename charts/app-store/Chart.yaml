@@ -1,0 +1,6 @@
+apiVersion: v2
+name: app-store
+description: A Helm chart for the App Store (Frontend and Backend)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
