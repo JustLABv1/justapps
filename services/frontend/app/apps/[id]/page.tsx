@@ -192,7 +192,7 @@ export default function AppPage() {
         </div>
 
         <div className="space-y-8">
-          <div className="bg-surface-secondary rounded-2xl p-6 border border-border">
+          <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
             <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Software Details</h3>
             
             <div className="space-y-6">
@@ -204,7 +204,7 @@ export default function AppPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {app.techStack.map((tech: string) => (
-                      <Chip key={tech} size="sm" variant="secondary" className="bg-white">
+                      <Chip key={tech} size="sm" variant="secondary">
                         {tech}
                       </Chip>
                     ))}

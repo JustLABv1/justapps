@@ -34,7 +34,7 @@ helm install ${app.id} bund/${app.id}`;
   };
 
   return (
-    <div className="bg-surface-secondary rounded-2xl p-6 border border-border">
+    <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
       <div className="flex items-center gap-2 text-foreground font-bold mb-4">
         <Terminal className="w-4 h-4" />
         Deployment Assistant
