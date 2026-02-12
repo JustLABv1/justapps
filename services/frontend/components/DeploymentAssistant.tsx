@@ -34,8 +34,8 @@ helm install ${app.id} bund/${app.id}`;
   };
 
   return (
-    <div className="bg-default-50 rounded-2xl p-6 border border-default-200">
-      <div className="flex items-center gap-2 text-default-900 font-bold mb-4">
+    <div className="bg-surface-secondary rounded-2xl p-6 border border-border">
+      <div className="flex items-center gap-2 text-foreground font-bold mb-4">
         <Terminal className="w-4 h-4" />
         Deployment Assistant
       </div>
@@ -83,11 +83,11 @@ helm install ${app.id} bund/${app.id}`;
             </Button>
           </div>
           {app.customDockerNote ? (
-            <p className="text-xs text-default-400 mt-2 italic px-1">
+            <p className="text-xs text-muted mt-2 italic px-1">
               {app.customDockerNote}
             </p>
           ) : (
-            <p className="text-xs text-default-400 mt-2 italic px-1">
+            <p className="text-xs text-muted mt-2 italic px-1">
               Standard-Deployment mit Port 8080 mapping.
             </p>
           )}
@@ -109,7 +109,7 @@ helm install ${app.id} bund/${app.id}`;
             </Button>
           </div>
           {app.customComposeNote && (
-            <p className="text-xs text-default-400 mt-2 italic px-1">
+            <p className="text-xs text-muted mt-2 italic px-1">
               {app.customComposeNote}
             </p>
           )}
@@ -131,11 +131,11 @@ helm install ${app.id} bund/${app.id}`;
             </Button>
           </div>
           {app.customHelmNote ? (
-            <p className="text-xs text-default-400 mt-2 italic px-1">
+            <p className="text-xs text-muted mt-2 italic px-1">
               {app.customHelmNote}
             </p>
           ) : (
-            <p className="text-xs text-default-400 mt-2 italic px-1">
+            <p className="text-xs text-muted mt-2 italic px-1">
               Empfohlen für Kubernetes Umgebungen.
             </p>
           )}

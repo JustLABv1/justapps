@@ -1,10 +1,11 @@
 'use client';
 
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
+import { RatingSection } from "@/components/RatingSection";
 import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { Button, Chip, Link, Separator } from "@heroui/react";
-import { BookOpen, Check, ChevronLeft, Copy, ExternalLink, Github, Layers, LayoutDashboard, Loader2, Pencil, Scale } from "lucide-react";
+import { BookOpen, Check, ChevronLeft, Copy, ExternalLink, Github, Layers, LayoutDashboard, Loader2, Pencil, Scale, Star } from "lucide-react";
 import NextLink from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -64,7 +65,7 @@ export default function AppPage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
       <Loader2 className="w-8 h-8 animate-spin text-bund-blue" />
-      <p className="text-default-500 font-medium">App-Details werden geladen...</p>
+      <p className="text-muted font-medium">App-Details werden geladen...</p>
     </div>
   );
   
@@ -76,7 +77,7 @@ export default function AppPage() {
   return (
     <div className="max-w-4xl mx-auto pb-20">
       <div className="flex justify-between items-center mb-8">
-        <NextLink href="/" className="inline-flex items-center gap-2 text-sm font-bold text-default-600 hover:text-bund-blue transition-colors">
+        <NextLink href="/" className="inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-bund-blue transition-colors">
           <ChevronLeft className="w-4 h-4" />
           Zurück zur Übersicht
         </NextLink>
@@ -111,12 +112,22 @@ export default function AppPage() {
         </div>
         <div className="flex-grow pt-2">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-4xl font-extrabold text-bund-black">{app.name}</h1>
+            <h1 className="text-4xl font-extrabold text-foreground">{app.name}</h1>
             <Chip color="accent" variant="soft" size="sm" className="uppercase tracking-wider font-bold">
               {app.category}
             </Chip>
+            {app.isFeatured && (
+              <Chip color="success" variant="soft" size="sm" className="font-bold">CURATED</Chip>
+            )}
+            {app.ratingCount !== undefined && app.ratingCount > 0 && (
+              <div className="flex items-center gap-1.5 ml-1 px-2.5 py-1 bg-bund-gold/10 rounded-full border border-bund-gold/20">
+                <Star className="w-3.5 h-3.5 fill-bund-gold text-bund-gold" />
+                <span className="text-sm font-extrabold text-bund-blue">{(app.ratingAvg || 0).toFixed(1)}</span>
+                <span className="text-[10px] text-muted font-bold ml-1">{app.ratingCount}</span>
+              </div>
+            )}
           </div>
-          <p className="text-xl text-default-500 mb-6">
+          <p className="text-xl text-muted mb-6">
             {app.description}
           </p>
           
@@ -135,7 +146,7 @@ export default function AppPage() {
               <Link 
                 href={app.repoUrl} 
                 target="_blank" 
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
               >
                 <Github className="w-4 h-4" />
                 Repository
@@ -145,7 +156,7 @@ export default function AppPage() {
               <Link 
                 href={app.helmRepo}
                 target="_blank"
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
               >
                 <HelmIcon className="w-4 h-4 text-bund-blue" />
                 Helm Chart
@@ -156,7 +167,7 @@ export default function AppPage() {
               <Link 
                 href={app.dockerRepo}
                 target="_blank"
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-default-300 bg-white hover:bg-default-50 no-underline text-default-700 transition-all shadow-sm active:scale-95"
+                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
               >
                 <DockerIcon className="w-4 h-4 text-[#2496ED]" />
                 Docker Registry
@@ -169,23 +180,25 @@ export default function AppPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
         <div className="md:col-span-2 space-y-8">
-          <div className="prose prose-bund max-w-none bg-white rounded-2xl p-8 border border-default-200 shadow-sm min-h-[400px]">
+          <div className="prose prose-bund max-w-none bg-surface rounded-2xl p-8 border border-border shadow-sm min-h-[400px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}
             </ReactMarkdown>
           </div>
 
           <DeploymentAssistant app={app} />
+          
+          <RatingSection appId={app.id} />
         </div>
 
         <div className="space-y-8">
-          <div className="bg-default-50 rounded-2xl p-6 border border-default-200">
-            <h3 className="text-sm font-bold text-default-400 uppercase tracking-widest mb-4">Software Details</h3>
+          <div className="bg-surface-secondary rounded-2xl p-6 border border-border">
+            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Software Details</h3>
             
             <div className="space-y-6">
               {app.techStack && (
                 <div>
-                  <div className="flex items-center gap-2 text-default-900 font-bold mb-2">
+                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
                     <Layers className="w-4 h-4" />
                     Technical Stack
                   </div>
@@ -201,11 +214,11 @@ export default function AppPage() {
 
               {app.license && (
                 <div>
-                  <div className="flex items-center gap-2 text-default-900 font-bold mb-2">
+                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
                     <Scale className="w-4 h-4" />
                     Lizenz
                   </div>
-                  <p className="text-sm text-default-600 pl-6 border-l-2 border-bund-gold">
+                  <p className="text-sm text-muted pl-6 border-l-2 border-bund-gold">
                     {app.license}
                   </p>
                 </div>
@@ -213,7 +226,7 @@ export default function AppPage() {
 
               {app.docsUrl && (
                 <div>
-                  <div className="flex items-center gap-2 text-default-900 font-bold mb-2">
+                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
                     <BookOpen className="w-4 h-4" />
                     Dokumentation
                   </div>
@@ -233,12 +246,12 @@ export default function AppPage() {
                   <div className="space-y-4">
                     {app.helmRepo && (
                       <div>
-                        <div className="flex items-center gap-2 text-default-900 font-bold mb-2">
+                        <div className="flex items-center gap-2 text-foreground font-bold mb-2">
                           <HelmIcon className="w-4 h-4 text-bund-blue" />
                           Helm Chart
                         </div>
                         <div className="pl-6">
-                          <code className="text-[10px] bg-default-100 p-1.5 rounded block mb-2 font-mono truncate">
+                          <code className="text-[10px] bg-default p-1.5 rounded block mb-2 font-mono truncate">
                             {app.helmRepo}
                           </code>
                           <Button 
@@ -256,12 +269,12 @@ export default function AppPage() {
 
                     {app.dockerRepo && (
                       <div>
-                        <div className="flex items-center gap-2 text-default-900 font-bold mb-2">
+                        <div className="flex items-center gap-2 text-foreground font-bold mb-2">
                           <DockerIcon className="w-4 h-4 text-[#2496ED]" />
                           Docker Image
                         </div>
                         <div className="pl-6">
-                          <code className="text-[10px] bg-default-100 p-1.5 rounded block mb-2 font-mono truncate">
+                          <code className="text-[10px] bg-default p-1.5 rounded block mb-2 font-mono truncate">
                             {app.dockerRepo}
                           </code>
                           <Button 
@@ -283,8 +296,8 @@ export default function AppPage() {
               <Separator />
               
               <div className="pt-2">
-                <div className="text-[10px] text-default-400 uppercase font-bold mb-1">ID: {app.id}</div>
-                <div className="text-[10px] text-default-400 font-medium italic">
+                <div className="text-[10px] text-muted uppercase font-bold mb-1">ID: {app.id}</div>
+                <div className="text-[10px] text-muted font-medium italic">
                   Zuletzt aktualisiert: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString('de-DE', {
                     day: '2-digit',
                     month: '2-digit',

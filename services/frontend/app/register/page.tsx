@@ -57,7 +57,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md p-8 bg-white border border-bund-gray shadow-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-bund-black mb-2">Registrieren</h1>
-          <p className="text-sm text-default-500">Erstellen Sie einen neuen Account.</p>
+          <p className="text-sm text-muted">Erstellen Sie einen neuen Account.</p>
         </div>
 
         <Form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -101,7 +101,7 @@ export default function RegisterPage() {
         </Form>
         <div className="my-6 flex items-center gap-2">
           <Separator className="flex-1" />
-          <span className="text-xs text-default-400 font-medium uppercase">Oder</span>
+          <span className="text-xs text-muted font-medium uppercase">Oder</span>
           <Separator className="flex-1" />
         </div>
 
@@ -113,7 +113,7 @@ export default function RegisterPage() {
           Mit Keycloak anmelden
         </Button>
         <div className="mt-6 text-center text-sm">
-          <p className="text-default-500">
+          <p className="text-muted">
             Haben Sie bereits einen Account?{' '}
             <Link href="/login" className="text-bund-blue font-medium">
               Anmelden

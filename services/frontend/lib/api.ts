@@ -18,6 +18,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
      if (typeof window !== 'undefined') {
        localStorage.removeItem('token');
        localStorage.removeItem('user');
+       // Dispatch a custom event to notify the application that the session has expired
+       window.dispatchEvent(new Event('auth:unauthorized'));
      }
   }
 

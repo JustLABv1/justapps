@@ -17,6 +17,15 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id", func(c *gin.Context) {
 			apps.GetApp(c, db)
 		})
+		appsGroup.GET("/:id/ratings", func(c *gin.Context) {
+			apps.GetRatings(c, db)
+		})
+		appsGroup.POST("/:id/ratings", func(c *gin.Context) {
+			apps.AddRating(c, db)
+		})
+		appsGroup.DELETE("/:id/ratings/:ratingId", func(c *gin.Context) {
+			apps.DeleteRating(c, db)
+		})
 
 		// Protected routes
 		protected := appsGroup.Group("")

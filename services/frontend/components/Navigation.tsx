@@ -1,14 +1,16 @@
 'use client';
 
 import {
-    Avatar,
-    Button,
-    Dropdown,
-    Label,
-    Link
+  Avatar,
+  Button,
+  Dropdown,
+  Label,
+  Link,
+  Separator
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
   const { user, logout } = useAuth();
@@ -20,9 +22,9 @@ export function Navigation() {
   };
 
   return (
-    <header className="bg-white border-b sticky top-0 z-40 w-full h-16 flex items-center justify-between px-6 lg:px-12">
+    <header className="bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-40 w-full h-16 flex items-center justify-between px-6 lg:px-12">
       <div className="flex items-center gap-8">
-        <Link href="/" className="flex flex-col no-underline text-bund-black hover:opacity-80 transition-opacity">
+        <Link href="/" className="flex flex-col no-underline text-foreground hover:opacity-80 transition-opacity">
           <p className="font-bold text-lg leading-none pt-1">PLAIN</p>
           <p className="text-[10px] tracking-widest uppercase">App-Store</p>
         </Link>
@@ -31,34 +33,38 @@ export function Navigation() {
             Marktplatz
           </Link>
           {user?.role === 'admin' && (
-            <Link href="/management" className="text-sm font-medium text-default-600 hover:text-bund-blue transition-colors">
+            <Link href="/management" className="text-sm font-medium text-muted hover:text-bund-blue transition-colors">
               App Management
             </Link>
           )}
-          <Link href="#" className="text-sm font-medium text-default-400 cursor-not-allowed">
+          <Link href="#" className="text-sm font-medium text-muted cursor-not-allowed">
             Kategorien
           </Link>
-          <Link href="#" className="text-sm font-medium text-default-400 cursor-not-allowed">
+          <Link href="#" className="text-sm font-medium text-muted cursor-not-allowed">
             Entwickler
           </Link>
         </nav>
       </div>
       <div className="flex items-center gap-4">
+        <ThemeSwitcher />
         {user ? (
           <Dropdown>
-            <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
-              <Avatar size="sm">
-                <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
-              </Avatar>
-            </Button>
+            <Dropdown.Trigger>
+              <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
+                <Avatar size="sm">
+                  <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+                </Avatar>
+              </Button>
+            </Dropdown.Trigger>
             <Dropdown.Popover>
               <Dropdown.Menu onAction={(key) => key === 'logout' && handleLogout()}>
-                <Dropdown.Item id="profile" textValue="Profil">
+                <Dropdown.Item id="profile" textValue={`Angemeldet als ${user.email}`}>
                   <div className="flex flex-col gap-0.5">
                     <Label className="font-semibold">Angemeldet als</Label>
-                    <Label className="text-xs text-default-500">{user.email}</Label>
+                    <div className="text-xs text-muted font-medium">{user.email}</div>
                   </div>
                 </Dropdown.Item>
+                <Separator />
                 <Dropdown.Item id="logout" variant="danger" textValue="Abmelden">
                   <Label>Abmelden</Label>
                 </Dropdown.Item>

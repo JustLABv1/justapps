@@ -28,5 +28,10 @@ type Apps struct {
 	CustomDockerNote     string    `bun:"custom_docker_note" json:"customDockerNote"`
 	CustomComposeNote    string    `bun:"custom_compose_note" json:"customComposeNote"`
 	CustomHelmNote       string    `bun:"custom_helm_note" json:"customHelmNote"`
+	Tags                 []string  `bun:"tags,array" json:"tags"`
+	Collections          []string  `bun:"collections,array" json:"collections"`
+	IsFeatured           bool      `bun:"is_featured,notnull,default:false" json:"isFeatured"`
+	RatingAvg            float64   `bun:"rating_avg,notnull,default:0" json:"ratingAvg"`
+	RatingCount          int       `bun:"rating_count,notnull,default:0" json:"ratingCount"`
 	UpdatedAt            time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"`
 }
