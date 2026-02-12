@@ -14,7 +14,6 @@ export default function LoginPage() {
   const { user, login, oidcLogin } = useAuth();
   const router = useRouter();
 
-  // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
       router.push('/');
@@ -46,72 +45,76 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error(err);
-      setError('An error occurred. Please try again.');
+      setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-      <Card className="w-full max-w-md p-8 bg-white border border-bund-gray shadow-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-bund-black mb-2">Anmelden</h1>
-          <p className="text-sm text-muted">Geben Sie Ihre Zugangsdaten ein, um fortzufahren.</p>
-        </div>
+    <div className="flex items-center justify-center min-h-[calc(100vh-12rem)] px-4">
+      <Card className="w-full max-w-md" variant="default">
+        <Card.Header className="p-6 pb-2 text-center">
+          <div className="mb-2">
+            <Card.Title className="text-xl font-semibold text-foreground">Anmelden</Card.Title>
+            <Card.Description className="text-sm text-muted mt-1">Geben Sie Ihre Zugangsdaten ein, um fortzufahren.</Card.Description>
+          </div>
+        </Card.Header>
 
-        <Form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <TextField isRequired className="w-full" onChange={setEmail}>
-            <Label className="text-bund-black font-medium mb-1">Email oder Benutzername</Label>
-            <Input
-              placeholder="E-Mail eingeben"
-              className="w-full"
-              value={email}
-            />
-          </TextField>
+        <Card.Content className="p-6 pt-4">
+          <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <TextField isRequired className="w-full" onChange={setEmail}>
+              <Label className="text-sm font-medium text-foreground mb-1">Email oder Benutzername</Label>
+              <Input
+                placeholder="E-Mail eingeben"
+                className="w-full"
+                value={email}
+              />
+            </TextField>
 
-          <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-            <Label className="text-bund-black font-medium mb-1">Passwort</Label>
-            <Input
-              placeholder="Passwort eingeben"
-              className="w-full"
-              value={password}
-            />
-          </TextField>
+            <TextField isRequired className="w-full" type="password" onChange={setPassword}>
+              <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
+              <Input
+                placeholder="Passwort eingeben"
+                className="w-full"
+                value={password}
+              />
+            </TextField>
 
-          {error && <p className="text-danger text-sm">{error}</p>}
+            {error && <p className="text-danger text-sm">{error}</p>}
 
-          <Button 
-            type="submit" 
-            isPending={loading}
-            className="w-full bg-bund-blue text-white font-medium"
+            <Button 
+              type="submit" 
+              isPending={loading}
+              className="w-full mt-2"
+            >
+              {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
+            </Button>
+          </Form>
+
+          <div className="my-5 flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted font-medium uppercase">Oder</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <Button
+            onPress={handleOIDCLogin}
+            variant="outline"
+            className="w-full"
           >
-            {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
+            Mit Keycloak anmelden
           </Button>
-        </Form>
 
-        <div className="my-6 flex items-center gap-2">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted font-medium uppercase">Oder</span>
-          <Separator className="flex-1" />
-        </div>
-
-        <Button
-          onPress={handleOIDCLogin}
-          variant="outline"
-          className="w-full border-bund-gray text-bund-black font-medium"
-        >
-          Mit Keycloak anmelden
-        </Button>
-
-        <div className="mt-6 text-center text-sm">
-          <p className="text-muted">
-            Noch keinen Account?{' '}
-            <Link href="/register" className="text-bund-blue font-medium">
-              Registrieren
-            </Link>
-          </p>
-        </div>
+          <div className="mt-5 text-center text-sm">
+            <p className="text-muted">
+              Noch keinen Account?{' '}
+              <Link href="/register" className="text-accent font-medium">
+                Registrieren
+              </Link>
+            </p>
+          </div>
+        </Card.Content>
       </Card>
     </div>
   );

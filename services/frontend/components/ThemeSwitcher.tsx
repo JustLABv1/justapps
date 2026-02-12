@@ -9,12 +9,17 @@ export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <Button isIconOnly variant="secondary" size="sm" aria-label="Toggle theme" className="opacity-0">
+        <Sun className="w-4 h-4" />
+      </Button>
+    );
+  }
 
   return (
     <Button
@@ -22,8 +27,7 @@ export function ThemeSwitcher() {
       variant="secondary"
       size="sm"
       onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      aria-label="Toggle theme"
-      className="bg-transparent hover:bg-surface-secondary"
+      aria-label={theme === 'dark' ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'}
     >
       {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
     </Button>

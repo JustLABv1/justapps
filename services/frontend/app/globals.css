@@ -1,33 +1,105 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
+/* ── Government themed custom tokens ── */
 @theme {
-  --color-bund-black: #000000;
-  --color-bund-red: #FF0000;
-  --color-bund-gold: #FFCC00;
-  --color-bund-blue: #003366;
-  --color-bund-light-blue: #E6ECF2;
+  --color-gov-blue: #004B76;
+  --color-gov-blue-light: #1a6da3;
+  --color-gov-gold: #DDAA00;
+  --color-gov-red: #CC0000;
+  --color-gov-gray: #4a5568;
+  --color-field-background: var(--field-background);
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #11181c;
-  --color-bund-black: #000000;
-  --color-bund-light-blue: #E6ECF2;
+/* ── Light theme overrides ── */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.20 0.02 260);
+
+  --surface: oklch(1 0 0);
+  --surface-foreground: var(--foreground);
+
+  --overlay: oklch(1 0 0);
+  --overlay-foreground: var(--foreground);
+
+  --muted: oklch(0.50 0.01 260);
+
+  --default: oklch(0.95 0.004 250);
+  --default-foreground: var(--foreground);
+
+  --accent: oklch(0.42 0.12 245);
+  --accent-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.65 0.18 155);
+  --success-foreground: oklch(0.20 0.02 155);
+
+  --warning: oklch(0.78 0.16 72);
+  --warning-foreground: oklch(0.20 0.02 72);
+
+  --danger: oklch(0.58 0.22 25);
+  --danger-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.88 0.008 250);
+  --separator: oklch(0.92 0.004 250);
+  --focus: var(--accent);
+  --link: var(--accent);
+
+  --field-background: oklch(1 0 0);
+  --field-foreground: var(--foreground);
+  --field-border: oklch(0.88 0.008 250);
+
+  --surface-shadow: 0 1px 3px 0 rgba(0,0,0,.06), 0 1px 2px -1px rgba(0,0,0,.06);
+  --overlay-shadow: 0 4px 16px 0 rgba(0,0,0,.08), 0 2px 8px 0 rgba(0,0,0,.04);
 }
 
-.dark {
-  --background: #000000;
-  --foreground: #ecf0f1;
-  --color-bund-black: #ffffff;
-  --color-bund-light-blue: #1a202c;
+/* ── Dark theme overrides ── */
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: oklch(0.16 0.015 250);
+  --foreground: oklch(0.93 0.005 250);
+
+  --surface: oklch(0.22 0.012 250);
+  --surface-foreground: var(--foreground);
+
+  --overlay: oklch(0.24 0.012 250);
+  --overlay-foreground: var(--foreground);
+
+  --muted: oklch(0.65 0.01 250);
+
+  --default: oklch(0.28 0.008 250);
+  --default-foreground: oklch(0.93 0.005 250);
+
+  --accent: oklch(0.72 0.12 245);
+  --accent-foreground: oklch(0.16 0.015 250);
+
+  --success: oklch(0.70 0.17 155);
+  --success-foreground: oklch(0.16 0.015 155);
+
+  --warning: oklch(0.80 0.14 72);
+  --warning-foreground: oklch(0.16 0.015 72);
+
+  --danger: oklch(0.62 0.20 25);
+  --danger-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.30 0.008 250);
+  --separator: oklch(0.28 0.006 250);
+  --focus: var(--accent);
+  --link: var(--accent);
+
+  --field-background: oklch(0.25 0.01 250);
+  --field-foreground: var(--foreground);
+  --field-border: oklch(0.32 0.008 250);
+
+  --surface-shadow: 0 0 0 0 transparent;
+  --overlay-shadow: 0 0 0 0 transparent;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-bund-black: var(--color-bund-black);
-  --color-bund-light-blue: var(--color-bund-light-blue);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -37,18 +109,21 @@ body {
   color: var(--foreground);
 }
 
-/* Markdown Styling */
+/* ── Markdown prose styling ── */
 .prose-bund h1 { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
-.prose-bund h2 { @apply text-2xl font-bold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
-.prose-bund h3 { @apply text-xl font-bold text-foreground mb-3 mt-6; }
+.prose-bund h2 { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
+.prose-bund h3 { @apply text-xl font-semibold text-foreground mb-3 mt-6; }
 .prose-bund p { @apply text-muted leading-relaxed mb-4; }
 .prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-muted; }
 .prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-muted; }
 .prose-bund li { @apply pl-1; }
-.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-bund-blue; }
-.prose-bund pre { @apply bg-bund-black text-white p-4 rounded-xl font-mono text-sm overflow-x-auto my-6 shadow-inner; }
+.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-accent; }
+.prose-bund pre { @apply bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-5 rounded-lg font-mono text-sm overflow-x-auto my-6; }
 .prose-bund pre code { @apply bg-transparent p-0 text-inherit; }
-.prose-bund a { @apply text-bund-blue hover:underline font-medium; }
-.prose-bund blockquote { @apply border-l-4 border-bund-gold pl-4 italic text-muted my-4; }
+.prose-bund a { @apply text-accent hover:underline font-medium; }
+.prose-bund blockquote { @apply border-l-4 border-gov-gold pl-4 italic text-muted my-4; }
 .prose-bund hr { @apply my-8 border-separator; }
-.prose-bund strong { @apply font-bold text-foreground; }
+.prose-bund strong { @apply font-semibold text-foreground; }
+.prose-bund table { @apply w-full text-sm my-4; }
+.prose-bund th { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
+.prose-bund td { @apply border-b border-separator py-2 px-3 text-muted; }

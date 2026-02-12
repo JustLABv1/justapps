@@ -15,7 +15,6 @@ export default function RegisterPage() {
   const { user, oidcLogin } = useAuth();
   const router = useRouter();
 
-  // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
       router.push('/');
@@ -46,80 +45,86 @@ export default function RegisterPage() {
       }
     } catch (err) {
       console.error(err);
-      setError('An error occurred. Please try again.');
+      setError('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4">
-      <Card className="w-full max-w-md p-8 bg-white border border-bund-gray shadow-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-bund-black mb-2">Registrieren</h1>
-          <p className="text-sm text-muted">Erstellen Sie einen neuen Account.</p>
-        </div>
+    <div className="flex items-center justify-center min-h-[calc(100vh-12rem)] px-4">
+      <Card className="w-full max-w-md" variant="default">
+        <Card.Header className="p-6 pb-2 text-center">
+          <div className="mb-2">
+            <Card.Title className="text-xl font-semibold text-foreground">Registrieren</Card.Title>
+            <Card.Description className="text-sm text-muted mt-1">Erstellen Sie einen neuen Account.</Card.Description>
+          </div>
+        </Card.Header>
 
-        <Form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <TextField isRequired className="w-full" onChange={setEmail}>
-            <Label className="text-bund-black font-medium mb-1">Email</Label>
-            <Input
-              placeholder="E-Mail eingeben"
-              type="email"
-              className="w-full"
-              value={email}
-            />
-          </TextField>
+        <Card.Content className="p-6 pt-4">
+          <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <TextField isRequired className="w-full" onChange={setEmail}>
+              <Label className="text-sm font-medium text-foreground mb-1">Email</Label>
+              <Input
+                placeholder="E-Mail eingeben"
+                type="email"
+                className="w-full"
+                value={email}
+              />
+            </TextField>
 
-          <TextField isRequired className="w-full" onChange={setUsername}>
-            <Label className="text-bund-black font-medium mb-1">Benutzername</Label>
-            <Input
-              placeholder="Benutzername wählen"
-              className="w-full"
-              value={username}
-            />
-          </TextField>
+            <TextField isRequired className="w-full" onChange={setUsername}>
+              <Label className="text-sm font-medium text-foreground mb-1">Benutzername</Label>
+              <Input
+                placeholder="Benutzername wählen"
+                className="w-full"
+                value={username}
+              />
+            </TextField>
 
-          <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-            <Label className="text-bund-black font-medium mb-1">Passwort</Label>
-            <Input
-              placeholder="Passwort wählen"
-              className="w-full"
-              value={password}
-            />
-          </TextField>
+            <TextField isRequired className="w-full" type="password" onChange={setPassword}>
+              <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
+              <Input
+                placeholder="Passwort wählen"
+                className="w-full"
+                value={password}
+              />
+            </TextField>
 
-          {error && <p className="text-danger text-sm">{error}</p>}
+            {error && <p className="text-danger text-sm">{error}</p>}
 
-          <Button 
-            type="submit" 
-            isPending={loading}
-            className="w-full bg-bund-blue text-white font-medium"
+            <Button 
+              type="submit" 
+              isPending={loading}
+              className="w-full mt-2"
+            >
+              {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
+            </Button>
+          </Form>
+
+          <div className="my-5 flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted font-medium uppercase">Oder</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <Button
+            onPress={handleOIDCLogin}
+            variant="outline"
+            className="w-full"
           >
-            {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
+            Mit Keycloak anmelden
           </Button>
-        </Form>
-        <div className="my-6 flex items-center gap-2">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted font-medium uppercase">Oder</span>
-          <Separator className="flex-1" />
-        </div>
 
-        <Button
-          onPress={handleOIDCLogin}
-          variant="outline"
-          className="w-full border-bund-gray text-bund-black font-medium"
-        >
-          Mit Keycloak anmelden
-        </Button>
-        <div className="mt-6 text-center text-sm">
-          <p className="text-muted">
-            Haben Sie bereits einen Account?{' '}
-            <Link href="/login" className="text-bund-blue font-medium">
-              Anmelden
-            </Link>
-          </p>
-        </div>
+          <div className="mt-5 text-center text-sm">
+            <p className="text-muted">
+              Haben Sie bereits einen Account?{' '}
+              <Link href="/login" className="text-accent font-medium">
+                Anmelden
+              </Link>
+            </p>
+          </div>
+        </Card.Content>
       </Card>
     </div>
   );

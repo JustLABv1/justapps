@@ -4,25 +4,42 @@ import { DeploymentAssistant } from "@/components/DeploymentAssistant";
 import { RatingSection } from "@/components/RatingSection";
 import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
-import { Button, Chip, Link, Separator } from "@heroui/react";
-import { BookOpen, Check, ChevronLeft, Copy, ExternalLink, Github, Layers, LayoutDashboard, Loader2, Pencil, Scale, Star } from "lucide-react";
+import { Chip, Link, Separator, Tabs, Tooltip } from "@heroui/react";
+import {
+  BookOpen,
+  ChevronLeft,
+  Database,
+  ExternalLink,
+  Github,
+  Globe,
+  Layers,
+  LayoutDashboard,
+  Loader2,
+  Pencil,
+  Scale,
+  Server,
+  Star,
+  User,
+} from "lucide-react";
 import NextLink from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const HelmIcon = ({ className }: { className?: string }) => (
-  <svg role="img" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M12 2.25a.75.75 0 01.75.75v1.306a9.002 9.002 0 016.694 6.694H21a.75.75 0 010 1.5h-1.306a9.002 9.002 0 01-6.694 6.694V21a.75.75 0 01-1.5 0v-1.306a9.002 9.002 0 01-6.694-6.694H3a.75.75 0 010-1.5h1.306a9.002 9.002 0 016.694-6.694V3a.75.75 0 01.75-.75zM5.8 11.25a7.502 7.502 0 005.45 5.45v-5.45H5.8zm6.95 5.45a7.502 7.502 0 005.45-5.45h-5.45v5.45zM18.2 12.75a7.502 7.502 0 00-5.45-5.45v5.45h5.45zm-6.95-5.45a7.502 7.502 0 00-5.45 5.45h5.45v-5.45z"/>
-  </svg>
-);
-
-const DockerIcon = ({ className }: { className?: string }) => (
-  <svg role="img" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M13.983 11.078h2.119c.102 0 .186-.084.186-.186V9.112c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.95 0h2.118c.102 0 .186-.084.186-.186V9.112c0-.102-.084-.186-.186-.186h-2.118c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.935 0h2.119c.102 0 .186-.084.186-.186V9.112c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.937 0H5.28c.102 0 .186-.084.186-.186V9.112c0-.102-.084-.186-.186-.186H3.144c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm5.872-2.935h2.118c.102 0 .186-.084.186-.186V6.177c0-.102-.084-.186-.186-.186h-2.118c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.935 0h2.119c.102 0 .186-.084.186-.186V6.177c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.937 0H5.28c.102 0 .186-.084.186-.186V6.177c0-.102-.084-.186-.186-.186H3.144c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zM8.215 5.212h2.119c.102 0 .186-.084.186-.186V3.246c0-.102-.084-.186-.186-.186H8.215c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm-2.937 0H7.397c.102 0 .186-.084.186-.186V3.246c0-.102-.084-.186-.186-.186H5.278c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zm12.556 5.866c0 .102.084.186.186.186h2.119c.102 0 .186-.084.186-.186v-1.78c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v1.78zm.186-2.935h2.119c.102 0 .186-.084.186-.186V6.177c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186zM0 12.503c0 3.332 2.002 6.095 4.885 7.19.882.333 1.01.213 1.01-.84v-1.12c0-1.077-.123-1.196-1.01-1.554-1.89-.766-3.111-2.483-3.111-4.45 0-.156.012-.312.035-.467h3.313c.102 0 .186-.084.186-.186v-1.78c0-.102-.084-.186-.186-.186H.907c.227-2.673 1.584-4.81 3.593-5.74.882-.408 1.01-.527 1.01-1.554V.782c0-1.053-.128-1.173-1.01-.84C1.613 1.109 0 4.223 0 7.82V12.5zM24 14.181c0-1.01-.227-1.464-.326-1.61-.17-.253-.418-.466-.757-.655-.386-.217-.925-.388-1.574-.5-.65-.112-1.396-.168-2.173-.168h-5.187c-.102 0-.186.084-.186.186v1.78c0 .102.084.186.186.186h4.524c.71 0 1.343.045 1.838.128.497.084.856.2 1.07.332.227.142.326.315.326.541v.784c0 .84-.123.96-.921 1.259-2.332.863-5.278 1.411-8.525 1.581-3.245-.17-6.193-.718-8.525-1.581-.798-.299-.921-.418-.921-1.259v-3.32h5.872c.102 0 .186-.084.186-.186v-1.78c0-.102-.084-.186-.186-.186H4.885c0-1.05.176-1.861.47-2.5 1.028-2.13 3.655-3.5 6.445-3.5s 5.417 1.37 6.445 3.5c.294.639.47 1.45.47 2.5 0 2.21 1.79 4 4 4 1.285 0 1.285 1.418 1.285 1.418z"/>
-  </svg>
-);
+/* ── Helper: renders a labelled metadata row ── */
+function MetaRow({ label, value, icon }: { label: string; value?: string; icon?: React.ReactNode }) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-[11px] text-muted uppercase tracking-wider font-medium flex items-center gap-1.5">
+        {icon}
+        {label}
+      </dt>
+      <dd className="text-sm text-foreground">{value}</dd>
+    </div>
+  );
+}
 
 export default function AppPage() {
   const params = useParams();
@@ -31,18 +48,10 @@ export default function AppPage() {
   const router = useRouter();
   const [app, setApp] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(type);
-    setTimeout(() => setCopied(null), 2000);
-  };
 
   useEffect(() => {
     async function loadApp() {
       if (!id) return;
-      
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
       try {
         const res = await fetch(`${apiUrl}/apps/${id}`, { cache: 'no-store' });
@@ -64,329 +73,247 @@ export default function AppPage() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-bund-blue" />
+      <Loader2 className="w-8 h-8 animate-spin text-accent" />
       <p className="text-muted font-medium">App-Details werden geladen...</p>
     </div>
   );
-  
+
   if (!app) return notFound();
 
   const isAdmin = user?.role === 'admin';
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
+  const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
+
+  /* Collect non-empty metadata pairs for the details tab */
+  const metaFields: { label: string; value?: string; icon?: React.ReactNode }[] = [
+    { label: "Themenfeld", value: app.focus, icon: <Layers className="w-3 h-3" /> },
+    { label: "Anwendungstyp", value: app.appType, icon: <Globe className="w-3 h-3" /> },
+    { label: "Anwendungsfall", value: app.useCase },
+    { label: "Visualisierung", value: app.visualization },
+    { label: "Deployment", value: app.deployment, icon: <Server className="w-3 h-3" /> },
+    { label: "Infrastruktur", value: app.infrastructure },
+    { label: "Datenbasis", value: app.database, icon: <Database className="w-3 h-3" /> },
+    { label: "Status", value: app.status },
+    { label: "Übertragbarkeit", value: app.transferability },
+    { label: "Ansprechpartner", value: app.contactPerson, icon: <User className="w-3 h-3" /> },
+    { label: "Sonstiges", value: app.additionalInfo },
+  ].filter(f => f.value);
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
-      <div className="flex justify-between items-center mb-8">
-        <NextLink href="/" className="inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-bund-blue transition-colors">
+    <div className="max-w-5xl mx-auto pb-20">
+
+      {/* ── Nav row ── */}
+      <div className="flex justify-between items-center mb-6">
+        <NextLink href="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors">
           <ChevronLeft className="w-4 h-4" />
-          Zurück zur Übersicht
+          Übersicht
         </NextLink>
 
         {isAdmin && (
-          <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              className="font-bold gap-2"
-              onPress={() => router.push(`/management?edit=${app.id}`)}
+          <div className="flex items-center gap-2">
+            <NextLink
+              href={`/management?edit=${app.id}`}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
-              App bearbeiten
-            </Button>
-            <Button 
-              size="sm" 
-              variant="tertiary"
-              className="font-bold gap-2"
-              onPress={() => router.push('/management')}
+              Bearbeiten
+            </NextLink>
+            <Separator orientation="vertical" className="h-4" />
+            <NextLink
+              href="/management"
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               Verwaltung
-            </Button>
+            </NextLink>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8 items-start mb-12">
-        <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-bund-light-blue flex items-center justify-center text-5xl shadow-inner flex-shrink-0">
-          {app.icon || "🏛️"}
-        </div>
-        <div className="flex-grow pt-2">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-4xl font-extrabold text-foreground">{app.name}</h1>
-            <Chip color="accent" variant="soft" size="sm" className="uppercase tracking-wider font-bold">
-              {app.category}
-            </Chip>
-            {app.isFeatured && (
-              <Chip color="success" variant="soft" size="sm" className="font-bold">CURATED</Chip>
-            )}
-            {app.ratingCount !== undefined && app.ratingCount > 0 && (
-              <div className="flex items-center gap-1.5 ml-1 px-2.5 py-1 bg-bund-gold/10 rounded-full border border-bund-gold/20">
-                <Star className="w-3.5 h-3.5 fill-bund-gold text-bund-gold" />
-                <span className="text-sm font-extrabold text-bund-blue">{(app.ratingAvg || 0).toFixed(1)}</span>
-                <span className="text-[10px] text-muted font-bold ml-1">{app.ratingCount}</span>
+      {/* ── Hero ── */}
+      <header className="mb-8">
+        <div className="flex items-start gap-5">
+          <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shrink-0">
+            {app.icon || "🏛️"}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Title row */}
+            <div className="flex flex-wrap items-center gap-2.5 mb-1">
+              <h1 className="text-2xl font-bold text-foreground leading-tight">{app.name}</h1>
+              <Chip size="sm" variant="soft" color="accent" className="text-[10px] uppercase font-semibold tracking-wider">
+                {app.category}
+              </Chip>
+              {app.status && (
+                <Chip
+                  size="sm"
+                  variant="soft"
+                  color={app.status.toLowerCase().includes('produktiv') ? 'success' : 'default'}
+                  className="text-[10px] uppercase font-semibold tracking-wider"
+                >
+                  {app.status}
+                </Chip>
+              )}
+              {app.isFeatured && (
+                <Chip size="sm" variant="soft" color="success" className="text-[10px] uppercase font-semibold">
+                  Curated
+                </Chip>
+              )}
+              {hasRating && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted">
+                  <Star className="w-3.5 h-3.5 fill-gov-gold text-gov-gold" />
+                  <span className="font-semibold text-foreground">{(app.ratingAvg || 0).toFixed(1)}</span>
+                  <span>({app.ratingCount})</span>
+                </span>
+              )}
+            </div>
+
+            {/* Description */}
+            <p className="text-muted leading-relaxed max-w-2xl mb-3">{app.description}</p>
+
+            {/* Tags */}
+            {app.tags && app.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {app.tags.map(tag => (
+                  <Chip key={tag} size="sm" variant="secondary" className="text-[10px] font-medium">{tag}</Chip>
+                ))}
               </div>
             )}
-          </div>
-          <p className="text-xl text-muted mb-6">
-            {app.description}
-          </p>
-          
-          <div className="flex flex-wrap gap-4">
-            {app.liveUrl && (
-              <Link 
-                href={app.liveUrl} 
-                target="_blank" 
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 bg-bund-blue text-white hover:bg-bund-blue/90 no-underline transition-all shadow-md active:scale-95"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Live Demo besuchen
-              </Link>
-            )}
-            {app.repoUrl && (
-              <Link 
-                href={app.repoUrl} 
-                target="_blank" 
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
-              >
-                <Github className="w-4 h-4" />
-                Repository
-              </Link>
-            )}
-            {app.helmRepo && (
-              <Link 
-                href={app.helmRepo}
-                target="_blank"
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
-              >
-                <HelmIcon className="w-4 h-4 text-bund-blue" />
-                Helm Chart
-                <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-              </Link>
-            )}
-            {app.dockerRepo && (
-              <Link 
-                href={app.dockerRepo}
-                target="_blank"
-                className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold h-12 px-6 border border-border bg-surface hover:bg-default no-underline text-foreground transition-all shadow-sm active:scale-95"
-              >
-                <DockerIcon className="w-4 h-4 text-[#2496ED]" />
-                Docker Registry
-                <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-              </Link>
-            )}
+
+            {/* Quick links */}
+            <div className="flex items-center gap-4 flex-wrap">
+              {app.liveUrl && (
+                <Link
+                  href={app.liveUrl}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Live Demo
+                </Link>
+              )}
+              {app.repoUrl && (
+                <Link
+                  href={app.repoUrl}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors"
+                >
+                  <Github className="w-4 h-4" />
+                  Repository
+                </Link>
+              )}
+              {app.docsUrl && (
+                <Link
+                  href={app.docsUrl}
+                  target="_blank"
+                  className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Dokumentation
+                </Link>
+              )}
+              {app.license && (
+                <Tooltip delay={0}>
+                  <Tooltip.Trigger>
+                    <span className="inline-flex items-center gap-1.5 text-sm text-muted cursor-default">
+                      <Scale className="w-4 h-4" />
+                      {app.license}
+                    </span>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>Lizenz</Tooltip.Content>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-        <div className="md:col-span-2 space-y-8">
-          <div className="prose prose-bund max-w-none bg-surface rounded-2xl p-8 border border-border shadow-sm min-h-[400px]">
+      <Separator className="mb-6" />
+
+      {/* ── Tech stack strip (if available) ── */}
+      {app.techStack && app.techStack.length > 0 && (
+        <div className="flex items-center gap-3 mb-6 overflow-x-auto">
+          <span className="text-[11px] text-muted uppercase tracking-wider font-medium shrink-0">Stack</span>
+          <div className="flex gap-1.5 flex-wrap">
+            {app.techStack.map((tech: string) => (
+              <Chip key={tech} size="sm" variant="secondary" className="text-[10px]">{tech}</Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Tabbed content ── */}
+      <Tabs variant="secondary" className="w-full">
+        <Tabs.ListContainer className="border-b border-border mb-6">
+          <Tabs.List aria-label="App-Details Bereiche" className="gap-6">
+            <Tabs.Tab id="docs" className="gap-2 py-3 text-sm font-medium">
+              <BookOpen className="w-4 h-4" />
+              Dokumentation
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            {metaFields.length > 0 && (
+              <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-medium">
+                <Layers className="w-4 h-4" />
+                Fachliche Details
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            )}
+            <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-medium">
+              <Server className="w-4 h-4" />
+              Deployment
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-medium">
+              <Star className="w-4 h-4" />
+              Bewertungen
+              {hasRating && (
+                <span className="text-[10px] bg-default rounded-full px-1.5 py-0.5 font-medium">{app.ratingCount}</span>
+              )}
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
+
+        {/* Dokumentation */}
+        <Tabs.Panel id="docs">
+          <div className="prose prose-bund max-w-none min-h-[300px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content}
             </ReactMarkdown>
           </div>
+        </Tabs.Panel>
 
+        {/* Fachliche Details */}
+        {metaFields.length > 0 && (
+          <Tabs.Panel id="details">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
+              {metaFields.map(f => (
+                <MetaRow key={f.label} label={f.label} value={f.value} icon={f.icon} />
+              ))}
+            </dl>
+          </Tabs.Panel>
+        )}
+
+        {/* Deployment */}
+        <Tabs.Panel id="deployment">
           <DeploymentAssistant app={app} />
-          
+        </Tabs.Panel>
+
+        {/* Bewertungen */}
+        <Tabs.Panel id="ratings">
           <RatingSection appId={app.id} />
-        </div>
+        </Tabs.Panel>
+      </Tabs>
 
-        <div className="space-y-8">
-          <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
-            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Software Details</h3>
-            
-            <div className="space-y-6">
-              {app.techStack && (
-                <div>
-                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
-                    <Layers className="w-4 h-4" />
-                    Technical Stack
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {app.techStack.map((tech: string) => (
-                      <Chip key={tech} size="sm" variant="secondary">
-                        {tech}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {app.license && (
-                <div>
-                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
-                    <Scale className="w-4 h-4" />
-                    Lizenz
-                  </div>
-                  <p className="text-sm text-muted pl-6 border-l-2 border-bund-gold">
-                    {app.license}
-                  </p>
-                </div>
-              )}
-
-              {app.docsUrl && (
-                <div>
-                  <div className="flex items-center gap-2 text-foreground font-bold mb-2">
-                    <BookOpen className="w-4 h-4" />
-                    Dokumentation
-                  </div>
-                  <Link 
-                    href={app.docsUrl} 
-                    target="_blank" 
-                    className="text-sm text-bund-blue hover:underline pl-6"
-                  >
-                    Offizielle Dokumente ansehen
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
-            <h3 className="text-sm font-bold text-muted uppercase tracking-widest mb-4">Fachliche Details</h3>
-            
-            <div className="space-y-4">
-              {app.focus && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Themenfeld / Schwerpunkt</div>
-                  <div className="text-sm font-bold text-foreground">{app.focus}</div>
-                </div>
-              )}
-              {app.appType && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Anwendungstyp</div>
-                  <div className="text-sm font-bold text-foreground">{app.appType}</div>
-                </div>
-              )}
-              {app.status && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Status</div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${app.status.toLowerCase().includes('produktiv') ? 'bg-success' : 'bg-bund-gold'}`} />
-                    <div className="text-sm font-bold text-foreground">{app.status}</div>
-                  </div>
-                </div>
-              )}
-              {app.useCase && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Ziel Anwendungsfall</div>
-                  <div className="text-sm font-medium text-muted leading-snug">{app.useCase}</div>
-                </div>
-              )}
-              {app.contactPerson && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Ansprechpartner</div>
-                  <div className="text-sm font-bold text-bund-blue">{app.contactPerson}</div>
-                </div>
-              )}
-              {app.visualization && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Visualisierung</div>
-                  <div className="text-sm font-bold text-foreground">{app.visualization}</div>
-                </div>
-              )}
-              {app.deployment && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Deployment</div>
-                  <div className="text-sm font-bold text-foreground">{app.deployment}</div>
-                </div>
-              )}
-              {app.infrastructure && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Infrastruktur</div>
-                  <div className="text-sm font-bold text-foreground">{app.infrastructure}</div>
-                </div>
-              )}
-              {app.database && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Datenbasis</div>
-                  <div className="text-sm font-bold text-foreground">{app.database}</div>
-                </div>
-              )}
-              {app.transferability && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Übertragbarkeit</div>
-                  <div className="text-sm font-medium text-muted leading-snug">{app.transferability}</div>
-                </div>
-              )}
-              {app.additionalInfo && (
-                <div>
-                  <div className="text-[10px] text-muted uppercase font-bold mb-1 tracking-wider">Sonstiges</div>
-                  <div className="text-sm text-muted italic leading-snug">{app.additionalInfo}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {(app.helmRepo || app.dockerRepo) && (
-                <>
-                  <Separator />
-                  <div className="space-y-4">
-                    {app.helmRepo && (
-                      <div>
-                        <div className="flex items-center gap-2 text-foreground font-bold mb-2">
-                          <HelmIcon className="w-4 h-4 text-bund-blue" />
-                          Helm Chart
-                        </div>
-                        <div className="pl-6">
-                          <code className="text-[10px] bg-default p-1.5 rounded block mb-2 font-mono truncate">
-                            {app.helmRepo}
-                          </code>
-                          <Button 
-                            size="sm" 
-                            variant="secondary" 
-                            className="h-7 text-[10px] font-bold gap-1.5"
-                            onPress={() => copyToClipboard(`helm pull ${app.helmRepo}`, 'helm-side')}
-                          >
-                            {copied === 'helm-side' ? "Kopiert!" : "Pull Befehl kopieren"}
-                            {copied === 'helm-side' ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {app.dockerRepo && (
-                      <div>
-                        <div className="flex items-center gap-2 text-foreground font-bold mb-2">
-                          <DockerIcon className="w-4 h-4 text-[#2496ED]" />
-                          Docker Image
-                        </div>
-                        <div className="pl-6">
-                          <code className="text-[10px] bg-default p-1.5 rounded block mb-2 font-mono truncate">
-                            {app.dockerRepo}
-                          </code>
-                          <Button 
-                            size="sm" 
-                            variant="secondary" 
-                            className="h-7 text-[10px] font-bold gap-1.5"
-                            onPress={() => copyToClipboard(`docker pull ${app.dockerRepo}`, 'docker-side')}
-                          >
-                            {copied === 'docker-side' ? "Kopiert!" : "Pull Befehl kopieren"}
-                            {copied === 'docker-side' ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              <Separator />
-              
-              <div className="pt-2">
-                <div className="text-[10px] text-muted uppercase font-bold mb-1">ID: {app.id}</div>
-                <div className="text-[10px] text-muted font-medium italic">
-                  Zuletzt aktualisiert: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) : 'Unbekannt'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ── Footer meta ── */}
+      <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted">
+        <span>ID: <code className="font-mono">{app.id}</code></span>
+        <span>
+          Aktualisiert: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString('de-DE', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+          }) : '—'}
+        </span>
+      </div>
+    </div>
   );
 }

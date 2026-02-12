@@ -284,7 +284,7 @@ function ManagementContent() {
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-bund-blue" />
+      <Loader2 className="w-8 h-8 animate-spin text-accent" />
       <p className="text-muted font-medium">Verwaltung wird vorbereitet...</p>
     </div>
   );
@@ -293,7 +293,7 @@ function ManagementContent() {
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-bund-black mb-1">Verwaltung</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-1">Verwaltung</h1>
           <p className="text-muted">Verwalten Sie Applikationen und Benutzer im Store.</p>
         </div>
         <div className="flex gap-3">
@@ -308,7 +308,7 @@ function ManagementContent() {
           {activeTab === 'apps' ? (
             <Button 
               onPress={handleCreateApp} 
-              className="bg-bund-blue text-white font-bold gap-2 shadow-md hover:scale-[1.02] transition-transform"
+              className="bg-accent text-white font-medium gap-2"
             >
               <Plus className="w-4 h-4" />
               Neue App
@@ -316,7 +316,7 @@ function ManagementContent() {
           ) : (
             <Button 
               onPress={handleCreateUser} 
-              className="bg-bund-blue text-white font-bold gap-2 shadow-md hover:scale-[1.02] transition-transform"
+              className="bg-accent text-white font-medium gap-2"
             >
               <UserPlus className="w-4 h-4" />
               Neuer Benutzer
@@ -359,14 +359,14 @@ function ManagementContent() {
         <Tabs.Panel id="apps" className="pt-6">
           <div className="grid grid-cols-1 gap-4">
             {apps.map((app) => (
-              <Card key={app.id} variant="default" className="hover:border-bund-blue/30 transition-colors border-border">
+              <Card key={app.id} variant="default" className="hover:border-accent/30 transition-colors border-border">
                 <div className="flex flex-col md:flex-row items-center p-4 gap-6">
                   <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shadow-inner flex-shrink-0">
                     {app.icon || "🏛️"}
                   </div>
                   <div className="flex-grow text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-                      <h3 className="text-lg font-bold text-bund-black">{app.name}</h3>
+                      <h3 className="text-lg font-semibold text-foreground">{app.name}</h3>
                       <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase">{app.category}</Chip>
                     </div>
                     <div className="text-sm text-muted line-clamp-1 mb-2">{app.description}</div>
@@ -418,14 +418,14 @@ function ManagementContent() {
         <Tabs.Panel id="users" className="pt-6">
           <div className="grid grid-cols-1 gap-4">
             {users.map((u) => (
-              <Card key={u.id} variant="default" className="hover:border-bund-blue/30 transition-colors border-border">
+              <Card key={u.id} variant="default" className="hover:border-accent/30 transition-colors border-border">
                 <div className="flex flex-col md:flex-row items-center p-4 gap-6">
                   <div className="w-12 h-12 rounded-full bg-default flex items-center justify-center text-xl shadow-inner flex-shrink-0">
-                    {u.role === 'admin' ? <ShieldCheck className="text-bund-blue" /> : <User className="text-muted" />}
+                    {u.role === 'admin' ? <ShieldCheck className="text-accent" /> : <User className="text-muted" />}
                   </div>
                   <div className="flex-grow text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-                      <h3 className="text-lg font-bold text-bund-black">{u.username}</h3>
+                      <h3 className="text-lg font-semibold text-foreground">{u.username}</h3>
                       <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase text-accent-foreground">{u.role}</Chip>
                       {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase text-danger-foreground">Deaktiviert</Chip>}
                     </div>
@@ -474,7 +474,7 @@ function ManagementContent() {
 
       {loading && (
         <div className="py-20 flex justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-bund-blue" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       )}
 
@@ -487,11 +487,11 @@ function ManagementContent() {
                 <Modal.CloseTrigger />
                 <Modal.Header className="px-8 py-6 border-b border-border bg-surface-secondary/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-bund-blue/10 flex items-center justify-center text-xl">
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-xl">
                       {appFormData.icon || "🏛️"}
                     </div>
                     <div>
-                      <Modal.Heading className="text-xl font-bold text-bund-black">
+                      <Modal.Heading className="text-xl font-semibold text-foreground">
                         {selectedApp ? 'App bearbeiten' : 'Neue App erstellen'}
                       </Modal.Heading>
                       <p className="text-xs text-muted">
@@ -503,7 +503,7 @@ function ManagementContent() {
                 
                 <Modal.Body className="p-0 overflow-hidden">
                   <Tabs variant="secondary" className="h-full flex flex-col" defaultSelectedKey="general">
-                    <Tabs.ListContainer className="px-8 border-b border-border bg-white sticky top-0 z-10">
+                    <Tabs.ListContainer className="px-8 border-b border-border bg-surface sticky top-0 z-10">
                       <Tabs.List aria-label="App configuration sections" className="gap-8">
                         <Tabs.Tab id="general" className="gap-2 py-4 font-bold text-sm">
                           <Info className="w-4 h-4" /> Allgemein
@@ -533,44 +533,44 @@ function ManagementContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField isRequired value={appFormData.name || ''} onChange={(val) => setAppFormData({...appFormData, name: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Name</Label>
-                            <Input value={appFormData.name || ''} placeholder="z.B. Digi-Sign Pro" className="bg-white" />
+                            <Input value={appFormData.name || ''} placeholder="z.B. Digi-Sign Pro" className="bg-field-background" />
                           </TextField>
                           <TextField isRequired value={appFormData.id || ''} onChange={(val) => setAppFormData({...appFormData, id: val})} isDisabled={!!selectedApp}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Unique ID (URL)</Label>
-                            <Input value={appFormData.id || ''} placeholder="z.B. digi-sign-pro" className="bg-white font-mono" />
+                            <Input value={appFormData.id || ''} placeholder="z.B. digi-sign-pro" className="bg-field-background font-mono" />
                           </TextField>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField isRequired value={appFormData.category || ''} onChange={(val) => setAppFormData({...appFormData, category: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kategorie</Label>
-                            <Input value={appFormData.category || ''} placeholder="Infrastruktur, Tools..." className="bg-white" />
+                            <Input value={appFormData.category || ''} placeholder="Infrastruktur, Tools..." className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.icon || ''} onChange={(val) => setAppFormData({...appFormData, icon: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
-                            <Input value={appFormData.icon || ''} placeholder="🏛️" className="bg-white" />
+                            <Input value={appFormData.icon || ''} placeholder="🏛️" className="bg-field-background" />
                           </TextField>
                         </div>
 
                         <TextField value={appFormData.description || ''} onChange={(val) => setAppFormData({...appFormData, description: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kurzbeschreibung</Label>
-                          <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-white" />
+                          <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-field-background" />
                         </TextField>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} onChange={(val) => setAppFormData({...appFormData, techStack: val.split(',').map(s => s.trim())})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Tech Stack (Komma-separiert)</Label>
-                            <Input value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} placeholder="React, Go, PostgreSQL" className="bg-white" />
+                            <Input value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} placeholder="React, Go, PostgreSQL" className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.license || ''} onChange={(val) => setAppFormData({...appFormData, license: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Lizenz</Label>
-                            <Input value={appFormData.license || ''} placeholder="MIT, Apache 2.0" className="bg-white" />
+                            <Input value={appFormData.license || ''} placeholder="MIT, Apache 2.0" className="bg-field-background" />
                           </TextField>
                         </div>
                       </Tabs.Panel>
 
                       <Tabs.Panel id="technical" className="space-y-6">
-                        <Surface variant="default" className="p-4 bg-accent-50 rounded-xl border border-accent-100 flex gap-4 text-accent-700">
+                        <Surface variant="default" className="p-4 bg-accent/10 rounded-lg border border-accent/20 flex gap-4 text-accent">
                           <Layers className="w-5 h-5 flex-shrink-0" />
                           <p className="text-sm">Geben Sie hier die URLs für Deployments und Source-Code an.</p>
                         </Surface>
@@ -578,28 +578,28 @@ function ManagementContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.liveUrl || ''} onChange={(val) => setAppFormData({...appFormData, liveUrl: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><Globe className="w-3 h-3" /> Live URL</Label>
-                            <Input value={appFormData.liveUrl || ''} placeholder="https://app.bund.de" className="bg-white font-mono text-sm" />
+                            <Input value={appFormData.liveUrl || ''} placeholder="https://app.bund.de" className="bg-field-background font-mono text-sm" />
                           </TextField>
                           <TextField value={appFormData.repoUrl || ''} onChange={(val) => setAppFormData({...appFormData, repoUrl: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><Github className="w-3 h-3" /> Repository URL</Label>
-                            <Input value={appFormData.repoUrl || ''} placeholder="https://github.com/bund/app" className="bg-white font-mono text-sm" />
+                            <Input value={appFormData.repoUrl || ''} placeholder="https://github.com/bund/app" className="bg-field-background font-mono text-sm" />
                           </TextField>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.dockerRepo || ''} onChange={(val) => setAppFormData({...appFormData, dockerRepo: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Image</Label>
-                            <Input value={appFormData.dockerRepo || ''} placeholder="ghcr.io/bund/image:latest" className="bg-white font-mono text-sm" />
+                            <Input value={appFormData.dockerRepo || ''} placeholder="ghcr.io/bund/image:latest" className="bg-field-background font-mono text-sm" />
                           </TextField>
                           <TextField value={appFormData.helmRepo || ''} onChange={(val) => setAppFormData({...appFormData, helmRepo: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Chart</Label>
-                            <Input value={appFormData.helmRepo || ''} placeholder="oci://ghcr.io/bund/charts/app" className="bg-white font-mono text-sm" />
+                            <Input value={appFormData.helmRepo || ''} placeholder="oci://ghcr.io/bund/charts/app" className="bg-field-background font-mono text-sm" />
                           </TextField>
                         </div>
 
                         <TextField value={appFormData.docsUrl || ''} onChange={(val) => setAppFormData({...appFormData, docsUrl: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> Externe Dokumentation URL</Label>
-                          <Input value={appFormData.docsUrl || ''} placeholder="https://docs.bund.de" className="bg-white font-mono text-sm" />
+                          <Input value={appFormData.docsUrl || ''} placeholder="https://docs.bund.de" className="bg-field-background font-mono text-sm" />
                         </TextField>
                       </Tabs.Panel>
 
@@ -607,60 +607,60 @@ function ManagementContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.focus || ''} onChange={(val) => setAppFormData({...appFormData, focus: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Themenfeld / Schwerpunkt</Label>
-                            <Input value={appFormData.focus || ''} placeholder="Digitale Signatur, KI..." className="bg-white" />
+                            <Input value={appFormData.focus || ''} placeholder="Digitale Signatur, KI..." className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.appType || ''} onChange={(val) => setAppFormData({...appFormData, appType: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Anwendungstyp</Label>
-                            <Input value={appFormData.appType || ''} placeholder="Web-App, API, Bot..." className="bg-white" />
+                            <Input value={appFormData.appType || ''} placeholder="Web-App, API, Bot..." className="bg-field-background" />
                           </TextField>
                         </div>
 
                         <TextField value={appFormData.useCase || ''} onChange={(val) => setAppFormData({...appFormData, useCase: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ziel Anwendungsfall</Label>
-                          <TextArea value={appFormData.useCase || ''} placeholder="Was soll mit der App erreicht werden?" className="bg-white" />
+                          <TextArea value={appFormData.useCase || ''} placeholder="Was soll mit der App erreicht werden?" className="bg-field-background" />
                         </TextField>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.visualization || ''} onChange={(val) => setAppFormData({...appFormData, visualization: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Visualisierung</Label>
-                            <Input value={appFormData.visualization || ''} placeholder="Dashboard, Map, Chart..." className="bg-white" />
+                            <Input value={appFormData.visualization || ''} placeholder="Dashboard, Map, Chart..." className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.deployment || ''} onChange={(val) => setAppFormData({...appFormData, deployment: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Deployment (Beschreibung)</Label>
-                            <Input value={appFormData.deployment || ''} placeholder="Zentraler Betrieb, On-Premise..." className="bg-white" />
+                            <Input value={appFormData.deployment || ''} placeholder="Zentraler Betrieb, On-Premise..." className="bg-field-background" />
                           </TextField>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.infrastructure || ''} onChange={(val) => setAppFormData({...appFormData, infrastructure: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Infrastruktur</Label>
-                            <Input value={appFormData.infrastructure || ''} placeholder="OpenShift, Kubernetes..." className="bg-white" />
+                            <Input value={appFormData.infrastructure || ''} placeholder="OpenShift, Kubernetes..." className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.database || ''} onChange={(val) => setAppFormData({...appFormData, database: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Datenbasis</Label>
-                            <Input value={appFormData.database || ''} placeholder="PostgreSQL, S3, LDAP..." className="bg-white" />
+                            <Input value={appFormData.database || ''} placeholder="PostgreSQL, S3, LDAP..." className="bg-field-background" />
                           </TextField>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <TextField value={appFormData.status || ''} onChange={(val) => setAppFormData({...appFormData, status: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Status</Label>
-                            <Input value={appFormData.status || ''} placeholder="Konzept, Pilot, Produktiv..." className="bg-white" />
+                            <Input value={appFormData.status || ''} placeholder="Konzept, Pilot, Produktiv..." className="bg-field-background" />
                           </TextField>
                           <TextField value={appFormData.contactPerson || ''} onChange={(val) => setAppFormData({...appFormData, contactPerson: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
-                            <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-white" />
+                            <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-field-background" />
                           </TextField>
                         </div>
 
                         <TextField value={appFormData.transferability || ''} onChange={(val) => setAppFormData({...appFormData, transferability: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Auf andere Ressorts übertragbar</Label>
-                          <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-white" />
+                          <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-field-background" />
                         </TextField>
 
                         <TextField value={appFormData.additionalInfo || ''} onChange={(val) => setAppFormData({...appFormData, additionalInfo: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
-                          <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere wichtige Informationen..." className="bg-white" />
+                          <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere wichtige Informationen..." className="bg-field-background" />
                         </TextField>
                       </Tabs.Panel>
 
@@ -673,11 +673,11 @@ function ManagementContent() {
                         <div className="space-y-4">
                           <TextField value={appFormData.customDockerCommand || ''} onChange={(val) => setAppFormData({...appFormData, customDockerCommand: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Command</Label>
-                            <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-white font-mono text-sm" />
+                            <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-field-background font-mono text-sm" />
                           </TextField>
                           <TextField value={appFormData.customDockerNote || ''} onChange={(val) => setAppFormData({...appFormData, customDockerNote: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Note</Label>
-                            <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-white" />
+                            <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-field-background" />
                           </TextField>
                         </div>
 
@@ -686,11 +686,11 @@ function ManagementContent() {
                         <div className="space-y-4">
                           <TextField value={appFormData.customComposeCommand || ''} onChange={(val) => setAppFormData({...appFormData, customComposeCommand: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Compose</Label>
-                            <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-white font-mono text-sm" rows={5} />
+                            <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-field-background font-mono text-sm" rows={5} />
                           </TextField>
                           <TextField value={appFormData.customComposeNote || ''} onChange={(val) => setAppFormData({...appFormData, customComposeNote: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Compose Note</Label>
-                            <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-white" />
+                            <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-field-background" />
                           </TextField>
                         </div>
 
@@ -699,11 +699,11 @@ function ManagementContent() {
                         <div className="space-y-4">
                           <TextField value={appFormData.customHelmCommand || ''} onChange={(val) => setAppFormData({...appFormData, customHelmCommand: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Command</Label>
-                            <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-white font-mono text-sm" />
+                            <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-field-background font-mono text-sm" />
                           </TextField>
                           <TextField value={appFormData.customHelmNote || ''} onChange={(val) => setAppFormData({...appFormData, customHelmNote: val})}>
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Note</Label>
-                            <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-white" />
+                            <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-field-background" />
                           </TextField>
                         </div>
                       </Tabs.Panel>
@@ -714,7 +714,7 @@ function ManagementContent() {
                           <TextArea 
                             value={appFormData.markdownContent || ''}
                             placeholder="# Dokumentation\n\nBeschreiben Sie hier Details zur Installation..." 
-                            className="bg-white font-mono text-sm md:h-[380px] w-full" 
+                            className="bg-field-background font-mono text-sm md:h-[380px] w-full" 
                           />
                         </TextField>
                         <p className="text-[10px] text-muted italic">Nutzen Sie Markdown für Formatierungen, Code-Blöcke und Tabellen.</p>
@@ -727,7 +727,7 @@ function ManagementContent() {
                   <Button variant="secondary" onPress={() => setIsAppModalOpen(false)} className="font-bold">
                     Abbrechen
                   </Button>
-                  <Button type="submit" className="bg-bund-blue text-white font-bold px-8 shadow-md">
+                  <Button type="submit" className="bg-accent text-white font-medium px-8">
                     {selectedApp ? 'Änderungen speichern' : 'App erstellen'}
                   </Button>
                 </Modal.Footer>
@@ -745,23 +745,23 @@ function ManagementContent() {
               <form onSubmit={handleUserSubmit}>
                 <Modal.CloseTrigger />
                 <Modal.Header className="px-8 py-6 border-b border-border">
-                  <Modal.Heading className="text-xl font-bold text-bund-black">
+                  <Modal.Heading className="text-xl font-semibold text-foreground">
                     {selectedUser ? 'Benutzer bearbeiten' : 'Neuer Benutzer'}
                   </Modal.Heading>
                 </Modal.Header>
                 <Modal.Body className="px-8 py-6 space-y-4">
                   <TextField isRequired value={userFormData.username || ''} onChange={(val) => setUserFormData({...userFormData, username: val})}>
                     <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Benutzername</Label>
-                    <Input value={userFormData.username || ''} placeholder="max.mustermann" className="bg-white" />
+                    <Input value={userFormData.username || ''} placeholder="max.mustermann" className="bg-field-background" />
                   </TextField>
                   <TextField isRequired type="email" value={userFormData.email || ''} onChange={(val) => setUserFormData({...userFormData, email: val})}>
                     <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Email</Label>
-                    <Input value={userFormData.email || ''} placeholder="max@beispiel.de" className="bg-white" />
+                    <Input value={userFormData.email || ''} placeholder="max@beispiel.de" className="bg-field-background" />
                   </TextField>
                   {!selectedUser && (
                     <TextField isRequired type="password" value={userFormData.password || ''} onChange={(val) => setUserFormData({...userFormData, password: val})}>
                       <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Passwort</Label>
-                      <Input value={userFormData.password || ''} placeholder="******" className="bg-white" />
+                      <Input value={userFormData.password || ''} placeholder="******" className="bg-field-background" />
                     </TextField>
                   )}
                   <div className="flex flex-col gap-2">
@@ -771,7 +771,7 @@ function ManagementContent() {
                        className="w-full"
                     >
                       <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Rolle</Label>
-                      <Select.Trigger className="bg-white border-border">
+                      <Select.Trigger className="bg-field-background border-border">
                         <Select.Value />
                         <Select.Indicator />
                       </Select.Trigger>
@@ -789,7 +789,7 @@ function ManagementContent() {
                     <Button variant="ghost" slot="close" className="px-6 font-bold">
                       Abbrechen
                     </Button>
-                    <Button type="submit" className="bg-bund-blue text-white px-8 font-bold shadow-lg">
+                    <Button type="submit" className="bg-accent text-white px-8 font-medium">
                       Speichern
                     </Button>
                   </div>

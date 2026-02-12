@@ -18,18 +18,17 @@ export default async function Home() {
   const apps = await getApps();
   
   return (
-    <div className="flex flex-col gap-12">
-      <section className="flex flex-col items-center justify-center gap-4 text-center">
-        <div className="inline-block max-w-[800px]">
-          <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-bund-black mb-4">
-            App-Store für die <br />
-            <span className="text-bund-blue">PLAIN Plattform</span>
-          </h1>
-          <p className="text-xl text-muted">
-            Entdecken Sie Open-Source-Lösungen, Cloud-Native Applikationen und Standards <br className="hidden md:inline" /> 
-            für die Digitalisierung staatlicher Leistungen und die digitale Souveränität.
-          </p>
-        </div>
+    <div className="flex flex-col gap-10">
+      {/* Hero section */}
+      <section className="text-center py-8 md:py-12">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4">
+          App-Store für die{" "}
+          <span className="text-accent">PLAIN Plattform</span>
+        </h1>
+        <p className="text-base sm:text-lg text-muted max-w-2xl mx-auto leading-relaxed">
+          Entdecken Sie Open-Source-Lösungen, Cloud-Native Applikationen und Standards
+          für die Digitalisierung staatlicher Leistungen.
+        </p>
       </section>
 
       <AppGrid initialApps={apps} />

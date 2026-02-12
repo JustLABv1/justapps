@@ -12,7 +12,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <AuthProvider>
-        <NextThemesProvider attribute="class" defaultTheme="light">
+        <NextThemesProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
           <RouterProvider navigate={router.push}>
             {children}
           </RouterProvider>

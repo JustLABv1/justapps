@@ -32,16 +32,16 @@ export default function RootLayout({
       >
         <Providers>
           <div className="relative flex flex-col min-h-screen">
-            {/* German Branding Border */}
-            <div className="h-1 w-full flex">
-              <div className="h-full w-1/3 bg-black"></div>
-              <div className="h-full w-1/3 bg-[#FF0000]"></div>
-              <div className="h-full w-1/3 bg-[#FFCC00]"></div>
+            {/* German flag accent stripe */}
+            <div className="h-1 w-full flex shrink-0" aria-hidden="true">
+              <div className="h-full w-1/3 bg-[#000]" />
+              <div className="h-full w-1/3 bg-gov-red" />
+              <div className="h-full w-1/3 bg-gov-gold" />
             </div>
-            
+
             <Navigation />
 
-            <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
+            <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
             </main>
 
