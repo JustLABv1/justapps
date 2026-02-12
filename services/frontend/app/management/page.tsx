@@ -426,7 +426,7 @@ function ManagementContent() {
                   <div className="flex-grow text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
                       <h3 className="text-lg font-semibold text-foreground">{u.username}</h3>
-                      <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase text-accent-foreground">{u.role}</Chip>
+                      <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase">{u.role}</Chip>
                       {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase text-danger-foreground">Deaktiviert</Chip>}
                     </div>
                     <div className="text-sm text-muted">{u.email}</div>
