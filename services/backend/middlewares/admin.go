@@ -36,11 +36,22 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 					return
 				}
 				log.Warn("Admin Auth: OIDC token valid but user is not an admin")
-				httperror.Unauthorized(context, "You are not an admin", errors.New("not an admin"))
+				httperror.Unauthorized(context, "You are not an admin (OIDC)", errors.New("not an admin"))
 				return
 			}
+		} else {
+			// If OIDC is enabled and returns an error other than "not enabled", stop here.
+			// This prevents falling back to local JWT for OIDC tokens.
+			if err.Error() != "OIDC is not enabled" {
+				log.WithError(err).Warn("Admin Auth: OIDC validation failed")
+				httperror.Unauthorized(context, "OIDC authentication failed", err)
+				return
+			}
+
+			log.Debug("Admin Auth: OIDC is not enabled, falling back to local JWT")
 		}
 
+		// Only attempt local JWT if OIDC is truly disabled
 		err = auth.ValidateToken(tokenString)
 		if err != nil {
 			log.WithError(err).Warn("Admin Auth: Token validation failed (JWT)")

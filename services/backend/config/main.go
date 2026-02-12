@@ -49,6 +49,7 @@ type OIDCConf struct {
 	Issuer     string `mapstructure:"issuer"`
 	ClientID   string `mapstructure:"client_id"`
 	AdminGroup string `mapstructure:"admin_group"`
+	Insecure   bool   `mapstructure:"insecure"`
 }
 
 // GetInstance returns the singleton configuration manager instance
@@ -90,6 +91,7 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		"oidc.issuer":                 "BACKEND_OIDC_ISSUER",
 		"oidc.client_id":              "BACKEND_OIDC_CLIENT_ID",
 		"oidc.admin_group":            "BACKEND_OIDC_ADMIN_GROUP",
+		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
 	}
 
 	for configKey, envVar := range envBindings {

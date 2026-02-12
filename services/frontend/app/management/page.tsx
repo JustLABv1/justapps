@@ -60,6 +60,7 @@ function ManagementContent() {
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'apps' | 'users'>('apps');
   
   // App Modal states
@@ -81,38 +82,54 @@ function ManagementContent() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      if (activeTab === 'apps') {
-        const res = await fetchApi('/apps');
-        if (res.ok) {
-          const data = await res.json();
-          setApps(data);
+      setError(null);
+      try {
+        if (activeTab === 'apps') {
+          const res = await fetchApi('/apps');
+          if (res.ok) {
+            const data = await res.json();
+            setApps(data);
+          } else {
+            setError(`Failed to load apps: ${res.statusText}`);
+          }
+        } else {
+          const res = await fetchApi('/admin/users');
+          if (res.ok) {
+            const data = await res.json();
+            setUsers(data.users || []);
+          } else {
+            setError(`Failed to load users: ${res.status} ${res.statusText}`);
+          }
         }
-      } else {
-        const res = await fetchApi('/admin/users');
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
-        }
+      } catch (err) {
+        setError(`Error connecting to API: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     loadData();
   }, [activeTab]);
 
   const loadApps = async () => {
-    const res = await fetchApi('/apps');
-    if (res.ok) {
-      const data = await res.json();
-      setApps(data);
-    }
+    try {
+      const res = await fetchApi('/apps');
+      if (res.ok) {
+        const data = await res.json();
+        setApps(data);
+      }
+    } catch (err) { console.error(err); }
   };
 
   const loadUsers = async () => {
-    const res = await fetchApi('/admin/users');
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(data.users || []);
-    }
+    try {
+      const res = await fetchApi('/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users || []);
+      } else if (res.status === 401) {
+        setError('Unauthorized: You might not be an admin on the backend.');
+      }
+    } catch (err) { console.error(err); }
   };
 
   // User Handlers
@@ -294,6 +311,18 @@ function ManagementContent() {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div className="flex-grow">
+            {error}
+          </div>
+          <Button size="sm" variant="secondary" onPress={() => setActiveTab(activeTab)} className="h-8">Retry</Button>
+        </div>
+      )}
 
       <Tabs 
         variant="secondary" 
