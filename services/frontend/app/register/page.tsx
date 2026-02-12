@@ -1,8 +1,9 @@
 'use client';
 
-import { Button, Card, Form, Input, Label, Link, TextField } from '@heroui/react';
+import { Button, Card, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { fetchApi } from '../../lib/api';
 
 export default function RegisterPage() {
@@ -11,7 +12,19 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user, oidcLogin } = useAuth();
   const router = useRouter();
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
+
+  const handleOIDCLogin = () => {
+    oidcLogin();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,28 +61,31 @@ export default function RegisterPage() {
         </div>
 
         <Form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <TextField isRequired className="w-full" value={email} onChange={setEmail}>
+          <TextField isRequired className="w-full" onChange={setEmail}>
             <Label className="text-bund-black font-medium mb-1">Email</Label>
             <Input
               placeholder="E-Mail eingeben"
               type="email"
               className="w-full"
+              value={email}
             />
           </TextField>
 
-          <TextField isRequired className="w-full" value={username} onChange={setUsername}>
+          <TextField isRequired className="w-full" onChange={setUsername}>
             <Label className="text-bund-black font-medium mb-1">Benutzername</Label>
             <Input
               placeholder="Benutzername wählen"
               className="w-full"
+              value={username}
             />
           </TextField>
 
-          <TextField isRequired className="w-full" type="password" value={password} onChange={setPassword}>
+          <TextField isRequired className="w-full" type="password" onChange={setPassword}>
             <Label className="text-bund-black font-medium mb-1">Passwort</Label>
             <Input
               placeholder="Passwort wählen"
               className="w-full"
+              value={password}
             />
           </TextField>
 
@@ -83,7 +99,19 @@ export default function RegisterPage() {
             {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
           </Button>
         </Form>
+        <div className="my-6 flex items-center gap-2">
+          <Separator className="flex-1" />
+          <span className="text-xs text-default-400 font-medium uppercase">Oder</span>
+          <Separator className="flex-1" />
+        </div>
 
+        <Button
+          onPress={handleOIDCLogin}
+          variant="outline"
+          className="w-full border-bund-gray text-bund-black font-medium"
+        >
+          Mit Keycloak anmelden
+        </Button>
         <div className="mt-6 text-center text-sm">
           <p className="text-default-500">
             Haben Sie bereits einen Account?{' '}
