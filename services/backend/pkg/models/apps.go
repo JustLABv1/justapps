@@ -22,6 +22,17 @@ type Apps struct {
 	TechStack            []string  `bun:"tech_stack,array" json:"techStack"`
 	License              string    `bun:"license" json:"license"`
 	MarkdownContent      string    `bun:"markdown_content" json:"markdownContent"`
+	Focus                string    `bun:"focus" json:"focus"`
+	AppType              string    `bun:"app_type" json:"appType"`
+	UseCase              string    `bun:"use_case" json:"useCase"`
+	Visualization        string    `bun:"visualization" json:"visualization"`
+	Deployment           string    `bun:"deployment" json:"deployment"`
+	Infrastructure       string    `bun:"infrastructure" json:"infrastructure"`
+	Database             string    `bun:"database" json:"database"`
+	AdditionalInfo       string    `bun:"additional_info" json:"additionalInfo"`
+	Status               string    `bun:"status" json:"status"`
+	Transferability      string    `bun:"transferability" json:"transferability"`
+	ContactPerson        string    `bun:"contact_person" json:"contactPerson"`
 	CustomDockerCommand  string    `bun:"custom_docker_command" json:"customDockerCommand"`
 	CustomComposeCommand string    `bun:"custom_compose_command" json:"customComposeCommand"`
 	CustomHelmCommand    string    `bun:"custom_helm_command" json:"customHelmCommand"`

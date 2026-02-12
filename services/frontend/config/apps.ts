@@ -16,6 +16,17 @@ export interface AppConfig {
   techStack?: string[];
   license?: string;
   markdownContent?: string;
+  focus?: string;
+  appType?: string;
+  useCase?: string;
+  visualization?: string;
+  deployment?: string;
+  infrastructure?: string;
+  database?: string;
+  additionalInfo?: string;
+  status?: string;
+  transferability?: string;
+  contactPerson?: string;
   customDockerCommand?: string;
   customComposeCommand?: string;
   customHelmCommand?: string;

@@ -204,6 +204,17 @@ function ManagementContent() {
       dockerRepo: '',
       helmRepo: '',
       docsUrl: '',
+      focus: '',
+      appType: '',
+      useCase: '',
+      visualization: '',
+      deployment: '',
+      infrastructure: '',
+      database: '',
+      additionalInfo: '',
+      status: '',
+      transferability: '',
+      contactPerson: '',
       customDockerCommand: '',
       customComposeCommand: '',
       customHelmCommand: '',
@@ -502,6 +513,10 @@ function ManagementContent() {
                           <Server className="w-4 h-4" /> Integration
                           <Tabs.Indicator />
                         </Tabs.Tab>
+                        <Tabs.Tab id="functional" className="gap-2 py-4 font-bold text-sm">
+                          <Info className="w-4 h-4" /> Fachlich
+                          <Tabs.Indicator />
+                        </Tabs.Tab>
                         <Tabs.Tab id="deployment" className="gap-2 py-4 font-bold text-sm">
                           <Terminal className="w-4 h-4" /> Deployment
                           <Tabs.Indicator />
@@ -585,6 +600,67 @@ function ManagementContent() {
                         <TextField value={appFormData.docsUrl || ''} onChange={(val) => setAppFormData({...appFormData, docsUrl: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> Externe Dokumentation URL</Label>
                           <Input value={appFormData.docsUrl || ''} placeholder="https://docs.bund.de" className="bg-white font-mono text-sm" />
+                        </TextField>
+                      </Tabs.Panel>
+
+                      <Tabs.Panel id="functional" className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <TextField value={appFormData.focus || ''} onChange={(val) => setAppFormData({...appFormData, focus: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Themenfeld / Schwerpunkt</Label>
+                            <Input value={appFormData.focus || ''} placeholder="Digitale Signatur, KI..." className="bg-white" />
+                          </TextField>
+                          <TextField value={appFormData.appType || ''} onChange={(val) => setAppFormData({...appFormData, appType: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Anwendungstyp</Label>
+                            <Input value={appFormData.appType || ''} placeholder="Web-App, API, Bot..." className="bg-white" />
+                          </TextField>
+                        </div>
+
+                        <TextField value={appFormData.useCase || ''} onChange={(val) => setAppFormData({...appFormData, useCase: val})}>
+                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ziel Anwendungsfall</Label>
+                          <TextArea value={appFormData.useCase || ''} placeholder="Was soll mit der App erreicht werden?" className="bg-white" />
+                        </TextField>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <TextField value={appFormData.visualization || ''} onChange={(val) => setAppFormData({...appFormData, visualization: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Visualisierung</Label>
+                            <Input value={appFormData.visualization || ''} placeholder="Dashboard, Map, Chart..." className="bg-white" />
+                          </TextField>
+                          <TextField value={appFormData.deployment || ''} onChange={(val) => setAppFormData({...appFormData, deployment: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Deployment (Beschreibung)</Label>
+                            <Input value={appFormData.deployment || ''} placeholder="Zentraler Betrieb, On-Premise..." className="bg-white" />
+                          </TextField>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <TextField value={appFormData.infrastructure || ''} onChange={(val) => setAppFormData({...appFormData, infrastructure: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Infrastruktur</Label>
+                            <Input value={appFormData.infrastructure || ''} placeholder="OpenShift, Kubernetes..." className="bg-white" />
+                          </TextField>
+                          <TextField value={appFormData.database || ''} onChange={(val) => setAppFormData({...appFormData, database: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Datenbasis</Label>
+                            <Input value={appFormData.database || ''} placeholder="PostgreSQL, S3, LDAP..." className="bg-white" />
+                          </TextField>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <TextField value={appFormData.status || ''} onChange={(val) => setAppFormData({...appFormData, status: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Status</Label>
+                            <Input value={appFormData.status || ''} placeholder="Konzept, Pilot, Produktiv..." className="bg-white" />
+                          </TextField>
+                          <TextField value={appFormData.contactPerson || ''} onChange={(val) => setAppFormData({...appFormData, contactPerson: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
+                            <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-white" />
+                          </TextField>
+                        </div>
+
+                        <TextField value={appFormData.transferability || ''} onChange={(val) => setAppFormData({...appFormData, transferability: val})}>
+                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Auf andere Ressorts übertragbar</Label>
+                          <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-white" />
+                        </TextField>
+
+                        <TextField value={appFormData.additionalInfo || ''} onChange={(val) => setAppFormData({...appFormData, additionalInfo: val})}>
+                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
+                          <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere wichtige Informationen..." className="bg-white" />
                         </TextField>
                       </Tabs.Panel>
 
