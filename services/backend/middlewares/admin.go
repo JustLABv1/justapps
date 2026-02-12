@@ -22,7 +22,26 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 			return
 		}
 
-		err := auth.ValidateToken(tokenString)
+		// Try OIDC first if enabled
+		idToken, err := auth.ValidateOIDCToken(tokenString)
+		if err == nil {
+			claims, err := auth.GetOIDCClaims(idToken)
+			if err == nil {
+				if auth.IsAdminOIDC(claims) {
+					context.Set("oidc_claims", claims)
+					context.Set("user_email", claims.Email)
+					context.Set("username", claims.PreferredUser)
+					context.Set("role", "admin")
+					context.Next()
+					return
+				}
+				log.Warn("Admin Auth: OIDC token valid but user is not an admin")
+				httperror.Unauthorized(context, "You are not an admin", errors.New("not an admin"))
+				return
+			}
+		}
+
+		err = auth.ValidateToken(tokenString)
 		if err != nil {
 			log.WithError(err).Warn("Admin Auth: Token validation failed (JWT)")
 			httperror.Unauthorized(context, "Token is not valid (JWT)", err)
@@ -72,6 +91,20 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 				httperror.Unauthorized(context, "You are not an admin (Role check)", errors.New("user is not admin"))
 				return
 			}
+
+			// get the user from the db
+			var user models.Users
+			err = db.NewSelect().Model(&user).Where("id = ?", userID).Scan(context)
+			if err != nil {
+				httperror.InternalServerError(context, "Error receiving user from db", err)
+				return
+			}
+
+			context.Set("user_id", userID)
+			context.Set("role", user.Role)
+			context.Set("username", user.Username)
+			context.Set("user_email", user.Email)
+
 			context.Next()
 		} else if tokenType == "service" {
 			tokenID, err := auth.GetIDFromToken(tokenString)

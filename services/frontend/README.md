@@ -29,6 +29,23 @@ env:
     value: "/app/config/config.yaml"
 ```
 
-### Dynamic Updates
+### OIDC Configuration (NextAuth / Auth.js)
 
-The pages are configured with `force-dynamic`, meaning they will read the `config.yaml` from the mounted volume on every request. Note that Kubernetes ConfigMap updates to mounted volumes can take some time to propagate to the container's file system.
+To enable Keycloak integration in the frontend, set the following environment variables:
+
+- `AUTH_KEYCLOAK_ID`: Keycloak Client ID (e.g., `app-store`)
+- `AUTH_KEYCLOAK_SECRET`: Keycloak Client Secret
+- `AUTH_KEYCLOAK_ISSUER`: Keycloak Issuer URL (e.g., `https://<keycloak-url>/realms/<realm-name>`)
+- `AUTH_SECRET`: A random secret for NextAuth sessions (e.g., `openssl rand -base64 32`)
+- `AUTH_ADMIN_GROUP`: Keycloak group name mapped to admin role (e.g., `2Fa` or `admin`)
+
+### Admin Management
+
+Admin users can access the management dashboard at `/management` to manage both Applications and Users.
+The "Users" tab allows admins to:
+- List all registered users
+- Create new users manually
+- Edit user details (Role, Username, Email)
+- Disable/Enable user accounts
+- Delete users
+

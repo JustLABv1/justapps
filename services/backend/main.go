@@ -10,6 +10,7 @@ import (
 
 	"justwms-backend/config"
 	"justwms-backend/database"
+	"justwms-backend/functions/auth"
 	"justwms-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -63,6 +64,10 @@ func main() {
 	log.Info("Config loaded successfully")
 
 	logging(cfg.LogLevel)
+
+	if err := auth.InitOIDC(); err != nil {
+		log.Warn("OIDC initialization failed: ", err)
+	}
 
 	db := database.StartDatabase(cfg.Database.Driver, cfg.Database.Server, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name)
 	if db == nil {

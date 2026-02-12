@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"justwms-backend/functions/auth"
-	"justwms-backend/functions/gatekeeper"
 	"justwms-backend/functions/httperror"
 	"justwms-backend/pkg/models"
 
@@ -21,7 +20,25 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 			return
 		}
 
-		err := auth.ValidateToken(tokenString)
+		// Try OIDC first if enabled
+		idToken, err := auth.ValidateOIDCToken(tokenString)
+		if err == nil {
+			claims, err := auth.GetOIDCClaims(idToken)
+			if err == nil {
+				context.Set("oidc_claims", claims)
+				context.Set("user_email", claims.Email)
+				context.Set("username", claims.PreferredUser)
+				if auth.IsAdminOIDC(claims) {
+					context.Set("role", "admin")
+				} else {
+					context.Set("role", "user")
+				}
+				context.Next()
+				return
+			}
+		}
+
+		err = auth.ValidateToken(tokenString)
 		if err != nil {
 			httperror.Unauthorized(context, "Token is not valid", err)
 			return
@@ -51,15 +68,22 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				httperror.InternalServerError(context, "Error receiving userID from token", err)
 				return
 			}
-			userDisabled, err := gatekeeper.CheckAccountStatus(userId.String(), db)
+			// get the user from the db
+			var user models.Users
+			err = db.NewSelect().Model(&user).Where("id = ?", userId).Scan(context)
 			if err != nil {
-				httperror.InternalServerError(context, "Error checking for account status", err)
+				httperror.InternalServerError(context, "Error receiving user from db", err)
 				return
 			}
-			if userDisabled {
+			if user.Disabled {
 				httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
 				return
 			}
+
+			context.Set("user_id", userId)
+			context.Set("role", user.Role)
+			context.Set("username", user.Username)
+			context.Set("user_email", user.Email)
 
 			context.Next()
 		} else if tokenType == "project" || tokenType == "service" {

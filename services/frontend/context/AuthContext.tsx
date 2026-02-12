@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -11,44 +12,106 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   loading: boolean;
   login: (token: string, userData: User) => void;
   logout: () => void;
+  oidcLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (storedUser && token) {
-        try {
-          return JSON.parse(storedUser);
-        } catch {
-          return null;
+  const { data: session, status } = useSession();
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      const s = session as {
+        user?: { id?: string; name?: string; email?: string; role?: string };
+        idToken?: string;
+        accessToken?: string;
+      };
+      
+      // Bridging OIDC session to AuthContext
+      const oidcUser: User = {
+        id: s.user?.id || s.user?.email || 'oidc',
+        username: s.user?.name || s.user?.email || 'OIDC User',
+        email: s.user?.email || '',
+        role: s.user?.role || 'user',
+      };
+      
+      const authToken = s.idToken || s.accessToken || null;
+      
+      // Use setTimeout to avoid synchronous state update in effect which causes cascading renders
+      const timer = setTimeout(() => {
+        setUser(oidcUser);
+        setToken(authToken);
+        
+        if (authToken) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('token', authToken);
+            localStorage.setItem('user', JSON.stringify(oidcUser));
+          }
+        }
+      }, 0);
+      
+      return () => clearTimeout(timer);
+    } else if (status === 'unauthenticated') {
+      // Fallback to local storage for traditional login
+      if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('token');
+        if (storedUser && storedToken) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            const timer = setTimeout(() => {
+              setUser(parsedUser);
+              setToken(storedToken);
+            }, 0);
+            return () => clearTimeout(timer);
+          } catch {
+            const timer = setTimeout(() => {
+              setUser(null);
+              setToken(null);
+            }, 0);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            return () => clearTimeout(timer);
+          }
         }
       }
     }
-    return null;
-  });
-  const [loading, setLoading] = useState(false);
+  }, [session, status]);
 
   const login = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
     setUser(userData);
+    setToken(token);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
     setUser(null);
+    setToken(null);
+    if (status === 'authenticated') {
+      nextAuthSignOut();
+    }
+  };
+
+  const oidcLogin = () => {
+    nextAuthSignIn('keycloak', { callbackUrl: '/' });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading: status === 'loading', login, logout, oidcLogin }}>
       {children}
     </AuthContext.Provider>
   );
