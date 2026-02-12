@@ -34,8 +34,8 @@ helm install ${app.id} bund/${app.id}`;
   };
 
   return (
-    <div className="bg-surface rounded-2xl p-6 border border-border shadow-sm">
-      <div className="flex items-center gap-2 text-foreground font-bold mb-4">
+    <div className="bg-surface rounded-lg p-5 border border-border">
+      <div className="flex items-center gap-2 text-foreground font-semibold mb-4">
         <Terminal className="w-4 h-4" />
         Deployment Assistant
       </div>
@@ -69,7 +69,7 @@ helm install ${app.id} bund/${app.id}`;
 
         <Tabs.Panel id="docker" className="pt-4">
           <div className="relative group">
-            <pre className="bg-bund-black text-white p-5 rounded-xl text-xs sm:text-sm overflow-x-auto leading-relaxed border border-white/10 shadow-lg font-mono">
+            <pre className="bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-4 rounded-lg text-xs sm:text-sm overflow-x-auto leading-relaxed font-mono">
               <code>{dockerCommand}</code>
             </pre>
             <Button
@@ -95,7 +95,7 @@ helm install ${app.id} bund/${app.id}`;
 
         <Tabs.Panel id="compose" className="pt-4">
           <div className="relative group">
-            <pre className="bg-bund-black text-white p-5 rounded-xl text-xs sm:text-sm overflow-x-auto leading-relaxed border border-white/10 shadow-lg font-mono">
+            <pre className="bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-4 rounded-lg text-xs sm:text-sm overflow-x-auto leading-relaxed font-mono">
               <code>{dockerCompose}</code>
             </pre>
             <Button
@@ -117,7 +117,7 @@ helm install ${app.id} bund/${app.id}`;
 
         <Tabs.Panel id="helm" className="pt-4">
           <div className="relative group">
-            <pre className="bg-bund-black text-white p-5 rounded-xl text-xs sm:text-sm overflow-x-auto leading-relaxed border border-white/10 shadow-lg font-mono">
+            <pre className="bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-4 rounded-lg text-xs sm:text-sm overflow-x-auto leading-relaxed font-mono">
               <code>{helmCommand}</code>
             </pre>
             <Button

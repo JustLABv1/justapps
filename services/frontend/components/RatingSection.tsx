@@ -113,14 +113,14 @@ export function RatingSection({ appId }: { appId: string }) {
 
   return (
     <div className="mt-12 space-y-8">
-      <div className="flex items-center gap-2 text-xl font-bold text-foreground">
-        <MessageSquare className="w-5 h-5 text-bund-blue" />
+      <div className="flex items-center gap-2 text-xl font-semibold text-foreground">
+        <MessageSquare className="w-5 h-5 text-accent" />
         Feedback & Bewertungen
       </div>
 
       {user ? (
         <div ref={formRef}>
-          <Card className={`border-border shadow-sm transition-all ${isEditing ? 'ring-2 ring-bund-blue/50 bg-bund-blue/5' : ''}`} variant="default">
+          <Card className={`border-border transition-all ${isEditing ? 'ring-2 ring-accent/50 bg-accent/5' : ''}`} variant="default">
             <Card.Content className="p-6 space-y-4">
             <div className="flex justify-between items-center">
               <Label className="font-bold text-sm uppercase tracking-wider text-muted">
@@ -149,7 +149,7 @@ export function RatingSection({ appId }: { appId: string }) {
                   <Star
                     className={`w-8 h-8 ${
                       (hoverRating || userRating) >= star
-                        ? "fill-bund-gold text-bund-gold"
+                        ? "fill-gov-gold text-gov-gold"
                         : "text-muted/30"
                     }`}
                   />
@@ -176,7 +176,7 @@ export function RatingSection({ appId }: { appId: string }) {
               <Button
                 onPress={handleSubmit}
                 isDisabled={userRating === 0 || submitting}
-                className="font-bold bg-bund-blue text-white dark:bg-bund-gold dark:text-bund-black px-8"
+                className="font-medium px-6"
               >
                 {submitting ? "Wird gesendet..." : (isEditing ? "Änderungen speichern" : "Bewertung abschicken")}
               </Button>
@@ -214,7 +214,7 @@ export function RatingSection({ appId }: { appId: string }) {
                       <Star
                         key={s}
                         className={`w-3.5 h-3.5 ${
-                          r.rating >= s ? "fill-bund-gold text-bund-gold" : "text-muted/20"
+                          r.rating >= s ? "fill-gov-gold text-gov-gold" : "text-muted/20"
                         }`}
                       />
                     ))}
@@ -225,7 +225,7 @@ export function RatingSection({ appId }: { appId: string }) {
                     {(user?.id === r.userId) && (
                       <button 
                         onClick={() => handleEdit(r)}
-                        className="text-[10px] font-bold uppercase tracking-tighter text-bund-blue hover:underline"
+                        className="text-[10px] font-semibold uppercase tracking-tighter text-accent hover:underline"
                       >
                         Bearbeiten
                       </button>
