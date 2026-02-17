@@ -7,15 +7,12 @@ metadata:
 data:
   config.yaml: |
     log_level: {{ .Values.config.logLevel }}
-    port: 8082
+    port: {{ if eq .Values.deploymentMode "monolith" }}{{ .Values.monolith.service.backendPort | default 8080 }}{{ else }}{{ .Values.backend.service.port | default 8080 }}{{ end }}
     database:
-      server: {{ .Values.config.database.server }}
-      port: {{ .Values.config.database.port }}
-      name: {{ .Values.config.database.name }}
-      user: {{ .Values.config.database.user }}
-      password: {{ .Values.config.database.password }}
-    jwt:
-      secret: {{ .Values.config.jwtSecret }}
+      server: {{ if .Values.postgresql.enabled }}{{ include "app-store.fullname" . }}-postgresql{{ else }}{{ .Values.config.database.server }}{{ end }}
+      port: {{ if .Values.postgresql.enabled }}5432{{ else }}{{ .Values.config.database.port }}{{ end }}
+      name: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.database | default "postgres" }}{{ else }}{{ .Values.config.database.name }}{{ end }}
+      user: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.username | default "postgres" }}{{ else }}{{ .Values.config.database.user }}{{ end }}
     oidc:
       enabled: {{ .Values.config.oidc.enabled }}
       issuer: {{ .Values.config.oidc.issuer | quote }}

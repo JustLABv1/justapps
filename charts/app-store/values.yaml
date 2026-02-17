@@ -33,12 +33,14 @@ securityContext: {}
 config:
   logLevel: info
   database:
-    server: postgres-service
+    # If using the internal postgresql (postgresql.enabled=true), the server should be:
+    # <release-name>-app-store-postgresql
+    server: app-store-postgresql
     port: 5432
     name: app_store
     user: postgres
     password: "changeme"
-  jwt Secret: "changeme-secret"
+  jwtSecret: "changeme-secret"
   oidc:
     enabled: true
     issuer: "https://keycloak.example.com/realms/myrealm"
@@ -57,6 +59,13 @@ monolith:
     port: 80
     backendPort: 8082
     frontendPort: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
 
 # Microservices specific configuration
 backend:
@@ -68,7 +77,13 @@ backend:
   service:
     type: ClusterIP
     port: 8182 # External port for the service
-  resources: {}
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 frontend:
   replicaCount: 1
@@ -78,13 +93,20 @@ frontend:
     tag: "latest"
   env:
     # URL of the backend API (internal or external)
+    # Default assumes microservices mode with backend service name
     apiUrl: "http://app-store-backend:8182"
     nextauthUrl: "http://app-store.example.com"
     authSecret: "secret-for-nextauth"
   service:
     type: ClusterIP
     port: 80
-  resources: {}
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 ingress:
   enabled: false
@@ -101,6 +123,29 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+postgresql:
+  enabled: true
+  image: 'postgres:16'
+  pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    storageClassName: default
+    size: 20Gi
+  auth:
+    database: "app-store"
+    password: "app-store"
+    username: "app-store"
+  service:
+    type: ClusterIP
+    port: 5432
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
 
 nodeSelector: {}
 

@@ -1,0 +1,12 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "app-store.fullname" . }}-postgresql-config
+  labels:
+    {{- include "app-store.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+data:
+  POSTGRES_DB: {{ .Values.postgresql.auth.database | default "postgres" }}
+  POSTGRES_USER: {{ .Values.postgresql.auth.username | default "postgres" }}
+{{- end }}

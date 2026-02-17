@@ -1,0 +1,95 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "app-store.fullname" . }}-postgresql
+  labels:
+    {{- include "app-store.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "app-store.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "app-store.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      serviceAccountName: {{ include "app-store.serviceAccountName" . }}
+      {{- with .Values.postgresql.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: fix-permissions
+          image: {{ .Values.postgresql.image | default "postgres:17-alpine" }}
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -pv {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
+              chmod -v 700 {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
+          volumeMounts:
+            - mountPath: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}
+              name: data
+      containers:
+        - name: postgresql
+          {{- with .Values.postgresql.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ .Values.postgresql.image | default "postgres:16" }}
+          imagePullPolicy: {{ .Values.postgresql.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: {{ include "app-store.fullname" . }}-postgresql-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "app-store.fullname" . }}-secrets
+                  key: postgresql-password
+            - name: PGDATA
+              value: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.postgresql.auth.username | default "postgres" | quote }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.postgresql.auth.username | default "postgres" | quote }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          {{- with .Values.postgresql.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}
+              name: data
+      volumes:
+        - name: data
+          {{- if .Values.postgresql.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "app-store.fullname" . }}-postgresql
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}
