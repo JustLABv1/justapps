@@ -3,15 +3,16 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 # Stage 1: Build the frontend
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm --version
-RUN pnpm install
+COPY services/frontend/package.json ./
+RUN npm --version
+RUN npm install
 COPY services/frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Wir nutzen den direkten Pfad zur Binary, um Overhead zu vermeiden
-RUN CI=true ./node_modules/.bin/next build
+# RUN CI=true ./node_modules/.bin/next build
+RUN npm run build
 
 # Stage 2: Build the backend
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 AS backend-builder
