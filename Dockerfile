@@ -10,12 +10,21 @@ RUN pnpm install
 COPY services/frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Limit memory to fit within standard Docker Desktop limits (e.g. 2GB)
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+# Increase memory limit for the build process
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# BUILD TIME: No environment variables needed anymore!
-# The app will read them at runtime from the container environment.
-RUN CI=true pnpm run build
+# Deaktiviert ESLint und Sourcemaps während des Builds
+ENV NEXT_ESLINT_IGNORE=true
+ENV NEXT_DISABLE_SOURCEMAPS=1
+# Reduziert die CPU-Last und Worker für Next.js 15/16
+ENV NEXT_BUILD_WORKERS=1
+ENV EXPERIMENTAL_NEXT_CPUS=1
+ENV NEXT_CPU_COUNT=1
+# Erhöht den Speicher für den Node-Prozess
+ENV NODE_OPTIONS="--max-old-space-size=3584"
+
+# Wir nutzen den direkten Pfad zur Binary, um Overhead zu vermeiden
+RUN CI=true ./node_modules/.bin/next build
 
 # Stage 2: Build the backend
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 AS backend-builder
