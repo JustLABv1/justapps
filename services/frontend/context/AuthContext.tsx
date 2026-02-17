@@ -104,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       checkTokenValidity();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const login = (token: string, userData: User) => {
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.addEventListener('auth:unauthorized', handleUnauthorized);
       return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]); // Add status as dependency to ensure logout logic has latest status
 
   const oidcLogin = () => {

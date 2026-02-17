@@ -22,7 +22,7 @@ import {
   User,
 } from "lucide-react";
 import NextLink from "next/link";
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -45,7 +45,6 @@ export default function AppPage() {
   const params = useParams();
   const id = params?.id as string;
   const { user } = useAuth();
-  const router = useRouter();
   const [app, setApp] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
 

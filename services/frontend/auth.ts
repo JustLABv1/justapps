@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth, { type DefaultSession } from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 
