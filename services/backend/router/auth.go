@@ -1,8 +1,8 @@
 package router
 
 import (
-	"justwms-backend/handlers/auths"
-	"justwms-backend/handlers/tokens"
+	"app-store-backend/handlers/auths"
+	"app-store-backend/handlers/tokens"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"

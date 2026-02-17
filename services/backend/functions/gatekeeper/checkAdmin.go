@@ -3,7 +3,7 @@ package gatekeeper
 import (
 	"context"
 
-	"justwms-backend/pkg/models"
+	"app-store-backend/pkg/models"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"justwms-backend/config"
-	"justwms-backend/pkg/models"
+	"app-store-backend/config"
+	"app-store-backend/pkg/models"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

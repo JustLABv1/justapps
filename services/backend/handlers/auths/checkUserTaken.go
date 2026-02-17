@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"justwms-backend/functions/httperror"
-	"justwms-backend/pkg/models"
+	"app-store-backend/functions/httperror"
+	"app-store-backend/pkg/models"
 
 	"github.com/google/uuid"
 

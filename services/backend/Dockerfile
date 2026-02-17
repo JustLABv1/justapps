@@ -1,5 +1,4 @@
 FROM golang:1.24-alpine as builder
-LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 
 WORKDIR /app/backend
 
@@ -10,27 +9,26 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN go build -o justwms-backend
+RUN go build -o app-store-backend
 
 FROM alpine:3.22 as runner
-LABEL org.opencontainers.image.source = "https://github.com/JustLabV1/JustWMS"
 WORKDIR /app
 
-COPY --from=builder /app/backend/justwms-backend /app/
+COPY --from=builder /app/backend/app-store-backend /app/
 
-RUN addgroup --system --gid 1001 justwms
-RUN adduser --system --uid 1001 justwms
+RUN addgroup --system --gid 1001 app-store
+RUN adduser --system --uid 1001 app-store
 
-RUN mkdir -p /etc/justwms \
-    && chown -R justwms:justwms /etc/justwms
+RUN mkdir -p /etc/app-store \
+    && chown -R app-store:app-store /etc/app-store
 
 RUN mkdir -p /app/data \
-    && chown -R justwms:justwms /app/data
+    && chown -R app-store:app-store /app/data
 
-RUN chown -R justwms:justwms /app
+RUN chown -R app-store:app-store /app
 
-VOLUME [ "/etc/justwms", "/app/data" ]
+VOLUME [ "/etc/app-store", "/app/data" ]
 
 EXPOSE 8080
 
-CMD [ "/justwms-backend", "--config", "/etc/justwms/config.yaml" ]
+CMD [ "/app-store-backend", "--config", "/etc/app-store/config.yaml" ]

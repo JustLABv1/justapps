@@ -1,8 +1,8 @@
 package database
 
 import (
+	"app-store-backend/pkg/models"
 	"context"
-	"justwms-backend/pkg/models"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"

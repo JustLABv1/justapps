@@ -1,10 +1,10 @@
 package auth
 
 import (
+	"app-store-backend/config"
 	"context"
 	"crypto/tls"
 	"errors"
-	"justwms-backend/config"
 	"net/http"
 	"strings"
 

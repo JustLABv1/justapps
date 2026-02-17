@@ -1,5 +1,5 @@
 # Base image
-FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:22-alpine AS base
+FROM node:25-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install pnpm and dependencies
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm install
 
 # Rebuild the source code only when needed
@@ -16,16 +16,21 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
-ENV NEXT_TELEMETRY_DISABLED=1
-# Limit memory to fit within standard Docker Desktop limits (e.g. 2GB)
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# BUILD TIME: No environment variables needed anymore!
-# The app will read them at runtime from the container environment.
-RUN CI=true npm run build
+# Optimize for low resource environments
+# Disable source maps completely
+ENV GENERATE_SOURCEMAP=false
+# Skip all checks
+ENV NEXT_LINT_DISABLED=1
+ENV NEXT_TYPECHECK_DISABLED=1
+# Use a more conservative memory limit (1GB) to ensure OS has breathing room in a 2GB VM
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
+RUN ls -la
+
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

@@ -1,8 +1,8 @@
 package router
 
 import (
-	"justwms-backend/handlers/tokens"
-	"justwms-backend/middlewares"
+	"app-store-backend/handlers/tokens"
+	"app-store-backend/middlewares"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

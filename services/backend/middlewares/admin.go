@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 
-	"justwms-backend/functions/auth"
-	"justwms-backend/functions/gatekeeper"
-	"justwms-backend/functions/httperror"
-	"justwms-backend/pkg/models"
+	"app-store-backend/functions/auth"
+	"app-store-backend/functions/gatekeeper"
+	"app-store-backend/functions/httperror"
+	"app-store-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"

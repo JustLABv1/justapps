@@ -1,7 +1,7 @@
 package router
 
 import (
-	"justwms-backend/config"
+	"app-store-backend/config"
 	"net/http"
 	"strconv"
 	"time"

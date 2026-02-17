@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"justwms-backend/config"
-	"justwms-backend/database"
-	"justwms-backend/functions/auth"
-	"justwms-backend/router"
+	"app-store-backend/config"
+	"app-store-backend/database"
+	"app-store-backend/functions/auth"
+	"app-store-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
 	log "github.com/sirupsen/logrus"
