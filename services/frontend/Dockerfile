@@ -17,12 +17,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
+# Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
+# Limit memory to fit within standard Docker Desktop limits (e.g. 2GB)
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 
 # BUILD TIME: No environment variables needed anymore!
 # The app will read them at runtime from the container environment.
-RUN npm run build
+RUN CI=true npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

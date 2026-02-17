@@ -12,8 +12,6 @@ import (
 	"github.com/uptrace/bun/extra/bunotel"
 	"github.com/uptrace/bun/migrate"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"justwms-backend/database/migrations"
 
 	log "github.com/sirupsen/logrus"
