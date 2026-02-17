@@ -3,8 +3,8 @@ package admins
 import (
 	"net/http"
 
-	"justwms-backend/functions/httperror"
-	"justwms-backend/pkg/models"
+	"app-store-backend/functions/httperror"
+	"app-store-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"

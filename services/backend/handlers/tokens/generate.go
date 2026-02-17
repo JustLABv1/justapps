@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"justwms-backend/functions/auth"
-	"justwms-backend/functions/httperror"
-	"justwms-backend/pkg/models"
+	"app-store-backend/functions/auth"
+	"app-store-backend/functions/httperror"
+	"app-store-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

@@ -3,15 +3,19 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 # Stage 1: Build the frontend
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY services/frontend/package.json ./
-RUN npm config set "registry" "https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=$ARTIFACTORY_TOKEN"
+COPY services/frontend/package.json services/frontend/package-lock.json ./
 RUN npm install
 COPY services/frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Optimize for low resource environments
+ENV GENERATE_SOURCEMAP=false
+ENV NEXT_LINT_DISABLED=1
+ENV NEXT_TYPECHECK_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
 # Wir nutzen den direkten Pfad zur Binary, um Overhead zu vermeiden
-# RUN CI=true ./node_modules/.bin/next build
 RUN npm run build
 
 # Stage 2: Build the backend
@@ -20,7 +24,7 @@ WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o app-store-backend
+RUN go build -o app-store-backend
 
 # Stage 3: Create the final image
 FROM base AS runner
