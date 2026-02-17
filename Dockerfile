@@ -1,7 +1,7 @@
-FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:22-alpine AS base
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine AS base
 
 # Stage 1: Build the frontend
-FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:22-alpine AS frontend-builder
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine AS frontend-builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app/frontend
 COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
@@ -10,18 +10,6 @@ RUN pnpm install
 COPY services/frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Increase memory limit for the build process
-ENV NODE_OPTIONS="--max-old-space-size=2048"
-
-# Deaktiviert ESLint und Sourcemaps während des Builds
-ENV NEXT_ESLINT_IGNORE=true
-ENV NEXT_DISABLE_SOURCEMAPS=1
-# Reduziert die CPU-Last und Worker für Next.js 15/16
-ENV NEXT_BUILD_WORKERS=1
-ENV EXPERIMENTAL_NEXT_CPUS=1
-ENV NEXT_CPU_COUNT=1
-# Erhöht den Speicher für den Node-Prozess
-ENV NODE_OPTIONS="--max-old-space-size=3584"
 
 # Wir nutzen den direkten Pfad zur Binary, um Overhead zu vermeiden
 RUN CI=true ./node_modules/.bin/next build
