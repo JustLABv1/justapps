@@ -4,7 +4,7 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY services/frontend/package.json ./
-RUN npm config set "registry" https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/npm-remote
+RUN npm config set "registry" "https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=$ARTIFACTORY_TOKEN"
 RUN npm install
 COPY services/frontend/ ./
 
