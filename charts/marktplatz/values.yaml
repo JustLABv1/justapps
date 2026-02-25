@@ -154,6 +154,10 @@ postgresql:
     # password: keep empty here; use Kubernetes Secret or Vault
     password: ""
     username: postgres
+  # Service configuration for the PostgreSQL Service created by the chart
+  service:
+    type: ClusterIP
+    port: 5432
 
 ## Secret handling helpers
 secrets:
