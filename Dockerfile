@@ -30,7 +30,7 @@ WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o app-store-backend
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o marktplatz-backend
 
 # Stage 3: Create the final image
 FROM base AS runner
@@ -56,15 +56,15 @@ COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/public /app/public
 
 # Copy the backend binary LAST and explicitly to the WORKDIR
-COPY --from=backend-builder /app/backend/app-store-backend /app/app-store-backend
+COPY --from=backend-builder /app/backend/marktplatz-backend /app/marktplatz-backend
 
 # Copy .env file to the working directory
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.env /app/.env
 
 RUN chown -R nextjs:nodejs /app
 
-RUN mkdir -p /etc/app-store \
-    && chown -R nextjs:nodejs /etc/app-store
+RUN mkdir -p /etc/marktplatz \
+    && chown -R nextjs:nodejs /etc/marktplatz
 
 RUN mkdir -p /app/data \
     && chown -R nextjs:nodejs /app/data
@@ -72,7 +72,7 @@ RUN mkdir -p /app/data \
 # Set environment variables
 ENV NODE_ENV=production
 
-VOLUME [ "/etc/app-store", "/app/data" ]
+VOLUME [ "/etc/marktplatz", "/app/data" ]
 
 # Expose ports
 EXPOSE 8080 3000
@@ -83,4 +83,4 @@ USER nextjs
 ENTRYPOINT ["/sbin/tini", "--"]
 
 # Start the backend and frontend
-CMD ["sh", "-c", "./app-store-backend --config /etc/app-store/config.yaml & node /app/server.js"]
+CMD ["sh", "-c", "./marktplatz-backend --config /etc/marktplatz/config.yaml & node /app/server.js"]

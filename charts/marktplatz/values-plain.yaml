@@ -1,4 +1,4 @@
-# Default values for app-store.
+# Default values for marktplatz.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -35,30 +35,30 @@ config:
   port: 8080
   database:
     # If using the internal postgresql (postgresql.enabled=true), the server should be:
-    # <release-name>-app-store-postgresql
-    server: app-store-postgresql
+    # <release-name>-marktplatz-postgresql
+    server: marktplatz-postgresql
     port: 5432
     name: app_store
     user: postgres
-    password: "LefqrWPauTW73v"
-  jwtSecret: ".bxh'{cI9_X;~'Vp-G46vmmo6~MS7Q0G"
+    password: "" # do NOT commit real passwords here; use Kubernetes Secrets
+  jwtSecret: "" # do NOT commit real passwords here; use Kubernetes Secrets
   oidc:
     enabled: true
     issuer: "https://login-keycloak.apps.ocp4.m017-1.ten.prod.pl2cloud.de/realms/m017-1"
-    clientId: "app-store"
-    clientSecret: "mQHBzEog8QxMeYv0blq2KsLGrLki6bqG"
-    adminGroup: "App-Store-Admin"
+    clientId: "marktplatz"
+    clientSecret: "" # do NOT commit real passwords here; use Kubernetes Secrets
+    adminGroup: "Marktplatz-Admin"
     insecure: true
   cors:
     allowedOrigins:
-      - "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+      - "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
 # Monolith specific configuration (both frontend and backend in one container)
 monolith:
   image:
     repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz
     pullPolicy: Always
-    tag: "0.8.0"
+    tag: "0.8.2"
   service:
     type: ClusterIP
     port: 80
@@ -99,9 +99,9 @@ frontend:
   env:
     # URL of the backend API (internal or external)
     # Default assumes microservices mode with backend service name
-    apiUrl: "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
-    nextauthUrl: "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
-    authSecret: "VN4Omg9bPQ%T{+b2tTR28T-L*=Y0q<B{"
+    apiUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
+    nextauthUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+    authSecret: "" # move to k8s Secret
   service:
     type: ClusterIP
     port: 80
@@ -119,7 +119,7 @@ ingress:
   annotations:
     route.openshift.io/termination: edge
   hosts:
-    - host: app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de
+    - host: marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de
       paths:
         - path: /
           pathType: Prefix
@@ -144,8 +144,25 @@ postgresql:
     size: 20Gi
   auth:
     database: "app_store"
-    password: "LefqrWPauTW73v"
+    password: "" # do NOT commit real passwords here; use Kubernetes Secrets
     username: "postgres"
+
+# Secret handling helpers
+secrets:
+  # If true, the chart will create a Kubernetes Secret using the values in this chart.
+  # Set to false and provide `secrets.existingSecret` to reference an externally managed Secret.
+  create: true
+  vault:
+    enabled: true
+    authRef: vault-secrets-operator/vso-saas-integration-m017-1 # VaultAuth reference for authentication
+    type: kv-v2
+    mount: secrets
+    namespace: plain/demo
+    path: jneubert/marktplatz # Path in Vault to fetch secrets from
+    refreshAfter: 30s # How often the VaultStaticSecret should refresh its data
+    destination:
+      create: true
+  existingSecret: "" # set name of existing secret to reference (e.g. marktplatz-secrets)
   service:
     type: ClusterIP
     port: 5432

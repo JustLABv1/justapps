@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "app-store.fullname" . }}-postgresql-config
+  name: {{ include "marktplatz.fullname" . }}-postgresql-config
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 data:
   POSTGRES_DB: {{ .Values.postgresql.auth.database | default "postgres" }}

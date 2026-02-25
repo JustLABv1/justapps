@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "app-store.fullname" . }}-postgresql
+  name: {{ include "marktplatz.fullname" . }}-postgresql
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 spec:
   storageClassName: {{ .Values.postgresql.persistence.storageClassName | default "default" }}
