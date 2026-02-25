@@ -1,15 +1,16 @@
+{{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "marktplatz.fullname" .)) }}
 {{- if eq .Values.deploymentMode "monolith" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "app-store.fullname" . }}
+  name: {{ include "marktplatz.fullname" . }}
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "app-store.selectorLabels" . | nindent 6 }}
+      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -17,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "app-store.selectorLabels" . | nindent 8 }}
+        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "app-store.serviceAccountName" . }}
+      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -43,12 +44,12 @@ spec:
             - name: BACKEND_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: database-password
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: jwt-secret
             - name: BACKEND_OIDC_ENABLED
               value: {{ .Values.config.oidc.enabled | quote }}
@@ -69,7 +70,7 @@ spec:
             - name: AUTH_KEYCLOAK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: oidc-client-secret
             - name: AUTH_KEYCLOAK_ISSUER
               value: {{ .Values.config.oidc.issuer | quote }}
@@ -86,7 +87,7 @@ spec:
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: nextauth-secret
             {{- if .Values.config.oidc.insecure }}
             - name: NODE_TLS_REJECT_UNAUTHORIZED
@@ -110,7 +111,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /etc/app-store
+              mountPath: /etc/marktplatz
             - name: data
               mountPath: /app/data
       {{- if .Values.postgresql.enabled }}
@@ -121,15 +122,15 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "app-store.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
-                echo "waiting for database at {{ include "app-store.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
+              until pg_isready -h {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+                echo "waiting for database at {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
       {{- end }}
       volumes:
         - name: config
           configMap:
-            name: {{ include "app-store.fullname" . }}-backend-config
+            name: {{ include "marktplatz.fullname" . }}-backend-config
         - name: data
           emptyDir: {}
 {{- else }}
@@ -137,23 +138,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "app-store.fullname" . }}-backend
+  name: {{ include "marktplatz.fullname" . }}-backend
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
     matchLabels:
-      {{- include "app-store.selectorLabels" . | nindent 6 }}
+      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
   template:
     metadata:
       labels:
-        {{- include "app-store.selectorLabels" . | nindent 8 }}
+        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
     spec:
-      serviceAccountName: {{ include "app-store.serviceAccountName" . }}
+      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
       {{- if .Values.postgresql.enabled }}
       initContainers:
         - name: wait-for-db
@@ -162,8 +163,8 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "app-store.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
-                echo "waiting for database at {{ include "app-store.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
+              until pg_isready -h {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+                echo "waiting for database at {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
       {{- end }}
@@ -179,12 +180,12 @@ spec:
             - name: BACKEND_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: database-password
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: jwt-secret
             - name: BACKEND_OIDC_ENABLED
               value: {{ .Values.config.oidc.enabled | quote }}
@@ -218,13 +219,13 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /etc/app-store
+              mountPath: /etc/marktplatz
             - name: data
               mountPath: /app/data
       volumes:
         - name: config
           configMap:
-            name: {{ include "app-store.fullname" . }}-backend-config
+            name: {{ include "marktplatz.fullname" . }}-backend-config
         - name: data
           emptyDir: {}
 ---
@@ -232,23 +233,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "app-store.fullname" . }}-frontend
+  name: {{ include "marktplatz.fullname" . }}-frontend
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      {{- include "app-store.selectorLabels" . | nindent 6 }}
+      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        {{- include "app-store.selectorLabels" . | nindent 8 }}
+        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
-      serviceAccountName: {{ include "app-store.serviceAccountName" . }}
+      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
@@ -263,7 +264,7 @@ spec:
             - name: AUTH_KEYCLOAK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: oidc-client-secret
             - name: AUTH_KEYCLOAK_ISSUER
               value: {{ .Values.config.oidc.issuer | quote }}
@@ -280,7 +281,7 @@ spec:
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ $secretName }}
                   key: nextauth-secret
             {{- if .Values.config.oidc.insecure }}
             - name: NODE_TLS_REJECT_UNAUTHORIZED

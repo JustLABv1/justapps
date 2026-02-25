@@ -1,4 +1,4 @@
-# Default values for app-store.
+# Default values for marktplatz.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -34,8 +34,8 @@ config:
   logLevel: info
   database:
     # If using the internal postgresql (postgresql.enabled=true), the server should be:
-    # <release-name>-app-store-postgresql
-    server: app-store-postgresql
+    # <release-name>-marktplatz-postgresql
+    server: marktplatz-postgresql
     port: 5432
     name: app_store
     user: postgres
@@ -44,7 +44,7 @@ config:
   oidc:
     enabled: true
     issuer: "https://keycloak.example.com/realms/myrealm"
-    clientId: "app-store"
+    clientId: "marktplatz"
     clientSecret: "changeme"
     adminGroup: "admin"
     insecure: true
@@ -97,8 +97,8 @@ frontend:
   env:
     # URL of the backend API (internal or external)
     # Default assumes microservices mode with backend service name
-    apiUrl: "http://app-store-backend:8182"
-    nextauthUrl: "http://app-store.example.com"
+    apiUrl: "http://marktplatz-backend:8182"
+    nextauthUrl: "http://marktplatz.example.com"
     authSecret: "secret-for-nextauth"
   service:
     type: ClusterIP
@@ -136,9 +136,9 @@ postgresql:
     storageClassName: default
     size: 20Gi
   auth:
-    database: "app-store"
-    password: "app-store"
-    username: "app-store"
+    database: "marktplatz"
+    password: "marktplatz"
+    username: "marktplatz"
   service:
     type: ClusterIP
     port: 5432

@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "app-store.fullname" . }}-postgresql
+  name: {{ include "marktplatz.fullname" . }}-postgresql
   labels:
-    {{- include "app-store.labels" . | nindent 4 }}
+    {{- include "marktplatz.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 spec:
   replicas: 1
@@ -12,15 +12,15 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "app-store.selectorLabels" . | nindent 6 }}
+      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: postgresql
   template:
     metadata:
       labels:
-        {{- include "app-store.selectorLabels" . | nindent 8 }}
+        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgresql
     spec:
-      serviceAccountName: {{ include "app-store.serviceAccountName" . }}
+      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
       {{- with .Values.postgresql.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -50,12 +50,12 @@ spec:
               containerPort: 5432
           envFrom:
             - configMapRef:
-                name: {{ include "app-store.fullname" . }}-postgresql-config
+                name: {{ include "marktplatz.fullname" . }}-postgresql-config
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "app-store.fullname" . }}-secrets
+                  name: {{ include "marktplatz.fullname" . }}-secrets
                   key: postgresql-password
             - name: PGDATA
               value: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
@@ -88,7 +88,7 @@ spec:
         - name: data
           {{- if .Values.postgresql.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "app-store.fullname" . }}-postgresql
+            claimName: {{ include "marktplatz.fullname" . }}-postgresql
           {{- else }}
           emptyDir: {}
           {{- end }}
