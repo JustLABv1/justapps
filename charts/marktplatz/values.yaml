@@ -1,66 +1,76 @@
-# Default values for marktplatz.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+## Default values for marktplatz
+## This file contains documented defaults that users should override
+## (do NOT commit real secrets into this file).
 
 # deploymentMode: "monolith" or "microservices"
-deploymentMode: microservices
+deploymentMode: monolith
 
+# Global replica count when running monolith
 replicaCount: 1
 
+# Image pull secrets (if you use a private registry)
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+## ServiceAccount configuration
 serviceAccount:
-  create: true
+  create: false
+  # annotations: map of annotations to apply to the ServiceAccount
   annotations: {}
+  # explicit name for the SA; leave empty to use chart-generated name
   name: ""
 
+# Pod annotations (map)
 podAnnotations: {}
 
+# Pod/Container security contexts
 podSecurityContext: {}
-  # fsGroup: 2000
+# Example: fsGroup: 2000
 
 securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+# Example: capabilities/drop: ["ALL"], runAsNonRoot: true
 
-# Configuration for both modes
+## Configuration consumed by the backend and frontend
 config:
+  # Logging level for the application (info|warn|error|debug)
   logLevel: info
+  # Port used by the backend process inside the container
+  port: 8080
   database:
-    # If using the internal postgresql (postgresql.enabled=true), the server should be:
-    # <release-name>-marktplatz-postgresql
+    # When using the bundled Postgres (postgresql.enabled=true) this should
+    # normally resolve to <release-name>-marktplatz-postgresql
     server: marktplatz-postgresql
     port: 5432
     name: app_store
     user: postgres
-    password: "changeme"
-  jwtSecret: "changeme-secret"
+    # Leave passwords empty here; provide them via Kubernetes Secrets or Vault
+    password: ""
+  # JWT signing secret: keep empty here and provide via Secret
+  jwtSecret: ""
   oidc:
     enabled: true
-    issuer: "https://keycloak.example.com/realms/myrealm"
-    clientId: "marktplatz"
-    clientSecret: "changeme"
-    adminGroup: "admin"
-    insecure: true
+    issuer: "https://login-keycloak.example.com/realms/example"
+    clientId: marktplatz
+    # Client secret must be provided via Secret or Vault
+    clientSecret: ""
+    adminGroup: Marktplatz-Admin
+    insecure: false
   cors:
-    allowedOrigins: ["*"]
+    # Origins allowed to access the API (list)
+    allowedOrigins: []
 
-# Monolith specific configuration (both frontend and backend in one container)
+## Monolith configuration (single container includes frontend + backend)
 monolith:
   image:
-    repository: gartifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz
     pullPolicy: IfNotPresent
-    tag: "latest"
+    # Tag should point to a released version of the monolith image
+    tag: "0.8.2"
   service:
     type: ClusterIP
     port: 80
-    backendPort: 8082
+    backendPort: 8080
     frontendPort: 3000
   resources:
     limits:
@@ -70,16 +80,17 @@ monolith:
       cpu: 100m
       memory: 256Mi
 
-# Microservices specific configuration
+## Microservices configuration (separate backend + frontend)
 backend:
   replicaCount: 1
   image:
-    repository: gartifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-backend
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-backend
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: latest
   service:
     type: ClusterIP
-    port: 8182 # External port for the service
+    # External port used for service routing; container listens on 8082
+    port: 8182
   resources:
     limits:
       cpu: 300m
@@ -93,13 +104,13 @@ frontend:
   image:
     repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-frontend
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: latest
   env:
-    # URL of the backend API (internal or external)
-    # Default assumes microservices mode with backend service name
-    apiUrl: "http://marktplatz-backend:8182"
-    nextauthUrl: "http://marktplatz.example.com"
-    authSecret: "secret-for-nextauth"
+    # URL of the backend API (used by frontend). Change to your public API URL.
+    apiUrl: "https://marktplatz.example.com/api/v1"
+    nextauthUrl: "https://marktplatz.example.com"
+    # NEXTAUTH secret must come from Kubernetes Secret or Vault
+    authSecret: ""
   service:
     type: ClusterIP
     port: 80
@@ -111,44 +122,57 @@ frontend:
       cpu: 100m
       memory: 128Mi
 
+## Ingress configuration
 ingress:
-  enabled: false
+  enabled: true
   className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  annotations:
+    # Example for OpenShift routes
+    route.openshift.io/termination: edge
   hosts:
-    - host: chart-example.local
+    - host: marktplatz.example.com
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
+        - path: /api/v1
+          pathType: Prefix
+          port: 8080
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
+## Embedded Postgres (if enabled)
 postgresql:
-  enabled: true
-  image: 'postgres:16'
+  enabled: false
+  image: 'artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/postgres:17-alpine3.22'
   pullPolicy: IfNotPresent
+  mountPath: /bitnami/postgresql/data
   persistence:
     enabled: true
-    storageClassName: default
+    storageClassName: ocs-external-storagecluster-ceph-rbd
     size: 20Gi
   auth:
-    database: "marktplatz"
-    password: "marktplatz"
-    username: "marktplatz"
-  service:
-    type: ClusterIP
-    port: 5432
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
+    database: app_store
+    # password: keep empty here; use Kubernetes Secret or Vault
+    password: ""
+    username: postgres
+
+## Secret handling helpers
+secrets:
+  # If true, the chart will create a Kubernetes Secret using chart values.
+  # Default: false for safety — prefer external Secrets or Vault.
+  create: false
+  # Vault integration (optional). Disable by default.
+  vault:
+    enabled: false
+    authRef: ""
+    type: kv-v2
+    mount: secrets
+    namespace: ""
+    path: ""
+    refreshAfter: 30s
+    destination:
+      create: false
+  # If you manage a Secret externally, put the name here.
+  existingSecret: ""
 
 nodeSelector: {}
 
