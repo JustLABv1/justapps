@@ -69,6 +69,8 @@ function ManagementContent() {
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
+  // Local input state for the icon ComboBox to allow entering custom URLs
+  const [iconInput, setIconInput] = useState('');
 
   // User Modal states
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -295,6 +297,13 @@ function ManagementContent() {
       }
     }
   }, [searchParams, apps]);
+
+  // Keep the local icon input in sync when modal opens / form data changes
+  useEffect(() => {
+    if (isAppModalOpen) {
+      setIconInput(appFormData.icon || '');
+    }
+  }, [isAppModalOpen, appFormData.icon]);
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -574,17 +583,33 @@ function ManagementContent() {
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kategorie(n) (Komma-separiert)</Label>
                             <Input value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} placeholder="Verwaltung, Tools, Infrastruktur..." className="bg-field-background" />
                           </TextField>
-                          <ComboBox 
-                            inputValue={appFormData.icon || ''} 
-                            onInputChange={(val) => setAppFormData({...appFormData, icon: val})}
+                          <ComboBox
+                            inputValue={iconInput}
+                            onInputChange={(val) => setIconInput(val)}
                             onSelectionChange={(key) => {
-                              if (key) setAppFormData({...appFormData, icon: key as string});
+                              if (key) {
+                                const v = key as string;
+                                setIconInput(v);
+                                setAppFormData({ ...appFormData, icon: v });
+                              }
                             }}
                             className="w-full"
                           >
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
                             <ComboBox.InputGroup>
-                              <Input value={appFormData.icon || ''} placeholder="🏛️ oder https://..." className="bg-field-background h-10" />
+                              <Input
+                                value={iconInput}
+                                placeholder="🏛️ oder https://..."
+                                className="bg-field-background h-10"
+                                onBlur={() => setAppFormData({ ...appFormData, icon: iconInput })}
+                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                  if (e.key === 'Enter') {
+                                    // prevent form submit; persist icon and keep modal open
+                                    e.preventDefault();
+                                    setAppFormData({ ...appFormData, icon: iconInput });
+                                  }
+                                }}
+                              />
                               <ComboBox.Trigger className="bg-field-background border-none px-2 h-10 flex items-center justify-center">
                                 <Plus className="w-4 h-4 text-muted" />
                               </ComboBox.Trigger>
@@ -601,7 +626,7 @@ function ManagementContent() {
                                 ))}
                               </ListBox>
                             </ComboBox.Popover>
-                            <p className="text-[10px] text-muted mt-1 italic">Wählen Sie ein Emoji oder führen Sie eine Bild-URL ein.</p>
+                            <p className="text-[10px] text-muted mt-1 italic">Wählen Sie ein Emoji oder fügen Sie eine Bild-URL ein (z. B. https://...)</p>
                           </ComboBox>
                         </div>
 

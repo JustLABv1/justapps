@@ -2,122 +2,24 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# deploymentMode: "monolith" or "microservices"
-deploymentMode: monolith
+## Minimal overrides — keep only values that differ from charts/marktplatz/values.yaml
 
-replicaCount: 1
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: false
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-# Configuration for both modes
-config:
-  logLevel: info
-  port: 8080
-  database:
-    # If using the internal postgresql (postgresql.enabled=true), the server should be:
-    # <release-name>-marktplatz-postgresql
-    server: marktplatz-postgresql
-    port: 5432
-    name: app_store
-    user: postgres
-    password: "" # do NOT commit real passwords here; use Kubernetes Secrets
-  jwtSecret: "" # do NOT commit real passwords here; use Kubernetes Secrets
-  oidc:
-    enabled: true
-    issuer: "https://login-keycloak.apps.ocp4.m017-1.ten.prod.pl2cloud.de/realms/m017-1"
-    clientId: "marktplatz"
-    clientSecret: "" # do NOT commit real passwords here; use Kubernetes Secrets
-    adminGroup: "Marktplatz-Admin"
-    insecure: true
-  cors:
-    allowedOrigins:
-      - "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
-
-# Monolith specific configuration (both frontend and backend in one container)
+## Monolith image behavior: prefer Always to force pulls in your environment
 monolith:
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz
     pullPolicy: Always
-    tag: "0.8.2"
-  service:
-    type: ClusterIP
-    port: 80
-    backendPort: 8080
-    frontendPort: 3000
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 256Mi
 
-# Microservices specific configuration
-backend:
-  replicaCount: 1
-  image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-backend
-    pullPolicy: IfNotPresent
-    tag: "latest"
-  service:
-    type: ClusterIP
-    port: 8182 # External port for the service
-  resources:
-    limits:
-      cpu: 300m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
+## Enable bundled Postgres for this deployment
+postgresql:
+  enabled: true
 
+## Production URLs for ingress and frontend
 frontend:
-  replicaCount: 1
-  image:
-    repository: gartifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-frontend
-    pullPolicy: IfNotPresent
-    tag: "latest"
   env:
-    # URL of the backend API (internal or external)
-    # Default assumes microservices mode with backend service name
     apiUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
     nextauthUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
-    authSecret: "" # move to k8s Secret
-  service:
-    type: ClusterIP
-    port: 80
-  resources:
-    limits:
-      cpu: 300m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
 
 ingress:
-  enabled: true
-  className: ""
-  annotations:
-    route.openshift.io/termination: edge
   hosts:
     - host: marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de
       paths:
@@ -126,57 +28,31 @@ ingress:
         - path: /api/v1
           pathType: Prefix
           port: 8080
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
-postgresql:
-  enabled: true
-  image: 'artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/postgres:17-alpine3.22'
-  pullPolicy: IfNotPresent
-  # Auf OpenShift ist es oft besser, einen anderen Pfad für die Daten zu nutzen.
-  # Das offizielle Image hat unter /var/lib/postgresql oft Restriktionen.
-  mountPath: /bitnami/postgresql/data
-  persistence:
-    enabled: true
-    storageClassName: ocs-external-storagecluster-ceph-rbd
-    size: 20Gi
-  auth:
-    database: "app_store"
-    password: "" # do NOT commit real passwords here; use Kubernetes Secrets
-    username: "postgres"
+## OIDC and CORS values that differ from the example defaults
+config:
+  oidc:
+    issuer: "https://login-keycloak.apps.ocp4.m017-1.ten.prod.pl2cloud.de/realms/m017-1"
+    clientId: "marktplatz"
+    adminGroup: "Marktplatz-Admin"
+    insecure: true
+  cors:
+    allowedOrigins:
+      - "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
-# Secret handling helpers
+## Secrets: enable Vault fetch for this environment (chart will create VaultStaticSecret)
 secrets:
-  # If true, the chart will create a Kubernetes Secret using the values in this chart.
-  # Set to false and provide `secrets.existingSecret` to reference an externally managed Secret.
   create: true
   vault:
     enabled: true
-    authRef: vault-secrets-operator/vso-saas-integration-m017-1 # VaultAuth reference for authentication
+    authRef: vault-secrets-operator/vso-saas-integration-m017-1
     type: kv-v2
     mount: secrets
     namespace: plain/demo
-    path: jneubert/marktplatz # Path in Vault to fetch secrets from
-    refreshAfter: 30s # How often the VaultStaticSecret should refresh its data
+    path: jneubert/marktplatz
+    refreshAfter: 30s
     destination:
       create: true
-  existingSecret: "" # set name of existing secret to reference (e.g. marktplatz-secrets)
-  service:
-    type: ClusterIP
-    port: 5432
-  # Auf OpenShift werden UIDs automatisch zugewiesen. 
-  # Manuelle UIDs führen oft zu Permission-Problemen am Volume.
-  podSecurityContext: {}
-  securityContext: {}
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
 
 nodeSelector: {}
 
