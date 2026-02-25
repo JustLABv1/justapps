@@ -1,15 +1,19 @@
 import { AppGrid } from "@/components/AppGrid";
+import { fetchApi } from "@/lib/api";
 
 export const dynamic = 'force-dynamic';
 
 async function getApps() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
   try {
-    const res = await fetch(`${apiUrl}/apps`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return res.json();
+    const res = await fetchApi('/apps', { cache: 'no-store' });
+    if (!res.ok) {
+      console.error(`Failed to fetch apps: ${res.status} ${res.statusText}`);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (e) {
-    console.error(e);
+    console.error("Error in getApps SSR:", e);
     return [];
   }
 }

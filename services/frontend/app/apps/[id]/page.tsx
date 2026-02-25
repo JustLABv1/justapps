@@ -4,22 +4,23 @@ import { DeploymentAssistant } from "@/components/DeploymentAssistant";
 import { RatingSection } from "@/components/RatingSection";
 import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
-import { Chip, Link, Separator, Tabs, Tooltip } from "@heroui/react";
+import { fetchApi } from "@/lib/api";
+import { Chip, Dropdown, Link, Separator, Tabs, Tooltip } from "@heroui/react";
 import {
-  BookOpen,
-  ChevronLeft,
-  Database,
-  ExternalLink,
-  Github,
-  Globe,
-  Layers,
-  LayoutDashboard,
-  Loader2,
-  Pencil,
-  Scale,
-  Server,
-  Star,
-  User,
+    BookOpen,
+    ChevronLeft,
+    Database,
+    ExternalLink,
+    Github,
+    Globe,
+    Layers,
+    LayoutDashboard,
+    Loader2,
+    Pencil,
+    Scale,
+    Server,
+    Star,
+    User,
 } from "lucide-react";
 import NextLink from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -51,9 +52,8 @@ export default function AppPage() {
   useEffect(() => {
     async function loadApp() {
       if (!id) return;
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
       try {
-        const res = await fetch(`${apiUrl}/apps/${id}`, { cache: 'no-store' });
+        const res = await fetchApi(`/apps/${id}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           setApp(data);
@@ -83,6 +83,25 @@ export default function AppPage() {
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
 
+  const getStatusProps = (state?: string) => {
+    switch (state?.toLowerCase()) {
+      case 'graduated':
+        return { color: 'success' as const, label: 'Produktiv' };
+      case 'incubating':
+        return { color: 'accent' as const, label: 'In Inkubation' };
+      case 'sandbox':
+        return { color: 'warning' as const, label: 'Sandbox' };
+      case 'mvp':
+        return { color: 'default' as const, label: 'MVP' };
+      case 'poc':
+        return { color: 'default' as const, label: 'POC' };
+      default:
+        return state ? { color: 'default' as const, label: state } : null;
+    }
+  };
+
+  const statusInfo = getStatusProps(app.status);
+
   /* Collect non-empty metadata pairs for the details tab */
   const metaFields: { label: string; value?: string; icon?: React.ReactNode }[] = [
     { label: "Themenfeld", value: app.focus, icon: <Layers className="w-3 h-3" /> },
@@ -92,7 +111,7 @@ export default function AppPage() {
     { label: "Deployment", value: app.deployment, icon: <Server className="w-3 h-3" /> },
     { label: "Infrastruktur", value: app.infrastructure },
     { label: "Datenbasis", value: app.database, icon: <Database className="w-3 h-3" /> },
-    { label: "Status", value: app.status },
+    { label: "Status", value: statusInfo?.label },
     { label: "Übertragbarkeit", value: app.transferability },
     { label: "Ansprechpartner", value: app.contactPerson, icon: <User className="w-3 h-3" /> },
     { label: "Sonstiges", value: app.additionalInfo },
@@ -132,25 +151,31 @@ export default function AppPage() {
       {/* ── Hero ── */}
       <header className="mb-8">
         <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shrink-0">
-            {app.icon || "🏛️"}
+          <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+            {app.icon?.startsWith('http') ? (
+              <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+            ) : (
+              app.icon || "🏛️"
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h1 className="text-2xl font-bold text-foreground leading-tight">{app.name}</h1>
-              <Chip size="sm" variant="soft" color="accent" className="text-[10px] uppercase font-semibold tracking-wider">
-                {app.category}
-              </Chip>
-              {app.status && (
+              {app.categories?.map(cat => (
+                <Chip key={cat} size="sm" variant="soft" color="accent" className="text-[10px] uppercase font-semibold tracking-wider">
+                  {cat}
+                </Chip>
+              ))}
+              {statusInfo && (
                 <Chip
                   size="sm"
                   variant="soft"
-                  color={app.status.toLowerCase().includes('produktiv') ? 'success' : 'default'}
+                  color={statusInfo.color}
                   className="text-[10px] uppercase font-semibold tracking-wider"
                 >
-                  {app.status}
+                  {statusInfo.label}
                 </Chip>
               )}
               {app.isFeatured && (
@@ -181,16 +206,58 @@ export default function AppPage() {
 
             {/* Quick links */}
             <div className="flex items-center gap-4 flex-wrap">
-              {app.liveUrl && (
-                <Link
-                  href={app.liveUrl}
-                  target="_blank"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Live Demo
-                </Link>
-              )}
+              {(() => {
+                const allDemos = app.liveDemos && app.liveDemos.length > 0
+                  ? app.liveDemos
+                  : (app.liveUrl ? [{ label: 'Live Demo', url: app.liveUrl }] : []);
+
+                if (allDemos.length === 1) {
+                  return (
+                    <Link
+                      href={allDemos[0].url}
+                      target="_blank"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      {allDemos[0].label}
+                    </Link>
+                  );
+                } else if (allDemos.length > 1) {
+                  return (
+                    <Dropdown>
+                      <Dropdown.Trigger>
+                        <button className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4 outline-none">
+                          <ExternalLink className="w-4 h-4" />
+                          Live Demos ({allDemos.length})
+                        </button>
+                      </Dropdown.Trigger>
+                      <Dropdown.Popover>
+                        <Dropdown.Menu 
+                          aria-label="Live Demo Links"
+                          onAction={(key) => {
+                            const idx = parseInt(key.toString().replace('demo-', ''));
+                            if (!isNaN(idx)) window.open(allDemos[idx].url, '_blank');
+                          }}
+                        >
+                          {allDemos.map((demo, idx) => (
+                            <Dropdown.Item 
+                              key={idx} 
+                              id={`demo-${idx}`} 
+                              textValue={demo.label}
+                            >
+                              <div className="flex items-center gap-2">
+                                <ExternalLink className="w-3 h-3" />
+                                <span>{demo.label}</span>
+                              </div>
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown>
+                  );
+                }
+                return null;
+              })()}
               {app.repoUrl && (
                 <Link
                   href={app.repoUrl}

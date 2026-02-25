@@ -29,6 +29,11 @@ type RestfulConf struct {
 	Database DatabaseConf `mapstructure:"database" validate:"required"`
 	JWT      JWTConf      `mapstructure:"jwt" validate:"required"`
 	OIDC     OIDCConf     `mapstructure:"oidc"`
+	CORS     CORSConf     `mapstructure:"cors"`
+}
+
+type CORSConf struct {
+	AllowedOrigins []string `mapstructure:"allowed_origins"`
 }
 
 type DatabaseConf struct {
@@ -92,6 +97,7 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		"oidc.client_id":              "BACKEND_OIDC_CLIENT_ID",
 		"oidc.admin_group":            "BACKEND_OIDC_ADMIN_GROUP",
 		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
+		"cors.allowed_origins":        "BACKEND_CORS_ALLOWED_ORIGINS",
 	}
 
 	for configKey, envVar := range envBindings {

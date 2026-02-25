@@ -20,11 +20,17 @@ RUN npm run build
 
 # Stage 2: Build the backend
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 AS backend-builder
+USER 0
+# Define cache locations for Go build
+ENV GOCACHE=/tmp/go-cache
+ENV GOPATH=/go
+ENV HOME=/tmp
+
 WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
-RUN go build -o app-store-backend
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o app-store-backend
 
 # Stage 3: Create the final image
 FROM base AS runner

@@ -14,36 +14,74 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
   const categories = useMemo(() => {
-    const cats = new Set(initialApps.map(app => app.category));
-    return Array.from(cats);
+    const cats = new Set<string>();
+    initialApps.forEach(app => {
+      app.categories?.forEach(cat => {
+        if (cat) cats.add(cat);
+      });
+    });
+    return Array.from(cats).sort();
   }, [initialApps]);
 
   const collections = useMemo(() => {
     const cols = new Set<string>();
     initialApps.forEach(app => {
-      app.collections?.forEach(col => cols.add(col));
+      app.collections?.forEach(col => {
+        if (col) cols.add(col);
+      });
     });
-    return Array.from(cols);
+    return Array.from(cols).sort();
   }, [initialApps]);
 
+  const statuses = useMemo(() => {
+    const sts = new Set<string>();
+    initialApps.forEach(app => {
+      if (app.status) sts.add(app.status);
+    });
+    // Define a stable sorting order for lifecycles
+    const order = ['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'];
+    return Array.from(sts).sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [initialApps]);
+
+  const getStatusLabel = (state: string) => {
+    switch (state?.toLowerCase()) {
+      case 'graduated': return 'Produktiv';
+      case 'incubating': return 'In Inkubation';
+      case 'sandbox': return 'Sandbox';
+      case 'mvp': return 'MVP';
+      case 'poc': return 'POC';
+      default: return state;
+    }
+  };
+
   const filteredApps = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return initialApps.filter((app) => {
       const matchesSearch = 
-        app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        app.name.toLowerCase().includes(query) ||
+        app.description.toLowerCase().includes(query) ||
+        app.categories?.some(cat => cat.toLowerCase().includes(query)) ||
+        app.tags?.some(tag => tag.toLowerCase().includes(query));
       
-      const matchesCategory = !selectedCategory || app.category === selectedCategory;
+      const matchesCategory = !selectedCategory || app.categories?.includes(selectedCategory);
       const matchesCollection = !selectedCollection || app.collections?.includes(selectedCollection);
+      const matchesStatus = !selectedStatus || app.status === selectedStatus;
       
-      return matchesSearch && matchesCategory && matchesCollection;
+      return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
     });
-  }, [initialApps, searchQuery, selectedCategory, selectedCollection]);
+  }, [initialApps, searchQuery, selectedCategory, selectedCollection, selectedStatus]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedCollection;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedCollection || selectedStatus;
 
   return (
     <div className="flex flex-col gap-6">
@@ -80,6 +118,33 @@ export function AppGrid({ initialApps }: AppGridProps) {
             ))}
           </div>
         </div>
+
+        {statuses.length > 0 && (
+          <div className="flex items-center gap-3 pt-3 border-t border-separator">
+            <span className="text-xs font-semibold text-muted uppercase tracking-wider shrink-0">Status:</span>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                variant={!selectedStatus ? undefined : "secondary"}
+                size="sm"
+                onPress={() => setSelectedStatus(null)}
+                className="rounded-full text-xs h-7"
+              >
+                Alle
+              </Button>
+              {statuses.map((st) => (
+                <Button
+                  key={st}
+                  variant={selectedStatus === st ? undefined : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
+                  className="rounded-full text-xs h-7"
+                >
+                  {getStatusLabel(st)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {collections.length > 0 && (
           <div className="flex items-center gap-3 pt-3 border-t border-separator">
@@ -123,6 +188,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSearchQuery("");
               setSelectedCategory(null);
               setSelectedCollection(null);
+              setSelectedStatus(null);
             }}
           >
             <X className="w-3 h-3" />
@@ -154,6 +220,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSearchQuery("");
               setSelectedCategory(null);
               setSelectedCollection(null);
+              setSelectedStatus(null);
             }}
           >
             Filter zurücksetzen

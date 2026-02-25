@@ -41,14 +41,14 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		Model(&app).
 		Where("id = ?", id).
 		Column(
-			"name", "description", "category", "live_url", "repo_url",
+			"name", "description", "categories", "live_url", "repo_url",
 			"helm_repo", "docker_repo", "docs_url", "icon", "tech_stack",
 			"license", "markdown_content", "focus", "app_type", "use_case",
 			"visualization", "deployment", "infrastructure", "database",
 			"additional_info", "status", "transferability", "contact_person",
 			"custom_docker_command", "custom_compose_command", "custom_helm_command",
 			"custom_docker_note", "custom_compose_note", "custom_helm_note",
-			"tags", "collections", "is_featured", "updated_at",
+			"tags", "collections", "is_featured", "live_demos", "updated_at",
 		).
 		Exec(c)
 	if err != nil {
