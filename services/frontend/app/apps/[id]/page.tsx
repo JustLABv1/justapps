@@ -324,11 +324,13 @@ export default function AppPage() {
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-medium">
-              <Server className="w-4 h-4" />
-              Deployment
-              <Tabs.Indicator />
-            </Tabs.Tab>
+            {app.hasDeploymentAssistant !== false && (
+              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-medium">
+                <Server className="w-4 h-4" />
+                Deployment
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            )}
             <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-medium">
               <Star className="w-4 h-4" />
               Bewertungen
@@ -361,9 +363,11 @@ export default function AppPage() {
         )}
 
         {/* Deployment */}
-        <Tabs.Panel id="deployment">
-          <DeploymentAssistant app={app} />
-        </Tabs.Panel>
+        {app.hasDeploymentAssistant !== false && (
+          <Tabs.Panel id="deployment">
+            <DeploymentAssistant app={app} />
+          </Tabs.Panel>
+        )}
 
         {/* Bewertungen */}
         <Tabs.Panel id="ratings">

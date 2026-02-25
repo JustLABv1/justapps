@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Chip,
+  ComboBox,
   Input,
   Label,
   ListBox,
@@ -12,6 +13,7 @@ import {
   Select,
   Separator,
   Surface,
+  Switch,
   Tabs,
   TextArea,
   TextField
@@ -221,7 +223,11 @@ function ManagementContent() {
       customHelmCommand: '',
       customDockerNote: '',
       customComposeNote: '',
-      customHelmNote: ''
+      customHelmNote: '',
+      hasDeploymentAssistant: true,
+      showDocker: true,
+      showCompose: true,
+      showHelm: true
     });
     setIsAppModalOpen(true);
   };
@@ -505,8 +511,12 @@ function ManagementContent() {
                 <Modal.CloseTrigger />
                 <Modal.Header className="px-8 py-6 border-b border-border bg-surface-secondary/50">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-xl">
-                      {appFormData.icon || "🏛️"}
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-xl overflow-hidden shrink-0">
+                      {appFormData.icon?.startsWith('http') ? (
+                        <img src={appFormData.icon} alt={appFormData.name} className="w-full h-full object-cover" />
+                      ) : (
+                        appFormData.icon || "🏛️"
+                      )}
                     </div>
                     <div>
                       <Modal.Heading className="text-xl font-semibold text-foreground">
@@ -564,25 +574,35 @@ function ManagementContent() {
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kategorie(n) (Komma-separiert)</Label>
                             <Input value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} placeholder="Verwaltung, Tools, Infrastruktur..." className="bg-field-background" />
                           </TextField>
-                          <div className="space-y-2">
-                             <TextField value={appFormData.icon || ''} onChange={(val) => setAppFormData({...appFormData, icon: val})}>
-                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
-                              <Input value={appFormData.icon || ''} placeholder="🏛️" className="bg-field-background" />
-                            </TextField>
-                            <div className="flex flex-wrap gap-1">
-                                {['🏛️', '📊', '💬', '🔐', '📅', '🚀', '🛠️', '📱', '🛡️', '⚙️', '📦', '📈'].map(emoji => (
-                                  <Button 
-                                    key={emoji} 
-                                    size="sm" 
-                                    variant="secondary" 
-                                    className="p-0 min-w-[32px] w-8 h-8 text-base bg-field-background hover:bg-default border-none"
-                                    onPress={() => setAppFormData({...appFormData, icon: emoji})}
-                                  >
-                                    {emoji}
-                                  </Button>
+                          <ComboBox 
+                            inputValue={appFormData.icon || ''} 
+                            onInputChange={(val) => setAppFormData({...appFormData, icon: val})}
+                            onSelectionChange={(key) => {
+                              if (key) setAppFormData({...appFormData, icon: key as string});
+                            }}
+                            className="w-full"
+                          >
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
+                            <ComboBox.InputGroup>
+                              <Input value={appFormData.icon || ''} placeholder="🏛️ oder https://..." className="bg-field-background h-10" />
+                              <ComboBox.Trigger className="bg-field-background border-none px-2 h-10 flex items-center justify-center">
+                                <Plus className="w-4 h-4 text-muted" />
+                              </ComboBox.Trigger>
+                            </ComboBox.InputGroup>
+                            <ComboBox.Popover>
+                              <ListBox className="max-h-60 overflow-y-auto">
+                                {['🏛️', '📊', '💬', '🔐', '📅', '🚀', '🛠️', '📱', '🛡️', '⚙️', '📦', '📈', '🔑', '🏙️', '👥', '🗺️', '💰'].map(emoji => (
+                                  <ListBox.Item key={emoji} id={emoji} textValue={emoji}>
+                                    <div className="flex items-center justify-center p-1">
+                                      <span className="text-2xl">{emoji}</span>
+                                    </div>
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
                                 ))}
-                            </div>
-                          </div>
+                              </ListBox>
+                            </ComboBox.Popover>
+                            <p className="text-[10px] text-muted mt-1 italic">Wählen Sie ein Emoji oder führen Sie eine Bild-URL ein.</p>
+                          </ComboBox>
                         </div>
 
                         <TextField value={appFormData.description || ''} onChange={(val) => setAppFormData({...appFormData, description: val})}>
@@ -803,47 +823,100 @@ function ManagementContent() {
                       </Tabs.Panel>
 
                       <Tabs.Panel id="deployment" className="space-y-6">
-                        <Surface variant="default" className="p-4 bg-surface-secondary rounded-xl border border-border flex gap-4 text-muted">
-                          <Terminal className="w-5 h-5 flex-shrink-0" />
-                          <p className="text-sm">Passen Sie die Deployment-Befehle an. Wenn leer, werden Standard-Befehle generiert.</p>
+                        <Surface variant="default" className="p-5 bg-surface-secondary rounded-xl border border-border space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold">Deployment Assistant aktivieren</Label>
+                            <Switch 
+                              isSelected={appFormData.hasDeploymentAssistant !== false} 
+                              onChange={(isSelected) => setAppFormData({...appFormData, hasDeploymentAssistant: isSelected})}
+                            >
+                              <Switch.Control>
+                                <Switch.Thumb />
+                              </Switch.Control>
+                            </Switch>
+                          </div>
+                          
+                          {appFormData.hasDeploymentAssistant !== false && (
+                            <>
+                              <Separator className="opacity-50" />
+                              <div className="grid grid-cols-3 gap-4 pt-2">
+                                <div className="flex flex-col gap-2 items-center">
+                                  <Label className="text-[10px] uppercase font-bold text-muted">Docker</Label>
+                                  <Switch 
+                                    isSelected={appFormData.showDocker !== false} 
+                                    onChange={(isSelected) => setAppFormData({...appFormData, showDocker: isSelected})}
+                                  >
+                                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                                  </Switch>
+                                </div>
+                                <div className="flex flex-col gap-2 items-center">
+                                  <Label className="text-[10px] uppercase font-bold text-muted">Compose</Label>
+                                  <Switch 
+                                    isSelected={appFormData.showCompose !== false} 
+                                    onChange={(isSelected) => setAppFormData({...appFormData, showCompose: isSelected})}
+                                  >
+                                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                                  </Switch>
+                                </div>
+                                <div className="flex flex-col gap-2 items-center">
+                                  <Label className="text-[10px] uppercase font-bold text-muted">Helm</Label>
+                                  <Switch 
+                                    isSelected={appFormData.showHelm !== false} 
+                                    onChange={(isSelected) => setAppFormData({...appFormData, showHelm: isSelected})}
+                                  >
+                                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                                  </Switch>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </Surface>
 
-                        <div className="space-y-4">
-                          <TextField value={appFormData.customDockerCommand || ''} onChange={(val) => setAppFormData({...appFormData, customDockerCommand: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Command</Label>
-                            <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-field-background font-mono text-sm" />
-                          </TextField>
-                          <TextField value={appFormData.customDockerNote || ''} onChange={(val) => setAppFormData({...appFormData, customDockerNote: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Note</Label>
-                            <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-field-background" />
-                          </TextField>
-                        </div>
+                        {appFormData.hasDeploymentAssistant !== false && (
+                          <div className="space-y-6">
+                            <Surface variant="default" className="p-4 bg-surface-secondary rounded-xl border border-border flex gap-4 text-muted">
+                              <Terminal className="w-5 h-5 flex-shrink-0" />
+                              <p className="text-sm">Passen Sie die Deployment-Befehle an. Wenn leer, werden Standard-Befehle generiert.</p>
+                            </Surface>
 
-                        <Separator className="my-2" />
+                            <div className="space-y-4">
+                              <TextField value={appFormData.customDockerCommand || ''} onChange={(val) => setAppFormData({...appFormData, customDockerCommand: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Command</Label>
+                                <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-field-background font-mono text-sm" />
+                              </TextField>
+                              <TextField value={appFormData.customDockerNote || ''} onChange={(val) => setAppFormData({...appFormData, customDockerNote: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Note</Label>
+                                <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-field-background" />
+                              </TextField>
+                            </div>
 
-                        <div className="space-y-4">
-                          <TextField value={appFormData.customComposeCommand || ''} onChange={(val) => setAppFormData({...appFormData, customComposeCommand: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Compose</Label>
-                            <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-field-background font-mono text-sm" rows={5} />
-                          </TextField>
-                          <TextField value={appFormData.customComposeNote || ''} onChange={(val) => setAppFormData({...appFormData, customComposeNote: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Compose Note</Label>
-                            <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-field-background" />
-                          </TextField>
-                        </div>
+                            <Separator className="my-2" />
 
-                        <Separator className="my-2" />
+                            <div className="space-y-4">
+                              <TextField value={appFormData.customComposeCommand || ''} onChange={(val) => setAppFormData({...appFormData, customComposeCommand: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Compose</Label>
+                                <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-field-background font-mono text-sm" rows={5} />
+                              </TextField>
+                              <TextField value={appFormData.customComposeNote || ''} onChange={(val) => setAppFormData({...appFormData, customComposeNote: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Compose Note</Label>
+                                <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-field-background" />
+                              </TextField>
+                            </div>
 
-                        <div className="space-y-4">
-                          <TextField value={appFormData.customHelmCommand || ''} onChange={(val) => setAppFormData({...appFormData, customHelmCommand: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Command</Label>
-                            <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-field-background font-mono text-sm" />
-                          </TextField>
-                          <TextField value={appFormData.customHelmNote || ''} onChange={(val) => setAppFormData({...appFormData, customHelmNote: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Note</Label>
-                            <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-field-background" />
-                          </TextField>
-                        </div>
+                            <Separator className="my-2" />
+
+                            <div className="space-y-4">
+                              <TextField value={appFormData.customHelmCommand || ''} onChange={(val) => setAppFormData({...appFormData, customHelmCommand: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Command</Label>
+                                <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-field-background font-mono text-sm" />
+                              </TextField>
+                              <TextField value={appFormData.customHelmNote || ''} onChange={(val) => setAppFormData({...appFormData, customHelmNote: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Note</Label>
+                                <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-field-background" />
+                              </TextField>
+                            </div>
+                          </div>
+                        )}
                       </Tabs.Panel>
 
                       <Tabs.Panel id="docs" className="space-y-6 h-full flex flex-col">
