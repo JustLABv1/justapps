@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { AlertDialog, Button, Card, Label, TextArea, TextField } from "@heroui/react";
 import { MessageSquare, Star, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchApi } from "../lib/api";
 
 interface Rating {
   id: string;
@@ -25,9 +26,8 @@ export function RatingSection({ appId }: { appId: string }) {
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchRatings = useCallback(async () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
     try {
-      const res = await fetch(`${apiUrl}/apps/${appId}/ratings`);
+      const res = await fetchApi(`/apps/${appId}/ratings`);
       if (res.ok) {
         const data = await res.json();
         const ratingsArray = data || [];
@@ -55,11 +55,9 @@ export function RatingSection({ appId }: { appId: string }) {
     if (!user || userRating === 0) return;
     setSubmitting(true);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
     try {
-       const res = await fetch(`${apiUrl}/apps/${appId}/ratings`, {
+       const res = await fetchApi(`/apps/${appId}/ratings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           username: user.username,
@@ -84,9 +82,8 @@ export function RatingSection({ appId }: { appId: string }) {
   };
 
   const handleDelete = async (ratingId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
     try {
-      const res = await fetch(`${apiUrl}/apps/${appId}/ratings/${ratingId}`, {
+      const res = await fetchApi(`/apps/${appId}/ratings/${ratingId}`, {
         method: 'DELETE'
       });
       if (res.ok) {

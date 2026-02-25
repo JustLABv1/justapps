@@ -17,14 +17,19 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://exflow.org", "http://localhost:3000", "http://localhost:4000"},
-		AllowMethods:     []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Authorization", "X-Requested-With", "Content-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	corsConfig := cors.DefaultConfig()
+	if len(config.CORS.AllowedOrigins) > 0 {
+		corsConfig.AllowOrigins = config.CORS.AllowedOrigins
+	} else {
+		corsConfig.AllowOrigins = []string{"*"}
+	}
+	corsConfig.AllowMethods = []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"}
+	corsConfig.AllowHeaders = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type"}
+	corsConfig.ExposeHeaders = []string{"Content-Length"}
+	corsConfig.AllowCredentials = true
+	corsConfig.MaxAge = 12 * time.Hour
+
+	router.Use(cors.New(corsConfig))
 
 	v1 := router.Group("/api/v1")
 	{

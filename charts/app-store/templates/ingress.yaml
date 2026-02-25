@@ -52,12 +52,12 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else }}{{ $fullName }}-frontend{{ end }}
+                name: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else }}{{ $fullName }}-frontend{{ end }}
                 port:
-                  number: {{ $svcPort }}
+                  number: {{ .port | default $svcPort }}
               {{- else }}
-              serviceName: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else }}{{ $fullName }}-frontend{{ end }}
-              servicePort: {{ $svcPort }}
+              serviceName: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else }}{{ $fullName }}-frontend{{ end }}
+              servicePort: {{ .port | default $svcPort }}
               {{- end }}
           {{- end }}
     {{- end }}

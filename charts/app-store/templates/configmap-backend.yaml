@@ -18,3 +18,7 @@ data:
       issuer: {{ .Values.config.oidc.issuer | quote }}
       client_id: {{ .Values.config.oidc.clientId | quote }}
       admin_group: {{ .Values.config.oidc.adminGroup | quote }}
+      insecure: {{ .Values.config.oidc.insecure | default false }}
+    cors:
+      allowed_origins: 
+        {{- toYaml .Values.config.cors.allowedOrigins | nindent 8 }}

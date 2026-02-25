@@ -1,19 +1,46 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
-import { Card, Chip, Link, Tooltip } from "@heroui/react";
+import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { BookOpen, ExternalLink, Github, Star } from "lucide-react";
 import NextLink from "next/link";
 
 export function AppCard({ app }: { app: AppConfig }) {
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
 
+  const getStatusProps = (state?: string) => {
+    switch (state?.toLowerCase()) {
+      case 'graduated':
+        return { color: 'success' as const, label: 'Produktiv' };
+      case 'incubating':
+        return { color: 'accent' as const, label: 'In Inkubation' };
+      case 'sandbox':
+        return { color: 'warning' as const, label: 'Sandbox' };
+      case 'mvp':
+        return { color: 'default' as const, label: 'MVP' };
+      case 'poc':
+        return { color: 'default' as const, label: 'POC' };
+      default:
+        return state ? { color: 'default' as const, label: state } : null;
+    }
+  };
+
+  const statusInfo = getStatusProps(app.status);
+
+  const allDemos = app.liveDemos && app.liveDemos.length > 0 
+    ? app.liveDemos 
+    : (app.liveUrl ? [{ label: 'Live Demo', url: app.liveUrl }] : []);
+
   return (
     <Card className="w-full h-full flex flex-col group" variant="default">
       {/* ── Header: icon, name, badge ── */}
       <Card.Header className="p-5 pb-0 flex flex-row items-start gap-3">
-        <div className="w-11 h-11 rounded-lg bg-default flex items-center justify-center text-xl shrink-0">
-          {app.icon || "🏛️"}
+        <div className="w-11 h-11 rounded-lg bg-default flex items-center justify-center text-xl shrink-0 overflow-hidden">
+          {app.icon?.startsWith('http') ? (
+            <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+          ) : (
+            app.icon || "🏛️"
+          )}
         </div>
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -25,9 +52,21 @@ export function AppCard({ app }: { app: AppConfig }) {
                 Curated
               </Chip>
             )}
+            {statusInfo && (
+              <Chip 
+                size="sm" 
+                color={statusInfo.color} 
+                variant="soft" 
+                className="text-[10px] font-semibold uppercase shrink-0"
+              >
+                {statusInfo.label}
+              </Chip>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs font-medium text-accent tracking-wide">{app.category}</span>
+          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            <span className="text-xs font-medium text-accent tracking-wide line-clamp-1">
+              {app.categories?.join(', ')}
+            </span>
             {hasRating && (
               <>
                 <span className="text-muted text-[10px]">·</span>
@@ -73,21 +112,62 @@ export function AppCard({ app }: { app: AppConfig }) {
 
           {/* Quick-links */}
           <div className="flex items-center gap-1">
-            {app.liveUrl && (
+            {allDemos.length === 1 && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>
                   <Link
-                    href={app.liveUrl}
+                    href={allDemos[0].url}
                     target="_blank"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors"
-                    aria-label="Live Demo öffnen"
+                    aria-label={`${allDemos[0].label} öffnen`}
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Link>
                 </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">Live Demo</Tooltip.Content>
+                <Tooltip.Content placement="bottom">{allDemos[0].label}</Tooltip.Content>
               </Tooltip>
             )}
+
+            {allDemos.length > 1 && (
+              <Dropdown>
+                <Tooltip delay={0}>
+                  <Tooltip.Trigger>
+                    <Dropdown.Trigger>
+                      <button
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors outline-none"
+                        aria-label="Live Demos anzeigen"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </Dropdown.Trigger>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="bottom">Live Demos</Tooltip.Content>
+                </Tooltip>
+                <Dropdown.Popover>
+                  <Dropdown.Menu 
+                    aria-label="Live Demo Links"
+                    onAction={(key) => {
+                      const idx = parseInt(key.toString().replace('demo-', ''));
+                      if (!isNaN(idx)) window.open(allDemos[idx].url, '_blank');
+                    }}
+                  >
+                    {allDemos.map((demo, idx) => (
+                      <Dropdown.Item 
+                        key={idx} 
+                        id={`demo-${idx}`} 
+                        textValue={demo.label}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="w-3 h-3" />
+                          <span>{demo.label}</span>
+                        </div>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
+            )}
+
             {app.repoUrl && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>

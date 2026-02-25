@@ -2,12 +2,18 @@ import fs from 'fs';
 import yaml from 'js-yaml';
 import path from 'path';
 
+export interface LiveDemo {
+  label: string;
+  url: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
   description: string;
-  category: string;
-  liveUrl?: string;
+  categories: string[];
+  liveUrl?: string; // Kept for backwards compatibility
+  liveDemos?: LiveDemo[];
   repoUrl?: string;
   helmRepo?: string;
   dockerRepo?: string;

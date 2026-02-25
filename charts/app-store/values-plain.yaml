@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # deploymentMode: "monolith" or "microservices"
-deploymentMode: microservices
+deploymentMode: monolith
 
 replicaCount: 1
 
@@ -12,7 +12,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  create: true
+  create: false
   annotations: {}
   name: ""
 
@@ -32,6 +32,7 @@ securityContext: {}
 # Configuration for both modes
 config:
   logLevel: info
+  port: 8080
   database:
     # If using the internal postgresql (postgresql.enabled=true), the server should be:
     # <release-name>-app-store-postgresql
@@ -39,28 +40,29 @@ config:
     port: 5432
     name: app_store
     user: postgres
-    password: "changeme"
-  jwtSecret: "changeme-secret"
+    password: "LefqrWPauTW73v"
+  jwtSecret: ".bxh'{cI9_X;~'Vp-G46vmmo6~MS7Q0G"
   oidc:
     enabled: true
-    issuer: "https://keycloak.example.com/realms/myrealm"
+    issuer: "https://login-keycloak.apps.ocp4.m017-1.ten.prod.pl2cloud.de/realms/m017-1"
     clientId: "app-store"
-    clientSecret: "changeme"
-    adminGroup: "admin"
+    clientSecret: "mQHBzEog8QxMeYv0blq2KsLGrLki6bqG"
+    adminGroup: "App-Store-Admin"
     insecure: true
   cors:
-    allowedOrigins: ["*"]
+    allowedOrigins:
+      - "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
 # Monolith specific configuration (both frontend and backend in one container)
 monolith:
   image:
-    repository: ghcr.io/justwms/app-store
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/app-store
+    pullPolicy: Always
+    tag: "1.0.0"
   service:
     type: ClusterIP
     port: 80
-    backendPort: 8082
+    backendPort: 8080
     frontendPort: 3000
   resources:
     limits:
@@ -97,9 +99,9 @@ frontend:
   env:
     # URL of the backend API (internal or external)
     # Default assumes microservices mode with backend service name
-    apiUrl: "http://app-store-backend:8182"
-    nextauthUrl: "http://app-store.example.com"
-    authSecret: "secret-for-nextauth"
+    apiUrl: "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
+    nextauthUrl: "https://app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+    authSecret: "VN4Omg9bPQ%T{+b2tTR28T-L*=Y0q<B{"
   service:
     type: ClusterIP
     port: 80
@@ -112,16 +114,18 @@ frontend:
       memory: 128Mi
 
 ingress:
-  enabled: false
+  enabled: true
   className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  annotations:
+    route.openshift.io/termination: edge
   hosts:
-    - host: chart-example.local
+    - host: app-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
+        - path: /api/v1
+          pathType: Prefix
+          port: 8080
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
@@ -129,19 +133,26 @@ ingress:
 
 postgresql:
   enabled: true
-  image: 'postgres:16'
+  image: 'artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/postgres:17-alpine3.22'
   pullPolicy: IfNotPresent
+  # Auf OpenShift ist es oft besser, einen anderen Pfad für die Daten zu nutzen.
+  # Das offizielle Image hat unter /var/lib/postgresql oft Restriktionen.
+  mountPath: /bitnami/postgresql/data
   persistence:
     enabled: true
-    storageClassName: default
+    storageClassName: ocs-external-storagecluster-ceph-rbd
     size: 20Gi
   auth:
-    database: "app-store"
-    password: "app-store"
-    username: "app-store"
+    database: "app_store"
+    password: "LefqrWPauTW73v"
+    username: "postgres"
   service:
     type: ClusterIP
     port: 5432
+  # Auf OpenShift werden UIDs automatisch zugewiesen. 
+  # Manuelle UIDs führen oft zu Permission-Problemen am Volume.
+  podSecurityContext: {}
+  securityContext: {}
   resources:
     limits:
       cpu: 500m

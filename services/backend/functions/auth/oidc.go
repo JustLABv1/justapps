@@ -15,6 +15,7 @@ import (
 var (
 	oidcProvider *oidc.Provider
 	oidcVerifier *oidc.IDTokenVerifier
+	httpClient   *http.Client
 )
 
 func InitOIDC() error {
@@ -36,8 +37,8 @@ func InitOIDC() error {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-		client := &http.Client{Transport: tr}
-		ctx = oidc.ClientContext(ctx, client)
+		httpClient = &http.Client{Transport: tr}
+		ctx = oidc.ClientContext(ctx, httpClient)
 		log.Warn("OIDC: Initializing in INSECURE mode (skipping TLS verification)")
 	}
 
@@ -69,12 +70,8 @@ func ValidateOIDCToken(signedToken string) (*oidc.IDToken, error) {
 	signedToken = CleanToken(signedToken)
 	ctx := context.Background()
 
-	if config.Config.OIDC.Insecure {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client := &http.Client{Transport: tr}
-		ctx = oidc.ClientContext(ctx, client)
+	if httpClient != nil {
+		ctx = oidc.ClientContext(ctx, httpClient)
 	}
 
 	idToken, err := oidcVerifier.Verify(ctx, signedToken)

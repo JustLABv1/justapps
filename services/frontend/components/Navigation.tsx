@@ -9,14 +9,17 @@ import {
   Separator
 } from "@heroui/react";
 import { Menu, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import PlainDark from '../public/plain_logo_dark.png';
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
@@ -25,18 +28,22 @@ export function Navigation() {
   };
 
   const navLinks = [
-    { href: "/", label: "Marktplatz", active: true },
-    ...(user?.role === 'admin' ? [{ href: "/management", label: "Verwaltung", active: false }] : []),
+    { href: "/", label: "Marktplatz", active: pathname === '/' },
+    ...(user?.role === 'admin' ? [{ href: "/management", label: "Verwaltung", active: pathname === '/management' }] : []),
   ];
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 no-underline text-foreground hover:opacity-80 transition-opacity shrink-0">
+        <Link
+          href="/" 
+          className="flex items-center gap-2.5 no-underline text-foreground hover:opacity-80 transition-opacity shrink-0"
+        >
           <div className="flex flex-col leading-tight">
-            <span className="font-bold text-base tracking-tight">PLAIN</span>
-            <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted">App-Store</span>
+            {/* <span className="font-bold text-base tracking-tight">PLAIN</span>
+            <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted">App-Store</span> */}
+            <Image src={PlainDark} alt="PLAIN Logo" width={92} height={92} className="rounded-sm" />
           </div>
         </Link>
 
@@ -61,7 +68,9 @@ export function Navigation() {
         <div className="flex items-center gap-2">
           <ThemeSwitcher />
 
-          {user ? (
+          {loading ? (
+            <div className="h-8 w-8 rounded-full bg-default/50 animate-pulse" />
+          ) : user ? (
             <Dropdown>
               <Dropdown.Trigger>
                 <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
@@ -75,7 +84,7 @@ export function Navigation() {
                   <Dropdown.Item id="profile" textValue={`Angemeldet als ${user.email}`}>
                     <div className="flex flex-col gap-0.5">
                       <Label className="font-semibold text-sm">Angemeldet als</Label>
-                      <div className="text-xs text-muted">{user.email}</div>
+                      <div className="text-xs text-muted text-balance break-all max-w-[180px]">{user.email}</div>
                     </div>
                   </Dropdown.Item>
                   <Separator />
