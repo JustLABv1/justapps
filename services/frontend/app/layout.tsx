@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "App-Store für die Deutsche Verwaltung",
+  title: "Marktplatz für PLAIN",
   description: "Zentraler Marktplatz für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
 };
 

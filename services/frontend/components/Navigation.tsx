@@ -13,7 +13,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import PlainDark from '../public/plain_logo_dark.png';
+import PlainImage from '../public/plain_logo.png';
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
@@ -40,10 +40,10 @@ export function Navigation() {
           href="/" 
           className="flex items-center gap-2.5 no-underline text-foreground hover:opacity-80 transition-opacity shrink-0"
         >
-          <div className="flex flex-col leading-tight">
-            {/* <span className="font-bold text-base tracking-tight">PLAIN</span>
-            <span className="text-[9px] font-medium tracking-[0.2em] uppercase text-muted">App-Store</span> */}
-            <Image src={PlainDark} alt="PLAIN Logo" width={92} height={92} className="rounded-sm" />
+          <div className="flex flex-cols items-center gap-2 leading-tight">
+            {/* <span className="font-bold text-base tracking-tight">PLAIN</span> */}
+            <Image src={PlainImage} alt="PLAIN Logo" width={24} height={24} className="rounded-sm" />
+            <span className="text-[9px] font-bold tracking-[0.2em] uppercase">Marktplatz</span>
           </div>
         </Link>
 
