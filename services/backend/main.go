@@ -20,7 +20,7 @@ import (
 const version string = "1.0.0"
 
 var (
-	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/justwms/config.yaml").String()
+	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/plain-marktplatz/config.yaml").String()
 )
 
 func logging(logLevel string) {
@@ -45,7 +45,7 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	log.Info("Starting JustWMS API. Version: ", version)
+	log.Info("Starting Plain-Marktplatz API. Version: ", version)
 
 	// Check if config file exists
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
