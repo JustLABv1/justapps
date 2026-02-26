@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Marktplatz für PLAIN",
-  description: "Zentraler Marktplatz für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
+  title: "PLAIN Community Store",
+  description: "Zentraler Community Store für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
 };
 
 export default function RootLayout({
