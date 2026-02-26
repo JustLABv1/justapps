@@ -135,7 +135,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.accessToken = token.accessToken
         session.idToken = token.idToken
         session.error = token.error
-        session.user.role = token.role || 'user'
+        // Explicitly set role and ensure it's not swallowed
+        session.user.role = token.role || session.user.role || 'user'
       }
       return session
     },

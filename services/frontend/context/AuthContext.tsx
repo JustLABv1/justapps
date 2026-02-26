@@ -42,30 +42,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s?.error]);
 
-  const oidcUser: User | null = (status === 'authenticated' && s?.user) ? {
-    id: s.user.id || s.user.email || 'oidc',
-    username: s.user.name || s.user.email || 'OIDC User',
-    email: s.user.email || '',
-    role: s.user.role || 'user',
-  } : null;
+  const oidcUser = React.useMemo<User | null>(() => {
+    if (status !== 'authenticated' || !s?.user) return null;
+    
+    return {
+      id: s.user.id || s.user.email || 'oidc',
+      username: s.user.name || s.user.email || 'OIDC User',
+      email: s.user.email || '',
+      role: s.user.role || 'user',
+    };
+  }, [status, s?.user?.id, s?.user?.name, s?.user?.email, s?.user?.role]);
 
-  const user = oidcUser || (status === 'unauthenticated' ? localUser : null);
-  const token = (status === 'authenticated') ? (s?.idToken || s?.accessToken) : (status === 'unauthenticated' ? localToken : null);
+  const user = React.useMemo(() => {
+    // If we're authenticated via OIDC, always return that (it's the source of truth)
+    if (status === 'authenticated' && oidcUser) return oidcUser;
+    
+    // If not authenticated (or OIDC user not yet resolved), fallback to local session state
+    if (status === 'unauthenticated') return localUser;
 
-  // Sync token to localStorage when OIDC session changes
+    return null;
+  }, [oidcUser, status, localUser]);
+
+  const token = React.useMemo(() => {
+    return (status === 'authenticated') ? (s?.idToken || s?.accessToken) : (status === 'unauthenticated' ? localToken : null);
+  }, [status, s?.idToken, s?.accessToken, localToken]);
+
+  // Sync token to localStorage when OIDC session changes manually to avoid race conditions
   useEffect(() => {
-    if (status === 'authenticated' && s) {
-      // Prefer idToken for OIDC as the backend verifier expects it
-      const authToken = s.idToken || s.accessToken;
-      if (authToken && typeof window !== 'undefined') {
-        localStorage.setItem('token', authToken);
-        localStorage.setItem('user', JSON.stringify(oidcUser));
+    if (status === 'authenticated' && s && oidcUser) {
+      if (typeof window !== 'undefined') {
+        const authToken = s.idToken || s.accessToken;
+        if (authToken) {
+          localStorage.setItem('token', authToken);
+          localStorage.setItem('user', JSON.stringify(oidcUser));
+        }
       }
-    } else if (status === 'unauthenticated' && typeof window !== 'undefined') {
-      // Only clear if we were previously using OIDC (this part is tricky, let's just clear if unauth)
-      // Actually, we should only clear session storage if we were logged in via OIDC.
     }
-  }, [status, s, oidcUser]);
+  }, [status, s?.idToken, s?.accessToken, oidcUser]);
 
   // Load local user on mount (only if status is unauthenticated)
   useEffect(() => {
@@ -147,8 +160,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     nextAuthSignIn('keycloak', { callbackUrl: '/' });
   };
 
+  // Improved loading state that waits for user hydration
+  const isLoading = status === 'loading' || (status === 'authenticated' && !user);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading: status === 'loading', login, logout, oidcLogin }}>
+    <AuthContext.Provider value={{ user, token, loading: isLoading, login, logout, oidcLogin }}>
       {children}
     </AuthContext.Provider>
   );
