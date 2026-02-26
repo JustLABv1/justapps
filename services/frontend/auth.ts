@@ -16,7 +16,11 @@ declare module "next-auth" {
 
 async function refreshAccessToken(token: any) {
   try {
-    const url = `${process.env.AUTH_KEYCLOAK_ISSUER}/protocol/openid-connect/token`
+    const issuer = process.env.AUTH_KEYCLOAK_ISSUER?.replace(/\/$/, "");
+    const url = `${issuer}/protocol/openid-connect/token`;
+    
+    console.log("Refreshing access token using refresh token...");
+    
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -25,19 +29,23 @@ async function refreshAccessToken(token: any) {
         client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
         grant_type: "refresh_token",
         refresh_token: token.refreshToken,
+        scope: "openid profile email offline_access",
       }),
     })
 
     const refreshedTokens = await response.json()
 
     if (!response.ok) {
+      console.error("Keycloak token refresh failed:", refreshedTokens);
       throw refreshedTokens
     }
+
+    console.log("Access token successfully refreshed.");
 
     return {
       ...token,
       accessToken: refreshedTokens.access_token,
-      idToken: refreshedTokens.id_token,
+      idToken: refreshedTokens.id_token ?? token.idToken,
       accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fallback to old refresh token
     }
@@ -50,15 +58,22 @@ async function refreshAccessToken(token: any) {
   }
 }
 
+const keycloakIssuer = process.env.AUTH_KEYCLOAK_ISSUER?.replace(/\/$/, "");
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Keycloak({
       clientId: process.env.AUTH_KEYCLOAK_ID,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
-      issuer: process.env.AUTH_KEYCLOAK_ISSUER,
-      // Manually specifying the well-known endpoint can help when discovery fails with "unexpected HTTP status code"
-      wellKnown: `${process.env.AUTH_KEYCLOAK_ISSUER}/.well-known/openid-configuration`,
+      issuer: keycloakIssuer,
+      // Manually specifying the well-known endpoint helps when discovery handles trailing slashes inconsistently
+      wellKnown: `${keycloakIssuer}/.well-known/openid-configuration`,
       checks: ['pkce', 'state'],
+      authorization: {
+        params: {
+          scope: "openid profile email offline_access",
+        },
+      },
       client: {
         authorization_signed_response_alg: 'RS256',
         id_token_signed_response_alg: 'RS256',
@@ -99,12 +114,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // Return previous token if the access token has not expired yet
-      // Add a 60-second buffer to proactively refresh before it actually expires
-      if (Date.now() < (token.accessTokenExpires as number) - 60 * 1000) {
+      // Add a 2-minute buffer to proactively refresh before it actually expires
+      // This ensures we have a valid token even if the browser has clock drift or short lifespans
+      if (Date.now() < (token.accessTokenExpires as number) - 2 * 60 * 1000) {
         return token
       }
 
       // Access token has expired (or is about to), try to update it
+      console.log("Session nearing expiration or expired, attempting refresh...");
       return refreshAccessToken(token)
     },
     async session({ session, token }: { session: any; token: any }) {

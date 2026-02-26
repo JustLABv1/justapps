@@ -49,23 +49,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: s.user.role || 'user',
   } : null;
 
-  const user = oidcUser || localUser;
-  const token = s?.idToken || s?.accessToken || localToken;
+  const user = oidcUser || (status === 'unauthenticated' ? localUser : null);
+  const token = (status === 'authenticated') ? (s?.idToken || s?.accessToken) : (status === 'unauthenticated' ? localToken : null);
 
   // Sync token to localStorage when OIDC session changes
   useEffect(() => {
     if (status === 'authenticated' && s) {
+      // Prefer idToken for OIDC as the backend verifier expects it
       const authToken = s.idToken || s.accessToken;
       if (authToken && typeof window !== 'undefined') {
         localStorage.setItem('token', authToken);
         localStorage.setItem('user', JSON.stringify(oidcUser));
       }
+    } else if (status === 'unauthenticated' && typeof window !== 'undefined') {
+      // Only clear if we were previously using OIDC (this part is tricky, let's just clear if unauth)
+      // Actually, we should only clear session storage if we were logged in via OIDC.
     }
   }, [status, s, oidcUser]);
 
-  // Load local user on mount (for non-OIDC logins)
+  // Load local user on mount (only if status is unauthenticated)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && status === 'unauthenticated') {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       if (storedUser && storedToken) {
@@ -79,29 +83,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, []);
+  }, [status]);
 
   // Check token validity on mount or when token changes
   useEffect(() => {
     const checkTokenValidity = async () => {
-      if (token) {
-        try {
-          const { fetchApi } = await import('@/lib/api');
-          const response = await fetchApi('/token/validate');
-          if (response.status === 401) {
-            logout();
-          }
-        } catch (error) {
-          console.error('Failed to validate token:', error);
+      // Don't check during loading or if no token
+      if (status === 'loading' || !token) return;
+
+      try {
+        const { fetchApi } = await import('@/lib/api');
+        const response = await fetchApi('/token/validate');
+        if (response.status === 401) {
+          console.warn('Backend rejected token, logging out...');
+          logout();
         }
+      } catch (error) {
+        console.error('Failed to validate token:', error);
       }
     };
 
-    if (token) {
-      checkTokenValidity();
-    }
+    checkTokenValidity();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, status]);
 
   const login = (token: string, userData: User) => {
     if (typeof window !== 'undefined') {
