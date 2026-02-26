@@ -99,11 +99,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.accessTokenExpires as number)) {
+      // Add a 60-second buffer to proactively refresh before it actually expires
+      if (Date.now() < (token.accessTokenExpires as number) - 60 * 1000) {
         return token
       }
 
-      // Access token has expired, try to update it
+      // Access token has expired (or is about to), try to update it
       return refreshAccessToken(token)
     },
     async session({ session, token }: { session: any; token: any }) {

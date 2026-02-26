@@ -30,51 +30,46 @@ export function AppCard({ app }: { app: AppConfig }) {
   const allDemos = app.liveDemos && app.liveDemos.length > 0 
     ? app.liveDemos 
     : (app.liveUrl ? [{ label: 'Live Demo', url: app.liveUrl }] : []);
+  const repositories = app.repositories && app.repositories.length > 0
+    ? app.repositories
+    : (app.repoUrl ? [{ label: 'Repository', url: app.repoUrl }] : []);
+  const customLinks = app.customLinks || [];
 
   return (
-    <Card className="w-full h-full flex flex-col group" variant="default">
+    <Card className="w-full h-full flex flex-col group hover:border-accent/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-hidden p-0" variant="default">
       {/* ── Header: icon, name, badge ── */}
-      <Card.Header className="p-5 pb-0 flex flex-row items-start gap-3">
-        <div className="w-11 h-11 rounded-lg bg-default flex items-center justify-center text-xl shrink-0 overflow-hidden">
+      <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-2xl shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-300">
           {app.icon?.startsWith('http') ? (
             <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
           ) : (
             app.icon || "🏛️"
           )}
         </div>
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Card.Title className="text-base font-semibold text-foreground leading-tight truncate">
+        <div className="flex flex-col min-w-0 flex-1 pt-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Card.Title className="text-lg font-bold text-foreground leading-tight truncate group-hover:text-accent transition-colors">
               {app.name}
             </Card.Title>
             {app.isFeatured && (
-              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-semibold uppercase shrink-0">
+              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase tracking-wider shrink-0">
                 Curated
               </Chip>
             )}
-            {statusInfo && (
-              <Chip 
-                size="sm" 
-                color={statusInfo.color} 
-                variant="soft" 
-                className="text-[10px] font-semibold uppercase shrink-0"
-              >
-                {statusInfo.label}
-              </Chip>
-            )}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-            <span className="text-xs font-medium text-accent tracking-wide line-clamp-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-muted uppercase tracking-wider line-clamp-1">
               {app.categories?.join(', ')}
             </span>
             {hasRating && (
               <>
-                <span className="text-muted text-[10px]">·</span>
-                <Star className="w-3 h-3 fill-gov-gold text-gov-gold" />
-                <span className="text-[11px] font-medium text-muted">
-                  {(app.ratingAvg || 0).toFixed(1)}
-                </span>
-                <span className="text-[10px] text-muted">({app.ratingCount})</span>
+                <span className="text-muted/30 text-[10px]">|</span>
+                <div className="flex items-center gap-1 bg-gov-gold/10 px-1.5 py-0.5 rounded text-gov-gold">
+                  <Star className="w-3 h-3 fill-current" />
+                  <span className="text-[11px] font-bold">
+                    {(app.ratingAvg || 0).toFixed(1)}
+                  </span>
+                </div>
               </>
             )}
           </div>
@@ -82,46 +77,67 @@ export function AppCard({ app }: { app: AppConfig }) {
       </Card.Header>
 
       {/* ── Body: description + tags ── */}
-      <Card.Content className="px-5 pt-3 pb-4 flex-grow flex flex-col">
-        <p className="text-sm text-muted leading-relaxed line-clamp-3">
+      <Card.Content className="px-6 pt-3 pb-5 flex-grow flex flex-col">
+        <p className="text-sm text-muted leading-relaxed line-clamp-3 mb-4">
           {app.description}
         </p>
 
-        {app.tags && app.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3">
-            {app.tags.map(tag => (
-              <Chip key={tag} size="sm" variant="secondary" className="text-[10px] font-medium">
-                {tag}
+        <div className="mt-auto flex flex-col gap-3">
+          {statusInfo && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status:</span>
+              <Chip 
+                size="sm" 
+                color={statusInfo.color} 
+                variant="soft" 
+                className="text-[10px] font-bold uppercase h-5"
+              >
+                {statusInfo.label}
               </Chip>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+          
+          {app.tags && app.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {app.tags.slice(0, 4).map(tag => (
+                <Chip key={tag} size="sm" variant="secondary" className="text-[10px] font-medium bg-surface-secondary border-border/50">
+                  {tag}
+                </Chip>
+              ))}
+              {app.tags.length > 4 && (
+                <Chip size="sm" variant="secondary" className="text-[10px] font-medium bg-surface-secondary border-border/50">
+                  +{app.tags.length - 4}
+                </Chip>
+              )}
+            </div>
+          )}
+        </div>
       </Card.Content>
 
       {/* ── Footer: primary action + quick-links ── */}
-      <Card.Footer className="px-5 pb-5 pt-0 mt-auto">
-        <div className="flex items-center justify-between w-full border-t border-separator pt-3">
+      <Card.Footer className="px-6 py-4 mt-auto bg-surface-secondary/30 border-t border-border/50 group-hover:bg-accent/5 transition-colors">
+        <div className="flex items-center justify-between w-full">
           {/* Primary action */}
           <NextLink
             href={`/apps/${app.id}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-bold text-foreground group-hover:text-accent transition-colors"
           >
-            Details anzeigen
-            <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            Details ansehen
+            <ExternalLink className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </NextLink>
 
           {/* Quick-links */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             {allDemos.length === 1 && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>
                   <Link
                     href={allDemos[0].url}
                     target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm"
                     aria-label={`${allDemos[0].label} öffnen`}
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                 </Tooltip.Trigger>
                 <Tooltip.Content placement="bottom">{allDemos[0].label}</Tooltip.Content>
@@ -134,10 +150,10 @@ export function AppCard({ app }: { app: AppConfig }) {
                   <Tooltip.Trigger>
                     <Dropdown.Trigger>
                       <button
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors outline-none"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
                         aria-label="Live Demos anzeigen"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="w-3.5 h-3.5" />
                       </button>
                     </Dropdown.Trigger>
                   </Tooltip.Trigger>
@@ -168,20 +184,100 @@ export function AppCard({ app }: { app: AppConfig }) {
               </Dropdown>
             )}
 
-            {app.repoUrl && (
+            {repositories.length === 1 && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>
                   <Link
-                    href={app.repoUrl}
+                    href={repositories[0].url}
                     target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm"
                     aria-label="Repository öffnen"
                   >
-                    <Github className="w-4 h-4" />
+                    <Github className="w-3.5 h-3.5" />
                   </Link>
                 </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">Repository</Tooltip.Content>
+                <Tooltip.Content placement="bottom">{repositories[0].label || 'Repository'}</Tooltip.Content>
               </Tooltip>
+            )}
+
+            {repositories.length > 1 && (
+              <Dropdown>
+                <Tooltip delay={0}>
+                  <Tooltip.Trigger>
+                    <Dropdown.Trigger>
+                      <button
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
+                        aria-label="Repositories anzeigen"
+                      >
+                        <Github className="w-3.5 h-3.5" />
+                      </button>
+                    </Dropdown.Trigger>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="bottom">Repositories</Tooltip.Content>
+                </Tooltip>
+                <Dropdown.Popover>
+                  <Dropdown.Menu
+                    aria-label="Repository Links"
+                    onAction={(key) => {
+                      const idx = parseInt(key.toString().replace('repo-', ''));
+                      if (!isNaN(idx)) window.open(repositories[idx].url, '_blank');
+                    }}
+                  >
+                    {repositories.map((repo, idx) => (
+                      <Dropdown.Item
+                        key={idx}
+                        id={`repo-${idx}`}
+                        textValue={repo.label || 'Repository'}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Github className="w-3 h-3" />
+                          <span>{repo.label || 'Repository'}</span>
+                        </div>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
+            )}
+
+            {customLinks.length > 0 && (
+              <Dropdown>
+                <Tooltip delay={0}>
+                  <Tooltip.Trigger>
+                    <Dropdown.Trigger>
+                      <button
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
+                        aria-label="Links anzeigen"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </Dropdown.Trigger>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="bottom">Links</Tooltip.Content>
+                </Tooltip>
+                <Dropdown.Popover>
+                  <Dropdown.Menu
+                    aria-label="Links"
+                    onAction={(key) => {
+                      const idx = parseInt(key.toString().replace('custom-', ''));
+                      if (!isNaN(idx)) window.open(customLinks[idx].url, '_blank');
+                    }}
+                  >
+                    {customLinks.map((customLink, idx) => (
+                      <Dropdown.Item
+                        key={idx}
+                        id={`custom-${idx}`}
+                        textValue={customLink.label || 'Link'}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="w-3 h-3" />
+                          <span>{customLink.label || 'Link'}</span>
+                        </div>
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
             )}
             {app.docsUrl && (
               <Tooltip delay={0}>
@@ -189,7 +285,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                   <Link
                     href={app.docsUrl}
                     target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-accent hover:bg-default transition-colors"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
                     aria-label="Dokumentation öffnen"
                   >
                     <BookOpen className="w-4 h-4" />

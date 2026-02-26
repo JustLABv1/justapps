@@ -7,6 +7,11 @@ export interface LiveDemo {
   url: string;
 }
 
+export interface AppLink {
+  label: string;
+  url: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -15,6 +20,8 @@ export interface AppConfig {
   liveUrl?: string; // Kept for backwards compatibility
   liveDemos?: LiveDemo[];
   repoUrl?: string;
+  repositories?: AppLink[];
+  customLinks?: AppLink[];
   helmRepo?: string;
   dockerRepo?: string;
   docsUrl?: string;

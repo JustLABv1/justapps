@@ -31,6 +31,12 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		protected := appsGroup.Group("")
 		protected.Use(middlewares.Admin(db))
 		{
+			protected.GET("/export", func(c *gin.Context) {
+				apps.ExportApps(c, db)
+			})
+			protected.POST("/import", func(c *gin.Context) {
+				apps.ImportApps(c, db)
+			})
 			protected.POST("", func(c *gin.Context) {
 				apps.CreateApp(c, db)
 			})
