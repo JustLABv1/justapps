@@ -66,7 +66,7 @@ monolith:
     repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store
     pullPolicy: IfNotPresent
     # Tag should point to a released version of the monolith image
-    tag: "0.8.4"
+    tag: "0.8.5"
   service:
     type: ClusterIP
     port: 80

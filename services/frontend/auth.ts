@@ -16,6 +16,11 @@ declare module "next-auth" {
 
 async function refreshAccessToken(token: any) {
   try {
+    if (!token.refreshToken) {
+      console.warn("No refresh token available, skipping refresh.");
+      return { ...token, error: "RefreshAccessTokenError" };
+    }
+
     const issuer = process.env.AUTH_KEYCLOAK_ISSUER?.replace(/\/$/, "");
     const url = `${issuer}/protocol/openid-connect/token`;
     
@@ -29,7 +34,8 @@ async function refreshAccessToken(token: any) {
         client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
         grant_type: "refresh_token",
         refresh_token: token.refreshToken,
-        scope: "openid profile email offline_access",
+        // Removed 'scope' from refresh request. Keycloak will automatically 
+        // use scopes from the original token, allowing for smoother transitions.
       }),
     })
 
@@ -46,8 +52,8 @@ async function refreshAccessToken(token: any) {
       ...token,
       accessToken: refreshedTokens.access_token,
       idToken: refreshedTokens.id_token ?? token.idToken,
-      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fallback to old refresh token
+      accessTokenExpires: Date.now() + (refreshedTokens.expires_in ?? 0) * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
     }
   } catch (error) {
     console.error("RefreshAccessTokenError", error)
@@ -138,15 +144,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   events: {
-    async signOut({ token }: { token: any }) {
-      if (token.idToken) {
+    async signOut(message: any) {
+      const token = "token" in message ? message.token : null
+      if (token?.idToken) {
         try {
           const issuer = process.env.AUTH_KEYCLOAK_ISSUER
           const logOutUrl = new URL(`${issuer}/protocol/openid-connect/logout`)
           logOutUrl.searchParams.set("id_token_hint", token.idToken)
-          // We don't return the URL here, but log it or prepare for it if needed.
-          // In NextAuth v5, the standard signOut will just clear cookies. 
-          // To truly logout of Keycloak, the frontend should ideally redirect to this URL.
+          // Note: In NextAuth v5, this event is informative. 
+          // To truly logout of Keycloak, the client-side signOut should pass a redirect.
         } catch (e) {
           console.error("Error creating logout URL", e)
         }
