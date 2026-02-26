@@ -17,7 +17,26 @@ Create a new realm (e.g., `plain-app-store`) or use an existing one.
    - `https://your-domain.de/api/auth/callback/keycloak` (Production)
 6. **Web Origins**: `*` or your frontend URL.
 
-### 3. Client Secret
+### 3. Essential Scopes & Offline Access (Crucial for Session Persistence)
+To prevent the `Offline user session not found` error and ensure long-running sessions:
+
+1. **Client Scopes**:
+   - Go to **Clients** -> (your client) -> **Client Scopes**.
+   - Ensure `offline_access` is in the **Default** or **Optional** column.
+2. **User Role (Crucial)**:
+   - For a user to get an offline token, they must have the `offline_access` role.
+   - Go to **Realm Roles** -> find `offline_access`.
+   - Go to **Role Mapping** for a specific user OR a **Group** (like your `admin` group).
+   - Assign the `offline_access` realm role to that user/group.
+3. **Dedicated Scope**:
+   - In the **Client Scopes** tab of your client, click on the `{client-id}-dedicated` scope.
+   - Go to **Mappers** and ensure you have mappers for `audience`, `groups`, and `roles`.
+4. **Advanced Settings**:
+   - Go to **Clients** -> (your client) -> **Advanced**.
+   - **Proof Key for Code Exchange (PKCE)**: Should be set to `S256` (matches our frontend config).
+   - **OpenID Connect Compatibility Modes**: Ensure `Exclude Session State From Authentication Response` is **OFF**.
+
+### 4. Client Secret
 If the client is `confidential`, copy the **Client Secret** from the **Credentials** tab.
 
 ### 4. Admin Role / Group
@@ -66,3 +85,10 @@ Once OIDC is configured and you have logged in as an admin:
 - **Token Validation Failed**: Ensure the `ISSUER` URL in the backend matches the `iss` claim in the JWT exactly.
 - **Admin Access Denied**: Check if the `groups` or `roles` claim is present in the token and contains the `admin` value. You can inspect tokens at [jwt.io](https://jwt.io).
 - **CORS Issues**: Ensure Keycloak has the correct **Web Origins** configured.
+- **Offline User Session Not Found**: This error in the logs means `offline_access` is requested by the code but not allowed/available in Keycloak. 
+  1. Go to **Client Scopes** in Keycloak sidebar.
+  2. Verify `offline_access` exists.
+  3. Go to your **Client** -> **Client Scopes**.
+  4. Ensure `offline_access` is in the **Default** or **Optional** columns.
+  5. If the error persists, check **Realm Settings** -> **Sessions** -> **SSO Session Idle** (increase to 30m+).
+  6. **Pro Tip**: In the Keycloak User view, check the **Sessions** tab. If no "Offline" sessions appear for a logged-in user, the scope is not being granted.
