@@ -8,7 +8,7 @@
 monolith:
   image:
     pullPolicy: Always
-    tag: "0.8.5"
+    tag: "0.8.6"
 
 ## Enable bundled Postgres for this deployment
 postgresql:
