@@ -16,6 +16,7 @@ build-store-frontend-image:
   rules:
     - changes:
         - services/frontend/**/*
+        - .gitlab-ci.yml
     # Default fallback behaviour
     - when: never
   image: ${ARTIFACTORY_DOMAIN}/custom-shared-images/podman/openshift-rootless:v1.3.0
