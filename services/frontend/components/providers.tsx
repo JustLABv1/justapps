@@ -10,7 +10,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   return (
-    <SessionProvider refetchInterval={3 * 60} refetchOnWindowFocus={true}>
+    <SessionProvider refetchInterval={60} refetchOnWindowFocus={true}>
       <AuthProvider>
         <NextThemesProvider
           attribute="class"
