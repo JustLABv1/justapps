@@ -63,10 +63,10 @@ config:
 ## Monolith configuration (single container includes frontend + backend)
 monolith:
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store
     pullPolicy: IfNotPresent
     # Tag should point to a released version of the monolith image
-    tag: "0.8.2"
+    tag: "0.8.4"
   service:
     type: ClusterIP
     port: 80
@@ -84,7 +84,7 @@ monolith:
 backend:
   replicaCount: 1
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-backend
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store-backend
     pullPolicy: IfNotPresent
     tag: latest
   service:
@@ -102,7 +102,7 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-marktplatz-frontend
+    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store-frontend
     pullPolicy: IfNotPresent
     tag: latest
   env:

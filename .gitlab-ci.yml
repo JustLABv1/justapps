@@ -1,15 +1,40 @@
-# # required external vars (e.g. provided via Gitlab CI settings):
-# # - DOCKER_AUTH_CONFIG
-# # - PIP_INDEX
-# # - ALPINE_REPO_MIRROR_AUTH
+# required external vars (e.g. provided via Gitlab CI settings):
+# - DOCKER_AUTH_CONFIG
+# - PIP_INDEX
+# - ALPINE_REPO_MIRROR_AUTH
 
-# variables:
-#   ARTIFACTORY_DOMAIN: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de
-#   ARTIFACTORY_REPO: custom-shared-images/jneubert
+variables:
+  ARTIFACTORY_DOMAIN: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de
+  ARTIFACTORY_REPO: custom-shared-images/plain-community-store
 
-# stages:
-#   - build
-#   - rollout
+stages:
+  - build
+  # - rollout
+
+build-store-frontend-image:
+  stage: build
+  rules:
+    - changes:
+        - services/frontend/**/*
+    # Default fallback behaviour
+    - when: never
+  image: ${ARTIFACTORY_DOMAIN}/custom-shared-images/podman/openshift-rootless:v1.3.0
+  variables:
+    KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: gitlab-runner-app-sa
+    KUBERNETES_POD_ANNOTATIONS_1: "openshift.io/required-scc=gitlab-runner-scc"
+  before_script:
+    - /home/user/entrypoint.sh
+    - mkdir -p $HOME/.config/containers/
+    - echo ${DOCKER_AUTH_CONFIG} > $HOME/.config/containers/auth.json
+    - export REGISTRY_AUTH_FILE=$HOME/.config/containers/auth.json
+    - podman login ${ARTIFACTORY_DOMAIN}
+  script:
+    - podman build
+        --secret id=ca-bundle,src=/etc/ssl/cert.pem
+        -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/frontend
+        -f Dockerfile
+      .
+    # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
 
 # build-app-store-image:
 #   stage: build

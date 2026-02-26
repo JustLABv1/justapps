@@ -1,5 +1,5 @@
 # Base image
-FROM node:25-alpine AS base
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine@sha256:e922633a7cfbc0d6db6b6854a45ebf2452772b483b481540fe906ee1f8146599 AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install pnpm and dependencies
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm install --registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote
 
 # Rebuild the source code only when needed
 FROM base AS builder
