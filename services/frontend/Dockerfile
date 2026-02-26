@@ -3,7 +3,7 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
 # Install pnpm and dependencies
