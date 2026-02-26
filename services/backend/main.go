@@ -45,7 +45,7 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	log.Info("Starting Plain-Marktplatz API. Version: ", version)
+	log.Info("Starting PLAIN Community Store API. Version: ", version)
 
 	// Check if config file exists
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {

@@ -9,7 +9,7 @@ export function Footer() {
           <div className="col-span-1 md:col-span-3">
             <div className="flex flex-cols mb-3 gap-2 items-center">
               <Image src={PlainImage} alt="PLAIN Logo" width={24} height={24} className="rounded-sm" />
-              <span className="text-[9px] font-bold tracking-[0.2em] uppercase">Marktplatz</span>
+              <span className="text-[9px] font-bold tracking-[0.2em] uppercase">PLAIN Community Store</span>
             </div>
             <p className="text-sm text-muted max-w-sm leading-relaxed">
               Die Plattform für moderne, souveräne Software-Lösungen für die öffentliche Verwaltung in Deutschland.

@@ -321,7 +321,7 @@ function ManagementContent() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-1">Verwaltung</h1>
-          <p className="text-muted">Verwalten Sie Applikationen und Benutzer im Marktplatz.</p>
+          <p className="text-muted">Verwalten Sie Applikationen und Benutzer im PLAIN Community Store.</p>
         </div>
         <div className="flex gap-3">
           <Button 
@@ -330,7 +330,7 @@ function ManagementContent() {
             className="font-bold gap-2"
           >
             <ChevronLeft className="w-4 h-4" />
-            Zum Marktplatz
+            Zum PLAIN Community Store
           </Button>
           {activeTab === 'apps' ? (
             <Button 
@@ -632,7 +632,7 @@ function ManagementContent() {
 
                         <TextField value={appFormData.description || ''} onChange={(val) => setAppFormData({...appFormData, description: val})}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kurzbeschreibung</Label>
-                          <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Marktplatz-Übersicht" className="bg-field-background" />
+                          <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-field-background" />
                         </TextField>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
