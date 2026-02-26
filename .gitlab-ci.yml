@@ -29,11 +29,12 @@ build-store-frontend-image:
     - echo ${DOCKER_AUTH_CONFIG} > $HOME/.config/containers/auth.json
     - export REGISTRY_AUTH_FILE=$HOME/.config/containers/auth.json
     - podman login ${ARTIFACTORY_DOMAIN}
+    - cd services/frontend
   script:
     - podman build
         --secret id=ca-bundle,src=/etc/ssl/cert.pem
         -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/frontend
-        -f services/frontend/Dockerfile
+        -f Dockerfile
       .
     # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
 
