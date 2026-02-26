@@ -28,7 +28,7 @@ export function Navigation() {
   };
 
   const navLinks = [
-    { href: "/", label: "Marktplatz", active: pathname === '/' },
+    { href: "/", label: "Community Store", active: pathname === '/' },
     ...(user?.role === 'admin' ? [{ href: "/management", label: "Verwaltung", active: pathname === '/management' }] : []),
   ];
 
@@ -43,7 +43,7 @@ export function Navigation() {
           <div className="flex flex-cols items-center gap-2 leading-tight">
             {/* <span className="font-bold text-base tracking-tight">PLAIN</span> */}
             <Image src={PlainImage} alt="PLAIN Logo" width={24} height={24} className="rounded-sm" />
-            <span className="text-[9px] font-bold tracking-[0.2em] uppercase">Marktplatz</span>
+            <span className="text-[9px] font-bold tracking-[0.2em] uppercase">PLAIN Community Store</span>
           </div>
         </Link>
 

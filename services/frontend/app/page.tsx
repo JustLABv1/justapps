@@ -47,7 +47,7 @@ export default function Home() {
       {/* Hero section */}
       <section className="text-center py-8 md:py-12">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-4">
-          Marktplatz für die{" "}
+          Community Store für die{" "}
           <span className={`inline-block font-bold bg-gradient-to-r from-black via-gov-red to-gov-gold bg-clip-text text-transparent ${isDark ? "drop-shadow-[0_0_1px_rgba(255,255,255,0.5)]" : ""}`}>PLAIN Plattform</span>
         </h1>
         <p className="text-base sm:text-lg text-muted max-w-2xl mx-auto leading-relaxed">
