@@ -32,7 +32,7 @@ build-store-frontend-image:
     - podman build
         --secret id=ca-bundle,src=/etc/ssl/cert.pem
         -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/frontend
-        -f Dockerfile
+        -f services/frontend/Dockerfile
       .
     # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
 
