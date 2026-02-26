@@ -8,7 +8,12 @@ WORKDIR /app
 
 # Install pnpm and dependencies
 COPY package.json package-lock.json ./
-RUN npm install --registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote
+
+# create .npmrc to set registry and auth token for private packages
+RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
+    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
+
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
