@@ -42,6 +42,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		Where("id = ?", id).
 		Column(
 			"name", "description", "categories", "live_url", "repo_url",
+			"repositories", "custom_links",
 			"helm_repo", "docker_repo", "docs_url", "icon", "tech_stack",
 			"license", "markdown_content", "focus", "app_type", "use_case",
 			"visualization", "deployment", "infrastructure", "database",

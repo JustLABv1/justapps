@@ -5,22 +5,22 @@ import { RatingSection } from "@/components/RatingSection";
 import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
-import { Chip, Dropdown, Link, Separator, Tabs, Tooltip } from "@heroui/react";
+import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-    BookOpen,
-    ChevronLeft,
-    Database,
-    ExternalLink,
-    Github,
-    Globe,
-    Layers,
-    LayoutDashboard,
-    Loader2,
-    Pencil,
-    Scale,
-    Server,
-    Star,
-    User,
+  BookOpen,
+  ChevronLeft,
+  Database,
+  ExternalLink,
+  Github,
+  Globe,
+  Layers,
+  LayoutDashboard,
+  Loader2,
+  Pencil,
+  Scale,
+  Server,
+  Star,
+  User,
 } from "lucide-react";
 import NextLink from "next/link";
 import { notFound, useParams } from "next/navigation";
@@ -28,16 +28,16 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-/* ── Helper: renders a labelled metadata row ── */
-function MetaRow({ label, value, icon }: { label: string; value?: string; icon?: React.ReactNode }) {
+/* ── Helper: renders a labelled metadata card ── */
+function MetaCard({ label, value, icon }: { label: string; value?: string; icon?: React.ReactNode }) {
   if (!value) return null;
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-[11px] text-muted uppercase tracking-wider font-medium flex items-center gap-1.5">
-        {icon}
+    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
+      <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
+        {icon && <span className="text-accent">{icon}</span>}
         {label}
       </dt>
-      <dd className="text-sm text-foreground">{value}</dd>
+      <dd className="text-sm font-medium text-foreground">{value}</dd>
     </div>
   );
 }
@@ -101,6 +101,10 @@ export default function AppPage() {
   };
 
   const statusInfo = getStatusProps(app.status);
+  const repositories = app.repositories && app.repositories.length > 0
+    ? app.repositories
+    : (app.repoUrl ? [{ label: 'Repository', url: app.repoUrl }] : []);
+  const customLinks = app.customLinks || [];
 
   /* Collect non-empty metadata pairs for the details tab */
   const metaFields: { label: string; value?: string; icon?: React.ReactNode }[] = [
@@ -122,24 +126,24 @@ export default function AppPage() {
 
       {/* ── Nav row ── */}
       <div className="flex justify-between items-center mb-6">
-        <NextLink href="/" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors">
+        <NextLink href="/" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm">
           <ChevronLeft className="w-4 h-4" />
-          Übersicht
+          Zurück zur Übersicht
         </NextLink>
 
         {isAdmin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
             <NextLink
               href={`/management?edit=${app.id}`}
-              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
               Bearbeiten
             </NextLink>
-            <Separator orientation="vertical" className="h-4" />
+            <div className="w-px h-4 bg-border mx-1" />
             <NextLink
               href="/management"
-              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               Verwaltung
@@ -149,9 +153,14 @@ export default function AppPage() {
       </div>
 
       {/* ── Hero ── */}
-      <header className="mb-8">
-        <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shrink-0 overflow-hidden">
+      <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-8">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-full h-full max-w-2xl pointer-events-none opacity-30 dark:opacity-20">
+          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] rounded-full bg-accent/20 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-8">
+          <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-center text-4xl md:text-6xl shrink-0 overflow-hidden">
             {app.icon?.startsWith('http') ? (
               <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
             ) : (
@@ -161,10 +170,10 @@ export default function AppPage() {
 
           <div className="flex-1 min-w-0">
             {/* Title row */}
-            <div className="flex flex-wrap items-center gap-2.5 mb-1">
-              <h1 className="text-2xl font-bold text-foreground leading-tight">{app.name}</h1>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">{app.name}</h1>
               {app.categories?.map(cat => (
-                <Chip key={cat} size="sm" variant="soft" color="accent" className="text-[10px] uppercase font-semibold tracking-wider">
+                <Chip key={cat} size="sm" variant="soft" color="accent" className="text-[11px] uppercase font-bold tracking-wider">
                   {cat}
                 </Chip>
               ))}
@@ -173,39 +182,39 @@ export default function AppPage() {
                   size="sm"
                   variant="soft"
                   color={statusInfo.color}
-                  className="text-[10px] uppercase font-semibold tracking-wider"
+                  className="text-[11px] uppercase font-bold tracking-wider"
                 >
                   {statusInfo.label}
                 </Chip>
               )}
               {app.isFeatured && (
-                <Chip size="sm" variant="soft" color="success" className="text-[10px] uppercase font-semibold">
+                <Chip size="sm" variant="soft" color="success" className="text-[11px] uppercase font-bold">
                   Curated
                 </Chip>
               )}
               {hasRating && (
-                <span className="inline-flex items-center gap-1 text-xs text-muted">
-                  <Star className="w-3.5 h-3.5 fill-gov-gold text-gov-gold" />
-                  <span className="font-semibold text-foreground">{(app.ratingAvg || 0).toFixed(1)}</span>
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted bg-surface px-2.5 py-1 rounded-lg border border-border shadow-sm">
+                  <Star className="w-4 h-4 fill-gov-gold text-gov-gold" />
+                  <span className="font-bold text-foreground">{(app.ratingAvg || 0).toFixed(1)}</span>
                   <span>({app.ratingCount})</span>
                 </span>
               )}
             </div>
 
             {/* Description */}
-            <p className="text-muted leading-relaxed max-w-2xl mb-3">{app.description}</p>
+            <p className="text-base md:text-md text-muted leading-relaxed max-w-3xl mb-5">{app.description}</p>
 
             {/* Tags */}
             {app.tags && app.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-4">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {app.tags.map(tag => (
-                  <Chip key={tag} size="sm" variant="secondary" className="text-[10px] font-medium">{tag}</Chip>
+                  <Chip key={tag} size="sm" variant="soft" className="text-xs font-medium bg-surface/50 border-border/60">{tag}</Chip>
                 ))}
               </div>
             )}
 
             {/* Quick links */}
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
               {(() => {
                 const allDemos = app.liveDemos && app.liveDemos.length > 0
                   ? app.liveDemos
@@ -216,7 +225,7 @@ export default function AppPage() {
                     <Link
                       href={allDemos[0].url}
                       target="_blank"
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm"
                     >
                       <ExternalLink className="w-4 h-4" />
                       {allDemos[0].label}
@@ -226,7 +235,7 @@ export default function AppPage() {
                   return (
                     <Dropdown>
                       <Dropdown.Trigger>
-                        <button className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline underline-offset-4 outline-none">
+                        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm outline-none">
                           <ExternalLink className="w-4 h-4" />
                           Live Demos ({allDemos.length})
                         </button>
@@ -258,21 +267,33 @@ export default function AppPage() {
                 }
                 return null;
               })()}
-              {app.repoUrl && (
+              {repositories.map((repo, idx) => (
                 <Link
-                  href={app.repoUrl}
+                  key={`${repo.url}-${idx}`}
+                  href={repo.url}
                   target="_blank"
-                  className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
                   <Github className="w-4 h-4" />
-                  Repository
+                  {repo.label || 'Repository'}
                 </Link>
-              )}
+              ))}
+              {customLinks.map((customLink, idx) => (
+                <Link
+                  key={`${customLink.url}-${idx}`}
+                  href={customLink.url}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  {customLink.label || 'Link'}
+                </Link>
+              ))}
               {app.docsUrl && (
                 <Link
                   href={app.docsUrl}
                   target="_blank"
-                  className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
                   <BookOpen className="w-4 h-4" />
                   Dokumentation
@@ -281,7 +302,7 @@ export default function AppPage() {
               {app.license && (
                 <Tooltip delay={0}>
                   <Tooltip.Trigger>
-                    <span className="inline-flex items-center gap-1.5 text-sm text-muted cursor-default">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-muted cursor-default shadow-sm">
                       <Scale className="w-4 h-4" />
                       {app.license}
                     </span>
@@ -294,15 +315,16 @@ export default function AppPage() {
         </div>
       </header>
 
-      <Separator className="mb-6" />
-
       {/* ── Tech stack strip (if available) ── */}
       {app.techStack && app.techStack.length > 0 && (
-        <div className="flex items-center gap-3 mb-6 overflow-x-auto">
-          <span className="text-[11px] text-muted uppercase tracking-wider font-medium shrink-0">Stack</span>
-          <div className="flex gap-1.5 flex-wrap">
+        <div className="flex items-center gap-4 mb-8 overflow-x-auto bg-surface-secondary/50 p-4 rounded-2xl border border-border">
+          <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-accent" />
+            Tech Stack
+          </span>
+          <div className="flex gap-2 flex-wrap">
             {app.techStack.map((tech: string) => (
-              <Chip key={tech} size="sm" variant="secondary" className="text-[10px]">{tech}</Chip>
+              <Chip key={tech} size="sm" variant="soft" className="text-xs font-medium bg-surface border border-border shadow-sm">{tech}</Chip>
             ))}
           </div>
         </div>
@@ -310,32 +332,32 @@ export default function AppPage() {
 
       {/* ── Tabbed content ── */}
       <Tabs variant="secondary" className="w-full">
-        <Tabs.ListContainer className="border-b border-border mb-6">
-          <Tabs.List aria-label="App-Details Bereiche" className="gap-6">
-            <Tabs.Tab id="docs" className="gap-2 py-3 text-sm font-medium">
+        <Tabs.ListContainer className="border-b border-border mb-8">
+          <Tabs.List aria-label="App-Details Bereiche" className="gap-8">
+            <Tabs.Tab id="docs" className="gap-2 py-4 text-sm font-semibold">
               <BookOpen className="w-4 h-4" />
               Dokumentation
               <Tabs.Indicator />
             </Tabs.Tab>
             {metaFields.length > 0 && (
-              <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-medium">
+              <Tabs.Tab id="details" className="gap-2 py-4 text-sm font-semibold">
                 <Layers className="w-4 h-4" />
                 Fachliche Details
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
             {app.hasDeploymentAssistant !== false && (
-              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-medium">
+              <Tabs.Tab id="deployment" className="gap-2 py-4 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-medium">
+            <Tabs.Tab id="ratings" className="gap-2 py-4 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
               {hasRating && (
-                <span className="text-[10px] bg-default rounded-full px-1.5 py-0.5 font-medium">{app.ratingCount}</span>
+                <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{app.ratingCount}</span>
               )}
               <Tabs.Indicator />
             </Tabs.Tab>
@@ -354,9 +376,9 @@ export default function AppPage() {
         {/* Fachliche Details */}
         {metaFields.length > 0 && (
           <Tabs.Panel id="details">
-            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {metaFields.map(f => (
-                <MetaRow key={f.label} label={f.label} value={f.value} icon={f.icon} />
+                <MetaCard key={f.label} label={f.label} value={f.value} icon={f.icon} />
               ))}
             </dl>
           </Tabs.Panel>

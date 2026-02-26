@@ -84,34 +84,35 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const hasActiveFilters = searchQuery || selectedCategory || selectedCollection || selectedStatus;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Filter bar */}
-      <div className="flex flex-col gap-3 bg-surface p-4 rounded-lg border border-border">
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+      <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
           <div className="relative flex-1 max-w-md">
             <TextField value={searchQuery} onChange={setSearchQuery} className="w-full">
               <Input
                 placeholder="Apps suchen..."
-                className="w-full"
+                className="w-full bg-field-background h-11 rounded-xl pl-10"
               />
             </TextField>
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant={!selectedCategory ? undefined : "secondary"}
+              variant={!selectedCategory ? "primary" : "secondary"}
               onPress={() => setSelectedCategory(null)}
-              className="rounded-full text-xs"
+              className={`rounded-full text-xs h-9 px-4 font-medium ${!selectedCategory ? 'text-background' : ''}`}
             >
-              Alle
+              Alle Kategorien
             </Button>
             {categories.map((cat) => (
               <Button
                 key={cat}
-                variant={selectedCategory === cat ? undefined : "secondary"}
+                variant={selectedCategory === cat ? "primary" : "secondary"}
                 size="sm"
                 onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                className="rounded-full text-xs"
+                className={`rounded-full text-xs h-9 px-4 font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
               >
                 {cat}
               </Button>
@@ -119,71 +120,75 @@ export function AppGrid({ initialApps }: AppGridProps) {
           </div>
         </div>
 
-        {statuses.length > 0 && (
-          <div className="flex items-center gap-3 pt-3 border-t border-separator">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wider shrink-0">Status:</span>
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                variant={!selectedStatus ? undefined : "secondary"}
-                size="sm"
-                onPress={() => setSelectedStatus(null)}
-                className="rounded-full text-xs h-7"
-              >
-                Alle
-              </Button>
-              {statuses.map((st) => (
-                <Button
-                  key={st}
-                  variant={selectedStatus === st ? undefined : "secondary"}
-                  size="sm"
-                  onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
-                  className="rounded-full text-xs h-7"
-                >
-                  {getStatusLabel(st)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
+        {(statuses.length > 0 || collections.length > 0) && (
+          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
+            {statuses.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Status:</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={!selectedStatus ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedStatus(null)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
+                  >
+                    Alle
+                  </Button>
+                  {statuses.map((st) => (
+                    <Button
+                      key={st}
+                      variant={selectedStatus === st ? "primary" : "secondary"}
+                      size="sm"
+                      onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
+                      className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
+                    >
+                      {getStatusLabel(st)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {collections.length > 0 && (
-          <div className="flex items-center gap-3 pt-3 border-t border-separator">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wider shrink-0">Kollektionen:</span>
-            <div className="flex flex-wrap gap-1.5">
-              <Button
-                variant={!selectedCollection ? undefined : "secondary"}
-                size="sm"
-                onPress={() => setSelectedCollection(null)}
-                className="rounded-full text-xs h-7"
-              >
-                Alle
-              </Button>
-              {collections.map((col) => (
-                <Button
-                  key={col}
-                  variant={selectedCollection === col ? undefined : "secondary"}
-                  size="sm"
-                  onPress={() => setSelectedCollection(selectedCollection === col ? null : col)}
-                  className="rounded-full text-xs h-7"
-                >
-                  {col}
-                </Button>
-              ))}
-            </div>
+            {collections.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0 w-24">Kollektionen:</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={!selectedCollection ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedCollection(null)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedCollection ? 'bg-accent text-white' : ''}`}
+                  >
+                    Alle
+                  </Button>
+                  {collections.map((col) => (
+                    <Button
+                      key={col}
+                      variant={selectedCollection === col ? "primary" : "secondary"}
+                      size="sm"
+                      onPress={() => setSelectedCollection(selectedCollection === col ? null : col)}
+                      className={`rounded-full text-[11px] h-7 px-3 ${selectedCollection === col ? 'bg-accent text-white' : ''}`}
+                    >
+                      {col}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Results count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted">
-          {filteredApps.length} {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden
+      <div className="flex items-center justify-between px-1">
+        <p className="text-sm font-medium text-muted">
+          <span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden
         </p>
         {hasActiveFilters && (
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
-            className="text-xs gap-1.5"
+            className="text-xs gap-1.5 text-muted hover:text-foreground"
             onPress={() => {
               setSearchQuery("");
               setSelectedCategory(null);
@@ -191,7 +196,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSelectedStatus(null);
             }}
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
             Filter zurücksetzen
           </Button>
         )}

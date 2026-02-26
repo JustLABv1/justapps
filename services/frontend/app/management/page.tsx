@@ -21,6 +21,7 @@ import {
 import {
   BookOpen,
   ChevronLeft,
+  Download,
   ExternalLink,
   FileText,
   Github,
@@ -36,6 +37,7 @@ import {
   Terminal,
   Trash2,
   Unlock,
+  Upload,
   User,
   UserPlus,
   Users as UsersIcon
@@ -192,6 +194,60 @@ function ManagementContent() {
   };
 
   // App Handlers
+  const handleExportApps = async () => {
+    try {
+      const res = await fetchApi('/apps/export');
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `apps-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        alert('Export fehlgeschlagen');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Export fehlgeschlagen');
+    }
+  };
+
+  const handleImportApps = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const appsData = JSON.parse(content);
+        
+        const res = await fetchApi('/apps/import', {
+          method: 'POST',
+          body: JSON.stringify(appsData)
+        });
+
+        if (res.ok) {
+          alert('Apps erfolgreich importiert');
+          loadApps();
+        } else {
+          alert('Import fehlgeschlagen');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Fehler beim Importieren der Datei');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be selected again
+    e.target.value = '';
+  };
+
   const handleCreateApp = () => {
     setSelectedApp(null);
     setAppFormData({
@@ -206,6 +262,8 @@ function ManagementContent() {
       liveUrl: '',
       liveDemos: [],
       repoUrl: '',
+      repositories: [],
+      customLinks: [],
       dockerRepo: '',
       helmRepo: '',
       docsUrl: '',
@@ -251,6 +309,20 @@ function ManagementContent() {
     e.preventDefault();
     const method = selectedApp ? 'PUT' : 'POST';
     const url = selectedApp ? `/apps/${selectedApp.id}` : '/apps';
+
+    const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) => {
+      if (!Array.isArray(links)) return [];
+      return links
+        .map(link => ({
+          label: (link.label || '').trim(),
+          url: (link.url || '').trim()
+        }))
+        .filter(link => link.url.length > 0)
+        .map(link => ({
+          label: link.label || 'Link',
+          url: link.url
+        }));
+    };
     
     const finalData = {
       ...appFormData,
@@ -259,7 +331,9 @@ function ManagementContent() {
         : (appFormData.categories as unknown as string).split(',').map(s => s.trim()).filter(Boolean),
       techStack: Array.isArray(appFormData.techStack) 
         ? appFormData.techStack 
-        : (appFormData.techStack as unknown as string).split(',').map(s => s.trim()).filter(Boolean)
+        : (appFormData.techStack as unknown as string).split(',').map(s => s.trim()).filter(Boolean),
+      repositories: sanitizeLinks(appFormData.repositories),
+      customLinks: sanitizeLinks(appFormData.customLinks)
     };
 
     try {
@@ -323,7 +397,7 @@ function ManagementContent() {
           <h1 className="text-3xl font-bold text-foreground mb-1">Verwaltung</h1>
           <p className="text-muted">Verwalten Sie Applikationen und Benutzer im PLAIN Community Store.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button 
             variant="secondary"
             onPress={() => router.push('/')}
@@ -333,13 +407,9 @@ function ManagementContent() {
             Zum PLAIN Community Store
           </Button>
           {activeTab === 'apps' ? (
-            <Button 
-              onPress={handleCreateApp} 
-              className="bg-accent text-white font-medium gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Neue App
-            </Button>
+            <>
+              
+            </>
           ) : (
             <Button 
               onPress={handleCreateUser} 
@@ -384,11 +454,44 @@ function ManagementContent() {
         </Tabs.ListContainer>
 
         <Tabs.Panel id="apps" className="pt-6">
+          <div className='flex flex-cols gap-2 pb-4 justify-end'>
+            <Button 
+              onPress={handleCreateApp} 
+              className="bg-accent text-white font-medium gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Neue App
+            </Button>
+            <Button 
+              variant="secondary"
+              onPress={handleExportApps}
+              className="font-bold gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+            <div className='relative'>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportApps}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                title="Apps importieren"
+              />
+              <Button 
+                variant="secondary"
+                className="font-bold gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Import
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-4">
             {apps.map((app) => (
-              <Card key={app.id} variant="default" className="hover:border-accent/30 transition-colors border-border">
-                <div className="flex flex-col md:flex-row items-center p-4 gap-6">
-                  <div className="w-16 h-16 rounded-xl bg-default flex items-center justify-center text-3xl shadow-inner flex-shrink-0 overflow-hidden">
+              <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
+                <div className="flex flex-col md:flex-row items-center p-5 gap-6">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
                     {app.icon?.startsWith('http') ? (
                       <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
                     ) : (
@@ -396,41 +499,53 @@ function ManagementContent() {
                     )}
                   </div>
                   <div className="flex-grow text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-1 flex-wrap">
-                      <h3 className="text-lg font-semibold text-foreground">{app.name}</h3>
-                      {app.categories?.map(cat => (
-                        <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase">{cat}</Chip>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">
+                      <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
+                      {app.categories?.slice(0, 3).map(cat => (
+                        <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
                       ))}
+                      {(app.categories?.length || 0) > 3 && (
+                        <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 3}</Chip>
+                      )}
                     </div>
-                    <div className="text-sm text-muted line-clamp-1 mb-2">{app.description}</div>
-                    <div className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-0.5 rounded w-fit mx-auto md:mx-0">ID: {app.id}</div>
+                    <div className="text-sm text-muted line-clamp-2 mb-3 max-w-3xl">{app.description || <span className="italic opacity-50">Keine Beschreibung</span>}</div>
+                    <div className="flex items-center justify-center md:justify-start gap-3">
+                      <div className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
+                        <span className="opacity-50">ID:</span> {app.id}
+                      </div>
+                      {app.status && (
+                        <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md border border-accent/20 uppercase tracking-wider">
+                          {app.status}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
                     <Button 
                       size="sm" 
-                      variant="tertiary"
+                      variant="secondary"
                       onPress={() => router.push(`/apps/${app.id}`)}
-                      className="font-bold gap-1.5"
+                      className="font-bold gap-2 flex-1 md:flex-none justify-start"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-4 h-4 text-muted" />
                       Details
                     </Button>
                     <Button 
                       size="sm" 
                       variant="secondary"
                       onPress={() => handleEditApp(app)}
-                      className="font-bold gap-1.5"
+                      className="font-bold gap-2 flex-1 md:flex-none justify-start"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Edit
+                      <Pencil className="w-4 h-4 text-muted" />
+                      Bearbeiten
                     </Button>
                     <Button 
                       size="sm" 
                       variant="danger-soft"
                       onPress={() => handleDeleteApp(app.id)}
-                      className="font-bold gap-1.5"
+                      className="font-bold gap-2 flex-1 md:flex-none justify-start"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                       Löschen
                     </Button>
                   </div>
@@ -451,45 +566,49 @@ function ManagementContent() {
         <Tabs.Panel id="users" className="pt-6">
           <div className="grid grid-cols-1 gap-4">
             {users.map((u) => (
-              <Card key={u.id} variant="default" className="hover:border-accent/30 transition-colors border-border">
-                <div className="flex flex-col md:flex-row items-center p-4 gap-6">
-                  <div className="w-12 h-12 rounded-full bg-default flex items-center justify-center text-xl shadow-inner flex-shrink-0">
-                    {u.role === 'admin' ? <ShieldCheck className="text-accent" /> : <User className="text-muted" />}
+              <Card key={u.id} variant="default" className={`hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group ${u.disabled ? 'opacity-75' : ''}`}>
+                <div className="flex flex-col md:flex-row items-center p-5 gap-6">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-secondary border-border text-muted'}`}>
+                    {u.role === 'admin' ? <ShieldCheck className="w-6 h-6" /> : <User className="w-6 h-6" />}
                   </div>
                   <div className="flex-grow text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-                      <h3 className="text-lg font-semibold text-foreground">{u.username}</h3>
-                      <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase">{u.role}</Chip>
-                      {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase text-danger-foreground">Deaktiviert</Chip>}
+                    <div className="flex items-center justify-center md:justify-start gap-3 mb-1.5">
+                      <h3 className="text-lg font-bold text-foreground">{u.username}</h3>
+                      <Chip size="sm" variant="soft" className={`font-bold text-[10px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role}</Chip>
+                      {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider bg-danger/10 text-danger">Deaktiviert</Chip>}
                     </div>
-                    <div className="text-sm text-muted">{u.email}</div>
+                    <div className="text-sm text-muted flex items-center justify-center md:justify-start gap-2">
+                      <div className="bg-surface-secondary px-2 py-1 rounded-md border border-border/50 font-mono text-[11px]">
+                        {u.email}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
                     <Button 
                       size="sm" 
                       variant="secondary"
                       onPress={() => handleToggleUserState(u)}
-                      className="font-bold gap-1.5"
+                      className={`font-bold gap-2 flex-1 md:flex-none justify-start ${u.disabled ? 'text-success hover:bg-success/10 hover:text-success' : 'text-warning hover:bg-warning/10 hover:text-warning'}`}
                     >
-                      {u.disabled ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                      {u.disabled ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                       {u.disabled ? 'Aktivieren' : 'Sperren'}
                     </Button>
                     <Button 
                       size="sm" 
                       variant="secondary"
                       onPress={() => handleEditUser(u)}
-                      className="font-bold gap-1.5"
+                      className="font-bold gap-2 flex-1 md:flex-none justify-start"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Edit
+                      <Pencil className="w-4 h-4 text-muted" />
+                      Bearbeiten
                     </Button>
                     <Button 
                       size="sm" 
                       variant="danger-soft"
                       onPress={() => handleDeleteUser(u.id)}
-                      className="font-bold gap-1.5"
+                      className="font-bold gap-2 flex-1 md:flex-none justify-start"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                       Löschen
                     </Button>
                   </div>
@@ -566,96 +685,114 @@ function ManagementContent() {
                     </Tabs.ListContainer>
 
                     <div className="flex-grow overflow-y-auto px-8 py-8 md:h-[500px]">
-                      <Tabs.Panel id="general" className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField isRequired value={appFormData.name || ''} onChange={(val) => setAppFormData({...appFormData, name: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Name</Label>
-                            <Input value={appFormData.name || ''} placeholder="z.B. Digi-Sign Pro" className="bg-field-background" />
-                          </TextField>
-                          <TextField isRequired value={appFormData.id || ''} onChange={(val) => setAppFormData({...appFormData, id: val})} isDisabled={!!selectedApp}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Unique ID (URL)</Label>
-                            <Input value={appFormData.id || ''} placeholder="z.B. digi-sign-pro" className="bg-field-background font-mono" />
+                      <Tabs.Panel id="general" className="space-y-8">
+                        {/* --- Basisinformationen --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Info className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Basisinformationen</Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField isRequired value={appFormData.name || ''} onChange={(val) => setAppFormData({...appFormData, name: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Name</Label>
+                              <Input value={appFormData.name || ''} placeholder="z.B. Digi-Sign Pro" className="bg-field-background" />
+                            </TextField>
+                            <TextField isRequired value={appFormData.id || ''} onChange={(val) => setAppFormData({...appFormData, id: val})} isDisabled={!!selectedApp}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Unique ID (URL)</Label>
+                              <Input value={appFormData.id || ''} placeholder="z.B. digi-sign-pro" className="bg-field-background font-mono" />
+                            </TextField>
+                          </div>
+
+                          <TextField value={appFormData.description || ''} onChange={(val) => setAppFormData({...appFormData, description: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kurzbeschreibung</Label>
+                            <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-field-background min-h-[80px]" />
                           </TextField>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField isRequired value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} onChange={(val) => setAppFormData({...appFormData, categories: val.split(',').map(s => s.trim())})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kategorie(n) (Komma-separiert)</Label>
-                            <Input value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} placeholder="Verwaltung, Tools, Infrastruktur..." className="bg-field-background" />
-                          </TextField>
-                          <ComboBox
-                            inputValue={iconInput}
-                            onInputChange={(val) => setIconInput(val)}
-                            onSelectionChange={(key) => {
-                              if (key) {
-                                const v = key as string;
-                                setIconInput(v);
-                                setAppFormData({ ...appFormData, icon: v });
-                              }
-                            }}
-                            className="w-full"
-                          >
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
-                            <ComboBox.InputGroup>
-                              <Input
-                                value={iconInput}
-                                placeholder="🏛️ oder https://..."
-                                className="bg-field-background h-10"
-                                onBlur={() => setAppFormData({ ...appFormData, icon: iconInput })}
-                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                  if (e.key === 'Enter') {
-                                    // prevent form submit; persist icon and keep modal open
-                                    e.preventDefault();
-                                    setAppFormData({ ...appFormData, icon: iconInput });
-                                  }
-                                }}
-                              />
-                              <ComboBox.Trigger className="bg-field-background border-none px-2 h-10 flex items-center justify-center">
-                                <Plus className="w-4 h-4 text-muted" />
-                              </ComboBox.Trigger>
-                            </ComboBox.InputGroup>
-                            <ComboBox.Popover>
-                              <ListBox className="max-h-60 overflow-y-auto">
-                                {['🏛️', '📊', '💬', '🔐', '📅', '🚀', '🛠️', '📱', '🛡️', '⚙️', '📦', '📈', '🔑', '🏙️', '👥', '🗺️', '💰'].map(emoji => (
-                                  <ListBox.Item key={emoji} id={emoji} textValue={emoji}>
-                                    <div className="flex items-center justify-center p-1">
-                                      <span className="text-2xl">{emoji}</span>
-                                    </div>
-                                    <ListBox.ItemIndicator />
-                                  </ListBox.Item>
-                                ))}
-                              </ListBox>
-                            </ComboBox.Popover>
-                            <p className="text-[10px] text-muted mt-1 italic">Wählen Sie ein Emoji oder fügen Sie eine Bild-URL ein (z. B. https://...)</p>
-                          </ComboBox>
-                        </div>
+                        {/* --- Metadaten --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Layers className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Metadaten & Darstellung</Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField isRequired value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} onChange={(val) => setAppFormData({...appFormData, categories: val.split(',').map(s => s.trim())})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kategorie(n) (Komma-separiert)</Label>
+                              <Input value={Array.isArray(appFormData.categories) ? appFormData.categories.join(', ') : ''} placeholder="Verwaltung, Tools, Infrastruktur..." className="bg-field-background" />
+                            </TextField>
+                            <ComboBox
+                              inputValue={iconInput}
+                              onInputChange={(val) => setIconInput(val)}
+                              onSelectionChange={(key) => {
+                                if (key) {
+                                  const v = key as string;
+                                  setIconInput(v);
+                                  setAppFormData({ ...appFormData, icon: v });
+                                }
+                              }}
+                              className="w-full"
+                            >
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Icon (Emoji / URL)</Label>
+                              <ComboBox.InputGroup>
+                                <Input
+                                  value={iconInput}
+                                  placeholder="🏛️ oder https://..."
+                                  className="bg-field-background h-10"
+                                  onBlur={() => setAppFormData({ ...appFormData, icon: iconInput })}
+                                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    if (e.key === 'Enter') {
+                                      // prevent form submit; persist icon and keep modal open
+                                      e.preventDefault();
+                                      setAppFormData({ ...appFormData, icon: iconInput });
+                                    }
+                                  }}
+                                />
+                                <ComboBox.Trigger className="bg-field-background border-none px-2 h-10 flex items-center justify-center">
+                                  <Plus className="w-4 h-4 text-muted" />
+                                </ComboBox.Trigger>
+                              </ComboBox.InputGroup>
+                              <ComboBox.Popover>
+                                <ListBox className="max-h-60 overflow-y-auto">
+                                  {['🏛️', '📊', '💬', '🔐', '📅', '🚀', '🛠️', '📱', '🛡️', '⚙️', '📦', '📈', '🔑', '🏙️', '👥', '🗺️', '💰'].map(emoji => (
+                                    <ListBox.Item key={emoji} id={emoji} textValue={emoji}>
+                                      <div className="flex items-center justify-center p-1">
+                                        <span className="text-2xl">{emoji}</span>
+                                      </div>
+                                      <ListBox.ItemIndicator />
+                                    </ListBox.Item>
+                                  ))}
+                                </ListBox>
+                              </ComboBox.Popover>
+                              <p className="text-[10px] text-muted mt-1 italic">Wählen Sie ein Emoji oder fügen Sie eine Bild-URL ein (z. B. https://...)</p>
+                            </ComboBox>
+                          </div>
 
-                        <TextField value={appFormData.description || ''} onChange={(val) => setAppFormData({...appFormData, description: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kurzbeschreibung</Label>
-                          <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-field-background" />
-                        </TextField>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} onChange={(val) => setAppFormData({...appFormData, techStack: val.split(',').map(s => s.trim())})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Tech Stack (Komma-separiert)</Label>
-                            <Input value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} placeholder="React, Go, PostgreSQL" className="bg-field-background" />
-                          </TextField>
-                          <TextField value={appFormData.license || ''} onChange={(val) => setAppFormData({...appFormData, license: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Lizenz</Label>
-                            <Input value={appFormData.license || ''} placeholder="MIT, Apache 2.0" className="bg-field-background" />
-                          </TextField>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} onChange={(val) => setAppFormData({...appFormData, techStack: val.split(',').map(s => s.trim())})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Tech Stack (Komma-separiert)</Label>
+                              <Input value={Array.isArray(appFormData.techStack) ? appFormData.techStack.join(', ') : ''} placeholder="React, Go, PostgreSQL" className="bg-field-background" />
+                            </TextField>
+                            <TextField value={appFormData.license || ''} onChange={(val) => setAppFormData({...appFormData, license: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Lizenz</Label>
+                              <Input value={appFormData.license || ''} placeholder="MIT, Apache 2.0" className="bg-field-background" />
+                            </TextField>
+                          </div>
                         </div>
                       </Tabs.Panel>
 
-                      <Tabs.Panel id="technical" className="space-y-6">
+                      <Tabs.Panel id="technical" className="space-y-8">
                         <Surface variant="default" className="p-4 bg-accent/10 rounded-lg border border-accent/20 flex gap-4 text-accent">
                           <Layers className="w-5 h-5 flex-shrink-0" />
                           <p className="text-sm">Geben Sie hier die URLs für Deployments und Source-Code an.</p>
                         </Surface>
 
+                        {/* --- Live Demos Section --- */}
                         <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider">Live Demo Links</Label>
+                          <div className="flex items-center justify-between border-b border-border pb-2">
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4 text-muted" />
+                              <Label className="text-sm font-bold text-foreground">Live Demos</Label>
+                            </div>
                             <Button 
                               size="sm" 
                               variant="secondary" 
@@ -670,181 +807,353 @@ function ManagementContent() {
                             </Button>
                           </div>
                           
-                          {(appFormData.liveDemos || []).length === 0 && (
-                            <p className="text-xs text-muted italic">Keine zusätzlichen Live Demo Links konfiguriert.</p>
-                          )}
-
-                          <div className="space-y-4">
-                            {(appFormData.liveDemos || []).map((demo, idx) => (
-                              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-surface/50 p-4 rounded-xl border border-border shadow-sm group">
-                                <div className="md:col-span-4">
-                                  <TextField 
-                                    value={demo.label} 
-                                    onChange={(val) => {
-                                      const demos = [...(appFormData.liveDemos || [])];
-                                      demos[idx] = { ...demos[idx], label: val };
-                                      setAppFormData({ ...appFormData, liveDemos: demos });
-                                    }}
-                                  >
-                                    <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5 text-accent/80">
-                                      Label
-                                    </Label>
-                                    <Input placeholder="z.B. Produktion" className="bg-field-background" />
-                                  </TextField>
-                                </div>
-                                <div className="md:col-span-7">
-                                  <TextField 
-                                    value={demo.url} 
-                                    onChange={(val) => {
-                                      const demos = [...(appFormData.liveDemos || [])];
-                                      demos[idx] = { ...demos[idx], url: val };
-                                      setAppFormData({ ...appFormData, liveDemos: demos });
-                                    }}
-                                  >
-                                    <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5 flex items-center gap-1.5 text-accent/80">
-                                      URL
-                                    </Label>
-                                    <Input placeholder="https://..." className="bg-field-background font-mono text-sm" />
-                                  </TextField>
-                                </div>
-                                <div className="md:col-span-1 flex justify-end pb-0.5">
-                                  <Button 
-                                    size="sm" 
-                                    variant="secondary" 
-                                    className="h-10 w-10 p-0 min-w-0 text-danger hover:bg-danger/10 border-none transition-colors"
-                                    onPress={() => {
-                                      const demos = [...(appFormData.liveDemos || [])];
-                                      demos.splice(idx, 1);
-                                      setAppFormData({ ...appFormData, liveDemos: demos });
-                                    }}
-                                  >
-                                    <Trash2 className="w-5 h-5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
+                          <div className="grid grid-cols-1 gap-4">
+                            <TextField value={appFormData.liveUrl || ''} onChange={(val) => setAppFormData({...appFormData, liveUrl: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Standard Live URL (Fallback)</Label>
+                              <Input value={appFormData.liveUrl || ''} placeholder="https://app.bund.de" className="bg-field-background font-mono text-sm" />
+                            </TextField>
                           </div>
+
+                          {(appFormData.liveDemos || []).length > 0 && (
+                            <div className="space-y-3 mt-4">
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider">Zusätzliche Live Demos</Label>
+                              {(appFormData.liveDemos || []).map((demo, idx) => (
+                                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-surface/50 p-3 rounded-xl border border-border shadow-sm group">
+                                  <div className="md:col-span-4">
+                                    <TextField 
+                                      value={demo.label} 
+                                      onChange={(val) => {
+                                        const demos = [...(appFormData.liveDemos || [])];
+                                        demos[idx] = { ...demos[idx], label: val };
+                                        setAppFormData({ ...appFormData, liveDemos: demos });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Label</Label>
+                                      <Input placeholder="z.B. Produktion" className="bg-field-background" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-7">
+                                    <TextField 
+                                      value={demo.url} 
+                                      onChange={(val) => {
+                                        const demos = [...(appFormData.liveDemos || [])];
+                                        demos[idx] = { ...demos[idx], url: val };
+                                        setAppFormData({ ...appFormData, liveDemos: demos });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">URL</Label>
+                                      <Input placeholder="https://..." className="bg-field-background font-mono text-sm" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-1 flex justify-end pb-0.5">
+                                    <Button 
+                                      size="sm" 
+                                      variant="secondary" 
+                                      className="h-10 w-10 p-0 min-w-0 text-danger hover:bg-danger/10 border-none transition-colors"
+                                      onPress={() => {
+                                        const demos = [...(appFormData.liveDemos || [])];
+                                        demos.splice(idx, 1);
+                                        setAppFormData({ ...appFormData, liveDemos: demos });
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        <Separator className="my-2" />
+                        {/* --- Repositories Section --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between border-b border-border pb-2">
+                            <div className="flex items-center gap-2">
+                              <Github className="w-4 h-4 text-muted" />
+                              <Label className="text-sm font-bold text-foreground">Repositories</Label>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 text-[10px] uppercase font-bold tracking-wider"
+                              onPress={() => {
+                                const repositories = [...(appFormData.repositories || [])];
+                                repositories.push({ label: 'Repository', url: '' });
+                                setAppFormData({ ...appFormData, repositories });
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" /> Hinzufügen
+                            </Button>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={appFormData.liveUrl || ''} onChange={(val) => setAppFormData({...appFormData, liveUrl: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><Globe className="w-3 h-3" /> Standard Live URL (Fallback)</Label>
-                            <Input value={appFormData.liveUrl || ''} placeholder="https://app.bund.de" className="bg-field-background font-mono text-sm" />
-                          </TextField>
-                          <TextField value={appFormData.repoUrl || ''} onChange={(val) => setAppFormData({...appFormData, repoUrl: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><Github className="w-3 h-3" /> Repository URL</Label>
-                            <Input value={appFormData.repoUrl || ''} placeholder="https://github.com/bund/app" className="bg-field-background font-mono text-sm" />
-                          </TextField>
+                          <div className="grid grid-cols-1 gap-4">
+                            <TextField value={appFormData.repoUrl || ''} onChange={(val) => setAppFormData({...appFormData, repoUrl: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Legacy Repository URL (Fallback)</Label>
+                              <Input value={appFormData.repoUrl || ''} placeholder="https://github.com/bund/app" className="bg-field-background font-mono text-sm" />
+                            </TextField>
+                          </div>
+
+                          {(appFormData.repositories || []).length > 0 && (
+                            <div className="space-y-3 mt-4">
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider">Zusätzliche Repositories</Label>
+                              {(appFormData.repositories || []).map((repository, idx) => (
+                                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-surface/50 p-3 rounded-xl border border-border shadow-sm group">
+                                  <div className="md:col-span-4">
+                                    <TextField
+                                      value={repository.label}
+                                      onChange={(val) => {
+                                        const repositories = [...(appFormData.repositories || [])];
+                                        repositories[idx] = { ...repositories[idx], label: val };
+                                        setAppFormData({ ...appFormData, repositories });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Label</Label>
+                                      <Input placeholder="z.B. Backend" className="bg-field-background" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-7">
+                                    <TextField
+                                      value={repository.url}
+                                      onChange={(val) => {
+                                        const repositories = [...(appFormData.repositories || [])];
+                                        repositories[idx] = { ...repositories[idx], url: val };
+                                        setAppFormData({ ...appFormData, repositories });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">URL</Label>
+                                      <Input placeholder="https://..." className="bg-field-background font-mono text-sm" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-1 flex justify-end pb-0.5">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-10 w-10 p-0 min-w-0 text-danger hover:bg-danger/10 border-none transition-colors"
+                                      onPress={() => {
+                                        const repositories = [...(appFormData.repositories || [])];
+                                        repositories.splice(idx, 1);
+                                        setAppFormData({ ...appFormData, repositories });
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={appFormData.dockerRepo || ''} onChange={(val) => setAppFormData({...appFormData, dockerRepo: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Image</Label>
-                            <Input value={appFormData.dockerRepo || ''} placeholder="ghcr.io/bund/image:latest" className="bg-field-background font-mono text-sm" />
-                          </TextField>
-                          <TextField value={appFormData.helmRepo || ''} onChange={(val) => setAppFormData({...appFormData, helmRepo: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Chart</Label>
-                            <Input value={appFormData.helmRepo || ''} placeholder="oci://ghcr.io/bund/charts/app" className="bg-field-background font-mono text-sm" />
-                          </TextField>
+                        {/* --- Custom Links Section --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between border-b border-border pb-2">
+                            <div className="flex items-center gap-2">
+                              <ExternalLink className="w-4 h-4 text-muted" />
+                              <Label className="text-sm font-bold text-foreground">Custom Links</Label>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 text-[10px] uppercase font-bold tracking-wider"
+                              onPress={() => {
+                                const customLinks = [...(appFormData.customLinks || [])];
+                                customLinks.push({ label: 'Link', url: '' });
+                                setAppFormData({ ...appFormData, customLinks });
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" /> Hinzufügen
+                            </Button>
+                          </div>
+
+                          {(appFormData.customLinks || []).length === 0 ? (
+                            <p className="text-xs text-muted italic">Keine Custom Links konfiguriert.</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {(appFormData.customLinks || []).map((customLink, idx) => (
+                                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-surface/50 p-3 rounded-xl border border-border shadow-sm group">
+                                  <div className="md:col-span-4">
+                                    <TextField
+                                      value={customLink.label}
+                                      onChange={(val) => {
+                                        const customLinks = [...(appFormData.customLinks || [])];
+                                        customLinks[idx] = { ...customLinks[idx], label: val };
+                                        setAppFormData({ ...appFormData, customLinks });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Label</Label>
+                                      <Input placeholder="z.B. Product Page" className="bg-field-background" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-7">
+                                    <TextField
+                                      value={customLink.url}
+                                      onChange={(val) => {
+                                        const customLinks = [...(appFormData.customLinks || [])];
+                                        customLinks[idx] = { ...customLinks[idx], url: val };
+                                        setAppFormData({ ...appFormData, customLinks });
+                                      }}
+                                    >
+                                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">URL</Label>
+                                      <Input placeholder="https://..." className="bg-field-background font-mono text-sm" />
+                                    </TextField>
+                                  </div>
+                                  <div className="md:col-span-1 flex justify-end pb-0.5">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-10 w-10 p-0 min-w-0 text-danger hover:bg-danger/10 border-none transition-colors"
+                                      onPress={() => {
+                                        const customLinks = [...(appFormData.customLinks || [])];
+                                        customLinks.splice(idx, 1);
+                                        setAppFormData({ ...appFormData, customLinks });
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        <TextField value={appFormData.docsUrl || ''} onChange={(val) => setAppFormData({...appFormData, docsUrl: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> Externe Dokumentation URL</Label>
-                          <Input value={appFormData.docsUrl || ''} placeholder="https://docs.bund.de" className="bg-field-background font-mono text-sm" />
-                        </TextField>
+                        {/* --- Deployment & Docs Section --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Server className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Deployment & Docs</Label>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={appFormData.dockerRepo || ''} onChange={(val) => setAppFormData({...appFormData, dockerRepo: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Image</Label>
+                              <Input value={appFormData.dockerRepo || ''} placeholder="ghcr.io/bund/image:latest" className="bg-field-background font-mono text-sm" />
+                            </TextField>
+                            <TextField value={appFormData.helmRepo || ''} onChange={(val) => setAppFormData({...appFormData, helmRepo: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Chart</Label>
+                              <Input value={appFormData.helmRepo || ''} placeholder="oci://ghcr.io/bund/charts/app" className="bg-field-background font-mono text-sm" />
+                            </TextField>
+                          </div>
+
+                          <TextField value={appFormData.docsUrl || ''} onChange={(val) => setAppFormData({...appFormData, docsUrl: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><BookOpen className="w-3 h-3" /> Externe Dokumentation URL</Label>
+                            <Input value={appFormData.docsUrl || ''} placeholder="https://docs.bund.de" className="bg-field-background font-mono text-sm" />
+                          </TextField>
+                        </div>
                       </Tabs.Panel>
 
-                      <Tabs.Panel id="functional" className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={appFormData.focus || ''} onChange={(val) => setAppFormData({...appFormData, focus: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Themenfeld / Schwerpunkt</Label>
-                            <Input value={appFormData.focus || ''} placeholder="Digitale Signatur, KI..." className="bg-field-background" />
-                          </TextField>
-                          <TextField value={appFormData.appType || ''} onChange={(val) => setAppFormData({...appFormData, appType: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Anwendungstyp</Label>
-                            <Input value={appFormData.appType || ''} placeholder="Web-App, API, Bot..." className="bg-field-background" />
-                          </TextField>
-                        </div>
-
-                        <TextField value={appFormData.useCase || ''} onChange={(val) => setAppFormData({...appFormData, useCase: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ziel Anwendungsfall</Label>
-                          <TextArea value={appFormData.useCase || ''} placeholder="Was soll mit der App erreicht werden?" className="bg-field-background" />
-                        </TextField>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={appFormData.visualization || ''} onChange={(val) => setAppFormData({...appFormData, visualization: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Visualisierung</Label>
-                            <Input value={appFormData.visualization || ''} placeholder="Dashboard, Map, Chart..." className="bg-field-background" />
-                          </TextField>
-                          <TextField value={appFormData.deployment || ''} onChange={(val) => setAppFormData({...appFormData, deployment: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Deployment (Beschreibung)</Label>
-                            <Input value={appFormData.deployment || ''} placeholder="Zentraler Betrieb, On-Premise..." className="bg-field-background" />
-                          </TextField>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField value={appFormData.infrastructure || ''} onChange={(val) => setAppFormData({...appFormData, infrastructure: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Infrastruktur</Label>
-                            <Input value={appFormData.infrastructure || ''} placeholder="OpenShift, Kubernetes..." className="bg-field-background" />
-                          </TextField>
-                          <TextField value={appFormData.database || ''} onChange={(val) => setAppFormData({...appFormData, database: val})}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Datenbasis</Label>
-                            <Input value={appFormData.database || ''} placeholder="PostgreSQL, S3, LDAP..." className="bg-field-background" />
-                          </TextField>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Status</Label>
-                            <Select 
-                              selectedKey={['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') ? appFormData.status : 'custom'}
-                              onSelectionChange={(key) => {
-                                if (key !== 'custom') {
-                                  setAppFormData({...appFormData, status: key as string});
-                                }
-                              }}
-                              className="w-full"
-                            >
-                              <Select.Trigger className="bg-field-background border-none h-10 px-3">
-                                <Select.Value />
-                                <Select.Indicator />
-                              </Select.Trigger>
-                              <Select.Popover>
-                                <ListBox>
-                                  <ListBox.Item id="POC" textValue="POC">POC (Machbarkeitsstudie)</ListBox.Item>
-                                  <ListBox.Item id="MVP" textValue="MVP">MVP (Minimalprodukt)</ListBox.Item>
-                                  <ListBox.Item id="Sandbox" textValue="Sandbox">Sandbox</ListBox.Item>
-                                  <ListBox.Item id="Incubating" textValue="Incubating">In Inkubation</ListBox.Item>
-                                  <ListBox.Item id="Graduated" textValue="Graduated">Graduated (Produktiv)</ListBox.Item>
-                                  <ListBox.Item id="custom" textValue="Eigener Status...">Eigener Status...</ListBox.Item>
-                                </ListBox>
-                              </Select.Popover>
-                            </Select>
+                      <Tabs.Panel id="functional" className="space-y-8">
+                        {/* --- Klassifizierung & Zielsetzung --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Info className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Klassifizierung & Zielsetzung</Label>
                           </div>
-                          {(!['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') || appFormData.status === 'custom') && (
-                            <TextField value={appFormData.status === 'custom' ? '' : appFormData.status || ''} onChange={(val) => setAppFormData({...appFormData, status: val})}>
-                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Eigener Status (Text)</Label>
-                              <Input value={appFormData.status === 'custom' ? '' : appFormData.status || ''} placeholder="z.B. Pilot, Geplant..." className="bg-field-background" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={appFormData.focus || ''} onChange={(val) => setAppFormData({...appFormData, focus: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Themenfeld / Schwerpunkt</Label>
+                              <Input value={appFormData.focus || ''} placeholder="Digitale Signatur, KI..." className="bg-field-background" />
                             </TextField>
-                          )}
+                            <TextField value={appFormData.appType || ''} onChange={(val) => setAppFormData({...appFormData, appType: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Anwendungstyp</Label>
+                              <Input value={appFormData.appType || ''} placeholder="Web-App, API, Bot..." className="bg-field-background" />
+                            </TextField>
+                          </div>
+
+                          <TextField value={appFormData.useCase || ''} onChange={(val) => setAppFormData({...appFormData, useCase: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ziel Anwendungsfall</Label>
+                            <TextArea value={appFormData.useCase || ''} placeholder="Was soll mit der App erreicht werden?" className="bg-field-background" />
+                          </TextField>
                         </div>
 
-                        <TextField value={appFormData.contactPerson || ''} onChange={(val) => setAppFormData({...appFormData, contactPerson: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
-                          <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-field-background" />
-                        </TextField>
+                        {/* --- Architektur & Technik --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Layers className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Architektur & Technik</Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={appFormData.visualization || ''} onChange={(val) => setAppFormData({...appFormData, visualization: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Visualisierung</Label>
+                              <Input value={appFormData.visualization || ''} placeholder="Dashboard, Map, Chart..." className="bg-field-background" />
+                            </TextField>
+                            <TextField value={appFormData.deployment || ''} onChange={(val) => setAppFormData({...appFormData, deployment: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Deployment (Beschreibung)</Label>
+                              <Input value={appFormData.deployment || ''} placeholder="Zentraler Betrieb, On-Premise..." className="bg-field-background" />
+                            </TextField>
+                          </div>
 
-                        <TextField value={appFormData.transferability || ''} onChange={(val) => setAppFormData({...appFormData, transferability: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Auf andere Ressorts übertragbar</Label>
-                          <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-field-background" />
-                        </TextField>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={appFormData.infrastructure || ''} onChange={(val) => setAppFormData({...appFormData, infrastructure: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Infrastruktur</Label>
+                              <Input value={appFormData.infrastructure || ''} placeholder="OpenShift, Kubernetes..." className="bg-field-background" />
+                            </TextField>
+                            <TextField value={appFormData.database || ''} onChange={(val) => setAppFormData({...appFormData, database: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Datenbasis</Label>
+                              <Input value={appFormData.database || ''} placeholder="PostgreSQL, S3, LDAP..." className="bg-field-background" />
+                            </TextField>
+                          </div>
+                        </div>
 
-                        <TextField value={appFormData.additionalInfo || ''} onChange={(val) => setAppFormData({...appFormData, additionalInfo: val})}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
-                          <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere wichtige Informationen..." className="bg-field-background" />
-                        </TextField>
+                        {/* --- Organisation & Status --- */}
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <ShieldCheck className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Organisation & Status</Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-1">
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Status</Label>
+                              <Select 
+                                selectedKey={['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') ? appFormData.status : 'custom'}
+                                onSelectionChange={(key) => {
+                                  if (key !== 'custom') {
+                                    setAppFormData({...appFormData, status: key as string});
+                                  }
+                                }}
+                                className="w-full"
+                              >
+                                <Select.Trigger className="bg-field-background border-none h-10 px-3">
+                                  <Select.Value />
+                                  <Select.Indicator />
+                                </Select.Trigger>
+                                <Select.Popover>
+                                  <ListBox>
+                                    <ListBox.Item id="POC" textValue="POC">POC (Machbarkeitsstudie)</ListBox.Item>
+                                    <ListBox.Item id="MVP" textValue="MVP">MVP (Minimalprodukt)</ListBox.Item>
+                                    <ListBox.Item id="Sandbox" textValue="Sandbox">Sandbox</ListBox.Item>
+                                    <ListBox.Item id="Incubating" textValue="Incubating">In Inkubation</ListBox.Item>
+                                    <ListBox.Item id="Graduated" textValue="Graduated">Graduated (Produktiv)</ListBox.Item>
+                                    <ListBox.Item id="custom" textValue="Eigener Status...">Eigener Status...</ListBox.Item>
+                                  </ListBox>
+                                </Select.Popover>
+                              </Select>
+                            </div>
+                            {(!['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') || appFormData.status === 'custom') && (
+                              <TextField value={appFormData.status === 'custom' ? '' : appFormData.status || ''} onChange={(val) => setAppFormData({...appFormData, status: val})}>
+                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Eigener Status (Text)</Label>
+                                <Input value={appFormData.status === 'custom' ? '' : appFormData.status || ''} placeholder="z.B. Pilot, Geplant..." className="bg-field-background" />
+                              </TextField>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField value={appFormData.contactPerson || ''} onChange={(val) => setAppFormData({...appFormData, contactPerson: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
+                              <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-field-background" />
+                            </TextField>
+
+                            <TextField value={appFormData.transferability || ''} onChange={(val) => setAppFormData({...appFormData, transferability: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Auf andere Ressorts übertragbar</Label>
+                              <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-field-background" />
+                            </TextField>
+                          </div>
+
+                          <TextField value={appFormData.additionalInfo || ''} onChange={(val) => setAppFormData({...appFormData, additionalInfo: val})}>
+                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
+                            <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere wichtige Informationen..." className="bg-field-background" />
+                          </TextField>
+                        </div>
                       </Tabs.Panel>
 
                       <Tabs.Panel id="deployment" className="space-y-6">

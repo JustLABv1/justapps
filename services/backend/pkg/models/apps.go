@@ -11,6 +11,11 @@ type LiveDemo struct {
 	URL   string `json:"url"`
 }
 
+type AppLink struct {
+	Label string `json:"label"`
+	URL   string `json:"url"`
+}
+
 type Apps struct {
 	bun.BaseModel `bun:"table:apps,alias:a"`
 
@@ -21,6 +26,8 @@ type Apps struct {
 	LiveUrl                string     `bun:"live_url" json:"liveUrl"`
 	LiveDemos              []LiveDemo `bun:"live_demos,type:jsonb" json:"liveDemos"`
 	RepoUrl                string     `bun:"repo_url" json:"repoUrl"`
+	Repositories           []AppLink  `bun:"repositories,type:jsonb" json:"repositories"`
+	CustomLinks            []AppLink  `bun:"custom_links,type:jsonb" json:"customLinks"`
 	HelmRepo               string     `bun:"helm_repo" json:"helmRepo"`
 	DockerRepo             string     `bun:"docker_repo" json:"dockerRepo"`
 	DocsUrl                string     `bun:"docs_url" json:"docsUrl"`
