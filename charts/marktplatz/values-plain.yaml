@@ -8,7 +8,7 @@
 monolith:
   image:
     pullPolicy: Always
-    tag: "0.8.7"
+    tag: "0.8.8"
 
 ## Enable bundled Postgres for this deployment
 postgresql:
@@ -17,12 +17,19 @@ postgresql:
 ## Production URLs for ingress and frontend
 frontend:
   env:
-    apiUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
-    nextauthUrl: "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+    apiUrl: "https://community-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de/api/v1"
+    nextauthUrl: "https://community-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
 ingress:
   hosts:
     - host: marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api/v1
+          pathType: Prefix
+          port: 8080
+    - host: community-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de
       paths:
         - path: /
           pathType: Prefix
@@ -40,6 +47,7 @@ config:
   cors:
     allowedOrigins:
       - "https://marktplatz.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+      - "https://community-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
 ## Secrets: enable Vault fetch for this environment (chart will create VaultStaticSecret)
 secrets:
