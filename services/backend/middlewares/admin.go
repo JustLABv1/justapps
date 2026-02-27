@@ -22,7 +22,22 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Try OIDC first if enabled
+		// Try backend-issued OIDC session token first (most common for OIDC users)
+		sessionClaims, err := auth.ValidateOIDCSessionToken(tokenString)
+		if err == nil {
+			if sessionClaims.Role == "admin" {
+				context.Set("user_email", sessionClaims.Email)
+				context.Set("username", sessionClaims.PreferredUsername)
+				context.Set("role", "admin")
+				context.Next()
+				return
+			}
+			log.Warn("Admin Auth: OIDC session token valid but user is not an admin")
+			httperror.Unauthorized(context, "You are not an admin", errors.New("not an admin"))
+			return
+		}
+
+		// Try raw Keycloak OIDC token (direct Keycloak ID token, e.g. from external clients)
 		idToken, err := auth.ValidateOIDCToken(tokenString)
 		if err == nil {
 			claims, err := auth.GetOIDCClaims(idToken)
@@ -39,19 +54,9 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 				httperror.Unauthorized(context, "You are not an admin (OIDC)", errors.New("not an admin"))
 				return
 			}
-		} else {
-			// If OIDC is enabled and returns an error other than "not enabled", stop here.
-			// This prevents falling back to local JWT for OIDC tokens.
-			if err.Error() != "OIDC is not enabled" {
-				log.WithError(err).Warn("Admin Auth: OIDC validation failed")
-				httperror.Unauthorized(context, "OIDC authentication failed", err)
-				return
-			}
-
-			log.Debug("Admin Auth: OIDC is not enabled, falling back to local JWT")
 		}
 
-		// Only attempt local JWT if OIDC is truly disabled
+		// Only attempt local JWT if OIDC checks did not match
 		err = auth.ValidateToken(tokenString)
 		if err != nil {
 			log.WithError(err).Warn("Admin Auth: Token validation failed (JWT)")

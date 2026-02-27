@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null;
 
   useEffect(() => {
-    if (s?.error === 'RefreshAccessTokenError') {
-      console.warn('OIDC Refresh token failed, logging out...');
+    if (s?.error === 'RefreshAccessTokenError' || s?.error === 'SessionExpired') {
+      console.warn('Session expired or refresh failed, logging out...');
       logout();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
