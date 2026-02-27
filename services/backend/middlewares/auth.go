@@ -20,7 +20,17 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Try OIDC first if enabled
+		// Try backend-issued OIDC session token first (most common for OIDC users)
+		sessionClaims, err := auth.ValidateOIDCSessionToken(tokenString)
+		if err == nil {
+			context.Set("user_email", sessionClaims.Email)
+			context.Set("username", sessionClaims.PreferredUsername)
+			context.Set("role", sessionClaims.Role)
+			context.Next()
+			return
+		}
+
+		// Try raw Keycloak OIDC token (direct Keycloak ID token, e.g. from external clients)
 		idToken, err := auth.ValidateOIDCToken(tokenString)
 		if err == nil {
 			claims, err := auth.GetOIDCClaims(idToken)

@@ -6,7 +6,6 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     accessToken?: string;
     idToken?: string;
-    refreshToken?: string;
     error?: string;
     user: {
       role?: string;
@@ -14,53 +13,34 @@ declare module "next-auth" {
   }
 }
 
-async function refreshAccessToken(token: any) {
+/**
+ * Exchange a Keycloak ID token for a long-lived backend-issued JWT.
+ * This is the key to avoiding Keycloak refresh token issues:
+ * the Keycloak token is only used ONCE at login time, then discarded.
+ */
+async function exchangeForBackendToken(keycloakIdToken: string): Promise<{
+  token: string;
+  expiresAt: number;
+  user: { email: string; username: string; role: string };
+} | null> {
   try {
-    if (!token.refreshToken) {
-      console.warn("No refresh token available, skipping refresh.");
-      return { ...token, error: "RefreshAccessTokenError" };
-    }
-
-    const issuer = process.env.AUTH_KEYCLOAK_ISSUER?.replace(/\/$/, "");
-    const url = `${issuer}/protocol/openid-connect/token`;
-    
-    console.log("Refreshing access token using refresh token...");
-    
-    const response = await fetch(url, {
+    const apiUrl = process.env.INTERNAL_API_URL || "http://localhost:8080/api/v1";
+    const response = await fetch(`${apiUrl}/auth/oidc/exchange`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.AUTH_KEYCLOAK_ID!,
-        client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
-        grant_type: "refresh_token",
-        refresh_token: token.refreshToken,
-        // Removed 'scope' from refresh request. Keycloak will automatically 
-        // use scopes from the original token, allowing for smoother transitions.
-      }),
-    })
-
-    const refreshedTokens = await response.json()
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: keycloakIdToken }),
+    });
 
     if (!response.ok) {
-      console.error("Keycloak token refresh failed:", refreshedTokens);
-      throw refreshedTokens
+      const errorBody = await response.text();
+      console.error("Backend token exchange failed:", response.status, errorBody);
+      return null;
     }
 
-    console.log("Access token successfully refreshed.");
-
-    return {
-      ...token,
-      accessToken: refreshedTokens.access_token,
-      idToken: refreshedTokens.id_token ?? token.idToken,
-      accessTokenExpires: Date.now() + (refreshedTokens.expires_in ?? 0) * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-    }
+    return await response.json();
   } catch (error) {
-    console.error("RefreshAccessTokenError", error)
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    }
+    console.error("Backend token exchange error:", error);
+    return null;
   }
 }
 
@@ -72,92 +52,113 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.AUTH_KEYCLOAK_ID,
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
       issuer: keycloakIssuer,
-      // Manually specifying the well-known endpoint helps when discovery handles trailing slashes inconsistently
       wellKnown: `${keycloakIssuer}/.well-known/openid-configuration`,
-      checks: ['pkce', 'state'],
+      checks: ["pkce", "state"],
       authorization: {
         params: {
-          scope: "openid profile email offline_access",
+          // No offline_access — we don't need Keycloak refresh tokens at all
+          scope: "openid profile email",
         },
       },
       client: {
-        authorization_signed_response_alg: 'RS256',
-        id_token_signed_response_alg: 'RS256',
+        authorization_signed_response_alg: "RS256",
+        id_token_signed_response_alg: "RS256",
       },
     }),
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    // The session cookie lasts 8 hours, matching the backend token lifetime
+    maxAge: 8 * 60 * 60,
   },
   callbacks: {
     async jwt({ token, account, profile }) {
-      // Initial sign in
+      // --- Initial sign-in: exchange Keycloak token for a backend JWT ---
       if (account && profile) {
-        token.accessToken = account.access_token
-        token.idToken = account.id_token
-        token.refreshToken = account.refresh_token
-        token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : Date.now() + (account.expires_in || 0) * 1000
-        
-        const profileAny = profile as any
-        
-        // Comprehensive check across realm roles, groups, and client roles
+        const keycloakIdToken = account.id_token;
+
+        if (keycloakIdToken) {
+          console.log("OIDC login successful, exchanging for backend session token...");
+          const exchangeResult = await exchangeForBackendToken(keycloakIdToken);
+
+          if (exchangeResult) {
+            console.log("Backend token exchange successful, session valid for 8 hours.");
+            token.accessToken = exchangeResult.token;
+            token.backendTokenExpiresAt = exchangeResult.expiresAt * 1000; // ms
+            token.role = exchangeResult.user.role;
+            token.email = exchangeResult.user.email;
+            token.name = exchangeResult.user.username;
+            // Do NOT store idToken, refreshToken, or any Keycloak tokens
+            return token;
+          }
+
+          // Exchange failed — fall back to using Keycloak claims directly
+          console.warn("Backend token exchange failed, using Keycloak claims as fallback.");
+          token.accessToken = keycloakIdToken;
+          token.backendTokenExpiresAt = Date.now() + 8 * 60 * 60 * 1000;
+        }
+
+        // Extract role from Keycloak profile
+        const profileAny = profile as any;
         const permissions = [
           ...(profileAny.realm_access?.roles || []),
           ...(profileAny.groups || []),
-          ...Object.values(profileAny.resource_access || {}).flatMap((c: any) => c.roles || [])
-        ].map(p => String(p).toLowerCase())
-        
-        const adminGroup = (process.env.AUTH_ADMIN_GROUP || 'admin').toLowerCase()
-        const isAdmin = permissions.some(p => 
-          p === adminGroup || 
-          p === `/${adminGroup}` || 
-          p === 'admin'
-        )
-        
-        token.role = isAdmin ? 'admin' : 'user'
-        return token
+          ...Object.values(profileAny.resource_access || {}).flatMap(
+            (c: any) => c.roles || []
+          ),
+        ].map((p) => String(p).toLowerCase());
+
+        const adminGroup = (
+          process.env.AUTH_ADMIN_GROUP || "admin"
+        ).toLowerCase();
+        const isAdmin = permissions.some(
+          (p) =>
+            p === adminGroup || p === `/${adminGroup}` || p === "admin"
+        );
+
+        token.role = isAdmin ? "admin" : "user";
+        return token;
       }
 
-      // Return previous token if the access token has not expired yet
-      // Add a 2-minute buffer to proactively refresh before it actually expires
-      // This ensures we have a valid token even if the browser has clock drift or short lifespans
-      if (Date.now() < (token.accessTokenExpires as number) - 2 * 60 * 1000) {
-        return token
+      // --- Subsequent requests: check if backend token is still valid ---
+      if (
+        token.backendTokenExpiresAt &&
+        Date.now() > (token.backendTokenExpiresAt as number)
+      ) {
+        console.warn("Backend session token expired (8h limit reached).");
+        // Return error to trigger re-authentication
+        return { ...token, error: "SessionExpired" };
       }
 
-      // Access token has expired (or is about to), try to update it
-      console.log("Session nearing expiration or expired, attempting refresh...");
-      return refreshAccessToken(token)
+      // Token is still valid — no refresh needed
+      return token;
     },
+
     async session({ session, token }: { session: any; token: any }) {
       if (session.user) {
-        session.accessToken = token.accessToken
-        session.idToken = token.idToken
-        session.error = token.error
-        // Explicitly set role and ensure it's not swallowed
-        session.user.role = token.role || session.user.role || 'user'
+        session.accessToken = token.accessToken;
+        session.error = token.error;
+        session.user.role = token.role || session.user.role || "user";
       }
-      return session
+      return session;
     },
   },
-  // Set trustHost to true for environments like OpenShift where the host header might be different
   trustHost: true,
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
   events: {
     async signOut(message: any) {
-      const token = "token" in message ? message.token : null
+      const token = "token" in message ? message.token : null;
       if (token?.idToken) {
         try {
-          const issuer = process.env.AUTH_KEYCLOAK_ISSUER
-          const logOutUrl = new URL(`${issuer}/protocol/openid-connect/logout`)
-          logOutUrl.searchParams.set("id_token_hint", token.idToken)
-          // Note: In NextAuth v5, this event is informative. 
-          // To truly logout of Keycloak, the client-side signOut should pass a redirect.
+          const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
+          const logOutUrl = new URL(
+            `${issuer}/protocol/openid-connect/logout`
+          );
+          logOutUrl.searchParams.set("id_token_hint", token.idToken);
         } catch (e) {
-          console.error("Error creating logout URL", e)
+          console.error("Error creating logout URL", e);
         }
       }
-    }
-  }
-})
+    },
+  },
+});
