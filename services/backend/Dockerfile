@@ -4,31 +4,33 @@ WORKDIR /app/backend
 
 COPY go.mod go.sum ./
 
+RUN export GOPROXY="https://${PLAIN_USER}:${GO_TOKEN}@artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/go/demo-go-virtual"
+
 RUN go mod download
 
 COPY . .
 
 # Build
-RUN go build -o marktplatz-backend
+RUN go build -o community-store-backend
 
 FROM alpine:3.22 as runner
 WORKDIR /app
 
-COPY --from=builder /app/backend/marktplatz-backend /app/
+COPY --from=builder /app/backend/community-store-backend /app/
 
-RUN addgroup --system --gid 1001 marktplatz
-RUN adduser --system --uid 1001 marktplatz
+RUN addgroup --system --gid 1001 community-store
+RUN adduser --system --uid 1001 community-store
 
-RUN mkdir -p /etc/marktplatz \
-    && chown -R marktplatz:marktplatz /etc/marktplatz
+RUN mkdir -p /etc/community-store \
+    && chown -R community-store:community-store /etc/community-store
 
 RUN mkdir -p /app/data \
-    && chown -R marktplatz:marktplatz /app/data
+    && chown -R community-store:community-store /app/data
 
-RUN chown -R marktplatz:marktplatz /app
+RUN chown -R community-store:community-store /app
 
-VOLUME [ "/etc/marktplatz", "/app/data" ]
+VOLUME [ "/etc/community-store", "/app/data" ]
 
 EXPOSE 8080
 
-CMD [ "/marktplatz-backend", "--config", "/etc/marktplatz/config.yaml" ]
+CMD [ "/community-store-backend", "--config", "/etc/community-store/config.yaml" ]

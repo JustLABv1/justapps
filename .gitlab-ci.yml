@@ -39,6 +39,35 @@ build-store-frontend-image:
       .
     # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
 
+build-store-backend-image:
+  stage: build
+  rules:
+    - changes:
+        - services/backend/**/*
+        - .gitlab-ci.yml
+    # Default fallback behaviour
+    - when: never
+  image: ${ARTIFACTORY_DOMAIN}/custom-shared-images/podman/openshift-rootless:v1.3.0
+  variables:
+    KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: gitlab-runner-app-sa
+    KUBERNETES_POD_ANNOTATIONS_1: "openshift.io/required-scc=gitlab-runner-scc"
+  before_script:
+    - /home/user/entrypoint.sh
+    - mkdir -p $HOME/.config/containers/
+    - echo ${DOCKER_AUTH_CONFIG} > $HOME/.config/containers/auth.json
+    - export REGISTRY_AUTH_FILE=$HOME/.config/containers/auth.json
+    - podman login ${ARTIFACTORY_DOMAIN}
+    - cd services/backend
+  script:
+    - podman build
+        --secret id=ca-bundle,src=/etc/ssl/cert.pem
+        --build-arg PLAIN_USER="$PLAIN_USER"
+        --build-arg GO_TOKEN="$GO_TOKEN"
+        -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/backend
+        -f Dockerfile
+      .
+    # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/app-store
+
 # build-app-store-image:
 #   stage: build
 #   # rules:
