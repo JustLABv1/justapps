@@ -9,10 +9,6 @@ WORKDIR /app
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
 
-COPY apps.ocp4.svc.prod.pl2cloud.de.crt /usr/local/share/ca-certificates/apps.ocp4.svc.prod.pl2cloud.de.crt
-
-RUN update-ca-certificates
-
 # create .npmrc to set registry and auth token for private packages
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
