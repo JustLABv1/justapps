@@ -1,34 +1,35 @@
 # Base image
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine@sha256:e922633a7cfbc0d6db6b6854a45ebf2452772b483b481540fe906ee1f8146599 AS base
 
-# Install dependencies only when needed
-FROM base AS deps
-
+# 1. Platform Setup: Install pnpm and configure auth
+FROM base AS platform
 ARG NPM_TOKEN
-
 WORKDIR /app
 
-# Configure npm registry and auth token globally (so it applies to both global and local installs)
+# Configure npm registry and auth token globally
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > /root/.npmrc && \
-    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=${NPM_TOKEN}" >> /root/.npmrc
+    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=${NPM_TOKEN}" >> /root/.npmrc && \
+    echo "fetch-retry-mintimeout=120000" >> /root/.npmrc && \
+    echo "fetch-retry-maxtimeout=600000" >> /root/.npmrc
 
-# Install dependencies
-COPY package.json pnpm-lock.yaml ./
-
-# Install pnpm and project dependencies.
-# The ca-bundle secret (passed via --secret id=ca-bundle) is mounted at /run/secrets/ca-bundle.
-# NODE_EXTRA_CA_CERTS tells Node.js (and therefore npm/pnpm) to trust the certificates in that file.
+# Install pnpm using the secret mount for CA trust
 RUN --mount=type=secret,id=ca-bundle \
     NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
-    npm install -g pnpm && \
+    npm install -g pnpm
+
+# 2. Dependencies Stage
+FROM platform AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+
+# Install project dependencies
+RUN --mount=type=secret,id=ca-bundle \
     NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
     pnpm install --frozen-lockfile
 
-# Rebuild the source code only when needed
-FROM base AS builder
+# 3. Builder Stage
+FROM platform AS builder
 WORKDIR /app
-COPY --from=deps /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-COPY --from=deps /usr/local/bin/pnpm /usr/local/bin/pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
