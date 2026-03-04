@@ -6,19 +6,19 @@ FROM base AS deps
 
 WORKDIR /app
 
+# Configure npm registry and auth token globally (so it applies to both global and local installs)
+RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > /root/.npmrc && \
+    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> /root/.npmrc
+
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
-
-# create .npmrc to set registry and auth token for private packages
-RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
-    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
 # Install pnpm and project dependencies.
 # The ca-bundle secret (passed via --secret id=ca-bundle) is mounted at /run/secrets/ca-bundle.
 # NODE_EXTRA_CA_CERTS tells Node.js (and therefore npm/pnpm) to trust the certificates in that file.
 RUN --mount=type=secret,id=ca-bundle \
     NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
-    npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+    npm install -g pnpm && \
     NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
     pnpm install --frozen-lockfile
 
