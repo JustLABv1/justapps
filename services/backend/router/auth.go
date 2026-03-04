@@ -21,7 +21,7 @@ func Auth(router *gin.RouterGroup, db *bun.DB) {
 			auths.CheckUserTaken(c, db)
 		})
 		auth.POST("/oidc/exchange", func(c *gin.Context) {
-			auths.OIDCExchange(c)
+			auths.OIDCExchange(c, db)
 		})
 	}
 }

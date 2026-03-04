@@ -68,6 +68,7 @@ func ValidateOIDCToken(signedToken string) (*oidc.IDToken, error) {
 	}
 
 	signedToken = CleanToken(signedToken)
+
 	ctx := context.Background()
 
 	if httpClient != nil {
@@ -76,7 +77,7 @@ func ValidateOIDCToken(signedToken string) (*oidc.IDToken, error) {
 
 	idToken, err := oidcVerifier.Verify(ctx, signedToken)
 	if err != nil {
-		log.WithError(err).Warn("OIDC: Token verification failed")
+		log.WithError(err).Debug("OIDC: Token verification failed (this is normal for non-OIDC tokens)")
 		return nil, err
 	}
 

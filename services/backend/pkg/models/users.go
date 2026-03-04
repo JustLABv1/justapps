@@ -16,6 +16,8 @@ type Users struct {
 	Email          string    `bun:"email,type:text,notnull" json:"email"`
 	Password       string    `bun:"password,type:text,notnull" json:"password"`
 	Role           string    `bun:"role,type:text,notnull,default:'user'" json:"role"`
+	AuthType       string    `bun:"auth_type,type:text,default:'local'" json:"authType"`
+	CanSubmitApps  bool      `bun:"can_submit_apps,type:bool,default:true" json:"canSubmitApps"`
 	Disabled       bool      `bun:"disabled,type:bool,default:false" json:"disabled"`
 	DisabledReason string    `bun:"disabled_reason,type:text,default:''" json:"disabled_reason"`
 	CreatedAt      time.Time `bun:"created_at,type:timestamptz,default:now()" json:"created_at"`

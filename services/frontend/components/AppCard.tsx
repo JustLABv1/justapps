@@ -3,6 +3,7 @@
 import { AppConfig } from "@/config/apps";
 import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { BookOpen, ExternalLink, Github, Star } from "lucide-react";
+import Image from "next/image";
 import NextLink from "next/link";
 
 export function AppCard({ app }: { app: AppConfig }) {
@@ -39,9 +40,15 @@ export function AppCard({ app }: { app: AppConfig }) {
     <Card className="w-full h-full flex flex-col group hover:border-accent/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-hidden p-0" variant="default">
       {/* ── Header: icon, name, badge ── */}
       <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-2xl shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-300">
+        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-2xl shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-300">
           {app.icon?.startsWith('http') ? (
-            <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+            <Image 
+              src={app.icon} 
+              alt={app.name} 
+              fill
+              className="object-cover p-2"
+              sizes="56px"
+            />
           ) : (
             app.icon || "🏛️"
           )}
@@ -94,21 +101,6 @@ export function AppCard({ app }: { app: AppConfig }) {
               >
                 {statusInfo.label}
               </Chip>
-            </div>
-          )}
-          
-          {app.tags && app.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {app.tags.slice(0, 4).map(tag => (
-                <Chip key={tag} size="sm" variant="secondary" className="text-[10px] font-medium bg-surface-secondary border-border/50">
-                  {tag}
-                </Chip>
-              ))}
-              {app.tags.length > 4 && (
-                <Chip size="sm" variant="secondary" className="text-[10px] font-medium bg-surface-secondary border-border/50">
-                  +{app.tags.length - 4}
-                </Chip>
-              )}
             </div>
           )}
         </div>

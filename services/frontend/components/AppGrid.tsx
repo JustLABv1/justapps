@@ -13,7 +13,6 @@ interface AppGridProps {
 export function AppGrid({ initialApps }: AppGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
   const categories = useMemo(() => {
@@ -24,16 +23,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
       });
     });
     return Array.from(cats).sort();
-  }, [initialApps]);
-
-  const collections = useMemo(() => {
-    const cols = new Set<string>();
-    initialApps.forEach(app => {
-      app.collections?.forEach(col => {
-        if (col) cols.add(col);
-      });
-    });
-    return Array.from(cols).sort();
   }, [initialApps]);
 
   const statuses = useMemo(() => {
@@ -74,14 +63,13 @@ export function AppGrid({ initialApps }: AppGridProps) {
         app.tags?.some(tag => tag.toLowerCase().includes(query));
       
       const matchesCategory = !selectedCategory || app.categories?.includes(selectedCategory);
-      const matchesCollection = !selectedCollection || app.collections?.includes(selectedCollection);
       const matchesStatus = !selectedStatus || app.status === selectedStatus;
       
-      return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [initialApps, searchQuery, selectedCategory, selectedCollection, selectedStatus]);
+  }, [initialApps, searchQuery, selectedCategory, selectedStatus]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedCollection || selectedStatus;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus;
 
   return (
     <div className="flex flex-col gap-8">
@@ -120,61 +108,32 @@ export function AppGrid({ initialApps }: AppGridProps) {
           </div>
         </div>
 
-        {(statuses.length > 0 || collections.length > 0) && (
+        {statuses.length > 0 && (
           <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-            {statuses.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Status:</span>
-                <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Status:</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={!selectedStatus ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedStatus(null)}
+                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
+                >
+                  Alle
+                </Button>
+                {statuses.map((st) => (
                   <Button
-                    variant={!selectedStatus ? "primary" : "secondary"}
+                    key={st}
+                    variant={selectedStatus === st ? "primary" : "secondary"}
                     size="sm"
-                    onPress={() => setSelectedStatus(null)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
+                    onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
                   >
-                    Alle
+                    {getStatusLabel(st)}
                   </Button>
-                  {statuses.map((st) => (
-                    <Button
-                      key={st}
-                      variant={selectedStatus === st ? "primary" : "secondary"}
-                      size="sm"
-                      onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
-                      className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
-                    >
-                      {getStatusLabel(st)}
-                    </Button>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
-
-            {collections.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0 w-24">Kollektionen:</span>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={!selectedCollection ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedCollection(null)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedCollection ? 'bg-accent text-white' : ''}`}
-                  >
-                    Alle
-                  </Button>
-                  {collections.map((col) => (
-                    <Button
-                      key={col}
-                      variant={selectedCollection === col ? "primary" : "secondary"}
-                      size="sm"
-                      onPress={() => setSelectedCollection(selectedCollection === col ? null : col)}
-                      className={`rounded-full text-[11px] h-7 px-3 ${selectedCollection === col ? 'bg-accent text-white' : ''}`}
-                    >
-                      {col}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </div>
@@ -192,7 +151,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
             onPress={() => {
               setSearchQuery("");
               setSelectedCategory(null);
-              setSelectedCollection(null);
               setSelectedStatus(null);
             }}
           >
@@ -224,7 +182,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
             onPress={() => {
               setSearchQuery("");
               setSelectedCategory(null);
-              setSelectedCollection(null);
               setSelectedStatus(null);
             }}
           >

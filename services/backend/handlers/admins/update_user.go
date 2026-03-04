@@ -42,7 +42,7 @@ func UpdateUser(context *gin.Context, db *bun.DB) {
 
 	user.UpdatedAt = time.Now()
 	user.Role = strings.ToLower(user.Role)
-	_, err = db.NewUpdate().Model(&user).Column("username", "email", "role", "updated_at", "password").Where("id = ?", userID).Exec(context)
+	_, err = db.NewUpdate().Model(&user).Column("username", "email", "role", "can_submit_apps", "updated_at", "password").Where("id = ?", userID).Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error updating user on db", err)
 		return

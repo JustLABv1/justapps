@@ -2,327 +2,117 @@
 
 import { AppConfig } from '@/config/apps';
 import {
-  Button,
-  ComboBox,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Separator,
-  Surface,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField
+    Button,
+    Card,
+    Chip,
+    ComboBox,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Separator,
+    Surface,
+    Switch,
+    Tabs,
+    TextArea,
+    TextField
 } from '@heroui/react';
 import {
-  BookOpen,
-  ChevronLeft,
-  Download,
-  ExternalLink,
-  FileText,
-  Github,
-  Globe,
-  Info,
-  Layers,
-  Loader2,
-  Plus,
-  Server,
-  ShieldCheck,
-  Terminal,
-  Trash2,
-  Upload,
-  UserPlus,
-  Users as UsersIcon
+    BookOpen,
+    ChevronLeft,
+    ExternalLink,
+    FileText,
+    Github,
+    Globe,
+    Info,
+    Layers,
+    Loader2,
+    Lock,
+    Pencil,
+    Plus,
+    Server,
+    ShieldCheck,
+    Terminal,
+    Trash2,
 } from 'lucide-react';
-import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useEffect, useState } from 'react';
-import { AppList } from '../../components/AppList';
-import { UserList } from '../../components/UserList';
 import { useAuth } from '../../context/AuthContext';
 import { fetchApi } from '../../lib/api';
 
-interface SystemUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  disabled: boolean;
-  canSubmitApps?: boolean;
-  disabledReason?: string;
-  createdAt?: string;
-  authType?: string;
-}
-
-function ManagementContent() {
+function MyAppsContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
-  const [users, setUsers] = useState<SystemUser[]>([]);
+  const [settings, setSettings] = useState({ allowAppSubmissions: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'apps' | 'users'>('apps');
-  const [globalSettings, setGlobalSettings] = useState({ allowAppSubmissions: true });
 
   // Modal & Form states
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
-  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   
   const [iconInput, setIconInput] = useState('');
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
-  const [userFormData, setUserFormData] = useState<Partial<SystemUser & { password?: string }>>({});
 
-  // Unified auth check
+  // Auth check
   useEffect(() => {
-    // Detailed log to help diagnose the issue
-    console.debug("[Management] Auth state check:", { authLoading, status: user ? "resolved" : "null", role: user?.role });
-
-    // Only redirect if we are CERTAIN the user is not an admin
     if (!authLoading) {
       if (!user) {
-        // Wait another 500ms to be absolutely sure it's not a hydration/session flicker
         const timer = setTimeout(() => {
           if (!user) {
-            console.warn("[Management] No user after settling, redirecting...");
             router.push('/');
           }
         }, 500);
         return () => clearTimeout(timer);
-      } else if (user.role !== 'admin') {
-        console.warn("[Management] User role is not admin:", user.role, "redirecting...");
-        router.push('/');
       }
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch global settings always
-        const settingsRes = await fetchApi('/settings');
-        if (settingsRes.ok) {
-          const settingsData = await settingsRes.json();
-          setGlobalSettings(settingsData);
-        }
-
-        if (activeTab === 'apps') {
-          const res = await fetchApi('/apps');
-          if (res.ok) {
-            const data = await res.json();
-            setApps(data);
-          } else {
-            setError(`Failed to load apps: ${res.statusText}`);
-          }
-        } else {
-          const res = await fetchApi('/admin/users');
-          if (res.ok) {
-            const data = await res.json();
-            setUsers(data.users || []);
-          } else if (res.status === 401) {
-            setError('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
-          } else {
-            setError(`Failed to load users: ${res.status} ${res.statusText}`);
-          }
-        }
-      } catch (err) {
-        setError(`Error connecting to API: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [activeTab]);
-
-  const handleToggleGlobalSubmissions = async (isSelected: boolean) => {
-    // Optimistic update
-    const previous = globalSettings;
-    setGlobalSettings({ ...previous, allowAppSubmissions: isSelected });
-
+  const loadData = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetchApi('/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ allowAppSubmissions: isSelected })
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setGlobalSettings(updated);
-      } else {
-        // Revert on failure
-        setGlobalSettings(previous);
-        console.error("Failed to update settings");
+      // Fetch settings
+      const settingsRes = await fetchApi('/settings');
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setSettings(settingsData);
       }
-    } catch (err) { 
-      console.error(err);
-      setGlobalSettings(previous);
-    }
-  };
-
-  const loadApps = async () => {
-    try {
+      
       const res = await fetchApi('/apps');
       if (res.ok) {
-        const data = await res.json();
-        setApps(data);
-      }
-    } catch (err) { console.error(err); }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const res = await fetchApi('/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-      } else if (res.status === 401) {
-        setError('Unauthorized: You might not be an admin on the backend.');
-      }
-    } catch (err) { console.error(err); }
-  };
-
-  // User Handlers
-  const handleCreateUser = () => {
-    setSelectedUser(null);
-    setUserFormData({
-      username: '',
-      email: '',
-      role: 'user',
-      password: ''
-    });
-    setIsUserModalOpen(true);
-  };
-
-  const handleEditUser = (u: SystemUser) => {
-    setSelectedUser(u);
-    setUserFormData({ ...u });
-    setIsUserModalOpen(true);
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Benutzer wirklich löschen?')) return;
-    try {
-      const res = await fetchApi(`/admin/users/${userId}`, { method: 'DELETE' });
-      if (res.ok) loadUsers();
-    } catch (err) { console.error(err); }
-  };
-
-  const handleToggleUserState = async (u: SystemUser) => {
-    try {
-      const res = await fetchApi(`/admin/users/${u.id}/state`, {
-        method: 'PUT',
-        body: JSON.stringify({ disabled: !u.disabled })
-      });
-      if (res.ok) loadUsers();
-    } catch (err) { console.error(err); }
-  };
-
-  const handleToggleUserSubmission = async (u: SystemUser) => {
-    try {
-      const newSubmissionStatus = !(u.canSubmitApps === true);
-      
-      const payload = {
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        role: u.role,
-        canSubmitApps: newSubmissionStatus
-      };
-      
-      const res = await fetchApi(`/admin/users/${u.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-      });
-      
-      if (res.ok) {
-        loadUsers();
+        const data: AppConfig[] = await res.json();
+        // Filter apps where app.ownerId === user.id
+        const myApps = data.filter(app => app.ownerId === user.id);
+        setApps(myApps);
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("Failed to update submission status:", errorData);
-      }
-    } catch (err) { 
-      console.error("Submission toggle error:", err); 
-    }
-  };
-
-  const handleUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const method = selectedUser ? 'PUT' : 'POST';
-    const url = selectedUser ? `/admin/users/${selectedUser.id}` : '/admin/users';
-    
-    try {
-      const res = await fetchApi(url, {
-        method,
-        body: JSON.stringify(userFormData)
-      });
-      if (res.ok) {
-        setIsUserModalOpen(false);
-        loadUsers();
-      }
-    } catch (err) { console.error(err); }
-  };
-
-  // App Handlers
-  const handleExportApps = async () => {
-    try {
-      const res = await fetchApi('/apps/export');
-      if (res.ok) {
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `apps-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        alert('Export fehlgeschlagen');
+        setError(`Failed to load apps: ${res.statusText}`);
       }
     } catch (err) {
-      console.error(err);
-      alert('Export fehlgeschlagen');
+      setError(`Error connecting to API: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleImportApps = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const content = event.target?.result as string;
-        const appsData = JSON.parse(content);
-        
-        const res = await fetchApi('/apps/import', {
-          method: 'POST',
-          body: JSON.stringify(appsData)
-        });
-
-        if (res.ok) {
-          alert('Apps erfolgreich importiert');
-          loadApps();
-        } else {
-          alert('Import fehlgeschlagen');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Fehler beim Importieren der Datei');
-      }
-    };
-    reader.readAsText(file);
-    // Reset input so the same file can be selected again
-    e.target.value = '';
-  };
+  useEffect(() => {
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleCreateApp = () => {
+    if (!user?.canSubmitApps) {
+      alert("Submission blocked for your account");
+      return;
+    }
+    if (!settings.allowAppSubmissions && user?.role !== 'admin') {
+      alert("App submissions are currently disabled system-wide.");
+      return;
+    }
     setSelectedApp(null);
     setAppFormData({
       id: '',
@@ -367,27 +157,18 @@ function ManagementContent() {
   };
 
   const handleEditApp = (app: AppConfig) => {
+    if (app.isLocked) return;
     setSelectedApp(app);
     setAppFormData({ ...app });
     setIsAppModalOpen(true);
   };
 
-  const handleDeleteApp = async (id: string) => {
+  const handleDeleteApp = async (app: AppConfig) => {
+    if (app.isLocked) return;
     if (confirm('Bist du sicher? Diese App wird unwiderruflich gelöscht.')) {
-      await fetchApi(`/apps/${id}`, { method: 'DELETE' });
-      loadApps();
+      await fetchApi(`/apps/${app.id}`, { method: 'DELETE' });
+      loadData();
     }
-  };
-
-  const handleToggleAppLock = async (app: AppConfig) => {
-    try {
-      const payload = { ...app, isLocked: !app.isLocked };
-      const res = await fetchApi(`/apps/${app.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) loadApps();
-    } catch (err) { console.error(err); }
   };
 
   const handleAppSubmit = async (e: React.FormEvent) => {
@@ -428,7 +209,7 @@ function ManagementContent() {
       });
       if (res.ok) {
         setIsAppModalOpen(false);
-        loadApps();
+        loadData();
       } else {
         const errData = await res.json().catch(() => ({}));
         setError(errData.message || `Fehler beim Speichern: ${res.statusText}`);
@@ -444,8 +225,7 @@ function ManagementContent() {
     const editId = searchParams?.get('edit');
     if (editId && apps.length > 0) {
       const appToEdit = apps.find(a => a.id === editId);
-      if (appToEdit) {
-        // Use a timeout to avoid synchronous state update in effect which causes cascading renders
+      if (appToEdit && !appToEdit.isLocked) {
         const timer = setTimeout(() => {
           handleEditApp(appToEdit);
           const url = new URL(window.location.href);
@@ -455,6 +235,7 @@ function ManagementContent() {
         return () => clearTimeout(timer);
       }
     }
+   
   }, [searchParams, apps]);
 
   // Keep the local icon input in sync when modal opens / form data changes
@@ -467,11 +248,11 @@ function ManagementContent() {
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
       <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      <p className="text-muted font-medium">Verwaltung wird vorbereitet...</p>
+      <p className="text-muted font-medium">Lade Ihre Apps...</p>
     </div>
   );
 
-  if (!user || user.role !== 'admin') {
+  if (!user) {
     return null;
   }
 
@@ -479,8 +260,8 @@ function ManagementContent() {
     <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">Verwaltung</h1>
-          <p className="text-muted">Verwalten Sie Applikationen und Benutzer im PLAIN Community Store.</p>
+          <h1 className="text-3xl font-bold text-foreground mb-1">Meine Apps</h1>
+          <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im PLAIN Community Store.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button 
@@ -489,21 +270,8 @@ function ManagementContent() {
             className="font-bold gap-2"
           >
             <ChevronLeft className="w-4 h-4" />
-            Zum PLAIN Community Store
+            Zum Store
           </Button>
-          {activeTab === 'apps' ? (
-            <>
-              
-            </>
-          ) : (
-            <Button 
-              onPress={handleCreateUser} 
-              className="bg-accent text-white font-medium gap-2"
-            >
-              <UserPlus className="w-4 h-4" />
-              Neuer Benutzer
-            </Button>
-          )}
         </div>
       </div>
 
@@ -515,104 +283,120 @@ function ManagementContent() {
           <div className="flex-grow">
             {error}
           </div>
-          <Button size="sm" variant="secondary" onPress={() => setActiveTab(activeTab)} className="h-8">Retry</Button>
+          <Button size="sm" variant="secondary" onPress={loadData} className="h-8">Wiederholen</Button>
         </div>
       )}
 
-      <Tabs 
-        variant="secondary" 
-        className="mb-8"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(key as 'apps' | 'users')}
-      >
-        <Tabs.ListContainer className="border-b border-border">
-          <Tabs.List aria-label="Management sections" className="gap-8">
-            <Tabs.Tab id="apps" className="gap-2 py-4 font-bold text-sm">
-              <Layers className="w-4 h-4" /> Apps
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="users" className="gap-2 py-4 font-bold text-sm">
-              <UsersIcon className="w-4 h-4" /> Benutzer
-              <Tabs.Indicator />
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs.ListContainer>
-
-        <Tabs.Panel id="apps" className="pt-6">
-          <div className='flex flex-col md:flex-row gap-4 pb-4 justify-between items-center'>
-            <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border transition-colors ${globalSettings.allowAppSubmissions ? 'bg-surface-secondary/50 border-border/50' : 'bg-danger/10 border-danger/30 text-danger'}`}>
-               <Switch isSelected={globalSettings.allowAppSubmissions} onChange={handleToggleGlobalSubmissions}>
-                  <span className="font-semibold text-sm">App-Einreichungen erlauben</span>
-               </Switch>
-               {!globalSettings.allowAppSubmissions && (
-                 <span className="text-[10px] uppercase tracking-wider font-bold bg-danger text-white px-1.5 py-0.5 rounded ml-1">Deaktiviert</span>
-               )}
-            </div>
-            <div className='flex gap-2'>
-            <Button 
-              onPress={handleCreateApp} 
-              className="bg-accent text-white font-medium gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Neue App
-            </Button>
-            <Button 
-              variant="secondary"
-              onPress={handleExportApps}
-              className="font-bold gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
-            <div className='relative'>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportApps}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                title="Apps importieren"
-              />
-              <Button 
-                variant="secondary"
-                className="font-bold gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </Button>
-            </div>
-          </div>
-          </div>
-          <AppList 
-            apps={apps} 
-            handleEditApp={handleEditApp} 
-            handleDeleteApp={handleDeleteApp} 
-            handleToggleAppLock={handleToggleAppLock} 
-          />
+      {/* Main Content */}
+      <div className="pt-6">
+        <div className='flex flex-col md:flex-row gap-4 pb-4 justify-end items-center'>
+            {!settings.allowAppSubmissions && user.role !== 'admin' && (
+              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                <Lock className="w-4 h-4 mr-2" />
+                App-Einreichungen sind derzeit systemweit deaktiviert.
+              </div>
+            )}
+           {!user.canSubmitApps && (
+              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                <Lock className="w-4 h-4 mr-2" />
+                Ihr Konto ist für die Einreichung von Apps gesperrt.
+              </div>
+            )}
+          <Button 
+            onPress={handleCreateApp} 
+            isDisabled={!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')}
+            className={`font-bold py-5 px-6 gap-2 ${ (!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')) ? 'bg-surface-secondary text-muted cursor-not-allowed opacity-50' : 'bg-accent text-white shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 transition-all'}`}
+          >
+            <Plus className="w-6 h-6" />
+            Neue App
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {apps.map((app) => (
+            <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
+              <div className="flex flex-col md:flex-row items-center p-5 gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                  {app.icon?.startsWith('http') ? (
+                    <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+                  ) : (
+                    app.icon || "🏛️"
+                  )}
+                </div>
+                <div className="flex-grow text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">
+                    <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
+                    {app.categories?.slice(0, 3).map(cat => (
+                      <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
+                    ))}
+                    {(app.categories?.length || 0) > 3 && (
+                      <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 3}</Chip>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted line-clamp-2 mb-3 max-w-3xl">{app.description || <span className="italic opacity-50">Keine Beschreibung</span>}</div>
+                  <div className="flex items-center justify-center md:justify-start gap-3">
+                    <div className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
+                      <span className="opacity-50">ID:</span> {app.id}
+                    </div>
+                    {app.status && (
+                      <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md border border-accent/20 uppercase tracking-wider">
+                        {app.status}
+                      </div>
+                    )}
+                    {app.isLocked && (
+                      <div className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-1 rounded-md border border-warning/20 uppercase tracking-wider flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Locked
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onPress={() => router.push(`/apps/${app.id}`)}
+                    className="font-bold gap-2 flex-1 md:flex-none justify-start"
+                  >
+                    <ExternalLink className="w-4 h-4 text-muted" />
+                    Ansehen
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    onPress={() => handleEditApp(app)}
+                    isDisabled={!!app.isLocked}
+                    className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Pencil className="w-4 h-4 text-muted" />
+                    Bearbeiten
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="danger-soft"
+                    onPress={() => handleDeleteApp(app)}
+                    isDisabled={!!app.isLocked}
+                     className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Löschen
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
           {apps.length === 0 && !loading && (
-            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border">
-              <p className="text-muted font-medium">Noch keine Apps vorhanden.</p>
-              <Button variant="ghost" onPress={handleCreateApp} className="mt-2">
-                Erste App erstellen
-              </Button>
+            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
+              <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen Apps erstellt.</p>
+              {user.canSubmitApps ? (
+                <Button variant="ghost" onPress={handleCreateApp}>
+                  Erste App erstellen
+                </Button>
+              ) : (
+                 <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
+              )}
             </div>
           )}
-        </Tabs.Panel>
-
-        <Tabs.Panel id="users" className="pt-6">
-          <UserList 
-            users={users} 
-            handleEditUser={handleEditUser} 
-            handleDeleteUser={handleDeleteUser} 
-            handleToggleUserState={handleToggleUserState} 
-            handleToggleUserSubmission={handleToggleUserSubmission} 
-          />
-          {users.length === 0 && !loading && (
-            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border">
-              <p className="text-muted font-medium">Noch keine Benutzer vorhanden.</p>
-            </div>
-          )}
-        </Tabs.Panel>
-      </Tabs>
+        </div>
+      </div>
 
       {loading && (
         <div className="py-20 flex justify-center">
@@ -631,13 +415,7 @@ function ManagementContent() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-xl overflow-hidden shrink-0">
                       {appFormData.icon?.startsWith('http') ? (
-                        <Image 
-                          src={appFormData.icon} 
-                          alt={appFormData.name || 'App Icon'} 
-                          width={64} 
-                          height={64}
-                          className="w-full h-full object-cover" 
-                        />
+                        <img src={appFormData.icon} alt={appFormData.name} className="w-full h-full object-cover" />
                       ) : (
                         appFormData.icon || "🏛️"
                       )}
@@ -655,7 +433,7 @@ function ManagementContent() {
                 
                 <Modal.Body className="p-0 overflow-hidden">
                   <Tabs variant="secondary" className="h-full flex flex-col" defaultSelectedKey="general">
-                    <Tabs.ListContainer className="px-8 border-b border-border bg-surface sticky top-0 z-10">
+                    <Tabs.ListContainer className="px-8 border-b border-border bg-surface sticky top-0 z-10 w-full overflow-x-auto">
                       <Tabs.List aria-label="App configuration sections" className="gap-8">
                         <Tabs.Tab id="general" className="gap-2 py-4 font-bold text-sm">
                           <Info className="w-4 h-4" /> Allgemein
@@ -1271,77 +1049,14 @@ function ManagementContent() {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
-
-      {/* User Modal */}
-      <Modal>
-        <Modal.Backdrop isOpen={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-md">
-              <form onSubmit={handleUserSubmit}>
-                <Modal.CloseTrigger />
-                <Modal.Header className="px-8 py-6 border-b border-border">
-                  <Modal.Heading className="text-xl font-semibold text-foreground">
-                    {selectedUser ? 'Benutzer bearbeiten' : 'Neuer Benutzer'}
-                  </Modal.Heading>
-                </Modal.Header>
-                <Modal.Body className="px-8 py-6 space-y-4">
-                  <TextField isRequired onChange={(val) => setUserFormData({...userFormData, username: val})}>
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Benutzername</Label>
-                    <Input value={userFormData.username || ''} placeholder="max.mustermann" className="bg-field-background" />
-                  </TextField>
-                  <TextField isRequired type="email" onChange={(val) => setUserFormData({...userFormData, email: val})}>
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Email</Label>
-                    <Input value={userFormData.email || ''} placeholder="max@beispiel.de" className="bg-field-background" />
-                  </TextField>
-                  {!selectedUser && (
-                    <TextField isRequired type="password" onChange={(val) => setUserFormData({...userFormData, password: val})}>
-                      <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Passwort</Label>
-                      <Input value={userFormData.password || ''} placeholder="******" className="bg-field-background" />
-                    </TextField>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    <Select 
-                       value={userFormData.role || 'user'}
-                       onChange={(key) => setUserFormData({...userFormData, role: key as string})}
-                       className="w-full"
-                    >
-                      <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Rolle</Label>
-                      <Select.Trigger className="bg-field-background border-border">
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          <ListBox.Item id="user" textValue="User">User<ListBox.ItemIndicator /></ListBox.Item>
-                          <ListBox.Item id="admin" textValue="Admin">Admin<ListBox.ItemIndicator /></ListBox.Item>
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
-                  </div>
-                </Modal.Body>
-                <Modal.Footer className="px-8 py-6 border-t border-border">
-                  <div className="flex justify-end gap-3 w-full">
-                    <Button variant="ghost" slot="close" className="px-6 font-bold">
-                      Abbrechen
-                    </Button>
-                    <Button type="submit" className="bg-accent text-white px-8 font-medium">
-                      Speichern
-                    </Button>
-                  </div>
-                </Modal.Footer>
-              </form>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </div>
   );
 }
 
-export default function ManagementPage() {
+export default function MyAppsPage() {
   return (
     <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
-      <ManagementContent />
+      <MyAppsContent />
     </Suspense>
   );
 }

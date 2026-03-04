@@ -8,6 +8,8 @@ interface User {
   username: string;
   email: string;
   role: string;
+  authType?: string;
+  canSubmitApps?: boolean;
 }
 
 interface AuthContextType {
@@ -25,10 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [localUser, setLocalUser] = useState<User | null>(null);
   const [localToken, setLocalToken] = useState<string | null>(null);
+  const [fetchedUser, setFetchedUser] = useState<User | null>(null);
 
   // Derive the active user and token immediately from session if available
   const s = session as {
-    user?: { id?: string; name?: string; email?: string; role?: string };
+    user?: { id?: string; name?: string; email?: string; role?: string; authType?: string; canSubmitApps?: boolean };
     idToken?: string;
     accessToken?: string;
     error?: string;
@@ -50,18 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: s.user.name || s.user.email || 'OIDC User',
       email: s.user.email || '',
       role: s.user.role || 'user',
+      authType: s.user.authType,
+      canSubmitApps: s.user.canSubmitApps,
     };
-  }, [status, s?.user?.id, s?.user?.name, s?.user?.email, s?.user?.role]);
+  }, [status, s?.user?.id, s?.user?.name, s?.user?.email, s?.user?.role, s?.user?.authType, s?.user?.canSubmitApps]);
 
   const user = React.useMemo(() => {
-    // If we're authenticated via OIDC, always return that (it's the source of truth)
+    // If we have fetched detailed user data from backend, use it as source of truth
+    if (fetchedUser) return fetchedUser;
+
+    // If we're authenticated via OIDC but haven't fetched details yet, fallback to session data
     if (status === 'authenticated' && oidcUser) return oidcUser;
     
     // If not authenticated (or OIDC user not yet resolved), fallback to local session state
     if (status === 'unauthenticated') return localUser;
 
     return null;
-  }, [oidcUser, status, localUser]);
+  }, [fetchedUser, oidcUser, status, localUser]);
 
   const token = React.useMemo(() => {
     return (status === 'authenticated') ? (s?.idToken || s?.accessToken) : (status === 'unauthenticated' ? localToken : null);
@@ -98,25 +106,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [status]);
 
-  // Check token validity on mount or when token changes
+  // Fetch user data on mount or when token changes (or auth type changes)
   useEffect(() => {
-    const checkTokenValidity = async () => {
-      // Don't check during loading or if no token
+    const fetchUserData = async () => {
+      // Don't fetch during loading or if no token
       if (status === 'loading' || !token) return;
 
       try {
         const { fetchApi } = await import('@/lib/api');
-        const response = await fetchApi('/token/validate');
+        // Ensure trailing slash to match backend router
+        const response = await fetchApi('/user/');
+        
         if (response.status === 401) {
           console.warn('Backend rejected token, logging out...');
           logout();
+        } else if (response.ok) {
+           const data = await response.json();
+           if (data.user) {
+             setFetchedUser(data.user);
+           }
         }
       } catch (error) {
-        console.error('Failed to validate token:', error);
+        console.error('Failed to validate token and fetch user:', error);
       }
     };
 
-    checkTokenValidity();
+    fetchUserData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, status]);
 

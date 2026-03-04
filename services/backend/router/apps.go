@@ -27,23 +27,30 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			apps.DeleteRating(c, db)
 		})
 
-		// Protected routes
-		protected := appsGroup.Group("")
-		protected.Use(middlewares.Admin(db))
+		// Partially protected or Admin-only routes?
+		// 1. Export, Import -> Clearly Admin
+		adminGroup := appsGroup.Group("")
+		adminGroup.Use(middlewares.Admin(db))
 		{
-			protected.GET("/export", func(c *gin.Context) {
+			adminGroup.GET("/export", func(c *gin.Context) {
 				apps.ExportApps(c, db)
 			})
-			protected.POST("/import", func(c *gin.Context) {
+			adminGroup.POST("/import", func(c *gin.Context) {
 				apps.ImportApps(c, db)
 			})
-			protected.POST("", func(c *gin.Context) {
+		}
+
+		// 2. Create, Update, Delete -> Now available for standard Users (with ownership checks inside handlers)
+		userGroup := appsGroup.Group("")
+		userGroup.Use(middlewares.Auth(db))
+		{
+			userGroup.POST("", func(c *gin.Context) {
 				apps.CreateApp(c, db)
 			})
-			protected.PUT("/:id", func(c *gin.Context) {
+			userGroup.PUT("/:id", func(c *gin.Context) {
 				apps.UpdateApp(c, db)
 			})
-			protected.DELETE("/:id", func(c *gin.Context) {
+			userGroup.DELETE("/:id", func(c *gin.Context) {
 				apps.DeleteApp(c, db)
 			})
 		}

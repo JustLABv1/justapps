@@ -8,7 +8,10 @@ declare module "next-auth" {
     idToken?: string;
     error?: string;
     user: {
+      id?: string;
       role?: string;
+      authType?: string;
+      canSubmitApps?: boolean;
     } & DefaultSession["user"]
   }
 }
@@ -21,7 +24,7 @@ declare module "next-auth" {
 async function exchangeForBackendToken(keycloakIdToken: string): Promise<{
   token: string;
   expiresAt: number;
-  user: { email: string; username: string; role: string };
+  user: { id: string; email: string; username: string; role: string; authType: string; canSubmitApps: boolean };
 } | null> {
   try {
     const apiUrl = process.env.INTERNAL_API_URL || "http://localhost:8080/api/v1";
@@ -88,6 +91,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.role = exchangeResult.user.role;
             token.email = exchangeResult.user.email;
             token.name = exchangeResult.user.username;
+            token.id = exchangeResult.user.id;
+            token.authType = exchangeResult.user.authType;
+            token.canSubmitApps = exchangeResult.user.canSubmitApps;
             // Do NOT store idToken, refreshToken, or any Keycloak tokens
             return token;
           }
@@ -139,6 +145,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.accessToken = token.accessToken;
         session.error = token.error;
         session.user.role = token.role || session.user.role || "user";
+        session.user.id = token.id || session.user.id;
+        session.user.authType = token.authType;
+        session.user.canSubmitApps = token.canSubmitApps;
       }
       return session;
     },

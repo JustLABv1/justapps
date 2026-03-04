@@ -21,7 +21,7 @@ func GetUserDetails(context *gin.Context, db *bun.DB) {
 	}
 
 	var user models.Users
-	err = db.NewSelect().Model(&user).Column("id", "username", "email", "role", "created_at", "updated_at").Where("id = ?", userID).Scan(context)
+	err = db.NewSelect().Model(&user).Column("id", "username", "email", "role", "created_at", "updated_at", "can_submit_apps", "auth_type").Where("id = ?", userID).Scan(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error collecting user data from db", err)
 		return

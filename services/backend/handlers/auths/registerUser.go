@@ -47,7 +47,9 @@ func RegisterUser(context *gin.Context, db *bun.DB) {
 		user.Role = "user"
 	}
 
-	_, err = db.NewInsert().Model(&user).Column("email", "username", "password", "role").Exec(context)
+	user.CanSubmitApps = true
+
+	_, err = db.NewInsert().Model(&user).Column("email", "username", "password", "role", "can_submit_apps").Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error creating user on db", err)
 		return
