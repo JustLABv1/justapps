@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine as builder
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 as builder
 
 WORKDIR /app/backend
 
