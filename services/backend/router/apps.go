@@ -20,12 +20,18 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id/ratings", func(c *gin.Context) {
 			apps.GetRatings(c, db)
 		})
-		appsGroup.POST("/:id/ratings", func(c *gin.Context) {
-			apps.AddRating(c, db)
-		})
-		appsGroup.DELETE("/:id/ratings/:ratingId", func(c *gin.Context) {
-			apps.DeleteRating(c, db)
-		})
+
+		// Rating modifications require Auth
+		ratingAuthGroup := appsGroup.Group("/:id/ratings")
+		ratingAuthGroup.Use(middlewares.Auth(db))
+		{
+			ratingAuthGroup.POST("", func(c *gin.Context) {
+				apps.AddRating(c, db)
+			})
+			ratingAuthGroup.DELETE("/:ratingId", func(c *gin.Context) {
+				apps.DeleteRating(c, db)
+			})
+		}
 
 		// Partially protected or Admin-only routes?
 		// 1. Export, Import -> Clearly Admin

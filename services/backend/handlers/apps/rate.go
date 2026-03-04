@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -91,12 +92,35 @@ func DeleteRating(c *gin.Context, db *bun.DB) {
 	appID := c.Param("id")
 	ratingID := c.Param("ratingId")
 
-	// Get user info if available (for ownership check)
-	// In a full implementation, this should come from middleware
-	// For now, we'll allow the request if the client provides the correct info
-	// or if we implement basic auth check here.
+	// Verify rating existence (ensure it belongs to this app)
+	var rating models.Rating
+	err := db.NewSelect().Model(&rating).Where("id = ? AND app_id = ?", ratingID, appID).Scan(c)
+	if err != nil {
+		httperror.StatusNotFound(c, "Rating not found", err)
+		return
+	}
 
-	_, err := db.NewDelete().
+	// Permission Check: Owner or Admin
+	userRole := c.GetString("role")
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		httperror.Unauthorized(c, "Auth required", nil)
+		return
+	}
+
+	var userID string
+	if idUUID, ok := userIDVal.(uuid.UUID); ok {
+		userID = idUUID.String()
+	} else if idStr, ok := userIDVal.(string); ok {
+		userID = idStr
+	}
+
+	if userRole != "admin" && rating.UserID != userID {
+		httperror.Forbidden(c, "Not authorized to delete this rating", nil)
+		return
+	}
+
+	_, err = db.NewDelete().
 		Model((*models.Rating)(nil)).
 		Where("id = ? AND app_id = ?", ratingID, appID).
 		Exec(c)

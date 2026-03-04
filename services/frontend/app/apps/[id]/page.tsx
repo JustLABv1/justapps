@@ -345,28 +345,28 @@ export default function AppPage() {
 
       {/* ── Tabbed content ── */}
       <Tabs variant="secondary" className="w-full">
-        <Tabs.ListContainer className="border-b border-border mb-8">
+        <Tabs.ListContainer className="border-b border-border mb-6">
           <Tabs.List aria-label="App-Details Bereiche" className="gap-8">
-            <Tabs.Tab id="docs" className="gap-2 py-4 text-sm font-semibold">
+            <Tabs.Tab id="docs" className="gap-2 py-3 text-sm font-semibold">
               <BookOpen className="w-4 h-4" />
               Dokumentation
               <Tabs.Indicator />
             </Tabs.Tab>
             {metaFields.length > 0 && (
-              <Tabs.Tab id="details" className="gap-2 py-4 text-sm font-semibold">
+              <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-semibold">
                 <Layers className="w-4 h-4" />
                 Fachliche Details
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
             {app.hasDeploymentAssistant !== false && (
-              <Tabs.Tab id="deployment" className="gap-2 py-4 text-sm font-semibold">
+              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            <Tabs.Tab id="ratings" className="gap-2 py-4 text-sm font-semibold">
+            <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
               {hasRating && (
