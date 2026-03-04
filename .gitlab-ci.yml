@@ -33,6 +33,7 @@ build-store-frontend-image:
   script:
     - podman build
         --secret id=ca-bundle,src=/etc/ssl/cert.pem
+        --build-arg NPM_TOKEN="$NPM_TOKEN"
         -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/frontend
         -f Dockerfile
       .
