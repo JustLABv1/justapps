@@ -13,7 +13,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm config set registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+    npm install -g pnpm && \
+    pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -33,9 +35,9 @@ ENV NEXT_TYPECHECK_DISABLED=1
 # Use a more conservative memory limit (1GB) to ensure OS has breathing room in a 2GB VM
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-RUN ls -la
-
-RUN npm install -g pnpm && pnpm run build
+RUN npm config set registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+    npm install -g pnpm && \
+    pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
