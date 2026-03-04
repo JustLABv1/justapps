@@ -352,6 +352,7 @@ function ManagementContent() {
       status: 'POC',
       transferability: '',
       contactPerson: '',
+      authority: '',
       customDockerCommand: '',
       customComposeCommand: '',
       customHelmCommand: '',
@@ -1128,11 +1129,18 @@ function ManagementContent() {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TextField onChange={(val) => setAppFormData({...appFormData, authority: val})}>
+                              <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Behörde</Label>
+                              <Input value={appFormData.authority || ''} placeholder="z.B. BMI, BVA..." className="bg-field-background" />
+                            </TextField>
+
                             <TextField onChange={(val) => setAppFormData({...appFormData, contactPerson: val})}>
                               <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
                               <Input value={appFormData.contactPerson || ''} placeholder="Name (Ressort/Team)" className="bg-field-background" />
                             </TextField>
+                          </div>
 
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <TextField onChange={(val) => setAppFormData({...appFormData, transferability: val})}>
                               <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Auf andere Ressorts übertragbar</Label>
                               <Input value={appFormData.transferability || ''} placeholder="Gibt es Abhängigkeiten oder ist es generisch?" className="bg-field-background" />

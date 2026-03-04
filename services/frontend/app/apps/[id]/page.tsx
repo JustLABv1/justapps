@@ -7,10 +7,15 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
+  Activity,
+  ArrowRightLeft,
   BookOpen,
   ChevronLeft,
+  ClipboardList,
   Database,
   ExternalLink,
+  Eye,
+  FileCode,
   Github,
   Globe,
   Layers,
@@ -111,15 +116,16 @@ export default function AppPage() {
   const metaFields: { label: string; value?: string; icon?: React.ReactNode }[] = [
     { label: "Themenfeld", value: app.focus, icon: <Layers className="w-3 h-3" /> },
     { label: "Anwendungstyp", value: app.appType, icon: <Globe className="w-3 h-3" /> },
-    { label: "Anwendungsfall", value: app.useCase },
-    { label: "Visualisierung", value: app.visualization },
+    { label: "Anwendungsfall", value: app.useCase, icon: <FileCode className="w-3 h-3" /> },
+    { label: "Visualisierung", value: app.visualization, icon: <Eye className="w-3 h-3" /> },
     { label: "Deployment", value: app.deployment, icon: <Server className="w-3 h-3" /> },
-    { label: "Infrastruktur", value: app.infrastructure },
+    { label: "Infrastruktur", value: app.infrastructure, icon: <LayoutDashboard className="w-3 h-3" /> },
     { label: "Datenbasis", value: app.database, icon: <Database className="w-3 h-3" /> },
-    { label: "Status", value: statusInfo?.label },
-    { label: "Übertragbarkeit", value: app.transferability },
+    { label: "Status", value: statusInfo?.label, icon: <Activity className="w-3 h-3" /> },
+    { label: "Übertragbarkeit", value: app.transferability, icon: <ArrowRightLeft className="w-3 h-3" /> },
+    { label: "Behörde", value: app.authority, icon: <Globe className="w-3 h-3" /> },
     { label: "Ansprechpartner", value: app.contactPerson, icon: <User className="w-3 h-3" /> },
-    { label: "Sonstiges", value: app.additionalInfo },
+    { label: "Sonstiges", value: app.additionalInfo, icon: <ClipboardList className="w-3 h-3" /> },
   ].filter(f => f.value);
 
   return (
