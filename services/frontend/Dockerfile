@@ -6,14 +6,14 @@ FROM base AS deps
 
 WORKDIR /app
 
-# Install pnpm and dependencies
-COPY package.json package-lock.json ./
+# Install dependencies
+COPY package.json pnpm-lock.yaml ./
 
 # create .npmrc to set registry and auth token for private packages
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-RUN npm install
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -35,7 +35,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 RUN ls -la
 
-RUN npm run build
+RUN npm install -g pnpm && pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
