@@ -10,17 +10,16 @@ ARG PLAIN2_ROOT_CA
 WORKDIR /app
 
 # Configure trust for internal CA if provided
-# Note: Use .crt extension and update-ca-certificates
-# Also set NODE_EXTRA_CA_CERTS as ENV so it persists across RUN commands
+# We write to a temp file and use it directly for npm config to avoid any path resolution issues
 RUN if [ -n "$PLAIN2_ROOT_CA" ]; then \
-      echo "$PLAIN2_ROOT_CA" > /usr/local/share/ca-certificates/internal-ca.crt && \
+      echo "$PLAIN2_ROOT_CA" > /app/internal-ca.crt && \
       update-ca-certificates; \
     fi
 
-ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-
-# Standardize cert location for npm as well
-RUN npm config set cafile /etc/ssl/certs/ca-certificates.crt
+# set npm to use the provided CA certificate directly
+RUN if [ -f /app/internal-ca.crt ]; then \
+      npm config set cafile /app/internal-ca.crt; \
+    fi
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
@@ -29,8 +28,10 @@ COPY package.json pnpm-lock.yaml ./
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-# Install pnpm using the internal registry
-RUN npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+# Install pnpm using the internal registry. If we have a CA file, pnpm and npm will use it.
+RUN CA_FLAG=""; if [ -f /app/internal-ca.crt ]; then CA_FLAG="--cafile /app/internal-ca.crt"; fi && \
+    npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ $CA_FLAG && \
+    pnpm config set cafile /app/internal-ca.crt && \
     pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
