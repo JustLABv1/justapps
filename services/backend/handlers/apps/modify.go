@@ -64,8 +64,11 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 	}
 
 	// 4. Set Metadata
-	app.ID = uuid.New().String() // Ensure new ID
-	// app.CreatedAt = time.Now() // CreatedAt not in model
+	// If ID is provided, we use it (after validation/sanitization could be added),
+	// otherwise generate a new one.
+	if app.ID == "" {
+		app.ID = uuid.New().String()
+	}
 	app.UpdatedAt = time.Now()
 	app.OwnerID = userID // Assign ownership
 

@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Unlock,
+  User,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -69,7 +70,13 @@ export function AppList({ apps, handleEditApp, handleDeleteApp, handleToggleAppL
                 )}
                 {app.isLocked && (
                   <div className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-1 rounded-md border border-warning/20 uppercase tracking-wider flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Locked
+                    <Lock className="w-3 h-3" /> Gesperrt
+                  </div>
+                )}
+                {app.owner && (
+                  <div className="text-[10px] font-medium text-muted-foreground bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5" title={`Eingereicht von ${app.owner.username} (${app.owner.email})`}>
+                    <User className="w-3 h-3 opacity-50" />
+                    <span className="opacity-70 italic">von</span> {app.owner.username}
                   </div>
                 )}
               </div>

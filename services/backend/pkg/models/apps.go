@@ -63,6 +63,7 @@ type Apps struct {
 	RatingAvg              float64    `bun:"rating_avg,notnull,default:0" json:"ratingAvg"`
 	RatingCount            int        `bun:"rating_count,notnull,default:0" json:"ratingCount"`
 	OwnerID                uuid.UUID  `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
+	Owner                  *Users     `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
 	IsLocked               bool       `bun:"is_locked,notnull,default:false" json:"isLocked"`
 	UpdatedAt              time.Time  `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"`
 }
