@@ -52,6 +52,11 @@ export interface AppConfig {
   showHelm?: boolean;
   isLocked?: boolean;
   ownerId?: string;
+  owner?: {
+    username: string;
+    email: string;
+    id: string;
+  };
   tags?: string[];
   collections?: string[];
   isFeatured?: boolean;

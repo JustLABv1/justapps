@@ -2,39 +2,39 @@
 
 import { AppConfig } from '@/config/apps';
 import {
-    Button,
-    Card,
-    Chip,
-    ComboBox,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    Separator,
-    Surface,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField
+  Button,
+  Card,
+  Chip,
+  ComboBox,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  Separator,
+  Surface,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField
 } from '@heroui/react';
 import {
-    BookOpen,
-    ChevronLeft,
-    ExternalLink,
-    FileText,
-    Github,
-    Globe,
-    Info,
-    Layers,
-    Loader2,
-    Lock,
-    Pencil,
-    Plus,
-    Server,
-    ShieldCheck,
-    Terminal,
-    Trash2,
+  BookOpen,
+  ChevronLeft,
+  ExternalLink,
+  FileText,
+  Github,
+  Globe,
+  Info,
+  Layers,
+  Loader2,
+  Lock,
+  Pencil,
+  Plus,
+  Server,
+  ShieldCheck,
+  Terminal,
+  Trash2,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useEffect, useState } from 'react';
@@ -272,6 +272,13 @@ function MyAppsContent() {
             <ChevronLeft className="w-4 h-4" />
             Zum Store
           </Button>
+          <Button 
+            onPress={handleCreateApp} 
+            isDisabled={!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')}
+          >
+            <Plus className="w-6 h-6" />
+            Neue App
+          </Button>
         </div>
       </div>
 
@@ -289,28 +296,22 @@ function MyAppsContent() {
 
       {/* Main Content */}
       <div className="pt-6">
-        <div className='flex flex-col md:flex-row gap-4 pb-4 justify-end items-center'>
-            {!settings.allowAppSubmissions && user.role !== 'admin' && (
-              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                <Lock className="w-4 h-4 mr-2" />
-                App-Einreichungen sind derzeit systemweit deaktiviert.
-              </div>
-            )}
-           {!user.canSubmitApps && (
-              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                <Lock className="w-4 h-4 mr-2" />
-                Ihr Konto ist für die Einreichung von Apps gesperrt.
-              </div>
-            )}
-          <Button 
-            onPress={handleCreateApp} 
-            isDisabled={!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')}
-            className={`font-bold py-5 px-6 gap-2 ${ (!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')) ? 'bg-surface-secondary text-muted cursor-not-allowed opacity-50' : 'bg-accent text-white shadow-lg shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 transition-all'}`}
-          >
-            <Plus className="w-6 h-6" />
-            Neue App
-          </Button>
-        </div>
+        {!settings.allowAppSubmissions && user.role !== 'admin' && !user.canSubmitApps && (
+          <div className='flex flex-col md:flex-row gap-4 pb-4 justify-end items-center'>
+              {!settings.allowAppSubmissions && user.role !== 'admin' && (
+                <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                  <Lock className="w-4 h-4 mr-2" />
+                  App-Einreichungen sind derzeit systemweit deaktiviert.
+                </div>
+              )}
+            {!user.canSubmitApps && (
+                <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                  <Lock className="w-4 h-4 mr-2" />
+                  Ihr Konto ist für die Einreichung von Apps gesperrt.
+                </div>
+              )}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4">
           {apps.map((app) => (
             <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
