@@ -9,17 +9,22 @@ WORKDIR /app
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
 
+COPY apps.ocp4.svc.prod.pl2cloud.de.crt /usr/local/share/ca-certificates/apps.ocp4.svc.prod.pl2cloud.de.crt
+
+RUN update-ca-certificates
+
 # create .npmrc to set registry and auth token for private packages
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-RUN npm config set registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
-    npm install -g pnpm && \
+RUN npm install -g pnpm && \
     pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+COPY --from=deps /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
+COPY --from=deps /usr/local/bin/pnpm /usr/local/bin/pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -35,9 +40,7 @@ ENV NEXT_TYPECHECK_DISABLED=1
 # Use a more conservative memory limit (1GB) to ensure OS has breathing room in a 2GB VM
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-RUN npm config set registry https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
-    npm install -g pnpm && \
-    pnpm run build
+RUN pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
