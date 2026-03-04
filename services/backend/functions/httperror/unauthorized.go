@@ -7,6 +7,10 @@ import (
 )
 
 func Unauthorized(context *gin.Context, message string, err error) {
-	context.JSON(http.StatusUnauthorized, gin.H{"message": message, "error": err.Error()})
+	resp := gin.H{"message": message}
+	if err != nil {
+		resp["error"] = err.Error()
+	}
+	context.JSON(http.StatusUnauthorized, resp)
 	context.Abort()
 }
