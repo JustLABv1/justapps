@@ -12,6 +12,7 @@ ARG GO_TOKEN
 # Configure trust for internal CA using the secret mount (same strategy as frontend)
 RUN --mount=type=secret,id=ca-bundle \
     if [ -f /run/secrets/ca-bundle ]; then \
+      mkdir -p /usr/local/share/ca-certificates && \
       cp /run/secrets/ca-bundle /usr/local/share/ca-certificates/internal-ca.crt && \
       update-ca-certificates; \
     fi
