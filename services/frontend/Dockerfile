@@ -6,6 +6,13 @@ FROM base AS deps
 
 WORKDIR /app
 
+# Configure trust for internal CA if provided
+RUN if [ -n "$PLAIN2_ROOT_CA" ]; then \
+      echo "$PLAIN2_ROOT_CA" > /usr/local/share/ca-certificates/internal-ca.crc && \
+      update-ca-certificates && \
+      export NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/internal-ca.crc; \
+    fi
+
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
 
