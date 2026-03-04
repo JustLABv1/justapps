@@ -47,6 +47,7 @@ type Apps struct {
 	Status                 string     `bun:"status" json:"status"`
 	Transferability        string     `bun:"transferability" json:"transferability"`
 	ContactPerson          string     `bun:"contact_person" json:"contactPerson"`
+	Authority              string     `bun:"authority" json:"authority"`
 	CustomDockerCommand    string     `bun:"custom_docker_command" json:"customDockerCommand"`
 	CustomComposeCommand   string     `bun:"custom_compose_command" json:"customComposeCommand"`
 	CustomHelmCommand      string     `bun:"custom_helm_command" json:"customHelmCommand"`

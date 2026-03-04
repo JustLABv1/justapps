@@ -40,6 +40,7 @@ export interface AppConfig {
   status?: string;
   transferability?: string;
   contactPerson?: string;
+  authority?: string;
   customDockerCommand?: string;
   customComposeCommand?: string;
   customHelmCommand?: string;
