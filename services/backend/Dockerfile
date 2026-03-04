@@ -1,7 +1,6 @@
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 as builder
 
 # Ensure we are root (UID 0) to install certificates
-# Using UID 0 directly avoids "unknown user" errors if /etc/passwd is missing
 USER 0
 
 WORKDIR /app/backend
@@ -9,24 +8,22 @@ WORKDIR /app/backend
 ARG PLAIN_USER
 ARG GO_TOKEN
 
-# Configure trust for internal CA using the secret mount (same strategy as frontend)
+# Configure trust for internal CA using the secret mount.
+# Instead of update-ca-certificates (which is missing), we copy the bundle
+# and point the SSL_CERT_FILE environment variable to it.
 RUN --mount=type=secret,id=ca-bundle \
     if [ -f /run/secrets/ca-bundle ]; then \
-      mkdir -p /usr/local/share/ca-certificates && \
-      cp /run/secrets/ca-bundle /usr/local/share/ca-certificates/internal-ca.crt && \
-      update-ca-certificates; \
+      cp /run/secrets/ca-bundle /app/backend/ca-bundle.crt; \
     fi
 
 COPY go.mod go.sum ./
 
-# Configure Go to use Artifactory Proxy
-# We set GOPROXY using `go env -w` so it persists for this user, OR simply export it
-# Setting via ENV is fine for builder stage
+# Configure Go to use Artifactory Proxy and use the CA bundle for SSL verification
 ENV GOPROXY="https://${PLAIN_USER}:${GO_TOKEN}@artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/go/demo-go-virtual"
-# Disable sumdb validation since we are using a private proxy that might serve private modules
 ENV GONOSUMDB="*"
+ENV SSL_CERT_FILE=/app/backend/ca-bundle.crt
 
-# Run go mod download with the CA certs available
+# Run go mod download
 RUN go mod download
 
 COPY . .
