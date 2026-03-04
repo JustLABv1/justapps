@@ -2,10 +2,26 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alp
 
 WORKDIR /app/backend
 
+ARG PLAIN_USER
+ARG GO_TOKEN
+
+# Configure trust for internal CA using the secret mount (same strategy as frontend)
+RUN --mount=type=secret,id=ca-bundle \
+    if [ -f /run/secrets/ca-bundle ]; then \
+      cp /run/secrets/ca-bundle /usr/local/share/ca-certificates/internal-ca.crt && \
+      update-ca-certificates; \
+    fi
+
 COPY go.mod go.sum ./
 
-RUN export GOPROXY="https://${PLAIN_USER}:${GO_TOKEN}@artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/go/demo-go-virtual"
+# Configure Go to use Artifactory Proxy
+# We set GOPROXY using `go env -w` so it persists for this user, OR simply export it
+# Setting via ENV is fine for builder stage
+ENV GOPROXY="https://${PLAIN_USER}:${GO_TOKEN}@artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/go/demo-go-virtual"
+# Disable sumdb validation since we are using a private proxy that might serve private modules
+ENV GONOSUMDB="*"
 
+# Run go mod download with the CA certs available
 RUN go mod download
 
 COPY . .
