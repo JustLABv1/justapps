@@ -4,11 +4,13 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 # Install dependencies only when needed
 FROM base AS deps
 
+ARG NPM_TOKEN
+
 WORKDIR /app
 
 # Configure npm registry and auth token globally (so it applies to both global and local installs)
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > /root/.npmrc && \
-    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> /root/.npmrc
+    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=${NPM_TOKEN}" >> /root/.npmrc
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
