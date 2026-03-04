@@ -4,14 +4,21 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 # Install dependencies only when needed
 FROM base AS deps
 
+# Accept CA and Token as build arguments
+ARG PLAIN2_ROOT_CA
+ARG NPM_TOKEN
+
 WORKDIR /app
 
 # Configure trust for internal CA if provided
+# Note: Use .crt extension and update-ca-certificates
+# Also set NODE_EXTRA_CA_CERTS as ENV so it persists across RUN commands
 RUN if [ -n "$PLAIN2_ROOT_CA" ]; then \
-      echo "$PLAIN2_ROOT_CA" > /usr/local/share/ca-certificates/internal-ca.crc && \
-      update-ca-certificates && \
-      export NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/internal-ca.crc; \
+      echo "$PLAIN2_ROOT_CA" > /usr/local/share/ca-certificates/internal-ca.crt && \
+      update-ca-certificates; \
     fi
+
+ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
@@ -20,7 +27,8 @@ COPY package.json pnpm-lock.yaml ./
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-RUN npm install -g pnpm && \
+# Install pnpm using the internal registry
+RUN npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
     pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
