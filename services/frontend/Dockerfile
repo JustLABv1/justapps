@@ -4,9 +4,8 @@ FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpin
 # Install dependencies only when needed
 FROM base AS deps
 
-# Accept CA and Token as build arguments
+# Accept CA as build argument
 ARG PLAIN2_ROOT_CA
-ARG NPM_TOKEN
 
 WORKDIR /app
 
@@ -19,6 +18,9 @@ RUN if [ -n "$PLAIN2_ROOT_CA" ]; then \
     fi
 
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+
+# Standardize cert location for npm as well
+RUN npm config set cafile /etc/ssl/certs/ca-certificates.crt
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
