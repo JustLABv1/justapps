@@ -6,14 +6,6 @@ FROM base AS deps
 
 WORKDIR /app
 
-# Copy the CA bundle from the build secret into the image and configure npm to trust it
-RUN --mount=type=secret,id=ca-bundle \
-    if [ -f /run/secrets/ca-bundle ]; then \
-      cp /run/secrets/ca-bundle /usr/local/share/ca-certificates/internal-ca.crt && \
-      update-ca-certificates && \
-      npm config set cafile /etc/ssl/certs/ca-certificates.crt; \
-    fi
-
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
 
@@ -21,8 +13,13 @@ COPY package.json pnpm-lock.yaml ./
 RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > .npmrc && \
     echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
-# Install pnpm using the internal registry, then install project dependencies
-RUN npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+# Install pnpm and project dependencies.
+# The ca-bundle secret (passed via --secret id=ca-bundle) is mounted at /run/secrets/ca-bundle.
+# NODE_EXTRA_CA_CERTS tells Node.js (and therefore npm/pnpm) to trust the certificates in that file.
+RUN --mount=type=secret,id=ca-bundle \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
+    npm install -g pnpm --registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/ && \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
     pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
