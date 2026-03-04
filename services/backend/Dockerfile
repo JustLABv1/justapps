@@ -1,7 +1,8 @@
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 as builder
 
-# Ensure we are root to install certificates
-USER root
+# Ensure we are root (UID 0) to install certificates
+# Using UID 0 directly avoids "unknown user" errors if /etc/passwd is missing
+USER 0
 
 WORKDIR /app/backend
 
