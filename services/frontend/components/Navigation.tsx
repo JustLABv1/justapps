@@ -29,6 +29,7 @@ export function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Community Store", active: pathname === '/' },
+    ...(user ? [{ href: "/my-apps", label: "Meine Apps", active: pathname === '/my-apps' }] : []),
     ...(user?.role === 'admin' ? [{ href: "/management", label: "Verwaltung", active: pathname === '/management' }] : []),
   ];
 
@@ -85,6 +86,13 @@ export function Navigation() {
                     <div className="flex flex-col gap-0.5">
                       <Label className="font-semibold text-sm">Angemeldet als</Label>
                       <div className="text-xs text-muted text-balance break-all max-w-[180px]">{user.email}</div>
+                      {user.authType === 'oidc' && (
+                        <div className="mt-1">
+                           <span className="text-[10px] bg-sky-500/10 text-sky-500 px-1.5 py-0.5 rounded border border-sky-500/20 whitespace-nowrap">
+                            Managed by Keycloak
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </Dropdown.Item>
                   <Separator />

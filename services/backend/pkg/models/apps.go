@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -61,5 +62,7 @@ type Apps struct {
 	IsFeatured             bool       `bun:"is_featured,notnull,default:false" json:"isFeatured"`
 	RatingAvg              float64    `bun:"rating_avg,notnull,default:0" json:"ratingAvg"`
 	RatingCount            int        `bun:"rating_count,notnull,default:0" json:"ratingCount"`
+	OwnerID                uuid.UUID  `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
+	IsLocked               bool       `bun:"is_locked,notnull,default:false" json:"isLocked"`
 	UpdatedAt              time.Time  `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"`
 }

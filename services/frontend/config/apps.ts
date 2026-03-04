@@ -50,6 +50,8 @@ export interface AppConfig {
   showDocker?: boolean;
   showCompose?: boolean;
   showHelm?: boolean;
+  isLocked?: boolean;
+  ownerId?: string;
   tags?: string[];
   collections?: string[];
   isFeatured?: boolean;

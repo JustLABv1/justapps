@@ -22,6 +22,7 @@ import {
   Star,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import NextLink from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -160,9 +161,15 @@ export default function AppPage() {
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-8">
-          <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-center text-4xl md:text-6xl shrink-0 overflow-hidden">
+          <div className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-center text-4xl md:text-6xl shrink-0 overflow-hidden">
             {app.icon?.startsWith('http') ? (
-              <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+              <Image 
+                src={app.icon} 
+                alt={app.name} 
+                fill 
+                className="object-cover p-2"
+                sizes="(max-width: 768px) 80px, 112px"
+              />
             ) : (
               app.icon || "🏛️"
             )}

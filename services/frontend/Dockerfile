@@ -45,7 +45,12 @@ ENV NEXT_TYPECHECK_DISABLED=1
 # Use a more conservative memory limit (1GB) to ensure OS has breathing room in a 2GB VM
 ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-RUN pnpm run build
+# Use the CA certificate during the build to fetch external resources (fonts etc)
+# Also enable Turbopack system TLS certs as suggested by the error
+RUN --mount=type=secret,id=ca-bundle \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
+    NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 \
+    pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

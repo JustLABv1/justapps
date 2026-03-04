@@ -9,6 +9,7 @@ import (
 	"app-store-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 )
 
@@ -26,8 +27,19 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 			context.Set("user_email", sessionClaims.Email)
 			context.Set("username", sessionClaims.PreferredUsername)
 			context.Set("role", sessionClaims.Role)
+
+			// Lookup user ID
+			var user models.Users
+			err = db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
+			if err == nil {
+				context.Set("user_id", user.ID)
+			}
+
 			context.Next()
 			return
+		} else {
+			// Log debug info about why it failed
+			log.Debugf("ValidateOIDCSessionToken failed: %v", err)
 		}
 
 		// Try raw Keycloak OIDC token (direct Keycloak ID token, e.g. from external clients)
@@ -38,6 +50,14 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				context.Set("oidc_claims", claims)
 				context.Set("user_email", claims.Email)
 				context.Set("username", claims.PreferredUser)
+
+				// Lookup user ID
+				var user models.Users
+				err = db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(context)
+				if err == nil {
+					context.Set("user_id", user.ID)
+				}
+
 				if auth.IsAdminOIDC(claims) {
 					context.Set("role", "admin")
 				} else {
@@ -46,6 +66,9 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				context.Next()
 				return
 			}
+		} else {
+			// Log debug info
+			log.Debugf("ValidateOIDCToken failed: %v", err)
 		}
 
 		err = auth.ValidateToken(tokenString)
