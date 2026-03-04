@@ -1,5 +1,8 @@
 FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 as builder
 
+# Ensure we are root to install certificates
+USER root
+
 WORKDIR /app/backend
 
 ARG PLAIN_USER
