@@ -47,6 +47,7 @@ export interface AppConfig {
   customDockerNote?: string;
   customComposeNote?: string;
   customHelmNote?: string;
+  customHelmValues?: string;
   hasDeploymentAssistant?: boolean;
   showDocker?: boolean;
   showCompose?: boolean;
