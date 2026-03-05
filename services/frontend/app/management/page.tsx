@@ -1096,10 +1096,12 @@ function ManagementContent() {
                             <div className="flex flex-col gap-1">
                               <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">App Status</Label>
                               <Select 
-                                value={['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') ? appFormData.status : 'custom'}
-                                onChange={(key) => {
+                                value={['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'].includes(appFormData.status || '') ? appFormData.status : 'custom'}
+                                onSelectionChange={(key) => {
                                   if (key !== 'custom') {
                                     setAppFormData({...appFormData, status: key as string});
+                                  } else {
+                                    setAppFormData({...appFormData, status: ''});
                                   }
                                 }}
                                 className="w-full"
@@ -1113,14 +1115,14 @@ function ManagementContent() {
                                     <ListBox.Item id="POC" textValue="POC">POC (Machbarkeitsstudie)<ListBox.ItemIndicator /></ListBox.Item>
                                     <ListBox.Item id="MVP" textValue="MVP">MVP (Minimalprodukt)<ListBox.ItemIndicator /></ListBox.Item>
                                     <ListBox.Item id="Sandbox" textValue="Sandbox">Sandbox<ListBox.ItemIndicator /></ListBox.Item>
-                                    <ListBox.Item id="Incubating" textValue="Incubating">In Inkubation<ListBox.ItemIndicator /></ListBox.Item>
-                                    <ListBox.Item id="Graduated" textValue="Graduated">Graduated (Produktiv)<ListBox.ItemIndicator /></ListBox.Item>
+                                    <ListBox.Item id="In Erprobung" textValue="In Erprobung">In Erprobung (Incubating)<ListBox.ItemIndicator /></ListBox.Item>
+                                    <ListBox.Item id="Etabliert" textValue="Etabliert">Etabliert (Graduated)<ListBox.ItemIndicator /></ListBox.Item>
                                     <ListBox.Item id="custom" textValue="Eigener Status...">Eigener Status...<ListBox.ItemIndicator /></ListBox.Item>
                                   </ListBox>
                                 </Select.Popover>
                               </Select>
                             </div>
-                            {(!['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'].includes(appFormData.status || '') || appFormData.status === 'custom') && (
+                            {(!['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'].includes(appFormData.status || '') || appFormData.status === 'custom') && (
                               <TextField onChange={(val) => setAppFormData({...appFormData, status: val})}>
                                 <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Eigener Status (Text)</Label>
                                 <Input value={appFormData.status === 'custom' ? '' : appFormData.status || ''} placeholder="z.B. Pilot, Geplant..." className="bg-field-background" />

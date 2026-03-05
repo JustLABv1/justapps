@@ -11,10 +11,14 @@ export function AppCard({ app }: { app: AppConfig }) {
 
   const getStatusProps = (state?: string) => {
     switch (state?.toLowerCase()) {
+      case 'etabliert':
+      case 'produktiv':
       case 'graduated':
-        return { color: 'success' as const, label: 'Produktiv' };
+        return { color: 'success' as const, label: 'Etabliert' };
+      case 'in erprobung':
+      case 'in inkubation':
       case 'incubating':
-        return { color: 'accent' as const, label: 'In Inkubation' };
+        return { color: 'accent' as const, label: 'In Erprobung' };
       case 'sandbox':
         return { color: 'warning' as const, label: 'Sandbox' };
       case 'mvp':

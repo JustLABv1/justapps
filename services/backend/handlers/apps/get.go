@@ -10,7 +10,11 @@ import (
 
 func GetApps(c *gin.Context, db *bun.DB) {
 	apps := make([]models.Apps, 0)
-	err := db.NewSelect().Model(&apps).Relation("Owner").Scan(c)
+	err := db.NewSelect().
+		Model(&apps).
+		Relation("Owner").
+		Order("is_featured DESC", "name ASC").
+		Scan(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching apps", err)
 		return
