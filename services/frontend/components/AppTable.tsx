@@ -17,6 +17,7 @@ import {
   MoreVertical,
   Pencil,
   Search,
+  Star,
   Trash2,
   Unlock
 } from 'lucide-react';
@@ -156,6 +157,7 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
               <Table.Column isRowHeader>App</Table.Column>
               <Table.Column>Kategorien</Table.Column>
               <Table.Column>Status</Table.Column>
+              <Table.Column>Lösung</Table.Column>
               <Table.Column>Besitzer</Table.Column>
               <Table.Column className="text-right">Aktionen</Table.Column>
             </Table.Header>
@@ -215,6 +217,17 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                         </Chip>
                       )}
                     </div>
+                  </Table.Cell>
+                  <Table.Cell>
+                    {app.isFeatured && (
+                      <Chip 
+                        size="sm" 
+                        variant="soft" 
+                        className="bg-amber-500/10 text-amber-600 border border-amber-500/20 font-bold text-[9px] uppercase tracking-wider gap-1 pl-1"
+                      >
+                        <Star className="w-2.5 h-2.5 fill-amber-500" /> Top
+                      </Chip>
+                    )}
                   </Table.Cell>
                   <Table.Cell>
                     {app.owner ? (

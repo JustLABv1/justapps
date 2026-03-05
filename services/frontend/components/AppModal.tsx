@@ -1,6 +1,7 @@
 'use client';
 
 import { AppConfig } from '@/config/apps';
+import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   ComboBox,
@@ -47,6 +48,7 @@ export function AppModal({
   onSubmit,
   initialData
 }: AppModalProps) {
+  const { user } = useAuth();
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>(initialData || {});
   const [iconInput, setIconInput] = useState(initialData?.icon || '');
   const [prevInitialData, setPrevInitialData] = useState<Partial<AppConfig> | undefined>(initialData);
@@ -147,6 +149,23 @@ export function AppModal({
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Kurzbeschreibung</Label>
                           <TextArea value={appFormData.description || ''} placeholder="Eine kurze Zusammenfassung für die Store-Übersicht" className="bg-field-background min-h-[80px]" />
                         </TextField>
+
+                        {user?.role === 'admin' && (
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
+                            <div className="flex flex-col gap-0.5">
+                              <Label className="text-sm font-bold text-foreground">Ausgezeichnet (Empfehlung)</Label>
+                              <p className="text-xs text-muted max-w-[400px]">Hervorgehobene Apps erscheinen mit einer speziellen Markierung im Store.</p>
+                            </div>
+                            <Switch 
+                              isSelected={appFormData.isFeatured || false} 
+                              onChange={(val) => setAppFormData({...appFormData, isFeatured: val})}
+                            >
+                                <Switch.Control>
+                                    <Switch.Thumb />
+                                </Switch.Control>
+                            </Switch>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-4">

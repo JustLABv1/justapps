@@ -9,7 +9,7 @@ import {
   ListBox,
   Modal,
   Select,
-  Separator,
+  Surface,
   Switch,
   Tabs,
   TextField
@@ -17,6 +17,7 @@ import {
 import {
   ChevronLeft,
   Download,
+  Globe,
   Layers,
   Loader2,
   Plus,
@@ -53,15 +54,26 @@ function ManagementContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'apps' | 'users'>('apps');
-  const [globalSettings, setGlobalSettings] = useState({ allowAppSubmissions: true });
+  const [globalSettings, setGlobalSettings] = useState({ 
+    allowAppSubmissions: true,
+    showTopBanner: false,
+    topBannerText: ''
+  });
 
-  // Modal & Form states
+  const handleUpdateSettings = async (newSettings: typeof globalSettings) => {
+    try {
+      const res = await fetchApi('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(newSettings)
+      });
+      if (res.ok) setGlobalSettings(newSettings);
+    } catch (err) { console.error(err); }
+  };
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   
-  const [iconInput, setIconInput] = useState('');
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
   const [userFormData, setUserFormData] = useState<Partial<SystemUser & { password?: string }>>({});
 
@@ -127,30 +139,6 @@ function ManagementContent() {
     };
     loadData();
   }, [activeTab]);
-
-  const handleToggleGlobalSubmissions = async (isSelected: boolean) => {
-    // Optimistic update
-    const previous = globalSettings;
-    setGlobalSettings({ ...previous, allowAppSubmissions: isSelected });
-
-    try {
-      const res = await fetchApi('/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ allowAppSubmissions: isSelected })
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setGlobalSettings(updated);
-      } else {
-        // Revert on failure
-        setGlobalSettings(previous);
-        console.error("Failed to update settings");
-      }
-    } catch (err) { 
-      console.error(err);
-      setGlobalSettings(previous);
-    }
-  };
 
   const loadApps = async () => {
     try {
@@ -348,6 +336,7 @@ function ManagementContent() {
       customComposeNote: '',
       customHelmNote: '',
       customHelmValues: '',
+      isFeatured: false,
       hasDeploymentAssistant: true,
       showDocker: true,
       showCompose: true,
@@ -460,87 +449,85 @@ function ManagementContent() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">Verwaltung</h1>
-          <p className="text-muted">Verwalten Sie Applikationen und Benutzer im PLAIN Community Store.</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button 
-            variant="secondary"
-            onPress={() => router.push('/')}
-            className="font-bold gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Zum PLAIN Community Store
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all duration-200 ${globalSettings.allowAppSubmissions ? 'bg-surface-secondary/50 border-border' : 'bg-danger/10 border-danger/30 text-danger shadow-inner'}`}>
-               <Switch isSelected={globalSettings.allowAppSubmissions} onChange={handleToggleGlobalSubmissions}>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm">App-Einreichungen</span>
-                    <span className="text-[10px] opacity-70 font-medium">{globalSettings.allowAppSubmissions ? 'Global aktiviert' : 'Global deaktiviert'}</span>
-                  </div>
-               </Switch>
-               {!globalSettings.allowAppSubmissions && (
-                 <span className="text-[10px] uppercase tracking-wider font-bold bg-danger text-white px-1.5 py-0.5 rounded ml-1 animate-pulse">Deaktiviert</span>
-               )}
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-1 tracking-tight">Verwaltung & Plattform</h1>
+            <p className="text-muted">Verwalten Sie Applikationen, Benutzer und globale Store-Einstellungen.</p>
           </div>
+          <div className="flex flex-wrap gap-3">
+            <Button 
+               variant="secondary" 
+               className="gap-2 border-border/50"
+               onPress={() => router.push('/')}
+            >
+              <ChevronLeft className="w-4 h-4" /> Zum Store
+            </Button>
+            <Button 
+              className="bg-accent text-white gap-2 shadow-lg shadow-accent/20 font-medium"
+              onPress={handleCreateApp}
+            >
+              <Plus className="w-4 h-4" /> App hinzufügen
+            </Button>
+          </div>
+        </div>
 
-          <div className="flex flex-wrap gap-3 justify-center md:justify-end w-full md:w-auto border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
-            {activeTab === 'apps' ? (
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  onPress={handleCreateApp} 
-                  className="bg-accent text-white font-bold gap-2 shadow-lg shadow-accent/20"
-                >
-                  <Plus className="w-4 h-4" />
-                  Neue App
-                </Button>
-                <Separator orientation="vertical" className="h-10 mx-1 hidden sm:block" />
-                <Button 
-                  variant="secondary"
-                  onPress={handleExportApps}
-                  className="font-bold gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Export
-                </Button>
-                <div className='relative'>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportApps}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    title="Apps importieren"
-                  />
-                  <Button 
-                    variant="secondary"
-                    className="font-bold gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Import
-                  </Button>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+          <Surface className="p-6 border border-border/50 shadow-sm relative overflow-hidden group">
+            <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-accent" /> Submission Control
+            </h3>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold">App-Einreichungen erlauben</span>
+                <p className="text-xs text-muted max-w-[200px]">Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen.</p>
               </div>
-            ) : (
-              <Button 
-                onPress={handleCreateUser} 
-                className="bg-accent text-white font-bold gap-2 shadow-lg shadow-accent/20"
+              <Switch 
+                isSelected={globalSettings.allowAppSubmissions}
+                onChange={(val) => handleUpdateSettings({ ...globalSettings, allowAppSubmissions: val })}
               >
-                <UserPlus className="w-4 h-4" />
-                Neuer Benutzer
-              </Button>
-            )}
-          </div>
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
+            </div>
+          </Surface>
+
+          <Surface className="p-6 border border-border/50 shadow-sm relative overflow-hidden group">
+            <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Globe className="w-4 h-4 text-accent" /> Top Store Banner
+            </h3>
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 items-end">
+                <TextField 
+                  className="flex-grow"
+                  value={globalSettings.topBannerText}
+                  onChange={(val) => setGlobalSettings({ ...globalSettings, topBannerText: val })}
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Banner Text</Label>
+                  <Input placeholder="Ankündigung hier eingeben..." className="bg-field-background" />
+                </TextField>
+                <Button 
+                  size="sm"
+                  className="bg-accent text-white"
+                  onPress={() => handleUpdateSettings(globalSettings)}
+                >
+                  Speichern
+                </Button>
+              </div>
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <span className="text-xs font-bold uppercase tracking-widest text-muted">Status</span>
+                <Switch 
+                  isSelected={globalSettings.showTopBanner}
+                  onChange={(val) => handleUpdateSettings({ ...globalSettings, showTopBanner: val })}
+                >
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch>
+              </div>
+            </div>
+          </Surface>
         </div>
-      </div>
 
       {error && (
         <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
@@ -562,18 +549,44 @@ function ManagementContent() {
       >
         <Tabs.ListContainer className="border-b border-border">
           <Tabs.List aria-label="Management sections" className="gap-8">
-            <Tabs.Tab id="apps" className="gap-2 py-4 font-bold text-sm">
-              <Layers className="w-4 h-4" /> Apps
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="users" className="gap-2 py-4 font-bold text-sm">
-              <UsersIcon className="w-4 h-4" /> Benutzer
-              <Tabs.Indicator />
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs.ListContainer>
+              <Tabs.Tab id="apps" className="gap-2 py-4 font-bold text-sm">
+                <Layers className="w-4 h-4" /> Apps
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="users" className="gap-2 py-4 font-bold text-sm">
+                <UsersIcon className="w-4 h-4" /> Benutzer
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
 
-        <Tabs.Panel id="apps" className="pt-6">
+          <div className="flex justify-end gap-2 mb-4">
+            {activeTab === 'apps' && (
+              <>
+                <Button variant="secondary" size="sm" onPress={handleExportApps} className="gap-2">
+                  <Download className="w-4 h-4" /> Export
+                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportApps}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Upload className="w-4 h-4" /> Import
+                  </Button>
+                </div>
+              </>
+            )}
+            {activeTab === 'users' && (
+              <Button size="sm" onPress={handleCreateUser} className="bg-accent text-white gap-2">
+                <UserPlus className="w-4 h-4" /> Benutzer einladen
+              </Button>
+            )}
+          </div>
+
+          <Tabs.Panel id="apps" className="pt-6">
           <AppTable 
             apps={apps} 
             handleEditApp={handleEditApp} 

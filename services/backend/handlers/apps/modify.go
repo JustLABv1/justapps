@@ -163,7 +163,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"custom_docker_command", "custom_compose_command", "custom_helm_command",
 			"custom_docker_note", "custom_compose_note", "custom_helm_note", "custom_helm_values",
 			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
-			"tags", "collections", "is_featured", "live_demos", "updated_at",
+			"tags", "collections", "live_demos", "updated_at",
 		)
 
 	// Admin can also update admin-only fields if they are sent?
@@ -174,7 +174,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	// Let's allow admins to update `isLocked` and users to ONLY update content.
 
 	if isAdmin {
-		query.Column("is_locked")
+		query.Column("is_locked", "is_featured")
 	}
 
 	_, err = query.Exec(c)
