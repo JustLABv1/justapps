@@ -50,8 +50,9 @@ export function AppCard({ app }: { app: AppConfig }) {
               src={app.icon} 
               alt={app.name} 
               fill
-              className="object-cover p-2"
+              className="object-contain p-2"
               sizes="56px"
+              unoptimized
             />
           ) : (
             app.icon || "🏛️"
