@@ -30,8 +30,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
     initialApps.forEach(app => {
       if (app.status) sts.add(app.status);
     });
-    // Define a stable sorting order for lifecycles
-    const order = ['POC', 'MVP', 'Sandbox', 'Incubating', 'Graduated'];
+    // Define a stable sorting order for lifecycles (German labels)
+    const order = ['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
     return Array.from(sts).sort((a, b) => {
       const idxA = order.indexOf(a);
       const idxB = order.indexOf(b);
@@ -44,8 +44,12 @@ export function AppGrid({ initialApps }: AppGridProps) {
 
   const getStatusLabel = (state: string) => {
     switch (state?.toLowerCase()) {
-      case 'graduated': return 'Produktiv';
-      case 'incubating': return 'In Inkubation';
+      case 'graduated':
+      case 'etabliert':
+      case 'produktiv': return 'Etabliert';
+      case 'incubating':
+      case 'in inkubation':
+      case 'in erprobung': return 'In Erprobung';
       case 'sandbox': return 'Sandbox';
       case 'mvp': return 'MVP';
       case 'poc': return 'POC';
