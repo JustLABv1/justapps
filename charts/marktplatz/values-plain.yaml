@@ -7,8 +7,8 @@
 ## Monolith image behavior: prefer Always to force pulls in your environment
 monolith:
   image:
-    pullPolicy: Always
-    tag: "0.8.8"
+    pullPolicy: IfNotPresent
+    tag: "0.9.3"
 
 ## Enable bundled Postgres for this deployment
 postgresql:
