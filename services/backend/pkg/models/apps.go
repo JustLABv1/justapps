@@ -54,6 +54,7 @@ type Apps struct {
 	CustomDockerNote       string     `bun:"custom_docker_note" json:"customDockerNote"`
 	CustomComposeNote      string     `bun:"custom_compose_note" json:"customComposeNote"`
 	CustomHelmNote         string     `bun:"custom_helm_note" json:"customHelmNote"`
+	CustomHelmValues       string     `bun:"custom_helm_values" json:"customHelmValues"`
 	HasDeploymentAssistant bool       `bun:"has_deployment_assistant,notnull,default:true" json:"hasDeploymentAssistant"`
 	ShowDocker             bool       `bun:"show_docker,notnull,default:true" json:"showDocker"`
 	ShowCompose            bool       `bun:"show_compose,notnull,default:true" json:"showCompose"`

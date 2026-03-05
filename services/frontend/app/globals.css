@@ -51,6 +51,9 @@
   --field-foreground: var(--foreground);
   --field-border: oklch(0.88 0.008 250);
 
+  --surface-secondary: oklch(0.97 0.002 250);
+  --surface-tertiary: oklch(0.95 0.004 250);
+
   --surface-shadow: 0 1px 3px 0 rgba(0,0,0,.06), 0 1px 2px -1px rgba(0,0,0,.06);
   --overlay-shadow: 0 4px 16px 0 rgba(0,0,0,.08), 0 2px 8px 0 rgba(0,0,0,.04);
 }
@@ -94,6 +97,9 @@
   --field-background: oklch(0.25 0.01 250);
   --field-foreground: var(--foreground);
   --field-border: oklch(0.32 0.008 250);
+
+  --surface-secondary: oklch(0.18 0.012 250);
+  --surface-tertiary: oklch(0.14 0.012 250);
 
   --surface-shadow: 0 0 0 0 transparent;
   --overlay-shadow: 0 0 0 0 transparent;

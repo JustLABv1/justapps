@@ -161,7 +161,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"additional_info", "status", "transferability", "contact_person",
 			"authority",
 			"custom_docker_command", "custom_compose_command", "custom_helm_command",
-			"custom_docker_note", "custom_compose_note", "custom_helm_note",
+			"custom_docker_note", "custom_compose_note", "custom_helm_note", "custom_helm_values",
 			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
 			"tags", "collections", "is_featured", "live_demos", "updated_at",
 		)

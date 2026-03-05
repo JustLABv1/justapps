@@ -39,8 +39,8 @@ import {
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { Suspense, useEffect, useState } from 'react';
-import { AppList } from '../../components/AppList';
-import { UserList } from '../../components/UserList';
+import { AppTable } from '../../components/AppTable';
+import { UserTable } from '../../components/UserTable';
 import { useAuth } from '../../context/AuthContext';
 import { fetchApi } from '../../lib/api';
 
@@ -359,6 +359,7 @@ function ManagementContent() {
       customDockerNote: '',
       customComposeNote: '',
       customHelmNote: '',
+      customHelmValues: '',
       hasDeploymentAssistant: true,
       showDocker: true,
       showCompose: true,
@@ -492,19 +493,71 @@ function ManagementContent() {
             <ChevronLeft className="w-4 h-4" />
             Zum PLAIN Community Store
           </Button>
-          {activeTab === 'apps' ? (
-            <>
-              
-            </>
-          ) : (
-            <Button 
-              onPress={handleCreateUser} 
-              className="bg-accent text-white font-medium gap-2"
-            >
-              <UserPlus className="w-4 h-4" />
-              Neuer Benutzer
-            </Button>
-          )}
+        </div>
+      </div>
+
+      <div className="bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all duration-200 ${globalSettings.allowAppSubmissions ? 'bg-surface-secondary/50 border-border' : 'bg-danger/10 border-danger/30 text-danger shadow-inner'}`}>
+               <Switch isSelected={globalSettings.allowAppSubmissions} onChange={handleToggleGlobalSubmissions}>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm">App-Einreichungen</span>
+                    <span className="text-[10px] opacity-70 font-medium">{globalSettings.allowAppSubmissions ? 'Global aktiviert' : 'Global deaktiviert'}</span>
+                  </div>
+               </Switch>
+               {!globalSettings.allowAppSubmissions && (
+                 <span className="text-[10px] uppercase tracking-wider font-bold bg-danger text-white px-1.5 py-0.5 rounded ml-1 animate-pulse">Deaktiviert</span>
+               )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 justify-center md:justify-end w-full md:w-auto border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
+            {activeTab === 'apps' ? (
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  onPress={handleCreateApp} 
+                  className="bg-accent text-white font-bold gap-2 shadow-lg shadow-accent/20"
+                >
+                  <Plus className="w-4 h-4" />
+                  Neue App
+                </Button>
+                <Separator orientation="vertical" className="h-10 mx-1 hidden sm:block" />
+                <Button 
+                  variant="secondary"
+                  onPress={handleExportApps}
+                  className="font-bold gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </Button>
+                <div className='relative'>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportApps}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    title="Apps importieren"
+                  />
+                  <Button 
+                    variant="secondary"
+                    className="font-bold gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button 
+                onPress={handleCreateUser} 
+                className="bg-accent text-white font-bold gap-2 shadow-lg shadow-accent/20"
+              >
+                <UserPlus className="w-4 h-4" />
+                Neuer Benutzer
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -540,78 +593,22 @@ function ManagementContent() {
         </Tabs.ListContainer>
 
         <Tabs.Panel id="apps" className="pt-6">
-          <div className='flex flex-col md:flex-row gap-4 pb-4 justify-between items-center'>
-            <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border transition-colors ${globalSettings.allowAppSubmissions ? 'bg-surface-secondary/50 border-border/50' : 'bg-danger/10 border-danger/30 text-danger'}`}>
-               <Switch isSelected={globalSettings.allowAppSubmissions} onChange={handleToggleGlobalSubmissions}>
-                  <span className="font-semibold text-sm">App-Einreichungen erlauben</span>
-               </Switch>
-               {!globalSettings.allowAppSubmissions && (
-                 <span className="text-[10px] uppercase tracking-wider font-bold bg-danger text-white px-1.5 py-0.5 rounded ml-1">Deaktiviert</span>
-               )}
-            </div>
-            <div className='flex gap-2'>
-            <Button 
-              onPress={handleCreateApp} 
-              className="bg-accent text-white font-medium gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Neue App
-            </Button>
-            <Button 
-              variant="secondary"
-              onPress={handleExportApps}
-              className="font-bold gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
-            <div className='relative'>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportApps}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                title="Apps importieren"
-              />
-              <Button 
-                variant="secondary"
-                className="font-bold gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </Button>
-            </div>
-          </div>
-          </div>
-          <AppList 
+          <AppTable 
             apps={apps} 
             handleEditApp={handleEditApp} 
             handleDeleteApp={handleDeleteApp} 
             handleToggleAppLock={handleToggleAppLock} 
           />
-          {apps.length === 0 && !loading && (
-            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border">
-              <p className="text-muted font-medium">Noch keine Apps vorhanden.</p>
-              <Button variant="ghost" onPress={handleCreateApp} className="mt-2">
-                Erste App erstellen
-              </Button>
-            </div>
-          )}
         </Tabs.Panel>
 
         <Tabs.Panel id="users" className="pt-6">
-          <UserList 
+          <UserTable 
             users={users} 
             handleEditUser={handleEditUser} 
             handleDeleteUser={handleDeleteUser} 
             handleToggleUserState={handleToggleUserState} 
             handleToggleUserSubmission={handleToggleUserSubmission} 
           />
-          {users.length === 0 && !loading && (
-            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border">
-              <p className="text-muted font-medium">Noch keine Benutzer vorhanden.</p>
-            </div>
-          )}
         </Tabs.Panel>
       </Tabs>
 
@@ -1213,42 +1210,54 @@ function ManagementContent() {
                               <p className="text-sm">Passen Sie die Deployment-Befehle an. Wenn leer, werden Standard-Befehle generiert.</p>
                             </Surface>
 
-                            <div className="space-y-4">
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customDockerCommand: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Command</Label>
-                                <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-field-background font-mono text-sm" />
-                              </TextField>
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customDockerNote: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Note</Label>
-                                <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-field-background" />
-                              </TextField>
-                            </div>
+                            {appFormData.showDocker !== false && (
+                              <div className="space-y-4">
+                                <TextField onChange={(val) => setAppFormData({...appFormData, customDockerCommand: val})}>
+                                  <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Command</Label>
+                                  <TextArea value={appFormData.customDockerCommand || ''} placeholder="docker run -d ..." className="bg-field-background font-mono text-sm" />
+                                </TextField>
+                                <TextField onChange={(val) => setAppFormData({...appFormData, customDockerNote: val})}>
+                                  <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Docker Note</Label>
+                                  <Input value={appFormData.customDockerNote || ''} placeholder="Hinweis für Docker..." className="bg-field-background" />
+                                </TextField>
+                              </div>
+                            )}
 
-                            <Separator className="my-2" />
+                            {appFormData.showCompose !== false && (
+                              <>
+                                <Separator className="my-2" />
+                                <div className="space-y-4">
+                                  <TextField onChange={(val) => setAppFormData({...appFormData, customComposeCommand: val})}>
+                                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Compose</Label>
+                                    <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-field-background font-mono text-sm" rows={5} />
+                                  </TextField>
+                                  <TextField onChange={(val) => setAppFormData({...appFormData, customComposeNote: val})}>
+                                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Compose Note</Label>
+                                    <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-field-background" />
+                                  </TextField>
+                                </div>
+                              </>
+                            )}
 
-                            <div className="space-y-4">
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customComposeCommand: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Docker Compose</Label>
-                                <TextArea value={appFormData.customComposeCommand || ''} placeholder="services: ..." className="bg-field-background font-mono text-sm" rows={5} />
-                              </TextField>
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customComposeNote: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Compose Note</Label>
-                                <Input value={appFormData.customComposeNote || ''} placeholder="Hinweis für Compose..." className="bg-field-background" />
-                              </TextField>
-                            </div>
-
-                            <Separator className="my-2" />
-
-                            <div className="space-y-4">
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customHelmCommand: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Command</Label>
-                                <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-field-background font-mono text-sm" />
-                              </TextField>
-                              <TextField onChange={(val) => setAppFormData({...appFormData, customHelmNote: val})}>
-                                <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Note</Label>
-                                <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-field-background" />
-                              </TextField>
-                            </div>
+                            {appFormData.showHelm !== false && (
+                              <>
+                                <Separator className="my-2" />
+                                <div className="space-y-4">
+                                  <TextField onChange={(val) => setAppFormData({...appFormData, customHelmCommand: val})}>
+                                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Command</Label>
+                                    <TextArea value={appFormData.customHelmCommand || ''} placeholder="helm install ..." className="bg-field-background font-mono text-sm" />
+                                  </TextField>
+                                  <TextField onChange={(val) => setAppFormData({...appFormData, customHelmNote: val})}>
+                                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Helm Note</Label>
+                                    <Input value={appFormData.customHelmNote || ''} placeholder="Hinweis für Helm..." className="bg-field-background" />
+                                  </TextField>
+                                  <TextField onChange={(val) => setAppFormData({...appFormData, customHelmValues: val})}>
+                                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Custom Helm Values (YAML)</Label>
+                                    <TextArea value={appFormData.customHelmValues || ''} placeholder="image:\n  tag: latest..." className="bg-field-background font-mono text-sm" rows={8} />
+                                  </TextField>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </Tabs.Panel>
