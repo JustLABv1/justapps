@@ -40,7 +40,9 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	}
 
 	type UpdateRequest struct {
-		AllowAppSubmissions bool `json:"allowAppSubmissions"`
+		AllowAppSubmissions bool   `json:"allowAppSubmissions"`
+		ShowTopBanner       bool   `json:"showTopBanner"`
+		TopBannerText       string `json:"topBannerText"`
 	}
 	var req UpdateRequest
 
@@ -52,12 +54,14 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	settings := models.PlatformSettings{
 		ID:                  "default",
 		AllowAppSubmissions: req.AllowAppSubmissions,
+		ShowTopBanner:       req.ShowTopBanner,
+		TopBannerText:       req.TopBannerText,
 	}
 
 	// Use OnConflict to upsert just in case, but really we just update
 	_, err := db.NewUpdate().
 		Model(&settings).
-		Column("allow_app_submissions").
+		Column("allow_app_submissions", "show_top_banner", "top_banner_text").
 		Where("id = ?", "default").
 		Exec(c)
 

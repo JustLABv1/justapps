@@ -31,6 +31,7 @@ export function AppCard({ app }: { app: AppConfig }) {
   };
 
   const statusInfo = getStatusProps(app.status);
+  const isFeatured = app.isFeatured;
 
   const allDemos = app.liveDemos && app.liveDemos.length > 0 
     ? app.liveDemos 
@@ -41,10 +42,26 @@ export function AppCard({ app }: { app: AppConfig }) {
   const customLinks = app.customLinks || [];
 
   return (
-    <Card className="w-full h-full flex flex-col group hover:border-accent/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-hidden p-0" variant="default">
+    <Card 
+      className={`w-full h-full flex flex-col group transition-all duration-500 hover:shadow-xl hover:-translate-y-1.5 bg-surface overflow-visible p-0 
+        ${isFeatured 
+          ? 'border-accent/50 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.06] scale-[1.02] z-10' 
+          : 'hover:border-accent/40 border-border'
+        }`} 
+      variant="default"
+    >
+      {isFeatured && (
+        <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center p-2 rounded-full bg-gov-gold shadow-lg shadow-gov-gold/30 animate-in zoom-in-50 duration-500">
+          <Star className="w-4 h-4 text-white fill-white" />
+        </div>
+      )}
       {/* ── Header: icon, name, badge ── */}
-      <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4">
-        <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-2xl shrink-0 overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-300">
+      <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
+        <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0 transition-all duration-300 group-hover:scale-110
+          ${isFeatured 
+            ? 'bg-gradient-to-br from-accent/30 to-accent/5 border-accent/40 shadow-inner' 
+            : 'bg-gradient-to-br from-surface-secondary to-surface border-border'
+          }`}>
           {app.icon?.startsWith('http') ? (
             <Image 
               src={app.icon} 
@@ -60,12 +77,12 @@ export function AppCard({ app }: { app: AppConfig }) {
         </div>
         <div className="flex flex-col min-w-0 flex-1 pt-1">
           <div className="flex items-center gap-2 mb-1">
-            <Card.Title className="text-lg font-bold text-foreground leading-tight truncate group-hover:text-accent transition-colors">
+            <Card.Title className={`text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
               {app.name}
             </Card.Title>
-            {app.isFeatured && (
-              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase tracking-wider shrink-0">
-                Curated
+            {isFeatured && (
+              <Chip size="sm" color="accent" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2 shadow-md shadow-accent/20 animate-pulse">
+                Ausgezeichnet
               </Chip>
             )}
           </div>
