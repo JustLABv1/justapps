@@ -174,7 +174,14 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-lg bg-surface-secondary border border-border flex items-center justify-center text-xl overflow-hidden shadow-sm">
                         {app.icon?.startsWith('http') ? (
-                          <Image src={app.icon} alt={app.name} fill className="object-cover p-1.5" sizes="40px" />
+                          <Image 
+                            src={app.icon} 
+                            alt={app.name} 
+                            fill 
+                              className="object-contain p-1.5" 
+                            sizes="40px" 
+                            unoptimized
+                          />
                         ) : (
                           app.icon || "🏛️"
                         )}

@@ -81,8 +81,8 @@ export function AppModal({
                         alt={appFormData.name || 'App Icon'} 
                         width={40} 
                         height={40}
-                        className="w-full h-full object-cover p-1.5" 
-                        unoptimized={appFormData.icon.startsWith('http')}
+                        className="w-full h-full object-contain p-1.5" 
+                        unoptimized
                       />
                     ) : (
                       appFormData.icon || "🏛️"

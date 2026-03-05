@@ -41,8 +41,9 @@ export function AppList({ apps, handleEditApp, handleDeleteApp, handleToggleAppL
                   src={app.icon} 
                   alt={app.name} 
                   fill
-                  className="object-cover p-2"
+                  className="object-contain p-2"
                   sizes="64px"
+                  unoptimized
                 />
               ) : (
                 app.icon || "🏛️"

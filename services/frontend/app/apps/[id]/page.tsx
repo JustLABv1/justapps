@@ -173,8 +173,9 @@ export default function AppPage() {
                 src={app.icon} 
                 alt={app.name} 
                 fill 
-                className="object-cover p-2"
+                className="object-contain p-2"
                 sizes="(max-width: 768px) 80px, 112px"
+                unoptimized
               />
             ) : (
               app.icon || "🏛️"
