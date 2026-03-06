@@ -1,0 +1,116 @@
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine@sha256:e922633a7cfbc0d6db6b6854a45ebf2452772b483b481540fe906ee1f8146599 AS base
+
+# 1. Platform Setup: Install pnpm and configure auth
+FROM base AS platform
+ARG NPM_TOKEN
+WORKDIR /app
+
+# Configure npm registry and auth token globally
+RUN echo "registry=https://artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/" > /root/.npmrc && \
+    echo "//artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/artifactory/api/npm/npm-remote/:_authToken=${NPM_TOKEN}" >> /root/.npmrc && \
+    echo "fetch-retry-mintimeout=120000" >> /root/.npmrc && \
+    echo "fetch-retry-maxtimeout=600000" >> /root/.npmrc
+
+# Install pnpm using the secret mount for CA trust
+RUN --mount=type=secret,id=ca-bundle \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
+    npm install -g pnpm
+
+# 2. Dependencies Stage
+FROM platform AS frontend-deps
+WORKDIR /app/frontend
+COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
+
+# Install project dependencies
+RUN --mount=type=secret,id=ca-bundle \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
+    pnpm install --frozen-lockfile
+
+# Stage 1: Build the frontend
+FROM frontend-deps AS frontend-builder
+WORKDIR /app/frontend
+
+COPY --from=frontend-deps /app/frontend/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Optimize for low resource environments
+ENV GENERATE_SOURCEMAP=false
+ENV NEXT_LINT_DISABLED=1
+ENV NEXT_TYPECHECK_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
+# Use the CA certificate during the build to fetch external resources (fonts etc)
+# Also enable Turbopack system TLS certs as suggested by the error
+RUN --mount=type=secret,id=ca-bundle \
+    NODE_EXTRA_CA_CERTS=/run/secrets/ca-bundle \
+    NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 \
+    pnpm run build
+
+# Stage 2: Build the backend
+FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/golang:1.24-alpine3.23 AS backend-builder
+USER 0
+# Define cache locations for Go build
+ENV GOCACHE=/tmp/go-cache
+ENV GOPATH=/go
+ENV HOME=/tmp
+
+WORKDIR /app/backend
+COPY services/backend/go.mod services/backend/go.sum ./
+RUN go mod download
+COPY services/backend/ ./
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o marktplatz-backend
+
+# Stage 3: Create the final image
+FROM base AS runner
+WORKDIR /app
+
+# Install necessary packages
+RUN apk update && apk add --no-cache \
+    ca-certificates \
+    tini \
+    postgresql-client
+
+# Create user and group
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# Set the correct permission for prerender cache
+RUN mkdir .next \
+    && chown nextjs:nodejs .next
+
+# Automatically leverage output traces to reduce image size
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/public /app/public
+
+# Copy the backend binary LAST and explicitly to the WORKDIR
+COPY --from=backend-builder /app/backend/marktplatz-backend /app/marktplatz-backend
+
+# Copy .env file to the working directory
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.env /app/.env
+
+RUN chown -R nextjs:nodejs /app
+
+RUN mkdir -p /etc/marktplatz \
+    && chown -R nextjs:nodejs /etc/marktplatz
+
+RUN mkdir -p /app/data \
+    && chown -R nextjs:nodejs /app/data
+
+# Set environment variables
+ENV NODE_ENV=production
+
+VOLUME [ "/etc/marktplatz", "/app/data" ]
+
+# Expose ports
+EXPOSE 8080 3000
+
+USER nextjs
+
+# Use tini as the entrypoint
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start the backend and frontend
+CMD ["sh", "-c", "./marktplatz-backend --config /etc/marktplatz/config.yaml & node /app/server.js"]
