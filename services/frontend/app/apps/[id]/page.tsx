@@ -8,6 +8,7 @@ import { fetchApi } from "@/lib/api";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
   Activity,
+  AlertTriangle,
   ArrowRightLeft,
   BookOpen,
   ChevronLeft,
@@ -159,6 +160,17 @@ export default function AppPage() {
           </div>
         )}
       </div>
+
+      {/* ── Known issue banner ── */}
+      {app.knownIssue && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-warning">Bekanntes Problem</p>
+            <p className="text-sm text-warning/80 mt-0.5">{app.knownIssue}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Hero ── */}
       <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-8">
