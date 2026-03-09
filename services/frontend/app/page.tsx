@@ -3,7 +3,7 @@
 import { AppGrid } from "@/components/AppGrid";
 import { AppConfig } from "@/config/apps";
 import { fetchApi } from "@/lib/api";
-import { Rocket, Sparkles } from "lucide-react";
+import { Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
@@ -21,27 +21,15 @@ async function getApps() {
   }
 }
 
-async function getSettings() {
-  try {
-    const res = await fetchApi('/settings', { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
-}
-
 export default function Home() {
   const { theme } = useTheme();
   const [apps, setApps] = useState<AppConfig[]>([]);
-  const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    Promise.all([getApps(), getSettings()]).then(([appsData, settingsData]) => {
+    getApps().then((appsData) => {
       setApps(appsData);
-      setSettings(settingsData);
       setIsLoading(false);
     });
   }, []);
@@ -52,16 +40,6 @@ export default function Home() {
   
   return (
     <div className="flex flex-col gap-10 pb-16">
-      {/* Top Banner */}
-      {settings?.showTopBanner && settings?.topBannerText && (
-        <div className="bg-accent/10 border-b border-accent/20 px-4 py-3 text-center -mx-4 md:-mx-8 mb-[-2rem] animate-in fade-in slide-in-from-top-4 duration-500">
-          <p className="text-sm font-bold text-accent flex items-center justify-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            {settings.topBannerText}
-          </p>
-        </div>
-      )}
-
       {/* Hero section */}
       <section className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border px-6 py-12 md:py-20 text-center mt-2 group">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl pointer-events-none opacity-30 dark:opacity-20 transition-opacity group-hover:opacity-40">

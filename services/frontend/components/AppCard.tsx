@@ -2,7 +2,7 @@
 
 import { AppConfig } from "@/config/apps";
 import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { BookOpen, ExternalLink, Github, Star } from "lucide-react";
+import { BookOpen, ExternalLink, Github, Share2, Star } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 
@@ -80,6 +80,11 @@ export function AppCard({ app }: { app: AppConfig }) {
             <Card.Title className={`text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
               {app.name}
             </Card.Title>
+            {app.isReuse && (
+              <Chip size="sm" color="warning" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2">
+                Nachnutzung
+              </Chip>
+            )}
             {isFeatured && (
               <Chip size="sm" color="accent" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2 shadow-md shadow-accent/20 animate-pulse">
                 Ausgezeichnet

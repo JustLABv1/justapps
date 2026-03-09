@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Trash2
 } from 'lucide-react';
+import Image from "next/image";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -34,7 +35,7 @@ function MyAppsContent() {
   // Modal & Form states
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
-  
+
   const [iconInput, setIconInput] = useState('');
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
 
@@ -63,7 +64,7 @@ function MyAppsContent() {
         const settingsData = await settingsRes.json();
         setSettings(settingsData);
       }
-      
+
       const res = await fetchApi('/apps');
       if (res.ok) {
         const data: AppConfig[] = await res.json();
@@ -82,7 +83,7 @@ function MyAppsContent() {
 
   useEffect(() => {
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleCreateApp = () => {
@@ -192,7 +193,7 @@ function MyAppsContent() {
         return () => clearTimeout(timer);
       }
     }
-   
+
   }, [searchParams, apps]);
 
   if (authLoading) return (
@@ -214,7 +215,7 @@ function MyAppsContent() {
           <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im PLAIN Community Store.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button 
+          <Button
             variant="secondary"
             onPress={() => router.push('/')}
             className="font-bold gap-2"
@@ -222,8 +223,8 @@ function MyAppsContent() {
             <ChevronLeft className="w-4 h-4" />
             Zum Store
           </Button>
-          <Button 
-            onPress={handleCreateApp} 
+          <Button
+            onPress={handleCreateApp}
             isDisabled={!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')}
           >
             <Plus className="w-6 h-6" />
@@ -248,27 +249,33 @@ function MyAppsContent() {
       <div className="pt-6">
         {!settings.allowAppSubmissions && user.role !== 'admin' && !user.canSubmitApps && (
           <div className='flex flex-col md:flex-row gap-4 pb-4 justify-end items-center'>
-              {!settings.allowAppSubmissions && user.role !== 'admin' && (
-                <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                  <Lock className="w-4 h-4 mr-2" />
-                  App-Einreichungen sind derzeit systemweit deaktiviert.
-                </div>
-              )}
+            {!settings.allowAppSubmissions && user.role !== 'admin' && (
+              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                <Lock className="w-4 h-4 mr-2" />
+                App-Einreichungen sind derzeit systemweit deaktiviert.
+              </div>
+            )}
             {!user.canSubmitApps && (
-                <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                  <Lock className="w-4 h-4 mr-2" />
-                  Ihr Konto ist für die Einreichung von Apps gesperrt.
-                </div>
-              )}
+              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
+                <Lock className="w-4 h-4 mr-2" />
+                Ihr Konto ist für die Einreichung von Apps gesperrt.
+              </div>
+            )}
           </div>
         )}
         <div className="grid grid-cols-1 gap-4">
           {apps.map((app) => (
             <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
               <div className="flex flex-col md:flex-row items-center p-5 gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
                   {app.icon?.startsWith('http') ? (
-                    <img src={app.icon} alt={app.name} className="w-full h-full object-cover" />
+                    <Image
+                      src={app.icon}
+                      alt={app.name}
+                      fill
+                      className="object-contain w-full h-full p-2"
+                      unoptimized
+                    />
                   ) : (
                     app.icon || "🏛️"
                   )}
@@ -301,8 +308,8 @@ function MyAppsContent() {
                   </div>
                 </div>
                 <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="secondary"
                     onPress={() => router.push(`/apps/${app.id}`)}
                     className="font-bold gap-2 flex-1 md:flex-none justify-start"
@@ -310,8 +317,8 @@ function MyAppsContent() {
                     <ExternalLink className="w-4 h-4 text-muted" />
                     Ansehen
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="secondary"
                     onPress={() => handleEditApp(app)}
                     isDisabled={!!app.isLocked}
@@ -320,12 +327,12 @@ function MyAppsContent() {
                     <Pencil className="w-4 h-4 text-muted" />
                     Bearbeiten
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="danger-soft"
                     onPress={() => handleDeleteApp(app)}
                     isDisabled={!!app.isLocked}
-                     className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Trash2 className="w-4 h-4" />
                     Löschen
@@ -342,7 +349,7 @@ function MyAppsContent() {
                   Erste App erstellen
                 </Button>
               ) : (
-                 <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
+                <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
               )}
             </div>
           )}
@@ -356,8 +363,8 @@ function MyAppsContent() {
       )}
 
       {/* App Modal */}
-      <AppModal 
-        isOpen={isAppModalOpen} 
+      <AppModal
+        isOpen={isAppModalOpen}
         onOpenChange={setIsAppModalOpen}
         selectedApp={selectedApp}
         onSubmit={handleAppSubmit}
