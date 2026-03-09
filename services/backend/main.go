@@ -17,7 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const version string = "0.9.4"
+const version string = "0.9.5"
 
 var (
 	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/plain-marktplatz/config.yaml").String()
