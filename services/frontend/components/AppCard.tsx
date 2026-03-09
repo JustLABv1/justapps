@@ -2,7 +2,7 @@
 
 import { AppConfig } from "@/config/apps";
 import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { BookOpen, ExternalLink, Github, Share2, Star } from "lucide-react";
+import { BookOpen, ExternalLink, Github, Landmark, Star } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 
@@ -128,6 +128,12 @@ export function AppCard({ app }: { app: AppConfig }) {
               >
                 {statusInfo.label}
               </Chip>
+            </div>
+          )}
+          {app.authority && (
+            <div className="flex items-center gap-2 text-muted">
+              <Landmark className="w-3.5 h-3.5" />
+              <span className="text-xs line-clamp-1">{app.authority}</span>
             </div>
           )}
         </div>
