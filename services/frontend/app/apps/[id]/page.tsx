@@ -208,11 +208,6 @@ export default function AppPage() {
                   Nachnutzung
                 </Chip>
               )}
-              {app.isFeatured && (
-                <Chip size="sm" variant="soft" color="success" className="text-[11px] uppercase font-bold">
-                  Curated
-                </Chip>
-              )}
               {hasRating && (
                 <span className="inline-flex items-center gap-1.5 text-sm text-muted bg-surface px-2.5 py-1 rounded-lg border border-border shadow-sm">
                   <Star className="w-4 h-4 fill-gov-gold text-gov-gold" />
