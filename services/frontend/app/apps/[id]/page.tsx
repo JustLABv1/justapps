@@ -24,6 +24,7 @@ import {
   Pencil,
   Scale,
   Server,
+  Share2,
   Star,
   User,
 } from "lucide-react";
@@ -201,6 +202,12 @@ export default function AppPage() {
                   {statusInfo.label}
                 </Chip>
               )}
+              {app.isReuse && (
+                <Chip size="sm" variant="soft" color="warning" className="text-[11px] uppercase font-bold flex items-center gap-1">
+                  <Share2 className="w-3 h-3" />
+                  Nachnutzung
+                </Chip>
+              )}
               {app.isFeatured && (
                 <Chip size="sm" variant="soft" color="success" className="text-[11px] uppercase font-bold">
                   Curated
@@ -344,6 +351,29 @@ export default function AppPage() {
         </div>
       )}
 
+      {/* ── Reuse info box ── */}
+      {app.isReuse && (
+        <div className="mb-8 p-6 rounded-2xl bg-warning/5 border border-warning/20">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+              <Share2 className="w-5 h-5 text-warning" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-foreground mb-1">Nachnutzung</h3>
+              <p className="text-sm text-muted mb-3">
+                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Sie die bestehende Installation des Anbieters mitnutzen.
+              </p>
+              {app.reuseRequirements && (
+                <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
+                  <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{app.reuseRequirements}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Tabbed content ── */}
       <Tabs variant="secondary" className="w-full">
         <Tabs.ListContainer className="border-b border-border mb-6">
@@ -360,7 +390,7 @@ export default function AppPage() {
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            {app.hasDeploymentAssistant !== false && (
+            {!app.isReuse && app.hasDeploymentAssistant !== false && (
               <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
@@ -399,7 +429,7 @@ export default function AppPage() {
         )}
 
         {/* Deployment */}
-        {app.hasDeploymentAssistant !== false && (
+        {!app.isReuse && app.hasDeploymentAssistant !== false && (
           <Tabs.Panel id="deployment">
             <DeploymentAssistant app={app} />
           </Tabs.Panel>

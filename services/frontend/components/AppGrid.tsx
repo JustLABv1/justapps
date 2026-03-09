@@ -14,6 +14,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -69,12 +70,17 @@ export function AppGrid({ initialApps }: AppGridProps) {
       
       const matchesCategory = !selectedCategory || app.categories?.includes(selectedCategory);
       const matchesStatus = !selectedStatus || app.status === selectedStatus;
-      
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  }, [initialApps, searchQuery, selectedCategory, selectedStatus]);
+      const matchesType = !selectedType ||
+        (selectedType === 'reuse' && app.isReuse) ||
+        (selectedType === 'install' && !app.isReuse);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus;
+      return matchesSearch && matchesCategory && matchesStatus && matchesType;
+    });
+  }, [initialApps, searchQuery, selectedCategory, selectedStatus, selectedType]);
+
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType;
+
+  const hasReuseApps = useMemo(() => initialApps.some(app => app.isReuse), [initialApps]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -112,6 +118,40 @@ export function AppGrid({ initialApps }: AppGridProps) {
             ))}
           </div>
         </div>
+
+        {hasReuseApps && (
+          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Art:</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={!selectedType ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedType(null)}
+                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedType ? 'text-background' : ''}`}
+                >
+                  Alle
+                </Button>
+                <Button
+                  variant={selectedType === 'install' ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedType(selectedType === 'install' ? null : 'install')}
+                  className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'install' ? 'text-background' : ''}`}
+                >
+                  Selbst installieren
+                </Button>
+                <Button
+                  variant={selectedType === 'reuse' ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedType(selectedType === 'reuse' ? null : 'reuse')}
+                  className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'reuse' ? 'text-background' : ''}`}
+                >
+                  Nachnutzung
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {statuses.length > 0 && (
           <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
@@ -157,6 +197,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSearchQuery("");
               setSelectedCategory(null);
               setSelectedStatus(null);
+              setSelectedType(null);
             }}
           >
             <X className="w-3.5 h-3.5" />
@@ -188,6 +229,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSearchQuery("");
               setSelectedCategory(null);
               setSelectedStatus(null);
+              setSelectedType(null);
             }}
           >
             Filter zurücksetzen

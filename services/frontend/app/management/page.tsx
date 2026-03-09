@@ -613,12 +613,13 @@ function ManagementContent() {
       )}
 
       {/* App Modal */}
-      <AppModal 
-        isOpen={isAppModalOpen} 
+      <AppModal
+        isOpen={isAppModalOpen}
         onOpenChange={setIsAppModalOpen}
         selectedApp={selectedApp}
         onSubmit={handleAppSubmit}
         initialData={appFormData}
+        existingApps={apps}
       />
 
       {/* User Modal */}

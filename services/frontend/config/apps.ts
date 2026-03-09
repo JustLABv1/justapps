@@ -53,6 +53,8 @@ export interface AppConfig {
   showCompose?: boolean;
   showHelm?: boolean;
   isLocked?: boolean;
+  isReuse?: boolean;
+  reuseRequirements?: string;
   ownerId?: string;
   owner?: {
     username: string;
