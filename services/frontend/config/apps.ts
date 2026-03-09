@@ -64,6 +64,7 @@ export interface AppConfig {
   tags?: string[];
   collections?: string[];
   isFeatured?: boolean;
+  knownIssue?: string;
   ratingAvg?: number;
   ratingCount?: number;
   updatedAt?: string;

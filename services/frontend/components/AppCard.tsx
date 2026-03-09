@@ -2,7 +2,7 @@
 
 import { AppConfig } from "@/config/apps";
 import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { BookOpen, ExternalLink, Github, Landmark, Star } from "lucide-react";
+import { AlertTriangle, BookOpen, ExternalLink, Github, Landmark, Star } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 
@@ -138,6 +138,14 @@ export function AppCard({ app }: { app: AppConfig }) {
           )}
         </div>
       </Card.Content>
+
+      {/* ── Known issue banner ── */}
+      {app.knownIssue && (
+        <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <span className="text-xs text-warning leading-relaxed line-clamp-2">{app.knownIssue}</span>
+        </div>
+      )}
 
       {/* ── Footer: primary action + quick-links ── */}
       <Card.Footer className="px-6 py-4 mt-auto bg-surface-secondary/30 border-t border-border/50 group-hover:bg-accent/5 transition-colors">

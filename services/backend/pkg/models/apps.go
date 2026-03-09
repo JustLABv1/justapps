@@ -67,6 +67,7 @@ type Apps struct {
 	OwnerID                uuid.UUID  `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
 	Owner                  *Users     `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
 	IsLocked               bool       `bun:"is_locked,notnull,default:false" json:"isLocked"`
+	KnownIssue             string     `bun:"known_issue" json:"knownIssue"`
 	IsReuse                bool       `bun:"is_reuse,notnull,default:false" json:"isReuse"`
 	ReuseRequirements      string     `bun:"reuse_requirements" json:"reuseRequirements"`
 	UpdatedAt              time.Time  `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"`

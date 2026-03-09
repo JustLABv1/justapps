@@ -925,6 +925,10 @@ export function AppModal({
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
                           <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere fachliche oder organisatorische Details..." className="bg-field-background" />
                         </TextField>
+                        <TextField onChange={(val) => setAppFormData({ ...appFormData, knownIssue: val })}>
+                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Bekanntes Problem</Label>
+                          <TextArea value={appFormData.knownIssue || ''} placeholder="z.B. Login derzeit nicht möglich. Fix wird vorbereitet..." className="bg-field-background" />
+                        </TextField>
                       </div>
                     </div>
                   )}

@@ -329,6 +329,7 @@ function ManagementContent() {
       transferability: '',
       contactPerson: '',
       authority: '',
+      knownIssue: '',
       customDockerCommand: '',
       customComposeCommand: '',
       customHelmCommand: '',
