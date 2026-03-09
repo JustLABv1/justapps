@@ -29,8 +29,8 @@ export function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Community Store", active: pathname === '/' },
-    ...(user ? [{ href: "/my-apps", label: "Meine Apps", active: pathname === '/my-apps' }] : []),
-    ...(user?.role === 'admin' ? [{ href: "/management", label: "Verwaltung", active: pathname === '/management' }] : []),
+    ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
+    ...(user?.role === 'admin' ? [{ href: "/verwaltung", label: "Verwaltung", active: pathname === '/verwaltung' }] : []),
   ];
 
   return (

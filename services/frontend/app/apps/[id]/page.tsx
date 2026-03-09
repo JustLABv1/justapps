@@ -142,7 +142,7 @@ export default function AppPage() {
         {isAdmin && (
           <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
             <NextLink
-              href={`/management?edit=${app.id}`}
+              href={`/verwaltung?edit=${app.id}`}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -150,7 +150,7 @@ export default function AppPage() {
             </NextLink>
             <div className="w-px h-4 bg-border mx-1" />
             <NextLink
-              href="/management"
+              href="/verwaltung"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
