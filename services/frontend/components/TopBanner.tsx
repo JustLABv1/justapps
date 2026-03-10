@@ -1,20 +1,12 @@
 'use client';
 
-import { fetchApi } from "@/lib/api";
+import { useSettings } from "@/context/SettingsContext";
 import { Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
 
 export function TopBanner() {
-  const [settings, setSettings] = useState<any>(null);
+  const { settings, loaded } = useSettings();
 
-  useEffect(() => {
-    fetchApi('/settings', { cache: 'no-store' })
-      .then(res => res.ok ? res.json() : null)
-      .then(setSettings)
-      .catch(() => {});
-  }, []);
-
-  if (!settings?.showTopBanner || !settings?.topBannerText) return null;
+  if (!loaded || !settings.showTopBanner || !settings.topBannerText) return null;
 
   return (
     <div className="bg-accent/10 border-b border-accent/20 px-4 py-3 text-center animate-in fade-in slide-in-from-top-4 duration-500">

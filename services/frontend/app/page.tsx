@@ -2,6 +2,7 @@
 
 import { AppGrid } from "@/components/AppGrid";
 import { AppConfig } from "@/config/apps";
+import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -23,9 +24,14 @@ async function getApps() {
 
 export default function Home() {
   const { theme } = useTheme();
+  const { settings } = useSettings();
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isDark = theme === 'dark';
+
+  const heroBadge = settings.heroBadge || 'Open Source. Community-getrieben.';
+  const heroTitle = settings.heroTitle || 'Der App Store für alle.';
+  const heroSubtitle = settings.heroSubtitle || 'Entdecken Sie Open-Source-Apps, cloud-native Lösungen und community-entwickelte Tools – frei zugänglich für jeden.';
 
   useEffect(() => {
     getApps().then((appsData) => {
@@ -50,17 +56,17 @@ export default function Home() {
         <div className="relative z-10 flex flex-col items-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border text-xs font-bold text-muted mb-4 shadow-sm">
             <Rocket className="w-3 h-3 text-success" />
-            Open Source für die Verwaltung
+            {heroBadge}
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground mb-3 max-w-4xl leading-[1.1]">
-            Community Store für die{" "}
-            <span className={`inline-block font-extrabold bg-gradient-to-r from-accent via-gov-red to-gov-gold bg-clip-text text-transparent ${isDark ? "drop-shadow-[0_0_1px_rgba(255,255,255,0.5)]" : ""}`}>PLAIN Plattform</span>
+            <span className={`inline-block font-extrabold bg-gradient-to-r from-accent via-gov-red to-gov-gold bg-clip-text text-transparent ${isDark ? "drop-shadow-[0_0_1px_rgba(255,255,255,0.5)]" : ""}`}>
+              {heroTitle}
+            </span>
           </h1>
 
           <p className="text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Entdecken Sie Open-Source-Lösungen, Cloud-Native Applikationen und Standards
-            für die Digitalisierung staatlicher Leistungen.
+            {heroSubtitle}
           </p>
         </div>
       </section>

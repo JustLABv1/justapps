@@ -1,4 +1,4 @@
-const getApiUrl = () => {
+export const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const inlined = process.env.NEXT_PUBLIC_API_URL;
     // If we're in the browser and the inlined URL points to localhost but the page doesn't, 
@@ -18,6 +18,35 @@ const getApiUrl = () => {
 };
 
 const API_URL = getApiUrl();
+
+/**
+ * Upload a file to the backend. Returns the full URL of the uploaded asset.
+ * Use for multipart/form-data uploads (e.g. logos).
+ */
+export async function uploadFile(endpoint: string, file: File): Promise<string> {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_URL}${cleanEndpoint}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Upload failed: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  // data.url is a path like "/uploads/<filename>"
+  // Construct the full public URL using the same API base
+  return `${API_URL}${data.url}`;
+}
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   // Ensure we don't have double slashes if endpoint starts with /

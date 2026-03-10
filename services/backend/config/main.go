@@ -26,6 +26,7 @@ type ConfigurationManager struct {
 type RestfulConf struct {
 	LogLevel string       `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
 	Port     int          `mapstructure:"port" validate:"required"`
+	DataPath string       `mapstructure:"data_path"`
 	Database DatabaseConf `mapstructure:"database" validate:"required"`
 	JWT      JWTConf      `mapstructure:"jwt" validate:"required"`
 	OIDC     OIDCConf     `mapstructure:"oidc"`
@@ -142,6 +143,9 @@ func (cm *ConfigurationManager) setDefaults(config *RestfulConf) {
 	}
 	if config.Port == 0 {
 		config.Port = 8080
+	}
+	if config.DataPath == "" {
+		config.DataPath = "/app/data"
 	}
 	if config.Database.Driver == "" {
 		config.Database.Driver = "postgres"

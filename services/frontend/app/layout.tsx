@@ -1,3 +1,4 @@
+import { FlagBar } from "@/components/FlagBar";
 import { Footer } from "@/components/Footer";
 import { Navigation } from "@/components/Navigation";
 import { TopBanner } from "@/components/TopBanner";
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
 */
 
 export const metadata: Metadata = {
-  title: "PLAIN Community Store",
+  title: "JustAppStore",
   description: "Zentraler Community Store für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
 };
 
@@ -36,12 +37,7 @@ export default function RootLayout({
       >
         <Providers>
           <div className="relative flex flex-col min-h-screen">
-            {/* German flag accent stripe */}
-            <div className="h-1 w-full flex shrink-0" aria-hidden="true">
-              <div className="h-full w-1/3 bg-[#000]" />
-              <div className="h-full w-1/3 bg-gov-red" />
-              <div className="h-full w-1/3 bg-gov-gold" />
-            </div>
+            <FlagBar />
 
             <Navigation />
 

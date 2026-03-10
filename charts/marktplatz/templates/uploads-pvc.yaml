@@ -1,0 +1,18 @@
+{{- if .Values.uploads.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "marktplatz.fullname" . }}-uploads
+  labels:
+    {{- include "marktplatz.labels" . | nindent 4 }}
+    app.kubernetes.io/component: uploads
+spec:
+  {{- if .Values.uploads.persistence.storageClassName }}
+  storageClassName: {{ .Values.uploads.persistence.storageClassName }}
+  {{- end }}
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.uploads.persistence.size | default "5Gi" }}
+{{- end }}
