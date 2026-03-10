@@ -144,12 +144,12 @@ Build and run the combined image (frontend + backend in a single container):
 docker build -t just-apps .
 
 docker run -p 3000:3000 -p 8080:8080 \
-  -v /etc/marktplatz:/etc/marktplatz \
+  -v /etc/just-apps:/etc/just-apps \
   -v /app/data:/app/data \
   just-apps
 ```
 
-The container expects a config file at `/etc/marktplatz/config.yaml`.
+The container expects a config file at `/etc/just-apps/config.yaml`.
 
 ### Pre-built image
 
@@ -161,11 +161,11 @@ Available tags: `latest`, `1`, `1.0`, `1.0.0`, `sha-<commit>`
 
 ## Kubernetes / Helm
 
-A Helm chart is available in [`charts/marktplatz/`](charts/marktplatz/):
+A Helm chart is available in [`charts/just-apps/`](charts/just-apps/):
 
 ```bash
-helm install just-apps ./charts/marktplatz \
-  -f charts/marktplatz/values.yaml
+helm install just-apps ./charts/just-apps \
+  -f charts/just-apps/values.yaml
 ```
 
 Review and adjust `values.yaml` for your cluster (image, ingress, PostgreSQL credentials, OIDC settings).
@@ -206,7 +206,7 @@ just-app-store/
 │       ├── pkg/models/    # Database models
 │       ├── database/      # Migrations
 │       └── router/        # Route definitions
-├── charts/marktplatz/     # Helm chart
+├── charts/just-apps/     # Helm chart
 ├── .github/workflows/     # CI/CD pipelines
 ├── Dockerfile             # Multi-stage build (frontend + backend)
 └── .env.example           # Environment variable reference

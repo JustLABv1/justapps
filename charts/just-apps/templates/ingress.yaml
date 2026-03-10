@@ -1,5 +1,5 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "marktplatz.fullname" . -}}
+{{- $fullName := include "just-apps.fullname" . -}}
 {{- $svcPort := .Values.frontend.service.port -}}
 {{- if eq .Values.deploymentMode "monolith" -}}
   {{- $svcPort = .Values.monolith.service.port -}}
@@ -20,7 +20,7 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

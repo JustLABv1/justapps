@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "marktplatz.fullname" . }}
+  name: {{ include "just-apps.fullname" . }}
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.monolith.service.type }}
   ports:
@@ -17,14 +17,14 @@ spec:
       protocol: TCP
       name: backend
   selector:
-    {{- include "marktplatz.selectorLabels" . | nindent 4 }}
+    {{- include "just-apps.selectorLabels" . | nindent 4 }}
 {{- else }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "marktplatz.fullname" . }}-backend
+  name: {{ include "just-apps.fullname" . }}-backend
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   type: {{ .Values.backend.service.type }}
@@ -34,15 +34,15 @@ spec:
       protocol: TCP
       name: backend
   selector:
-    {{- include "marktplatz.selectorLabels" . | nindent 4 }}
+    {{- include "just-apps.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "marktplatz.fullname" . }}-frontend
+  name: {{ include "just-apps.fullname" . }}-frontend
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
   type: {{ .Values.frontend.service.type }}
@@ -52,6 +52,6 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "marktplatz.selectorLabels" . | nindent 4 }}
+    {{- include "just-apps.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 {{- end }}

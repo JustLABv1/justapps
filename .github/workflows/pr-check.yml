@@ -77,4 +77,4 @@ jobs:
         run: go vet ./...
 
       - name: Build
-        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o marktplatz-backend .
+        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o just-apps-backend .

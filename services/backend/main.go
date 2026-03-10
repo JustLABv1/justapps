@@ -20,7 +20,7 @@ import (
 const version string = "0.9.5"
 
 var (
-	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/plain-marktplatz/config.yaml").String()
+	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/just-apps/config.yaml").String()
 )
 
 func logging(logLevel string) {
