@@ -12,7 +12,7 @@ export const getApiUrl = () => {
   // SERVER SIDE
   // On the server, we should prefer internal networking.
   // In monolith mode (most common here), the backend is on localhost:8080.
-  // In microservices, it would be app-store-backend:8082 or similar.
+  // In microservices, it would be just-apps-backend:8082 or similar.
   // We use the internal URL if provided, otherwise fallback to localhost (monolith default).
   return process.env.INTERNAL_API_URL || 'http://localhost:8080/api/v1';
 };

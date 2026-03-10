@@ -3,9 +3,9 @@ package users
 import (
 	"net/http"
 
-	"app-store-backend/functions/auth"
-	"app-store-backend/functions/httperror"
-	"app-store-backend/pkg/models"
+	"just-apps-backend/functions/auth"
+	"just-apps-backend/functions/httperror"
+	"just-apps-backend/pkg/models"
 
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"app-store-backend/config"
+	"just-apps-backend/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

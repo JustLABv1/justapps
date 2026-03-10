@@ -7,7 +7,7 @@ import { useSettings } from '../context/SettingsContext';
 export function Footer() {
   const { settings } = useSettings();
 
-  const storeName = settings.storeName || 'JustAppStore';
+  const storeName = settings.storeName || 'JustApps';
   const footerText = settings.footerText || 'Die Plattform für moderne, souveräne Software-Lösungen für die öffentliche Verwaltung in Deutschland.';
   const logoSrc = settings.logoUrl || null;
 

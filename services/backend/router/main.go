@@ -1,7 +1,7 @@
 package router
 
 import (
-	"app-store-backend/config"
+	"just-apps-backend/config"
 	"net/http"
 	"strconv"
 	"time"

@@ -1,8 +1,8 @@
 package apps
 
 import (
-	"app-store-backend/functions/httperror"
-	"app-store-backend/pkg/models"
+	"just-apps-backend/functions/httperror"
+	"just-apps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"

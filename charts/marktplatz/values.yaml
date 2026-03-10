@@ -42,7 +42,7 @@ config:
     # normally resolve to <release-name>-marktplatz-postgresql
     server: marktplatz-postgresql
     port: 5432
-    name: app_store
+    name: just_apps
     user: postgres
     # Leave passwords empty here; provide them via Kubernetes Secrets or Vault
     password: ""
@@ -157,7 +157,7 @@ postgresql:
     storageClassName: ocs-external-storagecluster-ceph-rbd
     size: 20Gi
   auth:
-    database: app_store
+    database: just_apps
     # password: keep empty here; use Kubernetes Secret or Vault
     password: ""
     username: postgres

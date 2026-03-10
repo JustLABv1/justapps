@@ -34,7 +34,7 @@ export function Navigation() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
-  const storeName = settings.storeName || 'JustAppStore';
+  const storeName = settings.storeName || 'JustApps';
   const logoSrc = isDark
     ? (settings.logoDarkUrl || settings.logoUrl || null)
     : (settings.logoUrl || null);

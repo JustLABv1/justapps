@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"app-store-backend/pkg/models"
+	"just-apps-backend/pkg/models"
 
 	"github.com/uptrace/bun"
 )

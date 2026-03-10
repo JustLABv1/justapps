@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"app-store-backend/functions/httperror"
-	"app-store-backend/pkg/models"
+	"just-apps-backend/functions/httperror"
+	"just-apps-backend/pkg/models"
 
 	"github.com/google/uuid"
 

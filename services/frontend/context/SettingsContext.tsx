@@ -113,7 +113,7 @@ export function useSettings() {
 }
 
 // Helper: returns storeName with fallback
-export function useStoreName(fallback = 'JustAppStore') {
+export function useStoreName(fallback = 'JustApps') {
   const { settings } = useSettings();
   return settings.storeName || fallback;
 }

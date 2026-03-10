@@ -3,7 +3,7 @@ package gatekeeper
 import (
 	"context"
 
-	"app-store-backend/pkg/models"
+	"just-apps-backend/pkg/models"
 
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"

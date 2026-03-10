@@ -1,8 +1,8 @@
 package router
 
 import (
-	"app-store-backend/handlers/upload"
-	"app-store-backend/middlewares"
+	"just-apps-backend/handlers/upload"
+	"just-apps-backend/middlewares"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
