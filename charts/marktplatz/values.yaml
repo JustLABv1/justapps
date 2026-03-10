@@ -139,6 +139,13 @@ ingress:
           port: 8080
   tls: []
 
+## Uploads / file persistence
+uploads:
+  persistence:
+    enabled: false
+    # storageClassName: ocs-external-storagecluster-ceph-rbd
+    size: 5Gi
+
 ## Embedded Postgres (if enabled)
 postgresql:
   enabled: false

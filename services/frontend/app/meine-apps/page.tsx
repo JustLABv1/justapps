@@ -212,7 +212,7 @@ function MyAppsContent() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-1">Meine Apps</h1>
-          <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im PLAIN Community Store.</p>
+          <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im JustAppStore.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button

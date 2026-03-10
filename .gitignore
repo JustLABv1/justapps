@@ -69,3 +69,5 @@ services/backend/config.yaml
 csv-files/
 # heroui-agents-md
 .heroui-docs/
+
+.local/

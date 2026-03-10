@@ -109,6 +109,9 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          env:
+            - name: BACKEND_DATA_PATH
+              value: /app/data
           volumeMounts:
             - name: config
               mountPath: /etc/marktplatz
@@ -132,7 +135,12 @@ spec:
           configMap:
             name: {{ include "marktplatz.fullname" . }}-backend-config
         - name: data
+          {{- if .Values.uploads.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "marktplatz.fullname" . }}-uploads
+          {{- else }}
           emptyDir: {}
+          {{- end }}
 {{- else }}
 # Microservices Mode - Backend
 apiVersion: apps/v1
@@ -227,7 +235,12 @@ spec:
           configMap:
             name: {{ include "marktplatz.fullname" . }}-backend-config
         - name: data
+          {{- if .Values.uploads.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "marktplatz.fullname" . }}-uploads
+          {{- else }}
           emptyDir: {}
+          {{- end }}
 ---
 # Microservices Mode - Frontend
 apiVersion: apps/v1

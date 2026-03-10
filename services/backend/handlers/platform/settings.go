@@ -18,7 +18,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 	// Check if exists, if not create default
 	count, _ := db.NewSelect().Model((*models.PlatformSettings)(nil)).Count(c)
 	if count == 0 {
-		settings = models.PlatformSettings{ID: "default", AllowAppSubmissions: true}
+		settings = models.PlatformSettings{ID: "default", AllowAppSubmissions: true, ShowFlagBar: true}
 		db.NewInsert().Model(&settings).Exec(c)
 	} else {
 		err := db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c)
@@ -43,6 +43,17 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 		AllowAppSubmissions bool   `json:"allowAppSubmissions"`
 		ShowTopBanner       bool   `json:"showTopBanner"`
 		TopBannerText       string `json:"topBannerText"`
+		// Branding
+		StoreName        string `json:"storeName"`
+		StoreDescription string `json:"storeDescription"`
+		LogoUrl          string `json:"logoUrl"`
+		LogoDarkUrl      string `json:"logoDarkUrl"`
+		FaviconUrl       string `json:"faviconUrl"`
+		AccentColor      string `json:"accentColor"`
+		HeroTitle        string `json:"heroTitle"`
+		HeroSubtitle     string `json:"heroSubtitle"`
+		FooterText       string `json:"footerText"`
+		ShowFlagBar      bool   `json:"showFlagBar"`
 	}
 	var req UpdateRequest
 
@@ -56,12 +67,26 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 		AllowAppSubmissions: req.AllowAppSubmissions,
 		ShowTopBanner:       req.ShowTopBanner,
 		TopBannerText:       req.TopBannerText,
+		StoreName:           req.StoreName,
+		StoreDescription:    req.StoreDescription,
+		LogoUrl:             req.LogoUrl,
+		LogoDarkUrl:         req.LogoDarkUrl,
+		FaviconUrl:          req.FaviconUrl,
+		AccentColor:         req.AccentColor,
+		HeroTitle:           req.HeroTitle,
+		HeroSubtitle:        req.HeroSubtitle,
+		FooterText:          req.FooterText,
+		ShowFlagBar:         req.ShowFlagBar,
 	}
 
-	// Use OnConflict to upsert just in case, but really we just update
 	_, err := db.NewUpdate().
 		Model(&settings).
-		Column("allow_app_submissions", "show_top_banner", "top_banner_text").
+		Column(
+			"allow_app_submissions", "show_top_banner", "top_banner_text",
+			"store_name", "store_description", "logo_url", "logo_dark_url",
+			"favicon_url", "accent_color", "hero_title", "hero_subtitle",
+			"footer_text", "show_flag_bar",
+		).
 		Where("id = ?", "default").
 		Exec(c)
 
