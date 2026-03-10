@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 */
 
 export const metadata: Metadata = {
-  title: "JustAppStore",
+  title: "JustApps",
   description: "Zentraler Community Store für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
 };
 

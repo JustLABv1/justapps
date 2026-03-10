@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: plain-app-store
+  name: just-apps
   namespace: app-store
   labels:
-    app: plain-app-store
+    app: just-apps
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: plain-app-store
+      app: just-apps
   template:
     metadata:
       labels:
-        app: plain-app-store
+        app: just-apps
     spec:
       containers:
         - name: app
-          image: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/app-store:1.0.0
+          image: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/just-apps:1.0.0
           ports:
             - containerPort: 3000
           env:

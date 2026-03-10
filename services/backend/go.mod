@@ -1,4 +1,4 @@
-module app-store-backend
+module just-apps-backend
 
 go 1.24.0
 

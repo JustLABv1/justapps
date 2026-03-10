@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"app-store-backend/config"
-	"app-store-backend/database"
-	"app-store-backend/functions/auth"
-	"app-store-backend/router"
+	"just-apps-backend/config"
+	"just-apps-backend/database"
+	"just-apps-backend/functions/auth"
+	"just-apps-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
 	log "github.com/sirupsen/logrus"
@@ -45,7 +45,7 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	log.Info("Starting JustAppStore API. Version: ", version)
+	log.Info("Starting JustApps API. Version: ", version)
 
 	// Check if config file exists
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {

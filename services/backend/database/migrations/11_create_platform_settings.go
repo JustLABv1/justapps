@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"app-store-backend/pkg/models"
+	"just-apps-backend/pkg/models"
 	"context"
 	"fmt"
 

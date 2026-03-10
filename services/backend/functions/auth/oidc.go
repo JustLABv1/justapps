@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"app-store-backend/config"
+	"just-apps-backend/config"
 	"context"
 	"crypto/tls"
 	"errors"

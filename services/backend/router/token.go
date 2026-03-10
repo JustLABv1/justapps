@@ -1,8 +1,8 @@
 package router
 
 import (
-	"app-store-backend/handlers/tokens"
-	"app-store-backend/middlewares"
+	"just-apps-backend/handlers/tokens"
+	"just-apps-backend/middlewares"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

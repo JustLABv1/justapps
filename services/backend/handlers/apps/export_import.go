@@ -1,7 +1,7 @@
 package apps
 
 import (
-	"app-store-backend/pkg/models"
+	"just-apps-backend/pkg/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

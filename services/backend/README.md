@@ -1,4 +1,4 @@
-# PLAIN App-Store Backend
+# JustApps Backend
 
 ## OIDC Configuration (Keycloak)
 
@@ -10,7 +10,7 @@ To enable OIDC authentication with Keycloak, update your `config.yaml` or set th
 oidc:
   enabled: true
   issuer: "https://<keycloak-url>/realms/<realm-name>"
-  client_id: "app-store"
+  client_id: "just-apps"
   admin_group: "2Fa" # The group or role in Keycloak that identifies an admin
 ```
 
@@ -18,7 +18,7 @@ oidc:
 
 - `BACKEND_OIDC_ENABLED`: `true`
 - `BACKEND_OIDC_ISSUER`: `https://<keycloak-url>/realms/<realm-name>`
-- `BACKEND_OIDC_CLIENT_ID`: `app-store`
+- `BACKEND_OIDC_CLIENT_ID`: `just-apps`
 - `BACKEND_OIDC_ADMIN_GROUP`: `2Fa` (Default for this deployment)
 
 ## User Management

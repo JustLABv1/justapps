@@ -1,4 +1,4 @@
-# JustAppStore
+# JustApps
 
 A simple application store with a Go backend and a Next.js frontend, featuring OIDC authentication with Keycloak and an Admin Management interface.
 
@@ -14,7 +14,7 @@ This project uses environment variables for configuration. See `.env.example` in
 
 ### 1. Keycloak Setup
 To enable OIDC, ensure you have a Keycloak realm and client configured:
-- **Client ID**: `app-store`
+- **Client ID**: `just-apps`
 - **Access Type**: `Confidential` (or Public if properly configured for PKCE)
 - **Valid Redirect URIs**: `http://localhost:3000/api/auth/callback/keycloak`
 - **Admin Group**: Users in the group `2Fa` (or configured via `AUTH_ADMIN_GROUP`) will receive the `admin` role in the application.
@@ -23,13 +23,13 @@ To enable OIDC, ensure you have a Keycloak realm and client configured:
 ```bash
 BACKEND_OIDC_ENABLED=true
 BACKEND_OIDC_ISSUER=https://<keycloak-url>/realms/<realm>
-BACKEND_OIDC_CLIENT_ID=app-store
+BACKEND_OIDC_CLIENT_ID=just-apps
 BACKEND_OIDC_ADMIN_GROUP=2Fa
 ```
 
 ### 3. Frontend Configuration (`services/frontend/.env`)
 ```bash
-AUTH_KEYCLOAK_ID=app-store
+AUTH_KEYCLOAK_ID=just-apps
 AUTH_KEYCLOAK_SECRET=<client-secret>
 AUTH_KEYCLOAK_ISSUER=https://<keycloak-url>/realms/<realm>
 AUTH_ADMIN_GROUP=2Fa

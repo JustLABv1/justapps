@@ -180,7 +180,7 @@ export default function EinstellungenPage() {
             onChange={(val) => setSettings({ ...settings, storeName: val })}
           >
             <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Store Name</Label>
-            <Input placeholder="JustAppStore" className="bg-field-background" />
+            <Input placeholder="JustApps" className="bg-field-background" />
           </TextField>
           <TextField
             value={settings.accentColor}

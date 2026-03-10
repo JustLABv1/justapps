@@ -4,7 +4,7 @@ metadata:
   name: app-config
   namespace: app-store
   labels:
-    app: plain-app-store
+    app: just-apps
 data:
   config.yaml: |
     apps:
