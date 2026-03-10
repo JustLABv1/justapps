@@ -1,4 +1,4 @@
-# PLAIN App-Store
+# JustAppStore
 
 A simple application store with a Go backend and a Next.js frontend, featuring OIDC authentication with Keycloak and an Admin Management interface.
 
