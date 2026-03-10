@@ -1,16 +1,16 @@
-{{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "marktplatz.fullname" .)) }}
+{{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "just-apps.fullname" .)) }}
 {{- if eq .Values.deploymentMode "monolith" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "marktplatz.fullname" . }}
+  name: {{ include "just-apps.fullname" . }}
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
+      {{- include "just-apps.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
+        {{- include "just-apps.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
+      serviceAccountName: {{ include "just-apps.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -114,7 +114,7 @@ spec:
               value: /app/data
           volumeMounts:
             - name: config
-              mountPath: /etc/marktplatz
+              mountPath: /etc/just-apps
             - name: data
               mountPath: /app/data
       {{- if .Values.postgresql.enabled }}
@@ -125,19 +125,19 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
-                echo "waiting for database at {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
+              until pg_isready -h {{ include "just-apps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+                echo "waiting for database at {{ include "just-apps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
       {{- end }}
       volumes:
         - name: config
           configMap:
-            name: {{ include "marktplatz.fullname" . }}-backend-config
+            name: {{ include "just-apps.fullname" . }}-backend-config
         - name: data
           {{- if .Values.uploads.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "marktplatz.fullname" . }}-uploads
+            claimName: {{ include "just-apps.fullname" . }}-uploads
           {{- else }}
           emptyDir: {}
           {{- end }}
@@ -146,23 +146,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "marktplatz.fullname" . }}-backend
+  name: {{ include "just-apps.fullname" . }}-backend
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
     matchLabels:
-      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
+      {{- include "just-apps.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
   template:
     metadata:
       labels:
-        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
+        {{- include "just-apps.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
     spec:
-      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
+      serviceAccountName: {{ include "just-apps.serviceAccountName" . }}
       {{- if .Values.postgresql.enabled }}
       initContainers:
         - name: wait-for-db
@@ -171,8 +171,8 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
-                echo "waiting for database at {{ include "marktplatz.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
+              until pg_isready -h {{ include "just-apps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+                echo "waiting for database at {{ include "just-apps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
       {{- end }}
@@ -227,17 +227,17 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config
-              mountPath: /etc/marktplatz
+              mountPath: /etc/just-apps
             - name: data
               mountPath: /app/data
       volumes:
         - name: config
           configMap:
-            name: {{ include "marktplatz.fullname" . }}-backend-config
+            name: {{ include "just-apps.fullname" . }}-backend-config
         - name: data
           {{- if .Values.uploads.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "marktplatz.fullname" . }}-uploads
+            claimName: {{ include "just-apps.fullname" . }}-uploads
           {{- else }}
           emptyDir: {}
           {{- end }}
@@ -246,23 +246,23 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "marktplatz.fullname" . }}-frontend
+  name: {{ include "just-apps.fullname" . }}-frontend
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      {{- include "marktplatz.selectorLabels" . | nindent 6 }}
+      {{- include "just-apps.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        {{- include "marktplatz.selectorLabels" . | nindent 8 }}
+        {{- include "just-apps.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
-      serviceAccountName: {{ include "marktplatz.serviceAccountName" . }}
+      serviceAccountName: {{ include "just-apps.serviceAccountName" . }}
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"

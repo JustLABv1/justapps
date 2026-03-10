@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "marktplatz.fullname" . }}-backend-config
+  name: {{ include "just-apps.fullname" . }}-backend-config
   labels:
-    {{- include "marktplatz.labels" . | nindent 4 }}
+    {{- include "just-apps.labels" . | nindent 4 }}
 data:
   config.yaml: |
     log_level: {{ .Values.config.logLevel }}
     port: {{ if eq .Values.deploymentMode "monolith" }}{{ .Values.monolith.service.backendPort | default 8080 }}{{ else }}{{ .Values.backend.service.port | default 8080 }}{{ end }}
     database:
-      server: {{ if .Values.postgresql.enabled }}{{ include "marktplatz.fullname" . }}-postgresql{{ else }}{{ .Values.config.database.server }}{{ end }}
+      server: {{ if .Values.postgresql.enabled }}{{ include "just-apps.fullname" . }}-postgresql{{ else }}{{ .Values.config.database.server }}{{ end }}
       port: {{ if .Values.postgresql.enabled }}5432{{ else }}{{ .Values.config.database.port }}{{ end }}
       name: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.database | default "postgres" }}{{ else }}{{ .Values.config.database.name }}{{ end }}
       user: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.username | default "postgres" }}{{ else }}{{ .Values.config.database.user }}{{ end }}

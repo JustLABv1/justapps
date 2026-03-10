@@ -1,0 +1,6 @@
+apiVersion: v2
+name: just-apps
+description: A Helm chart for JustApps (Frontend and Backend)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
