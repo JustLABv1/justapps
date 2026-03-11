@@ -132,6 +132,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [settings.accentColor]);
 
+  // Inject dynamic favicon (cache-busted so browsers pick up changes immediately)
+  useEffect(() => {
+    const id = 'store-dynamic-favicon';
+    let el = document.getElementById(id) as HTMLLinkElement | null;
+    if (settings.faviconUrl) {
+      if (!el) {
+        el = document.createElement('link');
+        el.id = id;
+        el.rel = 'icon';
+        document.head.appendChild(el);
+      }
+      el.href = `${settings.faviconUrl}?v=${Date.now()}`;
+    } else if (el) {
+      el.remove();
+    }
+  }, [settings.faviconUrl]);
+
   // Update document title dynamically
   useEffect(() => {
     if (settings.storeName) {
