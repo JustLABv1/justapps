@@ -77,7 +77,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
-			"footer_text", "show_flag_bar",
+			"footer_text", "footer_links", "show_flag_bar",
 		).
 		Where("id = ?", "default").
 		Exec(c)

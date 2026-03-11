@@ -4,12 +4,21 @@ import Image from "next/image";
 import PlainImage from '../public/plain_logo.png';
 import { useSettings } from '../context/SettingsContext';
 
+const defaultFooterLinks = [
+  { label: 'Impressum',       url: '#' },
+  { label: 'Datenschutz',     url: '#' },
+  { label: 'Barrierefreiheit',url: '#' },
+];
+
 export function Footer() {
   const { settings } = useSettings();
 
   const storeName = settings.storeName || 'JustApps';
   const footerText = settings.footerText || 'Die Plattform für moderne, souveräne Software-Lösungen für die öffentliche Verwaltung in Deutschland.';
   const logoSrc = settings.logoUrl || null;
+  const links = settings.footerLinks && settings.footerLinks.length > 0
+    ? settings.footerLinks
+    : defaultFooterLinks;
 
   return (
     <footer className="border-t border-border bg-surface mt-auto">
@@ -32,9 +41,13 @@ export function Footer() {
           <div className="col-span-1 md:col-span-1">
             <h3 className="text-sm font-semibold text-foreground mb-3">Rechtliches</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-muted hover:text-accent transition-colors">Impressum</a></li>
-              <li><a href="#" className="text-muted hover:text-accent transition-colors">Datenschutz</a></li>
-              <li><a href="#" className="text-muted hover:text-accent transition-colors">Barrierefreiheit</a></li>
+              {links.map((link, i) => (
+                <li key={i}>
+                  <a href={link.url || '#'} className="text-muted hover:text-accent transition-colors">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>

@@ -9,6 +9,11 @@ export interface DetailFieldDef {
   icon?: string; // Lucide icon name, e.g. "Layers"
 }
 
+export interface FooterLink {
+  label: string;
+  url: string;
+}
+
 export interface StoreSettings {
   id: string;
   allowAppSubmissions: boolean;
@@ -27,6 +32,7 @@ export interface StoreSettings {
   heroTitle: string;
   heroSubtitle: string;
   footerText: string;
+  footerLinks: FooterLink[];
   showFlagBar: boolean;
 }
 
@@ -61,6 +67,7 @@ export const defaultSettings: StoreSettings = {
   heroTitle: '',
   heroSubtitle: '',
   footerText: '',
+  footerLinks: [],
   showFlagBar: true,
 };
 
