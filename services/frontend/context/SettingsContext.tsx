@@ -3,11 +3,19 @@
 import { fetchApi } from '@/lib/api';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
+export interface DetailFieldDef {
+  key: string;
+  label: string;
+  icon?: string; // Lucide icon name, e.g. "Layers"
+}
+
 export interface StoreSettings {
   id: string;
   allowAppSubmissions: boolean;
   showTopBanner: boolean;
   topBannerText: string;
+  /** Schema for the "Fachliche Details" tab — admin-configurable */
+  detailFields: DetailFieldDef[];
   // Branding
   storeName: string;
   storeDescription: string;
@@ -22,11 +30,27 @@ export interface StoreSettings {
   showFlagBar: boolean;
 }
 
+/** Default field schema — matches the 11 legacy columns so apps with old data still display correctly. */
+export const defaultDetailFields: DetailFieldDef[] = [
+  { key: 'focus',          label: 'Themenfeld',      icon: 'Layers' },
+  { key: 'app_type',       label: 'Anwendungstyp',   icon: 'Globe' },
+  { key: 'use_case',       label: 'Anwendungsfall',  icon: 'FileCode' },
+  { key: 'visualization',  label: 'Visualisierung',  icon: 'Eye' },
+  { key: 'deployment',     label: 'Deployment',      icon: 'Server' },
+  { key: 'infrastructure', label: 'Infrastruktur',   icon: 'LayoutDashboard' },
+  { key: 'database',       label: 'Datenbasis',      icon: 'Database' },
+  { key: 'transferability',label: 'Übertragbarkeit', icon: 'ArrowRightLeft' },
+  { key: 'authority',      label: 'Behörde',         icon: 'Globe' },
+  { key: 'contact_person', label: 'Ansprechpartner', icon: 'User' },
+  { key: 'additional_info',label: 'Sonstiges',       icon: 'ClipboardList' },
+];
+
 export const defaultSettings: StoreSettings = {
   id: 'default',
   allowAppSubmissions: true,
   showTopBanner: false,
   topBannerText: '',
+  detailFields: defaultDetailFields,
   storeName: '',
   storeDescription: '',
   logoUrl: '',
@@ -61,7 +85,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const res = await fetchApi('/settings', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        setSettings({ ...defaultSettings, ...data });
+        setSettings({
+          ...defaultSettings,
+          ...data,
+          // Guard: if the API returns null/empty detailFields, keep the built-in defaults
+          detailFields: (data.detailFields && data.detailFields.length > 0)
+            ? data.detailFields
+            : defaultDetailFields,
+        });
       }
     } catch (e) {
       console.error('Failed to load settings:', e);

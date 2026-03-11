@@ -1,7 +1,8 @@
 'use client';
 
-import { AppConfig } from '@/config/apps';
+import { AppConfig, AppField } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/context/SettingsContext';
 import {
   Button,
   Input,
@@ -106,6 +107,7 @@ export function AppModal({
   existingApps = []
 }: AppModalProps) {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [appFormData, setAppFormData] = useState<Partial<AppConfig>>(initialData || {});
   const [iconInput, setIconInput] = useState(initialData?.icon || '');
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -813,7 +815,7 @@ export function AppModal({
                         <p className="text-sm text-muted">Optionale fachliche und organisatorische Details. Diese Angaben helfen bei der Auffindbarkeit und Einordnung.</p>
                       </Surface>
 
-                      {/* Tech & Classification */}
+                      {/* Tech Stack & License (always present) */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 border-b border-border pb-2">
                           <Info className="w-4 h-4 text-muted" />
@@ -828,52 +830,14 @@ export function AppModal({
                             <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Lizenz</Label>
                             <Input value={appFormData.license || ''} placeholder="MIT, Apache 2.0" className="bg-field-background" />
                           </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, focus: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Schwerpunkt</Label>
-                            <Input value={appFormData.focus || ''} placeholder="z.B. Dokumentenmanagement" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, appType: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Typ</Label>
-                            <Input value={appFormData.appType || ''} placeholder="z.B. Webapp-Frontend" className="bg-field-background" />
-                          </TextField>
-                        </div>
-                        <TextField onChange={(val) => setAppFormData({ ...appFormData, useCase: val })}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Anwendungsfall</Label>
-                          <TextArea value={appFormData.useCase || ''} placeholder="Beschreiben Sie den fachlichen Nutzen und die Zielgruppe..." className="bg-field-background" />
-                        </TextField>
-                      </div>
-
-                      {/* Architecture */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-border pb-2">
-                          <Server className="w-4 h-4 text-muted" />
-                          <Label className="text-sm font-bold text-foreground">Architektur & Technik</Label>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, visualization: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Visualisierung</Label>
-                            <Input value={appFormData.visualization || ''} placeholder="z.B. Grafana / React" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, deployment: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Deployment</Label>
-                            <Input value={appFormData.deployment || ''} placeholder="z.B. Kubernetes / OpenShift" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, infrastructure: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Infrastruktur</Label>
-                            <Input value={appFormData.infrastructure || ''} placeholder="z.B. AWS / On-Premise" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, database: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Datenbasis</Label>
-                            <Input value={appFormData.database || ''} placeholder="z.B. PostgreSQL / S3" className="bg-field-background" />
-                          </TextField>
                         </div>
                       </div>
 
-                      {/* Organisation & Status */}
+                      {/* Status (always present) */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 border-b border-border pb-2">
                           <ShieldCheck className="w-4 h-4 text-muted" />
-                          <Label className="text-sm font-bold text-foreground">Organisation & Status</Label>
+                          <Label className="text-sm font-bold text-foreground">Status</Label>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="flex flex-col gap-1">
@@ -907,24 +871,42 @@ export function AppModal({
                             </TextField>
                           )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, authority: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Behörde</Label>
-                            <Input value={appFormData.authority || ''} placeholder="z.B. BMI / ITZBund" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, contactPerson: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Ansprechpartner</Label>
-                            <Input value={appFormData.contactPerson || ''} placeholder="Name oder Abteilung" className="bg-field-background" />
-                          </TextField>
-                          <TextField onChange={(val) => setAppFormData({ ...appFormData, transferability: val })}>
-                            <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Übertragbarkeit</Label>
-                            <Input value={appFormData.transferability || ''} placeholder="z.B. Hoch (Standard-Komponenten)" className="bg-field-background" />
-                          </TextField>
+                      </div>
+
+                      {/* Dynamic custom fields from platform settings */}
+                      {settings.detailFields && settings.detailFields.length > 0 && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-border pb-2">
+                            <Layers className="w-4 h-4 text-muted" />
+                            <Label className="text-sm font-bold text-foreground">Fachliche Details</Label>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {settings.detailFields.map(fieldDef => {
+                              const currentValue = (appFormData.customFields ?? []).find(f => f.key === fieldDef.key)?.value ?? '';
+                              const updateField = (val: string) => {
+                                const fields: AppField[] = [...(appFormData.customFields ?? [])];
+                                const idx = fields.findIndex(f => f.key === fieldDef.key);
+                                if (val) {
+                                  if (idx >= 0) fields[idx] = { key: fieldDef.key, value: val };
+                                  else fields.push({ key: fieldDef.key, value: val });
+                                } else {
+                                  if (idx >= 0) fields.splice(idx, 1);
+                                }
+                                setAppFormData({ ...appFormData, customFields: fields });
+                              };
+                              return (
+                                <TextField key={fieldDef.key} onChange={updateField}>
+                                  <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">{fieldDef.label}</Label>
+                                  <Input value={currentValue} placeholder={fieldDef.label} className="bg-field-background" />
+                                </TextField>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <TextField onChange={(val) => setAppFormData({ ...appFormData, additionalInfo: val })}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sonstiges</Label>
-                          <TextArea value={appFormData.additionalInfo || ''} placeholder="Weitere fachliche oder organisatorische Details..." className="bg-field-background" />
-                        </TextField>
+                      )}
+
+                      {/* Known Issue (always present) */}
+                      <div className="space-y-4">
                         <TextField onChange={(val) => setAppFormData({ ...appFormData, knownIssue: val })}>
                           <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Bekanntes Problem</Label>
                           <TextArea value={appFormData.knownIssue || ''} placeholder="z.B. Login derzeit nicht möglich. Fix wird vorbereitet..." className="bg-field-background" />
