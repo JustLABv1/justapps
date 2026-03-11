@@ -2,13 +2,23 @@ package models
 
 import "github.com/uptrace/bun"
 
+// DetailFieldDef defines a single field in the "Fachliche Details" schema.
+// Admins manage this list; apps store values by key in CustomFields.
+type DetailFieldDef struct {
+	Key   string `json:"key"`   // Unique machine key, e.g. "focus"
+	Label string `json:"label"` // Display label, e.g. "Themenfeld"
+	Icon  string `json:"icon"`  // Lucide icon name, e.g. "Layers" (optional)
+}
+
 type PlatformSettings struct {
 	bun.BaseModel `bun:"table:platform_settings,alias:ps"`
 
-	ID                  string `bun:"id,pk" json:"id"` // Singleton: "default"
-	AllowAppSubmissions bool   `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
-	ShowTopBanner       bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
-	TopBannerText       string `bun:"top_banner_text" json:"topBannerText"`
+	ID                  string           `bun:"id,pk" json:"id"` // Singleton: "default"
+	AllowAppSubmissions bool             `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
+	ShowTopBanner       bool             `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
+	TopBannerText       string           `bun:"top_banner_text" json:"topBannerText"`
+	// DetailFields is the admin-configurable schema for the "Fachliche Details" tab.
+	DetailFields        []DetailFieldDef `bun:"detail_fields,type:jsonb" json:"detailFields"`
 
 	// Branding
 	StoreName         string `bun:"store_name" json:"storeName"`

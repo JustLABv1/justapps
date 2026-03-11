@@ -12,6 +12,11 @@ export interface AppLink {
   url: string;
 }
 
+export interface AppField {
+  key: string;
+  value: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -29,18 +34,9 @@ export interface AppConfig {
   techStack?: string[];
   license?: string;
   markdownContent?: string;
-  focus?: string;
-  appType?: string;
-  useCase?: string;
-  visualization?: string;
-  deployment?: string;
-  infrastructure?: string;
-  database?: string;
-  additionalInfo?: string;
+  /** Dynamic "Fachliche Details" key-value pairs. Schema is defined in platform settings. */
+  customFields?: AppField[];
   status?: string;
-  transferability?: string;
-  contactPerson?: string;
-  authority?: string;
   customDockerCommand?: string;
   customComposeCommand?: string;
   customHelmCommand?: string;

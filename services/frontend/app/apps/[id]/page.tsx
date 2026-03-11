@@ -4,19 +4,15 @@ import { DeploymentAssistant } from "@/components/DeploymentAssistant";
 import { RatingSection } from "@/components/RatingSection";
 import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
+import { resolveIcon } from "@/lib/detailFieldIcons";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  Activity,
   AlertTriangle,
-  ArrowRightLeft,
   BookOpen,
   ChevronLeft,
-  ClipboardList,
-  Database,
   ExternalLink,
-  Eye,
-  FileCode,
   Github,
   Globe,
   Layers,
@@ -27,7 +23,7 @@ import {
   Server,
   Share2,
   Star,
-  User,
+  Tag,
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -54,6 +50,7 @@ export default function AppPage() {
   const params = useParams();
   const id = params?.id as string;
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [app, setApp] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -114,21 +111,15 @@ export default function AppPage() {
     : (app.repoUrl ? [{ label: 'Repository', url: app.repoUrl }] : []);
   const customLinks = app.customLinks || [];
 
-  /* Collect non-empty metadata pairs for the details tab */
-  const metaFields: { label: string; value?: string; icon?: React.ReactNode }[] = [
-    { label: "Themenfeld", value: app.focus, icon: <Layers className="w-3 h-3" /> },
-    { label: "Anwendungstyp", value: app.appType, icon: <Globe className="w-3 h-3" /> },
-    { label: "Anwendungsfall", value: app.useCase, icon: <FileCode className="w-3 h-3" /> },
-    { label: "Visualisierung", value: app.visualization, icon: <Eye className="w-3 h-3" /> },
-    { label: "Deployment", value: app.deployment, icon: <Server className="w-3 h-3" /> },
-    { label: "Infrastruktur", value: app.infrastructure, icon: <LayoutDashboard className="w-3 h-3" /> },
-    { label: "Datenbasis", value: app.database, icon: <Database className="w-3 h-3" /> },
-    { label: "Status", value: statusInfo?.label, icon: <Activity className="w-3 h-3" /> },
-    { label: "Übertragbarkeit", value: app.transferability, icon: <ArrowRightLeft className="w-3 h-3" /> },
-    { label: "Behörde", value: app.authority, icon: <Globe className="w-3 h-3" /> },
-    { label: "Ansprechpartner", value: app.contactPerson, icon: <User className="w-3 h-3" /> },
-    { label: "Sonstiges", value: app.additionalInfo, icon: <ClipboardList className="w-3 h-3" /> },
-  ].filter(f => f.value);
+  /* Build metadata pairs from the admin-configured field schema + app's customFields values */
+  const fieldValueMap = new Map((app.customFields ?? []).map(f => [f.key, f.value]));
+  const metaFields = (settings.detailFields ?? [])
+    .map(def => ({ label: def.label, value: fieldValueMap.get(def.key), icon: resolveIcon(def.icon) }))
+    .filter(f => f.value);
+  // Always show Status separately if set
+  if (statusInfo?.label) {
+    metaFields.unshift({ label: "Status", value: statusInfo.label, icon: resolveIcon('Activity') });
+  }
 
   return (
     <div className="max-w-5xl mx-auto pb-20">

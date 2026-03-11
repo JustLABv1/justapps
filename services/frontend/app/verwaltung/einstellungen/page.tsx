@@ -1,6 +1,7 @@
 'use client';
 
-import { useSettings } from '@/context/SettingsContext';
+import { DetailFieldDef, defaultDetailFields, useSettings } from '@/context/SettingsContext';
+import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import { fetchApi, uploadFile } from '@/lib/api';
 import {
   Button,
@@ -8,15 +9,17 @@ import {
   Label,
   Surface,
   Switch,
-  TextField
+  TextField,
+  Tooltip
 } from '@heroui/react';
-import { Globe, Loader2, Paintbrush, ShieldCheck, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Globe, Layers, Loader2, Paintbrush, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 
 type SettingsState = {
   allowAppSubmissions: boolean;
   showTopBanner: boolean;
   topBannerText: string;
+  detailFields: DetailFieldDef[];
   storeName: string;
   storeDescription: string;
   logoUrl: string;
@@ -34,6 +37,7 @@ const defaultState: SettingsState = {
   allowAppSubmissions: true,
   showTopBanner: false,
   topBannerText: '',
+  detailFields: defaultDetailFields,
   storeName: '',
   storeDescription: '',
   logoUrl: '',
@@ -79,7 +83,13 @@ export default function EinstellungenPage() {
     fetchApi('/settings')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data) setSettings({ ...defaultState, ...data });
+        if (data) setSettings({
+          ...defaultState,
+          ...data,
+          detailFields: (data.detailFields && data.detailFields.length > 0)
+            ? data.detailFields
+            : defaultDetailFields,
+        });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -306,6 +316,131 @@ export default function EinstellungenPage() {
             }, 'branding')}
           >
             {savedSection === 'branding' ? 'Gespeichert ✓' : 'Branding speichern'}
+          </Button>
+        </div>
+      </Surface>
+
+      {/* Fachliche Details Felder */}
+      <Surface className="p-6 border border-border/50 shadow-sm">
+        <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-accent" /> Fachliche Details — Felder
+        </h3>
+        <p className="text-xs text-muted mb-5">Definieren Sie, welche Felder im Tab &quot;Fachliche Details&quot; einer App angezeigt und bearbeitet werden können. Reihenfolge, Label und Schlüssel sind frei konfigurierbar.</p>
+
+        <div className="flex flex-col gap-2 mb-4">
+          {settings.detailFields.map((field, idx) => (
+            <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5">
+              <div className="flex flex-col gap-1 flex-1 md:flex-row md:gap-3">
+                {/* Icon picker */}
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Icon</Label>
+                  <div className="flex flex-wrap gap-1 p-1.5 bg-field-background border border-border rounded-lg w-full md:w-56 max-h-24 overflow-y-auto">
+                    {AVAILABLE_ICONS.map(({ name, component }) => (
+                      <Tooltip key={name} delay={0}>
+                        <Tooltip.Trigger>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fields = [...settings.detailFields];
+                              fields[idx] = { ...fields[idx], icon: name };
+                              setSettings({ ...settings, detailFields: fields });
+                            }}
+                            className={`p-1 rounded transition-colors ${field.icon === name ? 'bg-accent text-white' : 'text-muted hover:bg-surface-secondary hover:text-foreground'}`}
+                          >
+                            {component}
+                          </button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>{name}</Tooltip.Content>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 flex-1">
+                  <TextField
+                    value={field.label}
+                    onChange={(val) => {
+                      const fields = [...settings.detailFields];
+                      fields[idx] = { ...fields[idx], label: val };
+                      setSettings({ ...settings, detailFields: fields });
+                    }}
+                  >
+                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Bezeichnung</Label>
+                    <Input placeholder="z.B. Themenfeld" className="bg-field-background" />
+                  </TextField>
+                  <TextField
+                    value={field.key}
+                    onChange={(val) => {
+                      const fields = [...settings.detailFields];
+                      fields[idx] = { ...fields[idx], key: val.toLowerCase().replace(/\s+/g, '_') };
+                      setSettings({ ...settings, detailFields: fields });
+                    }}
+                  >
+                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Schlüssel (intern)</Label>
+                    <Input placeholder="z.B. focus" className="bg-field-background font-mono text-sm" />
+                  </TextField>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 shrink-0">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 w-7 p-0"
+                  isDisabled={idx === 0}
+                  onPress={() => {
+                    const fields = [...settings.detailFields];
+                    [fields[idx - 1], fields[idx]] = [fields[idx], fields[idx - 1]];
+                    setSettings({ ...settings, detailFields: fields });
+                  }}
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 w-7 p-0"
+                  isDisabled={idx === settings.detailFields.length - 1}
+                  onPress={() => {
+                    const fields = [...settings.detailFields];
+                    [fields[idx], fields[idx + 1]] = [fields[idx + 1], fields[idx]];
+                    setSettings({ ...settings, detailFields: fields });
+                  }}
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9 w-9 p-0 text-danger shrink-0"
+                onPress={() => {
+                  const fields = settings.detailFields.filter((_, i) => i !== idx);
+                  setSettings({ ...settings, detailFields: fields });
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-1.5"
+            onPress={() => {
+              const fields = [...settings.detailFields, { key: '', label: '' }];
+              setSettings({ ...settings, detailFields: fields });
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Feld hinzufügen
+          </Button>
+          <Button
+            className="bg-accent text-white"
+            isDisabled={saving}
+            onPress={() => save({ detailFields: settings.detailFields }, 'detailFields')}
+          >
+            {savedSection === 'detailFields' ? 'Gespeichert ✓' : 'Felder speichern'}
           </Button>
         </div>
       </Surface>
