@@ -10,6 +10,12 @@ type DetailFieldDef struct {
 	Icon  string `json:"icon"`  // Lucide icon name, e.g. "Layers" (optional)
 }
 
+// FooterLink is a single link shown in the footer.
+type FooterLink struct {
+	Label string `json:"label"`
+	URL   string `json:"url"`
+}
+
 type PlatformSettings struct {
 	bun.BaseModel `bun:"table:platform_settings,alias:ps"`
 
@@ -30,6 +36,7 @@ type PlatformSettings struct {
 	HeroBadge         string `bun:"hero_badge" json:"heroBadge"`
 	HeroTitle         string `bun:"hero_title" json:"heroTitle"`
 	HeroSubtitle      string `bun:"hero_subtitle" json:"heroSubtitle"`
-	FooterText        string `bun:"footer_text" json:"footerText"`
-	ShowFlagBar       bool   `bun:"show_flag_bar,notnull,default:true" json:"showFlagBar"`
+	FooterText        string       `bun:"footer_text" json:"footerText"`
+	FooterLinks       []FooterLink `bun:"footer_links,type:jsonb" json:"footerLinks"`
+	ShowFlagBar       bool         `bun:"show_flag_bar,notnull,default:true" json:"showFlagBar"`
 }

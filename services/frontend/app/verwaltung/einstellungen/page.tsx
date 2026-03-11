@@ -1,6 +1,6 @@
 'use client';
 
-import { DetailFieldDef, defaultDetailFields, useSettings } from '@/context/SettingsContext';
+import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import { fetchApi, uploadFile } from '@/lib/api';
 import {
@@ -12,7 +12,7 @@ import {
   TextField,
   Tooltip
 } from '@heroui/react';
-import { ArrowDown, ArrowUp, Globe, Layers, Loader2, Paintbrush, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, ExternalLink, Globe, Layers, Loader2, Paintbrush, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 
 type SettingsState = {
@@ -30,6 +30,7 @@ type SettingsState = {
   heroTitle: string;
   heroSubtitle: string;
   footerText: string;
+  footerLinks: FooterLink[];
   showFlagBar: boolean;
 };
 
@@ -48,6 +49,7 @@ const defaultState: SettingsState = {
   heroTitle: '',
   heroSubtitle: '',
   footerText: '',
+  footerLinks: [],
   showFlagBar: true,
 };
 
@@ -122,7 +124,7 @@ export default function EinstellungenPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+    <div className="flex flex-col gap-6 w-full">
 
       {/* Submission Control */}
       <Surface className="p-6 border border-border/50 shadow-sm">
@@ -441,6 +443,79 @@ export default function EinstellungenPage() {
             onPress={() => save({ detailFields: settings.detailFields }, 'detailFields')}
           >
             {savedSection === 'detailFields' ? 'Gespeichert ✓' : 'Felder speichern'}
+          </Button>
+        </div>
+      </Surface>
+
+      {/* Footer Links */}
+      <Surface className="p-6 border border-border/50 shadow-sm">
+        <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
+          <ExternalLink className="w-4 h-4 text-accent" /> Footer — Links
+        </h3>
+        <p className="text-xs text-muted mb-5">Konfigurieren Sie die Links im Footer (z.B. Impressum, Datenschutz). Ohne Einträge werden die Standardlinks angezeigt.</p>
+
+        <div className="flex flex-col gap-2 mb-4">
+          {settings.footerLinks.map((link, idx) => (
+            <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5">
+              <div className="flex flex-col gap-3 flex-1 md:flex-row md:gap-3">
+                <TextField
+                  className="flex-1"
+                  value={link.label}
+                  onChange={(val) => {
+                    const links = [...settings.footerLinks];
+                    links[idx] = { ...links[idx], label: val };
+                    setSettings({ ...settings, footerLinks: links });
+                  }}
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Bezeichnung</Label>
+                  <Input placeholder="z.B. Impressum" className="bg-field-background" />
+                </TextField>
+                <TextField
+                  className="flex-1"
+                  value={link.url}
+                  onChange={(val) => {
+                    const links = [...settings.footerLinks];
+                    links[idx] = { ...links[idx], url: val };
+                    setSettings({ ...settings, footerLinks: links });
+                  }}
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">URL</Label>
+                  <Input placeholder="https://example.com/impressum" className="bg-field-background font-mono text-sm" />
+                </TextField>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9 w-9 p-0 text-danger shrink-0 self-end mb-0.5"
+                onPress={() => {
+                  const links = settings.footerLinks.filter((_, i) => i !== idx);
+                  setSettings({ ...settings, footerLinks: links });
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-1.5"
+            onPress={() => {
+              const links = [...settings.footerLinks, { label: '', url: '' }];
+              setSettings({ ...settings, footerLinks: links });
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Link hinzufügen
+          </Button>
+          <Button
+            className="bg-accent text-white"
+            isDisabled={saving}
+            onPress={() => save({ footerLinks: settings.footerLinks }, 'footerLinks')}
+          >
+            {savedSection === 'footerLinks' ? 'Gespeichert ✓' : 'Links speichern'}
           </Button>
         </div>
       </Surface>

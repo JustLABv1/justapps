@@ -26,16 +26,19 @@ import {
   Globe,
   Info,
   Layers,
+  Loader2,
   Plus,
   Server,
   Share2,
   ShieldCheck,
   Terminal,
   Trash2,
+  Upload,
   X
 } from 'lucide-react';
+import { uploadFile } from '@/lib/api';
 import Image from 'next/image';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 interface AppModalProps {
   isOpen: boolean;
@@ -112,6 +115,9 @@ export function AppModal({
   const [iconInput, setIconInput] = useState(initialData?.icon || '');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [categoryInput, setCategoryInput] = useState('');
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [iconUploadError, setIconUploadError] = useState<string | null>(null);
+  const iconFileInputRef = useRef<HTMLInputElement>(null);
 
   const isIdTaken = !selectedApp && !!appFormData.id?.trim() && existingApps.some(a => a.id === appFormData.id?.trim());
   const [prevInitialData, setPrevInitialData] = useState<Partial<AppConfig> | undefined>(initialData);
@@ -121,6 +127,7 @@ export function AppModal({
     setPrevInitialData(initialData);
     setAppFormData(initialData || {});
     setIconInput(initialData?.icon || '');
+    setIconUploadError(null);
     setCurrentStep(0);
   }
 
@@ -400,17 +407,58 @@ export function AppModal({
                                 {showIconPicker ? 'Weniger anzeigen' : 'Alle anzeigen'}
                               </button>
                             )}
-                            {/* Custom URL input */}
-                            <TextField onChange={(val) => {
-                              setIconInput(val);
-                              setAppFormData({ ...appFormData, icon: val });
-                            }}>
-                              <Input
-                                value={iconInput.startsWith('http') ? iconInput : ''}
-                                placeholder="Oder Bild-URL einfügen: https://..."
-                                className="bg-field-background h-8 text-xs"
+                            {/* Upload or custom URL */}
+                            <div className="flex gap-2 items-center">
+                              <TextField
+                                className="flex-1"
+                                onChange={(val) => {
+                                  setIconInput(val);
+                                  setAppFormData({ ...appFormData, icon: val });
+                                  setIconUploadError(null);
+                                }}
+                              >
+                                <Input
+                                  value={iconInput.startsWith('http') ? iconInput : ''}
+                                  placeholder="Bild-URL: https://..."
+                                  className="bg-field-background h-8 text-xs"
+                                />
+                              </TextField>
+                              <input
+                                ref={iconFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setUploadingIcon(true);
+                                  setIconUploadError(null);
+                                  try {
+                                    const url = await uploadFile('/upload/logo', file);
+                                    setIconInput(url);
+                                    setAppFormData({ ...appFormData, icon: url });
+                                  } catch (err) {
+                                    setIconUploadError(err instanceof Error ? err.message : 'Upload fehlgeschlagen');
+                                  } finally {
+                                    setUploadingIcon(false);
+                                    e.target.value = '';
+                                  }
+                                }}
                               />
-                            </TextField>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="gap-1.5 h-8 shrink-0 text-xs"
+                                isDisabled={uploadingIcon}
+                                onPress={() => iconFileInputRef.current?.click()}
+                              >
+                                {uploadingIcon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                {uploadingIcon ? 'Lädt...' : 'Upload'}
+                              </Button>
+                            </div>
+                            {iconUploadError && (
+                              <p className="text-[11px] text-danger mt-1">{iconUploadError}</p>
+                            )}
                           </div>
                         </div>
                       </div>
