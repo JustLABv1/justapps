@@ -10,12 +10,13 @@ import (
 
 func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 	settings := group.Group("/settings")
-	settings.Use(middlewares.Auth(db))
 	{
+		// Public: branding and store config is needed by all visitors
 		settings.GET("", func(c *gin.Context) {
 			platform.GetSettings(c, db)
 		})
-		settings.PUT("", func(c *gin.Context) {
+		// Admin-only: write requires authentication
+		settings.PUT("", middlewares.Auth(db), func(c *gin.Context) {
 			platform.UpdateSettings(c, db)
 		})
 	}

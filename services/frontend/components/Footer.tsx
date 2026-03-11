@@ -1,8 +1,8 @@
 'use client';
 
 import Image from "next/image";
-import PlainImage from '../public/plain_logo.png';
 import { useSettings } from '../context/SettingsContext';
+import JustLABLogo from '../public/justlab_logo_compact.png';
 
 const defaultFooterLinks = [
   { label: 'Impressum',       url: '#' },
@@ -30,7 +30,7 @@ export function Footer() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
               ) : (
-                <Image src={PlainImage} alt="Logo" width={24} height={24} className="rounded-sm" />
+                <Image src={JustLABLogo} alt="Logo" width={24} height={24} className="rounded-sm" />
               )}
               <span className="text-[9px] font-bold tracking-[0.2em]">{storeName}</span>
             </div>

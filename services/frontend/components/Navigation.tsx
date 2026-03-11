@@ -15,8 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
-import PlainImage from '../public/plain_logo.png';
-import PlainImageDark from '../public/plain_logo_dark.png';
+import JustLABLogo from '../public/justlab_logo_compact.png';
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 const adminSubLinks = [
@@ -65,7 +64,7 @@ export function Navigation() {
               <img src={logoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
             ) : (
               <Image
-                src={isDark ? PlainImageDark : PlainImage}
+                src={isDark ? JustLABLogo : JustLABLogo}
                 alt="Logo"
                 width={24}
                 height={24}

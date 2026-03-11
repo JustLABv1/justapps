@@ -59,16 +59,17 @@ export default function EinstellungenPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSection, setSavedSection] = useState<string | null>(null);
-  const [uploading, setUploading] = useState<'logo' | 'logoDark' | null>(null);
+  const [uploading, setUploading] = useState<'logo' | 'logoDark' | 'favicon' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'logoDarkUrl') => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'logoDarkUrl' | 'faviconUrl') => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const key = field === 'logoUrl' ? 'logo' : 'logoDark';
-    setUploading(key as 'logo' | 'logoDark');
+    const key = field === 'logoUrl' ? 'logo' : field === 'logoDarkUrl' ? 'logoDark' : 'favicon';
+    setUploading(key as 'logo' | 'logoDark' | 'favicon');
     setUploadError(null);
     try {
       const url = await uploadFile('/upload/logo', file);
@@ -252,13 +253,23 @@ export default function EinstellungenPage() {
             <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Hero Titel</Label>
             <Input placeholder="Der App Store für alle." className="bg-field-background" />
           </TextField>
-          <TextField
-            value={settings.faviconUrl}
-            onChange={(val) => setSettings({ ...settings, faviconUrl: val })}
-          >
-            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Favicon URL</Label>
-            <Input placeholder="https://example.com/favicon.ico" className="bg-field-background" />
-          </TextField>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Favicon</Label>
+            <div className="flex gap-2 items-center">
+              {settings.faviconUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={settings.faviconUrl} alt="Favicon Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
+              )}
+              <TextField value={settings.faviconUrl} onChange={(val) => setSettings({ ...settings, faviconUrl: val })} className="flex-1">
+                <Input placeholder="https://example.com/favicon.ico" className="bg-field-background" />
+              </TextField>
+              <input ref={faviconInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e, 'faviconUrl')} />
+              <Button size="sm" variant="secondary" className="gap-1.5 shrink-0" isDisabled={uploading === 'favicon'} onPress={() => faviconInputRef.current?.click()}>
+                {uploading === 'favicon' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                {uploading === 'favicon' ? 'Lädt...' : 'Upload'}
+              </Button>
+            </div>
+          </div>
           <TextField
             className="md:col-span-2"
             value={settings.heroSubtitle}
