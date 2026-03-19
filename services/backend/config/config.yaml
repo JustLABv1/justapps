@@ -13,3 +13,7 @@ database:
 
 jwt:
   secret: null
+
+oidc:
+  disable_local_auth: false
+  disable_registration: false

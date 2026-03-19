@@ -1,22 +1,32 @@
 'use client';
 
-import { AppModal } from '@/components/AppModal';
 import { AppTable } from '@/components/AppTable';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import { Button } from '@heroui/react';
-import { Download, Loader2, Plus, ShieldCheck, Upload } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { Button, Modal } from '@heroui/react';
+import { Check, Download, Loader2, Plus, ShieldCheck, Upload, UserRoundCog } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
+interface SystemUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  disabled: boolean;
+}
+
 function AppsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAppModalOpen, setIsAppModalOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
-  const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
+  // Transfer ownership
+  const [transferApp, setTransferApp] = useState<AppConfig | null>(null);
+  const [users, setUsers] = useState<SystemUser[]>([]);
+  const [transferUserId, setTransferUserId] = useState('');
+  const [transferring, setTransferring] = useState(false);
 
   const loadApps = async () => {
     try {
@@ -34,50 +44,26 @@ function AppsContent() {
     }
   };
 
-  useEffect(() => { loadApps(); }, []);
+  const loadUsers = async () => {
+    try {
+      const res = await fetchApi('/users');
+      if (res.ok) {
+        const data = await res.json();
+        setUsers((data || []).filter((u: SystemUser) => !u.disabled));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => { loadApps(); loadUsers(); }, []);
 
   const handleCreateApp = () => {
-    setSelectedApp(null);
-    setAppFormData({
-      id: '',
-      name: '',
-      description: '',
-      categories: [],
-      icon: '🏛️',
-      techStack: [],
-      license: 'MIT',
-      markdownContent: '',
-      liveUrl: '',
-      liveDemos: [],
-      repoUrl: '',
-      repositories: [],
-      customLinks: [],
-      dockerRepo: '',
-      helmRepo: '',
-      docsUrl: '',
-      customFields: [],
-      status: 'POC',
-      knownIssue: '',
-      customDockerCommand: '',
-      customComposeCommand: '',
-      customHelmCommand: '',
-      customDockerNote: '',
-      customComposeNote: '',
-      customHelmNote: '',
-      customHelmValues: '',
-      isFeatured: false,
-      hasDeploymentAssistant: true,
-      showDocker: true,
-      showCompose: true,
-      showHelm: true,
-    });
-    setIsAppModalOpen(true);
+    router.push('/verwaltung/apps/new');
   };
 
   const handleEditApp = (app: AppConfig) => {
-    setSelectedApp(app);
-    setAppFormData({ ...app });
-    setIsAppModalOpen(true);
+    router.push(`/verwaltung/apps/${app.id}/edit`);
   };
 
   const handleDeleteApp = async (id: string) => {
@@ -98,43 +84,30 @@ function AppsContent() {
     } catch (err) { console.error(err); }
   };
 
-  const handleAppSubmit = async (formData: Partial<AppConfig>) => {
-    const method = selectedApp ? 'PUT' : 'POST';
-    const url = selectedApp ? `/apps/${selectedApp.id}` : '/apps';
+  const handleOpenTransfer = (app: AppConfig) => {
+    setTransferApp(app);
+    setTransferUserId('');
+  };
 
-    const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) => {
-      if (!Array.isArray(links)) return [];
-      return links
-        .map(link => ({ label: (link.label || '').trim(), url: (link.url || '').trim() }))
-        .filter(link => link.url.length > 0)
-        .map(link => ({ label: link.label || 'Link', url: link.url }));
-    };
-
-    const finalData = {
-      ...formData,
-      categories: Array.isArray(formData.categories)
-        ? formData.categories
-        : (formData.categories as unknown as string).split(',').map(s => s.trim()).filter(Boolean),
-      techStack: Array.isArray(formData.techStack)
-        ? formData.techStack
-        : (formData.techStack as unknown as string).split(',').map(s => s.trim()).filter(Boolean),
-      repositories: sanitizeLinks(formData.repositories),
-      customLinks: sanitizeLinks(formData.customLinks),
-    };
-
+  const handleSubmitTransfer = async () => {
+    if (!transferApp || !transferUserId) return;
+    setTransferring(true);
     try {
-      const res = await fetchApi(url, { method, body: JSON.stringify(finalData) });
+      const res = await fetchApi(`/apps/${transferApp.id}/transfer`, {
+        method: 'PUT',
+        body: JSON.stringify({ newOwnerId: transferUserId }),
+      });
       if (res.ok) {
+        setTransferApp(null);
         loadApps();
-        return true;
       } else {
-        const errData = await res.json().catch(() => ({}));
-        setError(errData.message || `Fehler beim Speichern: ${res.statusText}`);
-        return false;
+        const err = await res.json().catch(() => ({}));
+        setError(err.message || 'Übertragung fehlgeschlagen');
       }
     } catch (err) {
-      setError(`Verbindungsfehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
-      return false;
+      setError(err instanceof Error ? err.message : 'Verbindungsfehler');
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -184,23 +157,13 @@ function AppsContent() {
     e.target.value = '';
   };
 
-  // Deep linking: ?edit=<appId>
+  // Deep linking: ?edit=<appId> → redirect to full editor page
   useEffect(() => {
     const editId = searchParams?.get('edit');
-    if (editId && apps.length > 0) {
-      const appToEdit = apps.find(a => a.id === editId);
-      if (appToEdit) {
-        const timer = setTimeout(() => {
-          handleEditApp(appToEdit);
-          const url = new URL(window.location.href);
-          url.searchParams.delete('edit');
-          window.history.replaceState({}, '', url.pathname);
-        }, 0);
-        return () => clearTimeout(timer);
-      }
+    if (editId) {
+      router.replace(`/verwaltung/apps/${editId}/edit`);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, apps]);
+  }, [searchParams, router]);
 
   return (
     <div>
@@ -251,17 +214,71 @@ function AppsContent() {
           handleEditApp={handleEditApp}
           handleDeleteApp={handleDeleteApp}
           handleToggleAppLock={handleToggleAppLock}
+          handleTransferApp={handleOpenTransfer}
         />
       )}
 
-      <AppModal
-        isOpen={isAppModalOpen}
-        onOpenChange={setIsAppModalOpen}
-        selectedApp={selectedApp}
-        onSubmit={handleAppSubmit}
-        initialData={appFormData}
-        existingApps={apps}
-      />
+      {/* Transfer ownership modal */}
+      <Modal.Backdrop isOpen={!!transferApp} onOpenChange={(open) => { if (!open) setTransferApp(null); }}>
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Icon className="bg-accent-soft text-accent">
+                <UserRoundCog className="w-5 h-5" />
+              </Modal.Icon>
+              <Modal.Heading>Besitzer übertragen</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <p className="text-sm text-muted mb-4">
+                Übertragen Sie die Eigentümerschaft von <strong className="text-foreground">{transferApp?.name}</strong> auf einen anderen Benutzer.
+              </p>
+              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Neuer Besitzer</p>
+              <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-surface divide-y divide-border/60">
+                {users.filter(u => u.id !== transferApp?.ownerId).map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => setTransferUserId(u.id)}
+                    className={`w-full flex items-center gap-3 p-3 transition-colors text-left ${
+                      transferUserId === u.id
+                        ? 'bg-accent/10 text-accent'
+                        : 'hover:bg-surface-secondary'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                      transferUserId === u.id ? 'bg-accent text-white' : 'bg-surface-secondary text-muted'
+                    }`}>
+                      {u.username[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{u.username}</p>
+                      <p className="text-xs text-muted truncate">{u.email}</p>
+                    </div>
+                    {transferUserId === u.id && <Check className="w-4 h-4 ml-auto text-accent shrink-0" />}
+                  </button>
+                ))}
+                {users.filter(u => u.id !== transferApp?.ownerId).length === 0 && (
+                  <p className="p-4 text-sm text-muted text-center">Keine weiteren Benutzer vorhanden</p>
+                )}
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onPress={() => setTransferApp(null)}>
+                Abbrechen
+              </Button>
+              <Button
+                className="bg-accent text-white"
+                isDisabled={!transferUserId || transferring}
+                onPress={handleSubmitTransfer}
+              >
+                {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Übertragen
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </div>
   );
 }

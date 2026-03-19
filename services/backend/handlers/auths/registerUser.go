@@ -3,6 +3,7 @@ package auths
 import (
 	"net/http"
 
+	"just-apps-backend/config"
 	"just-apps-backend/functions/httperror"
 	"just-apps-backend/pkg/models"
 
@@ -13,6 +14,11 @@ import (
 )
 
 func RegisterUser(context *gin.Context, db *bun.DB) {
+	if config.Config != nil && config.Config.OIDC.DisableRegistration {
+		context.JSON(http.StatusForbidden, gin.H{"message": "Local account registration is disabled. Please use SSO to login."})
+		return
+	}
+
 	var user models.Users
 	if err := context.ShouldBindJSON(&user); err != nil {
 		httperror.StatusBadRequest(context, "Error parsing incoming data", err)

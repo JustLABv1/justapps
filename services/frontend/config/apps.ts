@@ -17,6 +17,18 @@ export interface AppField {
   value: string;
 }
 
+export interface DeploymentVariant {
+  name: string;
+  description: string;
+  dockerCommand?: string;
+  dockerNote?: string;
+  composeCommand?: string;
+  composeNote?: string;
+  helmCommand?: string;
+  helmNote?: string;
+  helmValues?: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -61,9 +73,15 @@ export interface AppConfig {
   collections?: string[];
   isFeatured?: boolean;
   knownIssue?: string;
+  authority?: string;
   ratingAvg?: number;
   ratingCount?: number;
   updatedAt?: string;
+  deploymentVariants?: DeploymentVariant[];
+  // Related apps (populated by GetApp)
+  relatedApps?: { id: string; name: string; icon?: string }[];
+  // Groups this app belongs to
+  appGroups?: { id: string; name: string }[];
 }
 
 export const getApps = (): AppConfig[] => {

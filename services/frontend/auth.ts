@@ -98,32 +98,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return token;
           }
 
-          // Exchange failed — fall back to using Keycloak claims directly
-          console.warn("Backend token exchange failed, using Keycloak claims as fallback.");
-          token.accessToken = keycloakIdToken;
-          token.backendTokenExpiresAt = Date.now() + 8 * 60 * 60 * 1000;
+          // Exchange failed — force re-authentication instead of using the raw Keycloak token.
+          // Using the raw Keycloak token is unsafe: the user may not yet exist in the backend DB,
+          // which would cause all write operations (create app, etc.) to silently fail with 401.
+          console.error("Backend token exchange failed. Requesting re-authentication.");
+          return { ...token, error: "ExchangeFailed" };
         }
 
-        // Extract role from Keycloak profile
-        const profileAny = profile as any;
-        const permissions = [
-          ...(profileAny.realm_access?.roles || []),
-          ...(profileAny.groups || []),
-          ...Object.values(profileAny.resource_access || {}).flatMap(
-            (c: any) => c.roles || []
-          ),
-        ].map((p) => String(p).toLowerCase());
-
-        const adminGroup = (
-          process.env.AUTH_ADMIN_GROUP || "admin"
-        ).toLowerCase();
-        const isAdmin = permissions.some(
-          (p) =>
-            p === adminGroup || p === `/${adminGroup}` || p === "admin"
-        );
-
-        token.role = isAdmin ? "admin" : "user";
-        return token;
+        // No id_token available — force re-auth
+        return { ...token, error: "ExchangeFailed" };
       }
 
       // --- Subsequent requests: check if backend token is still valid ---

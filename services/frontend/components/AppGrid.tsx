@@ -15,6 +15,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -73,14 +74,27 @@ export function AppGrid({ initialApps }: AppGridProps) {
       const matchesType = !selectedType ||
         (selectedType === 'reuse' && app.isReuse) ||
         (selectedType === 'install' && !app.isReuse);
+      const matchesGroup = !selectedGroup || app.appGroups?.some(g => g.id === selectedGroup);
 
-      return matchesSearch && matchesCategory && matchesStatus && matchesType;
+      return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup;
     });
-  }, [initialApps, searchQuery, selectedCategory, selectedStatus, selectedType]);
+  }, [initialApps, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup;
 
   const hasReuseApps = useMemo(() => initialApps.some(app => app.isReuse), [initialApps]);
+
+  const groups = useMemo(() => {
+    const groupMap = new Map<string, string>();
+    initialApps.forEach(app => {
+      app.appGroups?.forEach(g => {
+        if (!groupMap.has(g.id)) groupMap.set(g.id, g.name);
+      });
+    });
+    return Array.from(groupMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [initialApps]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -181,6 +195,35 @@ export function AppGrid({ initialApps }: AppGridProps) {
             </div>
           </div>
         )}
+
+        {groups.length > 0 && (
+          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Gruppe:</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={!selectedGroup ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedGroup(null)}
+                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedGroup ? 'text-background' : ''}`}
+                >
+                  Alle
+                </Button>
+                {groups.map((g) => (
+                  <Button
+                    key={g.id}
+                    variant={selectedGroup === g.id ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${selectedGroup === g.id ? 'text-background' : ''}`}
+                  >
+                    {g.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results count */}
@@ -198,6 +241,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSelectedCategory(null);
               setSelectedStatus(null);
               setSelectedType(null);
+              setSelectedGroup(null);
             }}
           >
             <X className="w-3.5 h-3.5" />
@@ -206,10 +250,12 @@ export function AppGrid({ initialApps }: AppGridProps) {
         )}
       </div>
 
-      {/* Apps grid */}
-      <section id="apps" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-12">
+      {/* Apps grid — masonry layout so cards size to their own content */}
+      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12">
         {filteredApps.map((app) => (
-          <AppCard key={app.id} app={app} />
+          <div key={app.id} className="break-inside-avoid mb-5">
+            <AppCard app={app} />
+          </div>
         ))}
       </section>
 
@@ -230,6 +276,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
               setSelectedCategory(null);
               setSelectedStatus(null);
               setSelectedType(null);
+              setSelectedGroup(null);
             }}
           >
             Filter zurücksetzen

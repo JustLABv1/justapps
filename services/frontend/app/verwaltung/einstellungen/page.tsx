@@ -1,19 +1,21 @@
 'use client';
 
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
-import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import { fetchApi, uploadFile } from '@/lib/api';
+import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Input,
-  Label,
-  Surface,
-  Switch,
-  TextField,
-  Tooltip
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Select,
+    Surface,
+    Switch,
+    TextField,
+    Tooltip
 } from '@heroui/react';
-import { ArrowDown, ArrowUp, ExternalLink, Globe, Layers, Loader2, Paintbrush, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
-import { useRef, useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, ExternalLink, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 type SettingsState = {
   allowAppSubmissions: boolean;
@@ -32,6 +34,9 @@ type SettingsState = {
   footerText: string;
   footerLinks: FooterLink[];
   showFlagBar: boolean;
+  appSortField: string;
+  appSortDirection: string;
+  pinnedApps: string[];
 };
 
 const defaultState: SettingsState = {
@@ -51,6 +56,9 @@ const defaultState: SettingsState = {
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  appSortField: 'name',
+  appSortDirection: 'asc',
+  pinnedApps: [],
 };
 
 export default function EinstellungenPage() {
@@ -61,6 +69,7 @@ export default function EinstellungenPage() {
   const [savedSection, setSavedSection] = useState<string | null>(null);
   const [uploading, setUploading] = useState<'logo' | 'logoDark' | 'favicon' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pinnedAppInput, setPinnedAppInput] = useState('');
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -92,6 +101,9 @@ export default function EinstellungenPage() {
           detailFields: (data.detailFields && data.detailFields.length > 0)
             ? data.detailFields
             : defaultDetailFields,
+          appSortField: data.appSortField || 'name',
+          appSortDirection: data.appSortDirection || 'asc',
+          pinnedApps: data.pinnedApps || [],
         });
       })
       .finally(() => setLoading(false));
@@ -527,6 +539,161 @@ export default function EinstellungenPage() {
             onPress={() => save({ footerLinks: settings.footerLinks }, 'footerLinks')}
           >
             {savedSection === 'footerLinks' ? 'Gespeichert ✓' : 'Links speichern'}
+          </Button>
+        </div>
+      </Surface>
+
+      {/* App Sort Configuration */}
+      <Surface className="p-6 border border-border/50 shadow-sm">
+        <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
+          <SortAsc className="w-4 h-4 text-accent" /> App-Sortierung
+        </h3>
+        <p className="text-xs text-muted mb-5">Legen Sie fest, nach welchem Kriterium Apps standardmäßig sortiert werden und welche Apps immer oben erscheinen.</p>
+
+        <div className="flex flex-col gap-5">
+          {/* Sort field + direction */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            <Select
+              className="flex-1"
+              selectedKey={settings.appSortField}
+              onSelectionChange={(key) => setSettings({ ...settings, appSortField: String(key) })}
+            >
+              <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Sortierfeld</Label>
+              <Select.Trigger>
+                <Select.Value />
+                <Select.Indicator />
+              </Select.Trigger>
+              <Select.Popover>
+                <ListBox>
+                  <ListBox.Item id="name" textValue="Name (A–Z)">Name (A–Z)<ListBox.ItemIndicator /></ListBox.Item>
+                  <ListBox.Item id="rating_avg" textValue="Bewertung">Bewertung<ListBox.ItemIndicator /></ListBox.Item>
+                  <ListBox.Item id="updated_at" textValue="Zuletzt aktualisiert">Zuletzt aktualisiert<ListBox.ItemIndicator /></ListBox.Item>
+                  <ListBox.Item id="status" textValue="Status">Status<ListBox.ItemIndicator /></ListBox.Item>
+                  <ListBox.Item id="authority" textValue="Herausgeber">Herausgeber<ListBox.ItemIndicator /></ListBox.Item>
+                </ListBox>
+              </Select.Popover>
+            </Select>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Richtung</Label>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={settings.appSortDirection === 'asc' ? 'primary' : 'secondary'}
+                  className={`gap-1.5 ${settings.appSortDirection === 'asc' ? 'bg-accent text-white' : ''}`}
+                  onPress={() => setSettings({ ...settings, appSortDirection: 'asc' })}
+                >
+                  <SortAsc className="w-3.5 h-3.5" /> Aufsteigend
+                </Button>
+                <Button
+                  size="sm"
+                  variant={settings.appSortDirection === 'desc' ? 'primary' : 'secondary'}
+                  className={`gap-1.5 ${settings.appSortDirection === 'desc' ? 'bg-accent text-white' : ''}`}
+                  onPress={() => setSettings({ ...settings, appSortDirection: 'desc' })}
+                >
+                  <SortDesc className="w-3.5 h-3.5" /> Absteigend
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Pinned apps */}
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Pin className="w-3.5 h-3.5 text-accent" />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted">Angepinnte Apps</span>
+            </div>
+            <p className="text-xs text-muted mb-3">Apps-IDs, die unabhängig von der Sortierung immer an erster Stelle angezeigt werden. Reihenfolge entspricht der Anzeigereihenfolge.</p>
+
+            <div className="flex flex-col gap-2 mb-3">
+              {settings.pinnedApps.length === 0 && (
+                <p className="text-xs text-muted/60 italic">Keine Apps angepinnt.</p>
+              )}
+              {settings.pinnedApps.map((appId, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-lg px-3 py-2">
+                  <Pin className="w-3 h-3 text-accent shrink-0" />
+                  <span className="flex-1 text-sm font-mono truncate">{appId}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-6 w-6 p-0"
+                      isDisabled={idx === 0}
+                      onPress={() => {
+                        const pins = [...settings.pinnedApps];
+                        [pins[idx - 1], pins[idx]] = [pins[idx], pins[idx - 1]];
+                        setSettings({ ...settings, pinnedApps: pins });
+                      }}
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-6 w-6 p-0"
+                      isDisabled={idx === settings.pinnedApps.length - 1}
+                      onPress={() => {
+                        const pins = [...settings.pinnedApps];
+                        [pins[idx], pins[idx + 1]] = [pins[idx + 1], pins[idx]];
+                        setSettings({ ...settings, pinnedApps: pins });
+                      }}
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-6 w-6 p-0 text-danger"
+                      onPress={() => {
+                        const pins = settings.pinnedApps.filter((_, i) => i !== idx);
+                        setSettings({ ...settings, pinnedApps: pins });
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <TextField
+                className="flex-1"
+                value={pinnedAppInput}
+                onChange={(val) => setPinnedAppInput(val)}
+              >
+                <Input placeholder="App-ID eingeben (z.B. nextcloud)" className="bg-field-background font-mono text-sm" />
+              </TextField>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-1.5 shrink-0"
+                isDisabled={!pinnedAppInput.trim() || settings.pinnedApps.includes(pinnedAppInput.trim())}
+                onPress={() => {
+                  const id = pinnedAppInput.trim();
+                  if (id && !settings.pinnedApps.includes(id)) {
+                    setSettings({ ...settings, pinnedApps: [...settings.pinnedApps, id] });
+                    setPinnedAppInput('');
+                  }
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" /> Hinzufügen
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-4 pt-4 border-t border-border">
+          <Button
+            className="bg-accent text-white"
+            isDisabled={saving}
+            onPress={() => save({
+              appSortField: settings.appSortField,
+              appSortDirection: settings.appSortDirection,
+              pinnedApps: settings.pinnedApps,
+            }, 'sort')}
+          >
+            {savedSection === 'sort' ? 'Gespeichert ✓' : 'Sortierung speichern'}
           </Button>
         </div>
       </Surface>
