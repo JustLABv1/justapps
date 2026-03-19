@@ -42,6 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Session expired or refresh failed, logging out...');
       logout();
     }
+    if (s?.error === 'ExchangeFailed') {
+      // Backend exchange failed on login — sign out of next-auth and prompt re-auth
+      console.warn('Backend token exchange failed during OIDC login, re-authenticating...');
+      nextAuthSignOut({ callbackUrl: '/login' });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s?.error]);
 
@@ -72,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchedUser, oidcUser, status, localUser]);
 
   const token = React.useMemo(() => {
-    return (status === 'authenticated') ? (s?.idToken || s?.accessToken) : (status === 'unauthenticated' ? localToken : null);
+    return (status === 'authenticated') ? (s?.idToken || s?.accessToken || null) : (status === 'unauthenticated' ? localToken : null);
   }, [status, s?.idToken, s?.accessToken, localToken]);
 
   // Sync token to localStorage when OIDC session changes manually to avoid race conditions

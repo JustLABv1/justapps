@@ -14,16 +14,15 @@ import {
   ChevronLeft,
   ExternalLink,
   Github,
-  Globe,
   Layers,
   LayoutDashboard,
+  Link2,
   Loader2,
   Pencil,
   Scale,
   Server,
   Share2,
-  Star,
-  Tag,
+  Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -134,7 +133,7 @@ export default function AppPage() {
         {isAdmin && (
           <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
             <NextLink
-              href={`/verwaltung?edit=${app.id}`}
+              href={`/verwaltung/apps/${app.id}/edit`}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -403,6 +402,14 @@ export default function AppPage() {
               )}
               <Tabs.Indicator />
             </Tabs.Tab>
+            {(app.relatedApps && app.relatedApps.length > 0) && (
+              <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+                <Link2 className="w-4 h-4" />
+                Verwandte Apps
+                <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{app.relatedApps.length}</span>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            )}
           </Tabs.List>
         </Tabs.ListContainer>
 
@@ -437,6 +444,53 @@ export default function AppPage() {
         <Tabs.Panel id="ratings">
           <RatingSection appId={app.id} />
         </Tabs.Panel>
+
+        {/* Verwandte Apps */}
+        {app.relatedApps && app.relatedApps.length > 0 && (
+          <Tabs.Panel id="related">
+            <div className="flex flex-col gap-4">
+              {app.appGroups && app.appGroups.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {app.appGroups.map(g => (
+                    <Chip key={g.id} size="sm" variant="soft" color="accent" className="text-xs font-semibold">
+                      {g.name}
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {app.relatedApps.map(related => (
+                  <NextLink
+                    key={related.id}
+                    href={`/apps/${related.id}`}
+                    className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                      {related.icon?.startsWith('http') ? (
+                        <Image
+                          src={related.icon}
+                          alt={related.name}
+                          width={40}
+                          height={40}
+                          className="object-contain p-1"
+                          unoptimized
+                        />
+                      ) : (
+                        related.icon || "🏛️"
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
+                      <p className="text-xs text-muted flex items-center gap-1">
+                        <Link2 className="w-3 h-3" /> {related.id}
+                      </p>
+                    </div>
+                  </NextLink>
+                ))}
+              </div>
+            </div>
+          </Tabs.Panel>
+        )}
       </Tabs>
 
       {/* ── Footer meta ── */}

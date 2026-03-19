@@ -2,24 +2,25 @@
 
 import { AppConfig } from '@/config/apps';
 import {
-  Button,
-  Chip,
-  Dropdown,
-  EmptyState,
-  Input,
-  Pagination,
-  Table
+    Button,
+    Chip,
+    Dropdown,
+    EmptyState,
+    Input,
+    Pagination,
+    Table
 } from '@heroui/react';
 import {
-  ExternalLink,
-  Info,
-  Lock,
-  MoreVertical,
-  Pencil,
-  Search,
-  Star,
-  Trash2,
-  Unlock
+    ExternalLink,
+    Info,
+    Lock,
+    MoreVertical,
+    Pencil,
+    Search,
+    Star,
+    Trash2,
+    Unlock,
+    UserRoundCog
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -30,9 +31,10 @@ interface AppTableProps {
   handleEditApp: (app: AppConfig) => void;
   handleDeleteApp: (id: string) => void;
   handleToggleAppLock: (app: AppConfig) => void;
+  handleTransferApp?: (app: AppConfig) => void;
 }
 
-export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleAppLock }: AppTableProps) {
+export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleAppLock, handleTransferApp }: AppTableProps) {
   const router = useRouter();
   const [filterValue, setFilterValue] = useState("");
   const [page, setPage] = useState(1);
@@ -254,6 +256,7 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                         <Dropdown.Popover>
                           <Dropdown.Menu onAction={(key) => {
                             if (key === 'lock') handleToggleAppLock(app);
+                            if (key === 'transfer' && handleTransferApp) handleTransferApp(app);
                             if (key === 'delete') handleDeleteApp(app.id);
                           }}>
                             <Dropdown.Item id="lock" textValue={app.isLocked ? 'Freigeben' : 'Sperren'} className={app.isLocked ? "text-success" : "text-warning"}>
@@ -262,6 +265,13 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                                 {app.isLocked ? 'Freigeben' : 'Sperren'}
                               </div>
                             </Dropdown.Item>
+                            {handleTransferApp && (
+                              <Dropdown.Item id="transfer" textValue="Besitzer übertragen">
+                                <div className="flex items-center gap-2">
+                                  <UserRoundCog className="w-4 h-4" /> Besitzer übertragen
+                                </div>
+                              </Dropdown.Item>
+                            )}
                             <Dropdown.Item id="delete" textValue="Löschen" className="text-danger">
                               <div className="flex items-center gap-2">
                                 <Trash2 className="w-4 h-4" /> Löschen

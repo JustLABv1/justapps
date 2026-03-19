@@ -4,6 +4,7 @@ import { Button, Card, Form, Input, Label, Link, Separator, TextField } from '@h
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { fetchApi } from '../../lib/api';
 
 export default function LoginPage() {
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { user, login, oidcLogin } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -51,6 +53,8 @@ export default function LoginPage() {
     }
   };
 
+  const showLocalAuth = !settings.disableLocalAuth;
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-12rem)] px-4">
       <Card className="w-full max-w-md" variant="default">
@@ -62,58 +66,64 @@ export default function LoginPage() {
         </Card.Header>
 
         <Card.Content className="p-6 pt-4">
-          <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <TextField isRequired className="w-full" onChange={setEmail}>
-              <Label className="text-sm font-medium text-foreground mb-1">Email oder Benutzername</Label>
-              <Input
-                placeholder="E-Mail eingeben"
-                className="w-full"
-                value={email}
-              />
-            </TextField>
+          {showLocalAuth && (
+            <>
+              <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <TextField isRequired className="w-full" onChange={setEmail}>
+                  <Label className="text-sm font-medium text-foreground mb-1">Email oder Benutzername</Label>
+                  <Input
+                    placeholder="E-Mail eingeben"
+                    className="w-full"
+                    value={email}
+                  />
+                </TextField>
 
-            <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-              <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
-              <Input
-                placeholder="Passwort eingeben"
-                className="w-full"
-                value={password}
-              />
-            </TextField>
+                <TextField isRequired className="w-full" type="password" onChange={setPassword}>
+                  <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
+                  <Input
+                    placeholder="Passwort eingeben"
+                    className="w-full"
+                    value={password}
+                  />
+                </TextField>
 
-            {error && <p className="text-danger text-sm">{error}</p>}
+                {error && <p className="text-danger text-sm">{error}</p>}
 
-            <Button 
-              type="submit" 
-              isPending={loading}
-              className="w-full mt-2"
-            >
-              {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
-            </Button>
-          </Form>
+                <Button 
+                  type="submit" 
+                  isPending={loading}
+                  className="w-full mt-2"
+                >
+                  {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
+                </Button>
+              </Form>
 
-          <div className="my-5 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted font-medium uppercase">Oder</span>
-            <Separator className="flex-1" />
-          </div>
+              <div className="my-5 flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-xs text-muted font-medium uppercase">Oder</span>
+                <Separator className="flex-1" />
+              </div>
+            </>
+          )}
 
           <Button
             onPress={handleOIDCLogin}
-            variant="outline"
+            variant={showLocalAuth ? 'outline' : 'primary'}
             className="w-full"
           >
             Mit Keycloak anmelden
           </Button>
 
-          <div className="mt-5 text-center text-sm">
-            <p className="text-muted">
-              Noch keinen Account?{' '}
-              <Link href="/register" className="text-accent font-medium">
-                Registrieren
-              </Link>
-            </p>
-          </div>
+          {showLocalAuth && !settings.disableRegistration && (
+            <div className="mt-5 text-center text-sm">
+              <p className="text-muted">
+                Noch keinen Account?{' '}
+                <Link href="/register" className="text-accent font-medium">
+                  Registrieren
+                </Link>
+              </p>
+            </div>
+          )}
         </Card.Content>
       </Card>
     </div>

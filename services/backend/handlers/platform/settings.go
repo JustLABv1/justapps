@@ -3,6 +3,7 @@ package platform
 import (
 	"errors"
 
+	"just-apps-backend/config"
 	"just-apps-backend/functions/httperror"
 	"just-apps-backend/pkg/models"
 
@@ -10,19 +11,26 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// settingsResponse wraps PlatformSettings with runtime config values (not stored in DB).
+type settingsResponse struct {
+	models.PlatformSettings
+	DisableLocalAuth    bool `json:"disableLocalAuth"`
+	DisableRegistration bool `json:"disableRegistration"`
+}
+
 // defaultDetailFields is the built-in field schema used when none has been configured yet.
 var defaultDetailFields = []models.DetailFieldDef{
-	{Key: "focus",          Label: "Themenfeld",      Icon: "Layers"},
-	{Key: "app_type",       Label: "Anwendungstyp",   Icon: "Globe"},
-	{Key: "use_case",       Label: "Anwendungsfall",  Icon: "FileCode"},
-	{Key: "visualization",  Label: "Visualisierung",  Icon: "Eye"},
-	{Key: "deployment",     Label: "Deployment",      Icon: "Server"},
-	{Key: "infrastructure", Label: "Infrastruktur",   Icon: "LayoutDashboard"},
-	{Key: "database",       Label: "Datenbasis",      Icon: "Database"},
-	{Key: "transferability",Label: "Übertragbarkeit", Icon: "ArrowRightLeft"},
-	{Key: "authority",      Label: "Behörde",         Icon: "Globe"},
+	{Key: "focus", Label: "Themenfeld", Icon: "Layers"},
+	{Key: "app_type", Label: "Anwendungstyp", Icon: "Globe"},
+	{Key: "use_case", Label: "Anwendungsfall", Icon: "FileCode"},
+	{Key: "visualization", Label: "Visualisierung", Icon: "Eye"},
+	{Key: "deployment", Label: "Deployment", Icon: "Server"},
+	{Key: "infrastructure", Label: "Infrastruktur", Icon: "LayoutDashboard"},
+	{Key: "database", Label: "Datenbasis", Icon: "Database"},
+	{Key: "transferability", Label: "Übertragbarkeit", Icon: "ArrowRightLeft"},
+	{Key: "authority", Label: "Behörde", Icon: "Globe"},
 	{Key: "contact_person", Label: "Ansprechpartner", Icon: "User"},
-	{Key: "additional_info",Label: "Sonstiges",       Icon: "ClipboardList"},
+	{Key: "additional_info", Label: "Sonstiges", Icon: "ClipboardList"},
 }
 
 // GetSettings - Fetches the platform settings. Open to all users.
@@ -52,7 +60,11 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 		}
 	}
 
-	c.JSON(200, settings)
+	c.JSON(200, settingsResponse{
+		PlatformSettings:    settings,
+		DisableLocalAuth:    config.Config != nil && config.Config.OIDC.DisableLocalAuth,
+		DisableRegistration: config.Config != nil && config.Config.OIDC.DisableRegistration,
+	})
 }
 
 func UpdateSettings(c *gin.Context, db *bun.DB) {
@@ -78,6 +90,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
 			"footer_text", "footer_links", "show_flag_bar",
+			"app_sort_field", "app_sort_direction", "pinned_apps",
 		).
 		Where("id = ?", "default").
 		Exec(c)

@@ -1,8 +1,8 @@
 "use client";
 
-import { AppConfig } from '@/config/apps';
-import { Alert, Button, Tabs, Tooltip } from '@heroui/react';
-import { Check, Code2, Copy, FileCode, Info, Ship, Terminal } from 'lucide-react';
+import { AppConfig, DeploymentVariant } from '@/config/apps';
+import { Alert, Button, ListBox, Select, Tabs, Tooltip } from '@heroui/react';
+import { Check, Code2, Copy, FileCode, Info, Layers, Ship, Terminal } from 'lucide-react';
 import React, { useState } from 'react';
 
 interface DeploymentAssistantProps {
@@ -12,22 +12,36 @@ interface DeploymentAssistantProps {
 export const DeploymentAssistant: React.FC<DeploymentAssistantProps> = ({ app }) => {
   const [copied, setCopied] = useState(false);
   const [showValues, setShowValues] = useState(false);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(-1);
 
-  const helmValues = app.customHelmValues;
+  const variants = app.deploymentVariants ?? [];
+  const hasVariants = variants.length > 0;
 
-  const helmCommand = app.customHelmCommand || `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}
+  // Active variant overrides base commands when selected
+  const activeVariant: DeploymentVariant | null = selectedVariantIdx >= 0 ? (variants[selectedVariantIdx] ?? null) : null;
+
+  const helmValues = activeVariant?.helmValues || app.customHelmValues;
+
+  const helmCommand = (activeVariant?.helmCommand || app.customHelmCommand) ||
+    `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}
 helm install ${app.id} bund/${app.id} ${showValues ? '-f values.yaml' : ''}`;
 
-  const dockerCommand = app.customDockerCommand || `docker pull ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
+  const dockerCommand = (activeVariant?.dockerCommand || app.customDockerCommand) ||
+    `docker pull ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
 docker run -d --name ${app.id} -p 8080:80 ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}`;
 
-  const composeCommand = app.customComposeCommand || `version: '3.8'
+  const composeCommand = (activeVariant?.composeCommand || app.customComposeCommand) ||
+    `version: '3.8'
 services:
   ${app.id}:
     image: ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
     ports:
       - "8080:80"
     restart: always`;
+
+  const helmNote = activeVariant?.helmNote || app.customHelmNote;
+  const composeNote = activeVariant?.composeNote || app.customComposeNote;
+  const dockerNote = activeVariant?.dockerNote || app.customDockerNote;
 
   const showDocker = app.showDocker !== false;
   const showCompose = app.showCompose !== false;
@@ -49,6 +63,40 @@ services:
         <Terminal className="w-7 h-7 text-accent" />
         Deployment Assistant
       </div>
+
+      {/* Variant selector */}
+      {hasVariants && (
+        <div className="mb-6 p-4 bg-surface rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground shrink-0">
+            <Layers className="w-4 h-4 text-accent" />
+            Deployment-Variante:
+          </div>
+          <Select
+            aria-label="Deployment-Variante wählen"
+            selectedKey={selectedVariantIdx === -1 ? 'base' : String(selectedVariantIdx)}
+            onSelectionChange={(key) => {
+              const k = String(key);
+              setSelectedVariantIdx(k === 'base' ? -1 : parseInt(k));
+            }}
+            className="flex-1 min-w-48"
+          >
+            <Select.Trigger>
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item id="base" textValue="Standard">Standard<ListBox.ItemIndicator /></ListBox.Item>
+                {variants.map((v, i) => (
+                  <ListBox.Item key={i} id={String(i)} textValue={v.name}>{v.name}<ListBox.ItemIndicator /></ListBox.Item>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
+          {activeVariant?.description && (
+            <p className="text-xs text-muted">{activeVariant.description}</p>
+          )}
+        </div>
+      )}
 
       <Alert status="accent" className="mb-6">
         <Alert.Indicator>
@@ -152,7 +200,7 @@ services:
             )}
 
             <p className="text-sm text-muted mt-8 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border font-medium">
-              <span className="text-accent font-bold">Zusatzinfo:</span> {app.customHelmNote || 'Standard Helm Installation für Kubernetes Umgebungen.'}
+              <span className="text-accent font-bold">Zusatzinfo:</span> {helmNote || 'Standard Helm Installation für Kubernetes Umgebungen.'}
             </p>
           </Tabs.Panel>
         )}
@@ -182,7 +230,7 @@ services:
               </Tooltip>
             </div>
             <p className="text-sm text-muted mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-accent font-bold">Hinweis:</span> {app.customComposeNote || 'Standard Docker Compose Setup für lokale Erprobung.'}
+              <span className="text-accent font-bold">Hinweis:</span> {composeNote || 'Standard Docker Compose Setup für lokale Erprobung.'}
             </p>
           </Tabs.Panel>
         )}
@@ -212,7 +260,7 @@ services:
               </Tooltip>
             </div>
             <p className="text-sm text-muted mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-accent font-bold">Hinweis:</span> {app.customDockerNote || 'Direkter Docker-Start für Testzwecke.'}
+              <span className="text-accent font-bold">Hinweis:</span> {dockerNote || 'Direkter Docker-Start für Testzwecke.'}
             </p>
           </Tabs.Panel>
         )}

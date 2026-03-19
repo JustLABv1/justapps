@@ -26,13 +26,21 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 		if err == nil {
 			context.Set("user_email", sessionClaims.Email)
 			context.Set("username", sessionClaims.PreferredUsername)
-			context.Set("role", sessionClaims.Role)
 
-			// Lookup user ID
+			// Load user from DB to get current role and live permissions (not stale cached claims)
 			var user models.Users
-			err = db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
-			if err == nil {
+			dbErr := db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
+			if dbErr == nil {
+				if user.Disabled {
+					httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
+					return
+				}
 				context.Set("user_id", user.ID)
+				context.Set("role", user.Role)
+			} else {
+				// Fallback to cached role from token claims if DB lookup fails
+				context.Set("role", sessionClaims.Role)
+				log.Warnf("OIDC session token user %s not found in DB: %v", sessionClaims.Email, dbErr)
 			}
 
 			context.Next()
@@ -51,17 +59,25 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				context.Set("user_email", claims.Email)
 				context.Set("username", claims.PreferredUser)
 
-				// Lookup user ID
+				// Load user from DB to get current role and permissions
 				var user models.Users
-				err = db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(context)
-				if err == nil {
+				dbErr := db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(context)
+				if dbErr == nil {
+					if user.Disabled {
+						httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
+						return
+					}
 					context.Set("user_id", user.ID)
-				}
-
-				if auth.IsAdminOIDC(claims) {
-					context.Set("role", "admin")
+					context.Set("role", user.Role)
 				} else {
-					context.Set("role", "user")
+					// User not in DB yet (first login with raw Keycloak token, exchange not yet complete)
+					// Set role from OIDC claims but leave user_id unset to enforce re-authentication
+					log.Warnf("OIDC user %s not found in DB — exchange may have failed. User_id not set.", claims.Email)
+					if auth.IsAdminOIDC(claims) {
+						context.Set("role", "admin")
+					} else {
+						context.Set("role", "user")
+					}
 				}
 				context.Next()
 				return

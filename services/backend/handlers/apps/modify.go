@@ -162,6 +162,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
 			"tags", "collections", "live_demos", "updated_at",
 			"is_reuse", "reuse_requirements", "known_issue",
+			"deployment_variants",
 		)
 
 	// Admin can also update admin-only fields if they are sent?
@@ -244,4 +245,53 @@ func DeleteApp(c *gin.Context, db *bun.DB) {
 	}
 
 	c.Status(204)
+}
+
+// TransferApp transfers ownership of an app to another user. Admin-only.
+func TransferApp(c *gin.Context, db *bun.DB) {
+	id := c.Param("id")
+
+	var body struct {
+		NewOwnerID string `json:"newOwnerId" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		httperror.StatusBadRequest(c, "newOwnerId is required", err)
+		return
+	}
+
+	newOwnerUUID, err := uuid.Parse(body.NewOwnerID)
+	if err != nil {
+		httperror.StatusBadRequest(c, "Invalid newOwnerId format", err)
+		return
+	}
+
+	// Ensure the target user exists and is not disabled
+	var newOwner models.Users
+	if err := db.NewSelect().Model(&newOwner).Where("id = ?", newOwnerUUID).Scan(c); err != nil {
+		httperror.StatusNotFound(c, "Target user not found", err)
+		return
+	}
+	if newOwner.Disabled {
+		httperror.Forbidden(c, "Target user is disabled", errors.New("user disabled"))
+		return
+	}
+
+	// Ensure the app exists
+	exists, err := db.NewSelect().TableExpr("apps").Where("id = ?", id).Count(c)
+	if err != nil || exists == 0 {
+		httperror.StatusNotFound(c, "App not found", err)
+		return
+	}
+
+	_, err = db.NewUpdate().
+		TableExpr("apps").
+		Set("owner_id = ?", newOwnerUUID).
+		Where("id = ?", id).
+		Exec(c)
+	if err != nil {
+		httperror.InternalServerError(c, "Error transferring app", err)
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "App transferred successfully"})
 }

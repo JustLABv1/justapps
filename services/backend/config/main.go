@@ -51,11 +51,13 @@ type JWTConf struct {
 }
 
 type OIDCConf struct {
-	Enabled    bool   `mapstructure:"enabled"`
-	Issuer     string `mapstructure:"issuer"`
-	ClientID   string `mapstructure:"client_id"`
-	AdminGroup string `mapstructure:"admin_group"`
-	Insecure   bool   `mapstructure:"insecure"`
+	Enabled             bool   `mapstructure:"enabled"`
+	Issuer              string `mapstructure:"issuer"`
+	ClientID            string `mapstructure:"client_id"`
+	AdminGroup          string `mapstructure:"admin_group"`
+	Insecure            bool   `mapstructure:"insecure"`
+	DisableLocalAuth    bool   `mapstructure:"disable_local_auth"`
+	DisableRegistration bool   `mapstructure:"disable_registration"`
 }
 
 // GetInstance returns the singleton configuration manager instance
@@ -98,6 +100,8 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		"oidc.client_id":              "BACKEND_OIDC_CLIENT_ID",
 		"oidc.admin_group":            "BACKEND_OIDC_ADMIN_GROUP",
 		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
+		"oidc.disable_local_auth":     "BACKEND_OIDC_DISABLE_LOCAL_AUTH",
+		"oidc.disable_registration":   "BACKEND_OIDC_DISABLE_REGISTRATION",
 		"cors.allowed_origins":        "BACKEND_CORS_ALLOWED_ORIGINS",
 	}
 

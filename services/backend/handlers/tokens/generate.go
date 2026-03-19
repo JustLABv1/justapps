@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"just-apps-backend/config"
 	"just-apps-backend/functions/auth"
 	"just-apps-backend/functions/httperror"
 	"just-apps-backend/pkg/models"
@@ -21,6 +22,11 @@ type TokenRequest struct {
 }
 
 func GenerateTokenUser(db *bun.DB, context *gin.Context) {
+	if config.Config != nil && config.Config.OIDC.DisableLocalAuth {
+		context.JSON(http.StatusForbidden, gin.H{"message": "Local authentication is disabled. Please use SSO to login."})
+		return
+	}
+
 	var request TokenRequest
 	if err := context.ShouldBindJSON(&request); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

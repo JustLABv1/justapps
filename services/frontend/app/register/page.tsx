@@ -4,6 +4,7 @@ import { Button, Card, Form, Input, Label, Link, Separator, TextField } from '@h
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { fetchApi } from '../../lib/api';
 
 export default function RegisterPage() {
@@ -13,13 +14,18 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { user, oidcLogin } = useAuth();
+  const { settings } = useSettings();
   const router = useRouter();
 
   React.useEffect(() => {
     if (user) {
       router.push('/');
     }
-  }, [user, router]);
+    // Redirect if registration or local auth is disabled
+    if (settings.disableRegistration || settings.disableLocalAuth) {
+      router.push('/login');
+    }
+  }, [user, router, settings.disableRegistration, settings.disableLocalAuth]);
 
   const handleOIDCLogin = () => {
     oidcLogin();

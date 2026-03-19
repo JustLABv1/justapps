@@ -60,5 +60,60 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 				apps.DeleteApp(c, db)
 			})
 		}
+
+		// Transfer ownership — admin only
+		transferGroup := appsGroup.Group("/:id/transfer")
+		transferGroup.Use(middlewares.Admin(db))
+		{
+			transferGroup.PUT("", func(c *gin.Context) {
+				apps.TransferApp(c, db)
+			})
+		}
+
+		// 3. Related apps — read is public, write requires auth
+		appsGroup.GET("/:id/related", func(c *gin.Context) {
+			apps.GetRelatedApps(c, db)
+		})
+		relatedAuthGroup := appsGroup.Group("/:id/related")
+		relatedAuthGroup.Use(middlewares.Auth(db))
+		{
+			relatedAuthGroup.POST("", func(c *gin.Context) {
+				apps.AddRelatedApp(c, db)
+			})
+			relatedAuthGroup.DELETE("/:relatedId", func(c *gin.Context) {
+				apps.RemoveRelatedApp(c, db)
+			})
+		}
+	}
+
+	// App groups — read is public, write requires admin
+	groupsGroup := router.Group("/app-groups")
+	{
+		groupsGroup.GET("", func(c *gin.Context) {
+			apps.ListGroups(c, db)
+		})
+		groupsGroup.GET("/:groupId/members", func(c *gin.Context) {
+			apps.GetGroupMembers(c, db)
+		})
+
+		groupsAdminGroup := groupsGroup.Group("")
+		groupsAdminGroup.Use(middlewares.Admin(db))
+		{
+			groupsAdminGroup.POST("", func(c *gin.Context) {
+				apps.CreateGroup(c, db)
+			})
+			groupsAdminGroup.PUT("/:groupId", func(c *gin.Context) {
+				apps.UpdateGroup(c, db)
+			})
+			groupsAdminGroup.DELETE("/:groupId", func(c *gin.Context) {
+				apps.DeleteGroup(c, db)
+			})
+			groupsAdminGroup.POST("/:groupId/members", func(c *gin.Context) {
+				apps.AddGroupMember(c, db)
+			})
+			groupsAdminGroup.DELETE("/:groupId/members/:appId", func(c *gin.Context) {
+				apps.RemoveGroupMember(c, db)
+			})
+		}
 	}
 }

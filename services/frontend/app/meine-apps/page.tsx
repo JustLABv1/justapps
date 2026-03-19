@@ -1,21 +1,20 @@
 'use client';
 
-import { AppModal } from '@/components/AppModal';
 import { AppConfig } from '@/config/apps';
 import {
-  Button,
-  Card,
-  Chip
+    Button,
+    Card,
+    Chip
 } from '@heroui/react';
 import {
-  ChevronLeft,
-  ExternalLink,
-  Loader2,
-  Lock,
-  Pencil,
-  Plus,
-  ShieldCheck,
-  Trash2
+    ChevronLeft,
+    ExternalLink,
+    Loader2,
+    Lock,
+    Pencil,
+    Plus,
+    ShieldCheck,
+    Trash2
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -32,12 +31,7 @@ function MyAppsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal & Form states
-  const [isAppModalOpen, setIsAppModalOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<AppConfig | null>(null);
 
-  const [iconInput, setIconInput] = useState('');
-  const [appFormData, setAppFormData] = useState<Partial<AppConfig>>({});
 
   // Auth check
   useEffect(() => {
@@ -88,62 +82,19 @@ function MyAppsContent() {
 
   const handleCreateApp = () => {
     if (!user?.canSubmitApps) {
-      alert("Submission blocked for your account");
+      alert('Submission blocked for your account');
       return;
     }
     if (!settings.allowAppSubmissions && user?.role !== 'admin') {
-      alert("App submissions are currently disabled system-wide.");
+      alert('App submissions are currently disabled system-wide.');
       return;
     }
-    setSelectedApp(null);
-    setAppFormData({
-      id: '',
-      name: '',
-      description: '',
-      categories: [],
-      icon: '🏛️',
-      techStack: [],
-      license: 'MIT',
-      markdownContent: '',
-      liveUrl: '',
-      liveDemos: [],
-      repoUrl: '',
-      repositories: [],
-      customLinks: [],
-      dockerRepo: '',
-      helmRepo: '',
-      docsUrl: '',
-      focus: '',
-      appType: '',
-      useCase: '',
-      visualization: '',
-      deployment: '',
-      infrastructure: '',
-      database: '',
-      additionalInfo: '',
-      status: 'POC',
-      transferability: '',
-      contactPerson: '',
-      customDockerCommand: '',
-      customComposeCommand: '',
-      customHelmCommand: '',
-      customDockerNote: '',
-      customComposeNote: '',
-      customHelmNote: '',
-      hasDeploymentAssistant: true,
-      showDocker: true,
-      showCompose: true,
-      showHelm: true,
-      customHelmValues: ''
-    });
-    setIsAppModalOpen(true);
+    router.push('/meine-apps/new');
   };
 
   const handleEditApp = (app: AppConfig) => {
     if (app.isLocked) return;
-    setSelectedApp(app);
-    setAppFormData({ ...app });
-    setIsAppModalOpen(true);
+    router.push(`/meine-apps/${app.id}/edit`);
   };
 
   const handleDeleteApp = async (app: AppConfig) => {
@@ -154,47 +105,13 @@ function MyAppsContent() {
     }
   };
 
-  const handleAppSubmit = async (finalData: Partial<AppConfig>) => {
-    const method = selectedApp ? 'PUT' : 'POST';
-    const url = selectedApp ? `/apps/${selectedApp.id}` : '/apps';
-
-    try {
-      const res = await fetchApi(url, {
-        method,
-        body: JSON.stringify(finalData)
-      });
-      if (res.ok) {
-        loadData();
-        return true;
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        setError(errData.message || `Fehler beim Speichern: ${res.statusText}`);
-        return false;
-      }
-    } catch (err) {
-      console.error(err);
-      setError(`Verbindungsfehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
-      return false;
-    }
-  };
-
-  // Deep linking
+  // Deep linking: ?edit=<id> → redirect to full editor page
   useEffect(() => {
     const editId = searchParams?.get('edit');
-    if (editId && apps.length > 0) {
-      const appToEdit = apps.find(a => a.id === editId);
-      if (appToEdit && !appToEdit.isLocked) {
-        const timer = setTimeout(() => {
-          handleEditApp(appToEdit);
-          const url = new URL(window.location.href);
-          url.searchParams.delete('edit');
-          window.history.replaceState({}, '', url.pathname);
-        }, 0);
-        return () => clearTimeout(timer);
-      }
+    if (editId) {
+      router.replace(`/meine-apps/${editId}/edit`);
     }
-
-  }, [searchParams, apps]);
+  }, [searchParams, router]);
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -362,14 +279,6 @@ function MyAppsContent() {
         </div>
       )}
 
-      {/* App Modal */}
-      <AppModal
-        isOpen={isAppModalOpen}
-        onOpenChange={setIsAppModalOpen}
-        selectedApp={selectedApp}
-        onSubmit={handleAppSubmit}
-        initialData={appFormData}
-      />
     </div>
   );
 }

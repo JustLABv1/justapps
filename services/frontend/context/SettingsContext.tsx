@@ -34,6 +34,13 @@ export interface StoreSettings {
   footerText: string;
   footerLinks: FooterLink[];
   showFlagBar: boolean;
+  // Auth config (runtime, not stored in DB)
+  disableLocalAuth: boolean;
+  disableRegistration: boolean;
+  // App sort configuration
+  appSortField: string;
+  appSortDirection: string;
+  pinnedApps: string[];
 }
 
 /** Default field schema — matches the 11 legacy columns so apps with old data still display correctly. */
@@ -69,6 +76,11 @@ export const defaultSettings: StoreSettings = {
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  disableLocalAuth: false,
+  disableRegistration: false,
+  appSortField: 'name',
+  appSortDirection: 'asc',
+  pinnedApps: [],
 };
 
 interface SettingsContextType {
