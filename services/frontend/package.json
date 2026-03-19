@@ -11,7 +11,7 @@
     "check": "pnpm typecheck && pnpm lint"
   },
   "dependencies": {
-    "@heroui/react": "3.0.0-beta.8",
+    "@heroui/react": "3.0.0-rc.1",
     "@heroui/styles": "3.0.0-beta.8",
     "js-yaml": "^4.1.1",
     "lucide-react": "^0.563.0",
