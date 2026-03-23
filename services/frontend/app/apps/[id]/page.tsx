@@ -119,6 +119,9 @@ export default function AppPage() {
   if (statusInfo?.label) {
     metaFields.unshift({ label: "Status", value: statusInfo.label, icon: resolveIcon('Activity') });
   }
+  if (app.authority) {
+    metaFields.push({ label: "Herausgeber", value: app.authority, icon: resolveIcon('Building2') });
+  }
 
   return (
     <div className="max-w-5xl mx-auto pb-20">
