@@ -1,8 +1,8 @@
 package admins
 
 import (
-	"just-apps-backend/functions/httperror"
-	"just-apps-backend/pkg/models"
+	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

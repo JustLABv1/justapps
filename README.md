@@ -107,7 +107,7 @@ jwt:
 oidc:
   enabled: true
   issuer: https://your-keycloak/realms/your-realm
-  client_id: just-apps
+  client_id: justapps
   admin_group: admin
 ```
 
@@ -131,7 +131,7 @@ See [.env.example](.env.example) for a full reference.
 
 Configure your Keycloak realm and client:
 
-- **Client ID**: `just-apps`
+- **Client ID**: `justapps`
 - **Access Type**: `Confidential`
 - **Valid Redirect URIs**: `http://localhost:3000/api/auth/callback/keycloak`
 - **Admin group**: members of the configured `AUTH_ADMIN_GROUP` receive admin rights
@@ -141,15 +141,15 @@ Configure your Keycloak realm and client:
 Build and run the combined image (frontend + backend in a single container):
 
 ```bash
-docker build -t just-apps .
+docker build -t justapps .
 
 docker run -p 3000:3000 -p 8080:8080 \
-  -v /etc/just-apps:/etc/just-apps \
+  -v /etc/justapps:/etc/justapps \
   -v /app/data:/app/data \
-  just-apps
+  justapps
 ```
 
-The container expects a config file at `/etc/just-apps/config.yaml`.
+The container expects a config file at `/etc/justapps/config.yaml`.
 
 ### Pre-built image
 
@@ -161,11 +161,11 @@ Available tags: `latest`, `1`, `1.0`, `1.0.0`, `sha-<commit>`
 
 ## Kubernetes / Helm
 
-A Helm chart is available in [`charts/just-apps/`](charts/just-apps/):
+A Helm chart is available in [`charts/justapps/`](charts/justapps/):
 
 ```bash
-helm install just-apps ./charts/just-apps \
-  -f charts/just-apps/values.yaml
+helm install justapps ./charts/justapps \
+  -f charts/justapps/values.yaml
 ```
 
 Review and adjust `values.yaml` for your cluster (image, ingress, PostgreSQL credentials, OIDC settings).
@@ -206,7 +206,7 @@ just-app-store/
 │       ├── pkg/models/    # Database models
 │       ├── database/      # Migrations
 │       └── router/        # Route definitions
-├── charts/just-apps/     # Helm chart
+├── charts/justapps/     # Helm chart
 ├── .github/workflows/     # CI/CD pipelines
 ├── Dockerfile             # Multi-stage build (frontend + backend)
 └── .env.example           # Environment variable reference

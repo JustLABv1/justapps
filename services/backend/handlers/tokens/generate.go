@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"just-apps-backend/config"
-	"just-apps-backend/functions/auth"
-	"just-apps-backend/functions/httperror"
-	"just-apps-backend/pkg/models"
+	"justapps-backend/config"
+	"justapps-backend/functions/auth"
+	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
