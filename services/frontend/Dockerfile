@@ -1,5 +1,5 @@
 # Base image
-FROM artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/plain-images/node:24-alpine@sha256:e922633a7cfbc0d6db6b6854a45ebf2452772b483b481540fe906ee1f8146599 AS base
+FROM node:25-alpine AS base
 
 # 1. Platform Setup: Install pnpm and configure auth
 FROM base AS platform
