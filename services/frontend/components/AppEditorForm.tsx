@@ -174,7 +174,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [techInput, setTechInput] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [showLinkEditor, setShowLinkEditor] = useState(false);
-  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   // ── Related apps (editing only) ──
@@ -349,12 +348,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         </button>
 
         <div className="flex items-center gap-2">
-          {saveError && <p className="text-sm text-danger font-medium max-w-xs truncate">{saveError}</p>}
-          {saveSuccess && (
-            <span className="text-sm text-success flex items-center gap-1 font-medium">
-              <CheckCircle2 className="w-4 h-4" /> Gespeichert!
-            </span>
-          )}
           <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
             <button
               onClick={() => router.push(backUrl)}
@@ -376,24 +369,37 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       </div>
 
       {/* ── Known issue banner (editable, matches detail page position) ── */}
-      <div className={`mb-4 px-4 py-3 rounded-xl border flex items-start gap-3 ${
-        formData.knownIssue
-          ? 'bg-warning/10 border-warning/30'
-          : 'bg-surface-secondary/50 border-dashed border-border/60'
-      }`}>
-        <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${formData.knownIssue ? 'text-warning' : 'text-muted/40'}`} />
-        <div className="flex-1">
-          <p className={`text-sm font-semibold mb-1 ${formData.knownIssue ? 'text-warning' : 'text-muted/40'}`}>
-            Bekanntes Problem
-          </p>
-          <input
-            className="w-full bg-transparent text-sm outline-none placeholder:text-muted/40 text-warning/80"
-            placeholder="Optional: Bekanntes Problem beschreiben..."
-            value={formData.knownIssue || ''}
-            onChange={(e) => setFormData((p) => ({ ...p, knownIssue: e.target.value || undefined }))}
-          />
+      {formData.knownIssue ? (
+        <div className="mb-4 px-4 py-3 rounded-xl border bg-warning/10 border-warning/30 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-warning" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold mb-2 text-warning">Bekanntes Problem</p>
+            <input
+              className="w-full bg-white/40 dark:bg-white/5 border border-warning/40 rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none focus:border-warning transition-colors"
+              placeholder="Beschreibung eingeben..."
+              value={formData.knownIssue}
+              onChange={(e) => setFormData((p) => ({ ...p, knownIssue: e.target.value }))}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData((p) => ({ ...p, knownIssue: '' }))}
+            className="shrink-0 text-warning/60 hover:text-warning transition-colors"
+            title="Bekanntes Problem entfernen"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-      </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setFormData((p) => ({ ...p, knownIssue: ' ' }))}
+          className="mb-4 w-full px-4 py-2.5 rounded-xl border border-dashed border-border/60 text-left flex items-center gap-2 text-xs text-muted/60 hover:text-muted hover:border-border transition-colors"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          Bekanntes Problem hinzufügen (optional)
+        </button>
+      )}
 
       {/* ── Hero (editable, identical layout to detail page) ── */}
       <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-8">
@@ -452,10 +458,15 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           </div>
 
           <div className="flex-1 min-w-0">
+            {/* Required field note */}
+            <p className="text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">
+              Name &amp; Kategorien <span className="text-danger font-normal normal-case">* Pflichtfelder</span>
+            </p>
+
             {/* Title row: name + category chips + status chip + reuse chip */}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <input
-                className="bg-transparent text-2xl md:text-3xl font-extrabold text-foreground outline-none border-b-2 border-transparent hover:border-accent/30 focus:border-accent transition-colors pb-1 placeholder:text-muted/40 min-w-[200px] flex-shrink"
+                className="bg-transparent text-2xl md:text-3xl font-extrabold text-foreground outline-none border-b-2 border-accent/20 hover:border-accent/50 focus:border-accent transition-colors pb-1 placeholder:text-muted/40 min-w-[200px] flex-shrink"
                 placeholder="App Name..."
                 value={formData.name || ''}
                 onChange={(e) => {
@@ -485,33 +496,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 onClick={() => setShowCategoryPicker(v => !v)}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-dashed border-accent/40 text-accent hover:bg-accent/10 transition-colors"
               >
-                <Plus className="w-3 h-3" /> Kategorie
+                <Plus className="w-3 h-3" /> Kategorie *
               </button>
-              {statusInfo && (
-                <button
-                  type="button"
-                  onClick={() => setShowStatusPicker(v => !v)}
-                  className="cursor-pointer"
-                >
-                  <Chip
-                    size="sm"
-                    variant="soft"
-                    color={statusInfo.color}
-                    className="text-[11px] uppercase font-bold tracking-wider"
-                  >
-                    {statusInfo.label}
-                  </Chip>
-                </button>
-              )}
-              {!statusInfo && (
-                <button
-                  type="button"
-                  onClick={() => setShowStatusPicker(v => !v)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-dashed border-border text-muted hover:border-accent/40 hover:text-accent transition-colors"
-                >
-                  <Plus className="w-3 h-3" /> Status
-                </button>
-              )}
               {formData.isReuse && (
                 <Chip size="sm" variant="soft" color="warning" className="text-[11px] uppercase font-bold flex items-center gap-1">
                   <Share2 className="w-3 h-3" />
@@ -525,6 +511,37 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   </button>
                 </Chip>
               )}
+            </div>
+
+            {/* Status row — always-visible option buttons */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="text-[10px] font-bold text-muted/60 uppercase tracking-wider shrink-0">Status</span>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {PREDEFINED_STATUSES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setFormData(p => ({ ...p, status: p.status === s ? '' : s }))}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all border ${
+                      formData.status === s
+                        ? 'bg-accent text-white border-accent shadow-sm'
+                        : 'bg-transparent border-border text-muted hover:border-accent/40 hover:text-foreground'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                {formData.status && !PREDEFINED_STATUSES.includes(formData.status) && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(p => ({ ...p, status: '' }))}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-accent text-white border border-accent shadow-sm"
+                  >
+                    {formData.status}
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* ID field (new only) */}
@@ -544,10 +561,16 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 )}
               </div>
             )}
+            {isNew && (
+              <p className="text-[11px] text-muted/60 mb-3 -mt-1">
+                Die ID ist die eindeutige Adresse der App und wird automatisch aus dem Namen generiert.
+              </p>
+            )}
 
             {/* Description (matches detail page position) */}
+            <label className="block text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-1.5 select-none">Kurzbeschreibung</label>
             <textarea
-              className="w-full bg-transparent text-base md:text-md text-muted leading-relaxed outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors pb-1 resize-none placeholder:text-muted/40 max-w-3xl mb-5"
+              className="w-full bg-transparent text-base md:text-md text-muted leading-relaxed outline-none border-b border-accent/15 hover:border-accent/30 focus:border-accent transition-colors pb-1 resize-none placeholder:text-muted/40 max-w-3xl mb-5"
               placeholder="Kurzbeschreibung eingeben..."
               value={formData.description || ''}
               rows={2}
@@ -555,35 +578,56 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             />
 
             {/* Tags (matches detail page position) */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {(formData.tags || []).map(tag => (
-                <Chip key={tag} size="sm" variant="soft" className="text-xs font-medium bg-surface/50 border-border/60 group/tag">
-                  {tag}
+            <div className="mb-6">
+              <label className="block text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">Schlagwörter</label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {(formData.tags || []).map(tag => (
+                  <Chip key={tag} size="sm" variant="soft" className="text-xs font-medium bg-surface/50 border-border/60 group/tag">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, tags: p.tags?.filter(t => t !== tag) }))}
+                      className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Chip>
+                ))}
+                <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-accent/40 transition-colors focus-within:border-accent">
+                  <input
+                    className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[90px]"
+                    placeholder="Tag eingeben..."
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                        e.preventDefault();
+                        const tags = formData.tags || [];
+                        if (!tags.includes(tagInput.trim())) {
+                          setFormData(p => ({ ...p, tags: [...(p.tags || []), tagInput.trim()] }));
+                        }
+                        setTagInput('');
+                      }
+                    }}
+                  />
                   <button
                     type="button"
-                    onClick={() => setFormData(p => ({ ...p, tags: p.tags?.filter(t => t !== tag) }))}
-                    className="ml-1 opacity-0 group-hover/tag:opacity-100 transition-opacity"
+                    onClick={() => {
+                      if (tagInput.trim()) {
+                        const tags = formData.tags || [];
+                        if (!tags.includes(tagInput.trim())) {
+                          setFormData(p => ({ ...p, tags: [...(p.tags || []), tagInput.trim()] }));
+                        }
+                        setTagInput('');
+                      }
+                    }}
+                    disabled={!tagInput.trim()}
+                    className="text-accent hover:bg-accent/10 rounded-full transition-colors disabled:opacity-30"
                   >
-                    <X className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
-                </Chip>
-              ))}
-              <input
-                className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[100px] border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
-                placeholder="+ Tag hinzufügen..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
-                    e.preventDefault();
-                    const tags = formData.tags || [];
-                    if (!tags.includes(tagInput.trim())) {
-                      setFormData(p => ({ ...p, tags: [...(p.tags || []), tagInput.trim()] }));
-                    }
-                    setTagInput('');
-                  }
-                }}
-              />
+                </div>
+              </div>
             </div>
 
             {/* Quick links (matches detail page position and style exactly) */}
@@ -612,17 +656,15 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   Dokumentation
                 </span>
               )}
-              {formData.license && (
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-muted cursor-default shadow-sm">
-                      <Scale className="w-4 h-4" />
-                      {formData.license}
-                    </span>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content>Lizenz</Tooltip.Content>
-                </Tooltip>
-              )}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border shadow-sm">
+                <Scale className="w-4 h-4 shrink-0 text-muted/60" />
+                <input
+                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted/40 w-28"
+                  placeholder="Lizenz..."
+                  value={formData.license || ''}
+                  onChange={(e) => setFormData(p => ({ ...p, license: e.target.value }))}
+                />
+              </div>
               {/* Edit links button */}
               <button
                 type="button"
@@ -732,39 +774,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           </div>
         )}
 
-        {/* ── Status picker panel ── */}
-        {showStatusPicker && (
-          <div className="relative z-10 mt-5 p-4 rounded-2xl bg-surface border border-border shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">Status</span>
-              <button onClick={() => setShowStatusPicker(false)} className="text-muted hover:text-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {PREDEFINED_STATUSES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => { setFormData((p) => ({ ...p, status: s })); setShowStatusPicker(false); }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                    formData.status === s ? 'bg-accent text-white border-accent shadow-sm' : 'bg-surface border-border text-muted hover:border-accent/30 hover:text-foreground'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            <input
-              className="w-full bg-field-background rounded-lg px-3 py-1.5 text-sm border border-border outline-none focus:border-accent transition-colors"
-              placeholder="Eigener Status..."
-              value={PREDEFINED_STATUSES.includes(formData.status || '') ? '' : (formData.status || '')}
-              onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === 'Enter') setShowStatusPicker(false); }}
-            />
-          </div>
-        )}
-
         {/* ── Link editor panel ── */}
         {showLinkEditor && (
           <div className="relative z-10 mt-5 p-5 rounded-2xl bg-surface border border-border shadow-lg space-y-6">
@@ -801,14 +810,10 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               placeholderLabel="Link"
               placeholderUrl="https://..."
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border">
+            <div className="grid grid-cols-1 gap-4 pt-2 border-t border-border">
               <TextField onChange={(val) => setFormData((p) => ({ ...p, docsUrl: val }))}>
                 <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Dokumentation URL</Label>
                 <Input value={formData.docsUrl || ''} placeholder="https://docs..." className="bg-field-background h-8 font-mono text-sm" />
-              </TextField>
-              <TextField onChange={(val) => setFormData((p) => ({ ...p, license: val }))}>
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Lizenz</Label>
-                <Input value={formData.license || ''} placeholder="MIT, Apache 2.0..." className="bg-field-background h-8 text-sm" />
               </TextField>
             </div>
           </div>
@@ -816,69 +821,78 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       </header>
 
       {/* ── Tech stack strip (matches detail page position exactly) ── */}
-      <div className="flex items-center gap-4 mb-8 overflow-x-auto bg-surface-secondary/50 p-4 rounded-2xl border border-border">
-        <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2">
+      <div className="flex items-start gap-4 mb-8 bg-surface-secondary/50 p-4 rounded-2xl border border-border">
+        <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2 pt-1">
           <Layers className="w-4 h-4 text-accent" />
           Tech Stack
         </span>
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap items-center flex-1">
           {(formData.techStack || []).map((tech: string) => (
             <Chip key={tech} size="sm" variant="soft" className="text-xs font-medium bg-surface border border-border shadow-sm group/tech">
               {tech}
               <button
                 type="button"
                 onClick={() => setFormData(p => ({ ...p, techStack: p.techStack?.filter(t => t !== tech) }))}
-                className="ml-1 opacity-0 group-hover/tech:opacity-100 transition-opacity"
+                className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
               </button>
             </Chip>
           ))}
-          <input
-            className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[120px] border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
-            placeholder="+ Technologie..."
-            value={techInput}
-            onChange={(e) => setTechInput(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ',') && techInput.trim()) {
-                e.preventDefault();
-                const stack = formData.techStack || [];
-                if (!stack.includes(techInput.trim())) {
-                  setFormData(p => ({ ...p, techStack: [...(p.techStack || []), techInput.trim()] }));
+          <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-accent/40 transition-colors focus-within:border-accent">
+            <input
+              className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[110px]"
+              placeholder="Technologie hinzufügen..."
+              value={techInput}
+              onChange={(e) => setTechInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ',') && techInput.trim()) {
+                  e.preventDefault();
+                  const stack = formData.techStack || [];
+                  if (!stack.includes(techInput.trim())) {
+                    setFormData(p => ({ ...p, techStack: [...(p.techStack || []), techInput.trim()] }));
+                  }
+                  setTechInput('');
                 }
-                setTechInput('');
-              }
-            }}
-          />
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (techInput.trim()) {
+                  const stack = formData.techStack || [];
+                  if (!stack.includes(techInput.trim())) {
+                    setFormData(p => ({ ...p, techStack: [...(p.techStack || []), techInput.trim()] }));
+                  }
+                  setTechInput('');
+                }
+              }}
+              disabled={!techInput.trim()}
+              className="text-accent hover:bg-accent/10 rounded-full transition-colors disabled:opacity-30"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Reuse info box (matches detail page position exactly) ── */}
-      <div className={`mb-8 p-6 rounded-2xl border transition-all ${
-        formData.isReuse ? 'bg-warning/5 border-warning/20' : 'bg-surface-secondary/30 border-dashed border-border/60'
-      }`}>
-        <div className="flex items-start gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            formData.isReuse ? 'bg-warning/10' : 'bg-surface-secondary'
-          }`}>
-            <Share2 className={`w-5 h-5 ${formData.isReuse ? 'text-warning' : 'text-muted/40'}`} />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-sm font-bold text-foreground">Nachnutzung</h3>
-              <Switch
-                isSelected={formData.isReuse || false}
-                onChange={(val) => setFormData((p) => ({ ...p, isReuse: val }))}
-              >
-                <Switch.Control><Switch.Thumb /></Switch.Control>
-              </Switch>
+      {/* ── Reuse info box ── */}
+      {formData.isReuse ? (
+        <div className="mb-8 p-6 rounded-2xl border bg-warning/5 border-warning/20">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+              <Share2 className="w-5 h-5 text-warning" />
             </div>
-            <p className="text-sm text-muted mb-3">
-              {formData.isReuse
-                ? 'Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Sie die bestehende Installation des Anbieters mitnutzen.'
-                : 'Aktivieren, wenn die App als Nachnutzung bereitgestellt wird.'}
-            </p>
-            {formData.isReuse && (
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-bold text-foreground">Nachnutzung</h3>
+                <Switch isSelected onChange={(val) => setFormData((p) => ({ ...p, isReuse: val }))}>
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
+              <p className="text-sm text-muted mb-3">
+                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Behörden die bestehende Installation des Anbieters mitnutzen.
+              </p>
               <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
                 <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
                 <textarea
@@ -888,10 +902,23 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   onChange={(e) => setFormData(p => ({ ...p, reuseRequirements: e.target.value }))}
                 />
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="mb-8 flex items-center justify-between p-4 rounded-2xl border border-dashed border-border/60 bg-surface-secondary/30">
+          <div className="flex items-center gap-3">
+            <Share2 className="w-4 h-4 text-muted/40 shrink-0" />
+            <div>
+              <span className="text-sm font-medium text-muted">Nachnutzung</span>
+              <p className="text-xs text-muted/60">Aktivieren, wenn diese App für andere Behörden zur Mitnutzung bereitgestellt wird.</p>
+            </div>
+          </div>
+          <Switch isSelected={false} onChange={(val) => setFormData((p) => ({ ...p, isReuse: val }))}>
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+          </Switch>
+        </div>
+      )}
 
       {/* ── Tabbed content (matches detail page tabs exactly) ── */}
       <Tabs variant="secondary" className="w-full">
@@ -902,7 +929,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               Dokumentation
               <Tabs.Indicator />
             </Tabs.Tab>
-            <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-semibold">
+            <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
               <Layers className="w-4 h-4" />
               Fachliche Details
               <Tabs.Indicator />
@@ -917,6 +944,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-secondary border border-border text-muted/70 ml-1">Nur Ansicht</span>
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
@@ -947,22 +975,10 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         {/* Fachliche Details tab */}
         <Tabs.Panel id="details">
           <div className="space-y-6">
+            <p className="text-xs text-muted">
+              Felder ohne Inhalt werden in der App-Detailansicht nicht angezeigt.
+            </p>
             <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Status card */}
-              <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
-                <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
-                  <span className="text-accent">{resolveIcon('Activity')}</span>
-                  Status
-                </dt>
-                <dd>
-                  <input
-                    className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
-                    value={formData.status || ''}
-                    onChange={(e) => setFormData(p => ({ ...p, status: e.target.value }))}
-                    placeholder="Status eingeben..."
-                  />
-                </dd>
-              </div>
               {/* Authority card */}
               <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
                 <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
@@ -978,7 +994,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   />
                 </dd>
               </div>
-              {/* Platform detail fields */}
+              {/* Dynamic platform detail fields */}
               {metaFields.map((field) => (
                 <div key={field.key} className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
                   <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
@@ -1030,6 +1046,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         {!formData.isReuse && (
           <Tabs.Panel id="deployment">
             <div className="space-y-6">
+              <p className="text-sm text-muted">
+                Hier können technische Installationsanleitungen hinterlegt werden. Leer lassen, wenn nicht benötigt – der Deployment-Bereich wird dann in der App-Ansicht ausgeblendet.
+              </p>
               <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
                 <div>
                   <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
@@ -1324,6 +1343,41 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             day: '2-digit', month: '2-digit', year: 'numeric',
           }) : '—'}
         </span>
+      </div>
+
+      {/* ── Sticky save bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-border shadow-lg">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {!canSave && !saveError && !saveSuccess && (
+              <p className="text-xs text-muted truncate">
+                Pflichtfelder: <span className="font-semibold">Name</span>, <span className="font-semibold">Kategorie</span> und <span className="font-semibold">ID</span> müssen ausgefüllt sein.
+              </p>
+            )}
+            {saveError && <p className="text-sm text-danger font-medium truncate">{saveError}</p>}
+            {saveSuccess && (
+              <span className="text-sm text-success flex items-center gap-1 font-medium">
+                <CheckCircle2 className="w-4 h-4" /> Gespeichert!
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => router.push(backUrl)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary border border-border transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !canSave}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Speichert...' : isNew ? 'App erstellen' : 'Änderungen speichern'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
