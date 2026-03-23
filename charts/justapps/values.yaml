@@ -1,4 +1,4 @@
-## Default values for just-apps
+## Default values for justapps
 ## This file contains documented defaults that users should override
 ## (do NOT commit real secrets into this file).
 
@@ -39,8 +39,8 @@ config:
   port: 8080
   database:
     # When using the bundled Postgres (postgresql.enabled=true) this should
-    # normally resolve to <release-name>-just-apps-postgresql
-    server: just-apps-postgresql
+    # normally resolve to <release-name>-justapps-postgresql
+    server: justapps-postgresql
     port: 5432
     name: just_apps
     user: postgres
@@ -51,10 +51,10 @@ config:
   oidc:
     enabled: true
     issuer: "https://login-keycloak.example.com/realms/example"
-    clientId: just-apps
+    clientId: justapps
     # Client secret must be provided via Secret or Vault
     clientSecret: ""
-    adminGroup: just-apps-admin
+    adminGroup: justapps-admin
     insecure: false
   cors:
     # Origins allowed to access the API (list)
@@ -107,8 +107,8 @@ frontend:
     tag: latest
   env:
     # URL of the backend API (used by frontend). Change to your public API URL.
-    apiUrl: "https://just-apps.example.com/api/v1"
-    nextauthUrl: "https://just-apps.example.com"
+    apiUrl: "https://justapps.example.com/api/v1"
+    nextauthUrl: "https://justapps.example.com"
     # NEXTAUTH secret must come from Kubernetes Secret or Vault
     authSecret: ""
   service:
@@ -130,7 +130,7 @@ ingress:
     # Example for OpenShift routes
     route.openshift.io/termination: edge
   hosts:
-    - host: just-apps.example.com
+    - host: justapps.example.com
       paths:
         - path: /
           pathType: Prefix

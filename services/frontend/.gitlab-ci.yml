@@ -26,10 +26,10 @@ build-app-store:
   script:
     - podman build
         --secret id=ca-bundle,src=/etc/ssl/cert.pem
-        -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/just-apps
+        -t ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/justapps
         -f Dockerfile
       .
-    # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/just-apps
+    # - podman push ${ARTIFACTORY_DOMAIN}/${ARTIFACTORY_REPO}/justapps
 
 # rollout:
 #   stage: rollout

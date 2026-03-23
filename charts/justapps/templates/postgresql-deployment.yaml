@@ -2,9 +2,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "just-apps.fullname" . }}-postgresql
+  name: {{ include "justapps.fullname" . }}-postgresql
   labels:
-    {{- include "just-apps.labels" . | nindent 4 }}
+    {{- include "justapps.labels" . | nindent 4 }}
     app.kubernetes.io/component: postgresql
 spec:
   replicas: 1
@@ -12,15 +12,15 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "just-apps.selectorLabels" . | nindent 6 }}
+      {{- include "justapps.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: postgresql
   template:
     metadata:
       labels:
-        {{- include "just-apps.selectorLabels" . | nindent 8 }}
+        {{- include "justapps.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: postgresql
     spec:
-      serviceAccountName: {{ include "just-apps.serviceAccountName" . }}
+      serviceAccountName: {{ include "justapps.serviceAccountName" . }}
       {{- with .Values.postgresql.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -50,12 +50,12 @@ spec:
               containerPort: 5432
           envFrom:
             - configMapRef:
-                name: {{ include "just-apps.fullname" . }}-postgresql-config
+                name: {{ include "justapps.fullname" . }}-postgresql-config
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "just-apps.fullname" . }}-secrets
+                  name: {{ include "justapps.fullname" . }}-secrets
                   key: postgresql-password
             - name: PGDATA
               value: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
@@ -88,7 +88,7 @@ spec:
         - name: data
           {{- if .Values.postgresql.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "just-apps.fullname" . }}-postgresql
+            claimName: {{ include "justapps.fullname" . }}-postgresql
           {{- else }}
           emptyDir: {}
           {{- end }}

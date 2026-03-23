@@ -33,7 +33,7 @@ env:
 
 To enable Keycloak integration in the frontend, set the following environment variables:
 
-- `AUTH_KEYCLOAK_ID`: Keycloak Client ID (e.g., `just-apps`)
+- `AUTH_KEYCLOAK_ID`: Keycloak Client ID (e.g., `justapps`)
 - `AUTH_KEYCLOAK_SECRET`: Keycloak Client Secret
 - `AUTH_KEYCLOAK_ISSUER`: Keycloak Issuer URL (e.g., `https://<keycloak-url>/realms/<realm-name>`)
 - `AUTH_SECRET`: A random secret for NextAuth sessions (e.g., `openssl rand -base64 32`)

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"just-apps-backend/functions/httperror"
-	"just-apps-backend/pkg/models"
+	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/models"
 
 	"github.com/google/uuid"
 

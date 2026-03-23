@@ -5,11 +5,11 @@ This document describes how to set up Keycloak for OIDC authentication and how t
 ## Keycloak Configuration
 
 ### 1. Create a Realm
-Create a new realm (e.g., `just-apps`) or use an existing one.
+Create a new realm (e.g., `justapps`) or use an existing one.
 
 ### 2. Create a Client
 1. Go to **Clients** -> **Create client**.
-2. **Client ID**: `just-apps` (or as configured in `.env`).
+2. **Client ID**: `justapps` (or as configured in `.env`).
 3. **Client Protocol**: `openid-connect`.
 4. **Access Type**: `confidential` (for NextAuth) or `public` (if exclusively using frontend-only flow, but NextAuth prefers confidential).
 5. **Valid Redirect URIs**: 
@@ -51,8 +51,8 @@ The application checks for an admin status via a group or role named `admin` (co
 ### Backend (`services/backend/.env` or Config)
 ```env
 BACKEND_OIDC_ENABLED=true
-BACKEND_OIDC_ISSUER=http://keycloak:8080/realms/just-apps
-BACKEND_OIDC_CLIENT_ID=just-apps
+BACKEND_OIDC_ISSUER=http://keycloak:8080/realms/justapps
+BACKEND_OIDC_CLIENT_ID=justapps
 BACKEND_OIDC_ADMIN_GROUP=admin
 ```
 
@@ -61,9 +61,9 @@ BACKEND_OIDC_ADMIN_GROUP=admin
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=a-very-secret-random-string
 
-KEYCLOAK_CLIENT_ID=just-apps
+KEYCLOAK_CLIENT_ID=justapps
 KEYCLOAK_CLIENT_SECRET=your-client-secret
-KEYCLOAK_ISSUER=http://keycloak:8080/realms/just-apps
+KEYCLOAK_ISSUER=http://keycloak:8080/realms/justapps
 ```
 
 ## User Management Via UI

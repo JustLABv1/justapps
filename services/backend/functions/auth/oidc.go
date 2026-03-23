@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"just-apps-backend/config"
+	"justapps-backend/config"
 	"context"
 	"crypto/tls"
 	"errors"

@@ -1,8 +1,8 @@
-# Default values for just-apps.
+# Default values for justapps.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## Minimal overrides — keep only values that differ from charts/just-apps/values.yaml
+## Minimal overrides — keep only values that differ from charts/justapps/values.yaml
 
 ## Monolith image behavior: prefer Always to force pulls in your environment
 monolith:
@@ -22,7 +22,7 @@ frontend:
 
 ingress:
   hosts:
-    - host: just-apps.apps.ocp4.m017-1.ten.prod.pl2cloud.de
+    - host: justapps.apps.ocp4.m017-1.ten.prod.pl2cloud.de
       paths:
         - path: /
           pathType: Prefix
@@ -41,12 +41,12 @@ ingress:
 config:
   oidc:
     issuer: "https://login-keycloak.apps.ocp4.m017-1.ten.prod.pl2cloud.de/realms/m017-1"
-    clientId: "just-apps"
-    adminGroup: "just-apps-admin"
+    clientId: "justapps"
+    adminGroup: "justapps-admin"
     insecure: true
   cors:
     allowedOrigins:
-      - "https://just-apps.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
+      - "https://justapps.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
       - "https://community-store.apps.ocp4.m017-1.ten.prod.pl2cloud.de"
 
 ## Secrets: enable Vault fetch for this environment (chart will create VaultStaticSecret)
@@ -58,7 +58,7 @@ secrets:
     type: kv-v2
     mount: secrets
     namespace: plain/demo
-    path: jneubert/just-apps
+    path: jneubert/justapps
     refreshAfter: 30s
     destination:
       create: true

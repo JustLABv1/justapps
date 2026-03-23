@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"errors"
 
-	"just-apps-backend/functions/auth"
-	"just-apps-backend/functions/httperror"
-	"just-apps-backend/pkg/models"
+	"justapps-backend/functions/auth"
+	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"

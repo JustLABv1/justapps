@@ -1,8 +1,8 @@
 package router
 
 import (
-	"just-apps-backend/handlers/apps"
-	"just-apps-backend/middlewares"
+	"justapps-backend/handlers/apps"
+	"justapps-backend/middlewares"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
