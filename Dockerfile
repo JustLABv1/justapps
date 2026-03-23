@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:25-alpine AS base
 
 # Stage 1: Build the frontend
 FROM base AS frontend-builder
@@ -20,7 +20,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN pnpm run build
 
 # Stage 2: Build the backend
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:1.25-alpine AS backend-builder
 WORKDIR /app/backend
 
 ENV GOCACHE=/tmp/go-cache
