@@ -63,10 +63,10 @@ config:
 ## Monolith configuration (single container includes frontend + backend)
 monolith:
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store
+    repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
     # Tag should point to a released version of the monolith image
-    tag: "0.8.5"
+    tag: "latest"
   service:
     type: ClusterIP
     port: 80
@@ -84,7 +84,7 @@ monolith:
 backend:
   replicaCount: 1
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store-backend
+    repository: ghcr.io/justlabv1/justapps/backend
     pullPolicy: IfNotPresent
     tag: latest
   service:
@@ -102,7 +102,7 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/custom-shared-images/jneubert/plain-community-store-frontend
+    repository: ghcr.io/justlabv1/justapps/frontend
     pullPolicy: IfNotPresent
     tag: latest
   env:
@@ -149,7 +149,7 @@ uploads:
 ## Embedded Postgres (if enabled)
 postgresql:
   enabled: false
-  image: 'artifactory-jfrog.apps.ocp4.svc.prod.pl2cloud.de/dhi-remote/postgres:17-alpine3.22'
+  image: 'postgres:17-alpine3.22'
   pullPolicy: IfNotPresent
   mountPath: /bitnami/postgresql/data
   persistence:

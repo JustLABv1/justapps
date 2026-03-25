@@ -3,9 +3,29 @@ package migrations
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
+
+type legacyDetailField struct {
+	key    string
+	column string
+}
+
+var legacyDetailFields = []legacyDetailField{
+	{key: "focus", column: "focus"},
+	{key: "app_type", column: "app_type"},
+	{key: "use_case", column: "use_case"},
+	{key: "visualization", column: "visualization"},
+	{key: "deployment", column: "deployment"},
+	{key: "infrastructure", column: "infrastructure"},
+	{key: "database", column: "database"},
+	{key: "transferability", column: "transferability"},
+	{key: "contact_person", column: "contact_person"},
+	{key: "authority", column: "authority"},
+	{key: "additional_info", column: "additional_info"},
+}
 
 func init() {
 	Migrations.MustRegister(func(ctx context.Context, db *bun.DB) error {
@@ -17,45 +37,56 @@ func init() {
 			return fmt.Errorf("add custom_fields column: %w", err)
 		}
 
+		existingFields := make([]legacyDetailField, 0, len(legacyDetailFields))
+		for _, field := range legacyDetailFields {
+			exists, err := columnExists(ctx, db, "apps", field.column)
+			if err != nil {
+				return fmt.Errorf("check column %s: %w", field.column, err)
+			}
+			if exists {
+				existingFields = append(existingFields, field)
+			}
+		}
+
 		// 2. Migrate existing values from the old columns into the JSONB array.
-		//    Only include entries where the old value was non-empty.
-		_, err = db.ExecContext(ctx, `
-			UPDATE apps SET custom_fields = COALESCE((
-				SELECT jsonb_agg(entry)
-				FROM (
-					SELECT jsonb_build_object('key', 'focus',          'value', focus)           AS entry WHERE focus          <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'app_type',       'value', app_type)        AS entry WHERE app_type       <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'use_case',       'value', use_case)        AS entry WHERE use_case       <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'visualization',  'value', visualization)   AS entry WHERE visualization  <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'deployment',     'value', deployment)      AS entry WHERE deployment     <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'infrastructure', 'value', infrastructure)  AS entry WHERE infrastructure <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'database',       'value', database)        AS entry WHERE database       <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'transferability','value', transferability) AS entry WHERE transferability <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'contact_person', 'value', contact_person)  AS entry WHERE contact_person <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'authority',      'value', authority)       AS entry WHERE authority      <> '' UNION ALL
-					SELECT jsonb_build_object('key', 'additional_info','value', additional_info) AS entry WHERE additional_info <> ''
-				) sub
-			), '[]')
-		`)
-		if err != nil {
-			return fmt.Errorf("migrate data to custom_fields: %w", err)
+		//    Fresh installs already have custom_fields in the base schema, so there
+		//    may be no legacy columns left to read from.
+		if len(existingFields) > 0 {
+			entries := make([]string, 0, len(existingFields))
+			for _, field := range existingFields {
+				entries = append(entries, fmt.Sprintf(
+					"SELECT jsonb_build_object('key', '%s', 'value', %s) AS entry WHERE %s <> ''",
+					field.key,
+					field.column,
+					field.column,
+				))
+			}
+
+			query := fmt.Sprintf(`
+				UPDATE apps SET custom_fields = COALESCE((
+					SELECT jsonb_agg(entry)
+					FROM (
+						%s
+					) sub
+				), '[]')
+			`, strings.Join(entries, " UNION ALL\n\t\t\t\t\t"))
+
+			_, err = db.ExecContext(ctx, query)
+			if err != nil {
+				return fmt.Errorf("migrate data to custom_fields: %w", err)
+			}
 		}
 
 		// 3. Drop the old columns
-		oldColumns := []string{
-			"focus", "app_type", "use_case", "visualization", "deployment",
-			"infrastructure", "database", "additional_info",
-			"transferability", "contact_person", "authority",
-		}
-		for _, col := range oldColumns {
-			exists, err := columnExists(ctx, db, "apps", col)
+		for _, field := range legacyDetailFields {
+			exists, err := columnExists(ctx, db, "apps", field.column)
 			if err != nil {
-				return fmt.Errorf("check column %s: %w", col, err)
+				return fmt.Errorf("check column %s: %w", field.column, err)
 			}
 			if exists {
-				_, err = db.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE apps DROP COLUMN %s`, col))
+				_, err = db.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE apps DROP COLUMN %s`, field.column))
 				if err != nil {
-					return fmt.Errorf("drop column %s: %w", col, err)
+					return fmt.Errorf("drop column %s: %w", field.column, err)
 				}
 			}
 		}
@@ -66,17 +97,17 @@ func init() {
 		fmt.Println("Migration 20 rollback: restoring legacy detail columns...")
 
 		cols := map[string]string{
-			"focus":          "TEXT NOT NULL DEFAULT ''",
-			"app_type":       "TEXT NOT NULL DEFAULT ''",
-			"use_case":       "TEXT NOT NULL DEFAULT ''",
-			"visualization":  "TEXT NOT NULL DEFAULT ''",
-			"deployment":     "TEXT NOT NULL DEFAULT ''",
-			"infrastructure": "TEXT NOT NULL DEFAULT ''",
-			"database":       "TEXT NOT NULL DEFAULT ''",
+			"focus":           "TEXT NOT NULL DEFAULT ''",
+			"app_type":        "TEXT NOT NULL DEFAULT ''",
+			"use_case":        "TEXT NOT NULL DEFAULT ''",
+			"visualization":   "TEXT NOT NULL DEFAULT ''",
+			"deployment":      "TEXT NOT NULL DEFAULT ''",
+			"infrastructure":  "TEXT NOT NULL DEFAULT ''",
+			"database":        "TEXT NOT NULL DEFAULT ''",
 			"additional_info": "TEXT NOT NULL DEFAULT ''",
 			"transferability": "TEXT NOT NULL DEFAULT ''",
-			"contact_person": "TEXT NOT NULL DEFAULT ''",
-			"authority":      "TEXT NOT NULL DEFAULT ''",
+			"contact_person":  "TEXT NOT NULL DEFAULT ''",
+			"authority":       "TEXT NOT NULL DEFAULT ''",
 		}
 
 		for col, def := range cols {

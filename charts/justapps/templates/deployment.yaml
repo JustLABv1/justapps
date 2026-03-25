@@ -1,4 +1,5 @@
 {{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "justapps.fullname" .)) }}
+{{- $databasePasswordKey := ternary "postgresql-password" "database-password" .Values.postgresql.enabled }}
 {{- if eq .Values.deploymentMode "monolith" }}
 apiVersion: apps/v1
 kind: Deployment
@@ -45,7 +46,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: database-password
+                  key: {{ $databasePasswordKey }}
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -93,6 +94,8 @@ spec:
             - name: NODE_TLS_REJECT_UNAUTHORIZED
               value: "0"
             {{- end }}
+            - name: BACKEND_DATA_PATH
+              value: /app/data
           livenessProbe:
             httpGet:
               path: /api/v1/health
@@ -109,9 +112,6 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          env:
-            - name: BACKEND_DATA_PATH
-              value: /app/data
           volumeMounts:
             - name: config
               mountPath: /etc/justapps
@@ -189,7 +189,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: database-password
+                  key: {{ $databasePasswordKey }}
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
