@@ -30,7 +30,7 @@ ENV HOME=/tmp
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o just-apps-backend
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 
 # Stage 3: Final image
 FROM base AS runner
@@ -51,19 +51,19 @@ COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/standalon
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/public /app/public
 
-COPY --from=backend-builder /app/backend/just-apps-backend /app/just-apps-backend
+COPY --from=backend-builder /app/backend/justapps-backend /app/justapps-backend
 
 RUN chown -R nextjs:nodejs /app
 
-RUN mkdir -p /etc/just-apps \
-    && chown -R nextjs:nodejs /etc/just-apps
+RUN mkdir -p /etc/justapps \
+    && chown -R nextjs:nodejs /etc/justapps
 
 RUN mkdir -p /app/data \
     && chown -R nextjs:nodejs /app/data
 
 ENV NODE_ENV=production
 
-VOLUME [ "/etc/just-apps", "/app/data" ]
+VOLUME [ "/etc/justapps", "/app/data" ]
 
 EXPOSE 8080 3000
 
@@ -71,4 +71,4 @@ USER nextjs
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
-CMD ["sh", "-c", "./just-apps-backend --config /etc/just-apps/config.yaml & node /app/server.js"]
+CMD ["sh", "-c", "./justapps-backend --config /etc/justapps/config.yaml & node /app/server.js"]

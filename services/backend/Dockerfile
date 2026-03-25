@@ -15,26 +15,26 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o just-apps-backend
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 
 FROM alpine:3.22 AS runner
 WORKDIR /app
 
-COPY --from=builder /app/just-apps-backend /app/
+COPY --from=builder /app/justapps-backend /app/
 
 RUN addgroup --system --gid 1001 justapps
 RUN adduser --system --uid 1001 justapps
 
-RUN mkdir -p /etc/just-apps \
-    && chown -R justapps:justapps /etc/just-apps
+RUN mkdir -p /etc/justapps \
+    && chown -R justapps:justapps /etc/justapps
 
 RUN mkdir -p /app/data \
     && chown -R justapps:justapps /app/data
 
 RUN chown -R justapps:justapps /app
 
-VOLUME [ "/etc/just-apps", "/app/data" ]
+VOLUME [ "/etc/justapps", "/app/data" ]
 
 EXPOSE 8080
 
-CMD [ "/app/just-apps-backend", "--config", "/etc/just-apps/config.yaml" ]
+CMD [ "/app/justapps-backend", "--config", "/etc/justapps/config.yaml" ]

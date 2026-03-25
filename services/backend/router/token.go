@@ -1,8 +1,8 @@
 package router
 
 import (
-	"just-apps-backend/handlers/tokens"
-	"just-apps-backend/middlewares"
+	"justapps-backend/handlers/tokens"
+	"justapps-backend/middlewares"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

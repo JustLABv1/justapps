@@ -1,4 +1,4 @@
-module just-apps-backend
+module justapps-backend
 
 go 1.25.0
 

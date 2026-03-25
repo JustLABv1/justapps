@@ -12,7 +12,7 @@ import (
 	"github.com/uptrace/bun/extra/bunotel"
 	"github.com/uptrace/bun/migrate"
 
-	"just-apps-backend/database/migrations"
+	"justapps-backend/database/migrations"
 
 	log "github.com/sirupsen/logrus"
 )
