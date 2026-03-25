@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "just-apps.fullname" . }}-uploads
+  name: {{ include "justapps.fullname" . }}-uploads
   labels:
-    {{- include "just-apps.labels" . | nindent 4 }}
+    {{- include "justapps.labels" . | nindent 4 }}
     app.kubernetes.io/component: uploads
 spec:
   {{- if .Values.uploads.persistence.storageClassName }}

@@ -1,7 +1,7 @@
 package database
 
 import (
-	"just-apps-backend/pkg/models"
+	"justapps-backend/pkg/models"
 	"context"
 
 	log "github.com/sirupsen/logrus"

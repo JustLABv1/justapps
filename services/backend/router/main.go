@@ -1,7 +1,7 @@
 package router
 
 import (
-	"just-apps-backend/config"
+	"justapps-backend/config"
 	"net/http"
 	"strconv"
 	"time"

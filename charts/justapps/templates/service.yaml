@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "just-apps.fullname" . }}
+  name: {{ include "justapps.fullname" . }}
   labels:
-    {{- include "just-apps.labels" . | nindent 4 }}
+    {{- include "justapps.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.monolith.service.type }}
   ports:
@@ -17,14 +17,14 @@ spec:
       protocol: TCP
       name: backend
   selector:
-    {{- include "just-apps.selectorLabels" . | nindent 4 }}
+    {{- include "justapps.selectorLabels" . | nindent 4 }}
 {{- else }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "just-apps.fullname" . }}-backend
+  name: {{ include "justapps.fullname" . }}-backend
   labels:
-    {{- include "just-apps.labels" . | nindent 4 }}
+    {{- include "justapps.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   type: {{ .Values.backend.service.type }}
@@ -34,15 +34,15 @@ spec:
       protocol: TCP
       name: backend
   selector:
-    {{- include "just-apps.selectorLabels" . | nindent 4 }}
+    {{- include "justapps.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "just-apps.fullname" . }}-frontend
+  name: {{ include "justapps.fullname" . }}-frontend
   labels:
-    {{- include "just-apps.labels" . | nindent 4 }}
+    {{- include "justapps.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
   type: {{ .Values.frontend.service.type }}
@@ -52,6 +52,6 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "just-apps.selectorLabels" . | nindent 4 }}
+    {{- include "justapps.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 {{- end }}

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"just-apps-backend/functions/httperror"
+	"justapps-backend/functions/httperror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

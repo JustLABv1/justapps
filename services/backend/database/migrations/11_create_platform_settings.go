@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"just-apps-backend/pkg/models"
+	"justapps-backend/pkg/models"
 	"context"
 	"fmt"
 

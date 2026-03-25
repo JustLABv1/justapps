@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"just-apps-backend/config"
-	"just-apps-backend/database"
-	"just-apps-backend/functions/auth"
-	"just-apps-backend/router"
+	"justapps-backend/config"
+	"justapps-backend/database"
+	"justapps-backend/functions/auth"
+	"justapps-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
 	log "github.com/sirupsen/logrus"
@@ -20,7 +20,7 @@ import (
 const version string = "1.0.0-beta.1"
 
 var (
-	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/just-apps/config.yaml").String()
+	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/justapps/config.yaml").String()
 )
 
 func logging(logLevel string) {
