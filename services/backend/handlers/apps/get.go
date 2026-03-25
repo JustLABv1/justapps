@@ -2,7 +2,6 @@ package apps
 
 import (
 	"fmt"
-	"strings"
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
@@ -11,12 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
-
-const draftStatus = "entwurf"
-
-func isDraftApp(app models.Apps) bool {
-	return strings.EqualFold(strings.TrimSpace(app.Status), draftStatus)
-}
 
 func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
 	role := c.GetString("role")
@@ -88,6 +81,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 	visibleApps := make([]models.Apps, 0, len(apps))
 	for _, app := range apps {
+		normalizeAppModelStatus(&app)
 		if canViewApp(app, viewerID, viewerRole, hasViewer) {
 			visibleApps = append(visibleApps, app)
 		}
@@ -162,6 +156,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "App not found", err)
 		return
 	}
+	normalizeAppModelStatus(&app)
 	if !canViewApp(app, viewerID, viewerRole, hasViewer) {
 		httperror.StatusNotFound(c, "App not found", nil)
 		return
@@ -190,7 +185,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 
 	app.RelatedApps = make([]models.AppRelationSummary, 0, len(related))
 	for _, r := range related {
-		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: NormalizeAppStatus(r.Status)}
 		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer) {
 			continue
 		}

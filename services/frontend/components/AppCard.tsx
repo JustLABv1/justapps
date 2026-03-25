@@ -49,7 +49,7 @@ export function AppCard({ app }: { app: AppConfig }) {
 
   return (
     <Card 
-      className={`w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 
+      className={`relative w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 
         ${isFeatured 
           ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10' 
           : 'hover:border-accent/40 border-border'
@@ -62,17 +62,23 @@ export function AppCard({ app }: { app: AppConfig }) {
         </div>
       )}
       {app.knownIssue && (
-        <Tooltip delay={0}>
-          <Tooltip.Trigger>
-            <div className={`absolute z-20 flex items-center justify-center w-7 h-7 rounded-full bg-warning shadow-md shadow-warning/30 cursor-help ${isFeatured ? '-top-3 right-8' : '-top-2 -right-2'}`}>
-              <AlertTriangle className="w-3.5 h-3.5 text-white" />
-            </div>
-          </Tooltip.Trigger>
-          <Tooltip.Content className="max-w-64">
-            <p className="text-xs font-bold mb-1">Bekanntes Problem</p>
-            <p className="text-xs">{app.knownIssue}</p>
-          </Tooltip.Content>
-        </Tooltip>
+        <div className={`absolute z-20 ${isFeatured ? '-top-3 right-8' : '-top-2 -right-2'}`}>
+          <Tooltip delay={0}>
+            <Tooltip.Trigger aria-label="Bekanntes Problem anzeigen">
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-warning shadow-md shadow-warning/30 cursor-help"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-white" />
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Content className="max-w-64" placement="bottom" showArrow>
+              <Tooltip.Arrow />
+              <p className="text-xs font-bold mb-1">Bekanntes Problem</p>
+              <p className="text-xs">{app.knownIssue}</p>
+            </Tooltip.Content>
+          </Tooltip>
+        </div>
       )}
       {/* ── Header: icon, name, badge ── */}
       <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
