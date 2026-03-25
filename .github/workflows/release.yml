@@ -9,6 +9,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  CHART_NAME: justapps
 
 jobs:
   build:
@@ -79,10 +80,54 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
+  chart:
+    name: Package & Push Helm Chart
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Prepare chart metadata
+        id: chart_meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "registry_repo=oci://${{ env.REGISTRY }}/${OWNER}/charts" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry for Helm
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p dist
+          helm package charts/justapps \
+            --destination dist \
+            --version "${{ steps.chart_meta.outputs.version }}" \
+            --app-version "${{ steps.chart_meta.outputs.version }}"
+
+      - name: Push Helm chart
+        run: |
+          helm push "dist/${{ env.CHART_NAME }}-${{ steps.chart_meta.outputs.version }}.tgz" \
+            "${{ steps.chart_meta.outputs.registry_repo }}"
+
   release:
     name: Create GitHub Release
     runs-on: ubuntu-24.04
-    needs: build
+    needs:
+      - build
+      - chart
     permissions:
       contents: write
 
@@ -142,7 +187,9 @@ jobs:
 
           REGISTRY="${{ env.REGISTRY }}"
           IMAGE="${{ env.IMAGE_NAME }}"
-          BODY="${BODY}### Docker Images\n\`\`\`\ndocker pull ${REGISTRY}/${IMAGE}:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/backend:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/frontend:${VERSION}\n\`\`\`"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BODY="${BODY}### Docker Images\n\`\`\`\ndocker pull ${REGISTRY}/${IMAGE}:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/backend:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/frontend:${VERSION}\n\`\`\`\n\n"
+          BODY="${BODY}### Helm Chart\n\`\`\`\nhelm registry login ${REGISTRY} -u <github-user>\nhelm install justapps oci://${REGISTRY}/${OWNER}/charts/${{ env.CHART_NAME }} --version ${VERSION}\n\`\`\`"
 
           # Multiline output for GitHub Actions
           {

@@ -24,7 +24,7 @@ type PlatformSettings struct {
 	ShowTopBanner       bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
 	TopBannerText       string `bun:"top_banner_text" json:"topBannerText"`
 	// DetailFields is the admin-configurable schema for the "Fachliche Details" tab.
-	DetailFields []DetailFieldDef `bun:"detail_fields,type:jsonb" json:"detailFields"`
+	DetailFields []DetailFieldDef `bun:"detail_fields,type:jsonb,notnull,default:'[]'" json:"detailFields"`
 
 	// Branding
 	StoreName        string       `bun:"store_name" json:"storeName"`
@@ -37,12 +37,12 @@ type PlatformSettings struct {
 	HeroTitle        string       `bun:"hero_title" json:"heroTitle"`
 	HeroSubtitle     string       `bun:"hero_subtitle" json:"heroSubtitle"`
 	FooterText       string       `bun:"footer_text" json:"footerText"`
-	FooterLinks      []FooterLink `bun:"footer_links,type:jsonb" json:"footerLinks"`
+	FooterLinks      []FooterLink `bun:"footer_links,type:jsonb,notnull,default:'[]'" json:"footerLinks"`
 	ShowFlagBar      bool         `bun:"show_flag_bar,notnull,default:true" json:"showFlagBar"`
 
 	// App sort configuration (admin-configurable)
 	// Supported values for AppSortField: name, rating_avg, updated_at, status, authority
 	AppSortField     string   `bun:"app_sort_field,notnull,default:'name'" json:"appSortField"`
 	AppSortDirection string   `bun:"app_sort_direction,notnull,default:'asc'" json:"appSortDirection"`
-	PinnedApps       []string `bun:"pinned_apps,array" json:"pinnedApps"`
+	PinnedApps       []string `bun:"pinned_apps,array,notnull,default:'{}'" json:"pinnedApps"`
 }

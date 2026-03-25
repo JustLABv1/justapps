@@ -97,7 +97,7 @@ port: 8082
 database:
   server: localhost
   port: 5432
-  name: just_apps
+  name: justapps
   user: postgres
   password: your-password
 
@@ -170,6 +170,39 @@ helm install justapps ./charts/justapps \
 
 Review and adjust `values.yaml` for your cluster (image, ingress, PostgreSQL credentials, OIDC settings).
 
+### Published Helm Chart
+
+The release pipeline also publishes the chart to GitHub Container Registry as an OCI artifact.
+
+Login once with a GitHub token that has `read:packages`:
+
+```bash
+export CR_PAT=<github-token>
+echo "$CR_PAT" | helm registry login ghcr.io -u <github-username> --password-stdin
+```
+
+Install a released chart directly from GHCR:
+
+```bash
+helm install justapps oci://ghcr.io/justlabv1/charts/justapps \
+  --version 1.0.0 \
+  -f charts/justapps/values.yaml
+```
+
+Upgrade an existing installation:
+
+```bash
+helm upgrade justapps oci://ghcr.io/justlabv1/charts/justapps \
+  --version 1.0.0 \
+  -f my-values.yaml
+```
+
+Pull the packaged chart locally if you want to inspect it before installing:
+
+```bash
+helm pull oci://ghcr.io/justlabv1/charts/justapps --version 1.0.0
+```
+
 ## API Reference
 
 The backend REST API is available under `/api/v1`.
@@ -217,7 +250,7 @@ just-app-store/
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | [PR Check](.github/workflows/pr-check.yml) | Pull request → `main` | TypeScript check, lint, `next build`, `go vet`, `go build` |
-| [Release](.github/workflows/release.yml) | Push tag `v*.*.*` | Builds Docker image, pushes to GHCR, creates GitHub Release with changelog |
+| [Release](.github/workflows/release.yml) | Push tag `v*.*.*` | Builds Docker images, publishes the Helm chart to GHCR as an OCI artifact, creates GitHub Release with changelog |
 
 ### Creating a release
 
@@ -227,6 +260,8 @@ git push origin v1.0.0
 ```
 
 The image will be published to `ghcr.io/JustLABv1/justapps:1.0.0`.
+
+The Helm chart will be published to `oci://ghcr.io/justlabv1/charts/justapps` with chart version `1.0.0`.
 
 ## Contributing
 
