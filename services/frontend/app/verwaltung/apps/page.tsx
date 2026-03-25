@@ -1,9 +1,11 @@
 'use client';
 
 import { AppTable } from '@/components/AppTable';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import { Button, Modal } from '@heroui/react';
+import { isDraftStatus } from '@/lib/appStatus';
+import { Button, Modal, toast } from '@heroui/react';
 import { Check, Download, Loader2, Plus, ShieldCheck, Upload, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
@@ -27,6 +29,9 @@ function AppsContent() {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [transferUserId, setTransferUserId] = useState('');
   const [transferring, setTransferring] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const draftCount = apps.filter((app) => isDraftStatus(app.status)).length;
 
   const loadApps = async () => {
     try {
@@ -67,9 +72,27 @@ function AppsContent() {
   };
 
   const handleDeleteApp = async (id: string) => {
-    if (confirm('Bist du sicher? Diese App wird unwiderruflich gelöscht.')) {
-      await fetchApi(`/apps/${id}`, { method: 'DELETE' });
-      loadApps();
+    const app = apps.find((entry) => entry.id === id) || null;
+    setDeleteCandidate(app);
+  };
+
+  const confirmDeleteApp = async () => {
+    if (!deleteCandidate) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetchApi(`/apps/${deleteCandidate.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`"${deleteCandidate.name}" wurde entfernt.`);
+        setDeleteCandidate(null);
+        await loadApps();
+      } else {
+        toast.danger('Die App konnte nicht gelöscht werden.');
+      }
+    } catch {
+      toast.danger('Beim Löschen ist ein Fehler aufgetreten.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -126,11 +149,11 @@ function AppsContent() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } else {
-        alert('Export fehlgeschlagen');
+        toast.danger('Der Export ist fehlgeschlagen.');
       }
     } catch (err) {
       console.error(err);
-      alert('Export fehlgeschlagen');
+      toast.danger('Der Export ist fehlgeschlagen.');
     }
   };
 
@@ -143,14 +166,21 @@ function AppsContent() {
         const appsData = JSON.parse(event.target?.result as string);
         const res = await fetchApi('/apps/import', { method: 'POST', body: JSON.stringify(appsData) });
         if (res.ok) {
-          alert('Apps erfolgreich importiert');
+          const result = await res.json().catch(() => null);
+          const importedCount = typeof result?.importedCount === 'number' ? result.importedCount : Array.isArray(appsData) ? appsData.length : null;
+          const importedDraftCount = typeof result?.draftCount === 'number' ? result.draftCount : null;
+          const parts = [importedCount !== null ? `${importedCount} Apps importiert` : 'Apps wurden erfolgreich importiert'];
+          if (importedDraftCount !== null) {
+            parts.push(`${importedDraftCount} Entwürfe`);
+          }
+          toast.success(parts.join(' · '));
           loadApps();
         } else {
-          alert('Import fehlgeschlagen');
+          toast.danger('Der Import ist fehlgeschlagen.');
         }
       } catch (err) {
         console.error(err);
-        alert('Fehler beim Importieren der Datei');
+        toast.danger('Die Datei konnte nicht importiert werden.');
       }
     };
     reader.readAsText(file);
@@ -168,7 +198,10 @@ function AppsContent() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted">{apps.length} App{apps.length !== 1 ? 's' : ''} im Store</p>
+        <p className="text-sm text-muted">
+          {apps.length} App{apps.length !== 1 ? 's' : ''} im Store
+          {draftCount > 0 ? `, davon ${draftCount} Entwurf${draftCount !== 1 ? 'e' : ''}` : ''}
+        </p>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onPress={handleExportApps} className="gap-2">
             <Download className="w-4 h-4" /> Export
@@ -200,7 +233,7 @@ function AppsContent() {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div className="flex-grow">{error}</div>
-          <Button size="sm" variant="secondary" onPress={loadApps} className="h-8">Retry</Button>
+          <Button size="sm" variant="secondary" onPress={loadApps} className="h-8">Wiederholen</Button>
         </div>
       )}
 
@@ -279,6 +312,19 @@ function AppsContent() {
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
+
+      <ConfirmDialog
+        confirmLabel="App löschen"
+        description={deleteCandidate ? `Die App "${deleteCandidate.name}" wird dauerhaft aus dem Store entfernt.` : ''}
+        isDanger
+        isLoading={isDeleting}
+        isOpen={!!deleteCandidate}
+        onConfirm={confirmDeleteApp}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteCandidate(null);
+        }}
+        title="App wirklich löschen?"
+      />
     </div>
   );
 }

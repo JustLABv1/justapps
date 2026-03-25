@@ -47,7 +47,7 @@ export default function RegisterPage() {
       if (response.ok) {
         router.push('/login');
       } else {
-        setError(data.message || 'Registration failed');
+        setError(data.message || 'Registrierung fehlgeschlagen');
       }
     } catch (err) {
       console.error(err);
@@ -63,14 +63,14 @@ export default function RegisterPage() {
         <Card.Header className="p-6 pb-2 text-center">
           <div className="mb-2">
             <Card.Title className="text-xl font-semibold text-foreground">Registrieren</Card.Title>
-            <Card.Description className="text-sm text-muted mt-1">Erstellen Sie einen neuen Account.</Card.Description>
+            <Card.Description className="text-sm text-muted mt-1">Erstellen Sie ein neues Konto.</Card.Description>
           </div>
         </Card.Header>
 
         <Card.Content className="p-6 pt-4">
           <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <TextField isRequired className="w-full" onChange={setEmail}>
-              <Label className="text-sm font-medium text-foreground mb-1">Email</Label>
+              <Label className="text-sm font-medium text-foreground mb-1">E-Mail</Label>
               <Input
                 placeholder="E-Mail eingeben"
                 type="email"
@@ -124,7 +124,7 @@ export default function RegisterPage() {
 
           <div className="mt-5 text-center text-sm">
             <p className="text-muted">
-              Haben Sie bereits einen Account?{' '}
+              Haben Sie bereits ein Konto?{' '}
               <Link href="/login" className="text-accent font-medium">
                 Anmelden
               </Link>

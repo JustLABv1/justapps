@@ -11,10 +11,10 @@ import (
 func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 	appsGroup := router.Group("/apps")
 	{
-		appsGroup.GET("", func(c *gin.Context) {
+		appsGroup.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetApps(c, db)
 		})
-		appsGroup.GET("/:id", func(c *gin.Context) {
+		appsGroup.GET("/:id", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetApp(c, db)
 		})
 		appsGroup.GET("/:id/ratings", func(c *gin.Context) {
@@ -71,7 +71,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		}
 
 		// 3. Related apps — read is public, write requires auth
-		appsGroup.GET("/:id/related", func(c *gin.Context) {
+		appsGroup.GET("/:id/related", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRelatedApps(c, db)
 		})
 		relatedAuthGroup := appsGroup.Group("/:id/related")
@@ -92,7 +92,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		groupsGroup.GET("", func(c *gin.Context) {
 			apps.ListGroups(c, db)
 		})
-		groupsGroup.GET("/:groupId/members", func(c *gin.Context) {
+		groupsGroup.GET("/:groupId/members", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetGroupMembers(c, db)
 		})
 

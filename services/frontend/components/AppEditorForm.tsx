@@ -1,9 +1,11 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig, AppField } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
+import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
   Chip,
@@ -12,8 +14,7 @@ import {
   Switch,
   Tabs,
   TextArea,
-  TextField,
-  Tooltip,
+  TextField, toast
 } from '@heroui/react';
 import {
   AlertTriangle,
@@ -66,7 +67,7 @@ const ICON_OPTIONS = [
   { emoji: '🔍', label: 'Suche' }, { emoji: '🎓', label: 'Bildung' },
 ];
 
-const PREDEFINED_STATUSES = ['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
+const PREDEFINED_STATUSES = [DRAFT_STATUS, 'POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
 
 // ── LinkListEditor ────────────────────────────────────────────────────────────
 
@@ -100,13 +101,13 @@ function LinkListEditor({
         <div key={idx} className="grid grid-cols-12 gap-2 items-end">
           <div className="col-span-4">
             <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], label: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Label</Label>
+              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Bezeichnung</Label>
               <Input value={item.label} placeholder={placeholderLabel} className="bg-field-background h-8 text-sm" />
             </TextField>
           </div>
           <div className="col-span-7">
             <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], url: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">URL</Label>
+              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Adresse</Label>
               <Input value={item.url} placeholder={placeholderUrl} className="bg-field-background h-8 font-mono text-sm" />
             </TextField>
           </div>
@@ -153,7 +154,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       showCompose: true,
       showHelm: true,
       license: 'MIT',
-      status: 'POC',
+      status: DRAFT_STATUS,
     }
   );
 
@@ -173,8 +174,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [categoryInput, setCategoryInput] = useState('');
   const [techInput, setTechInput] = useState('');
   const [tagInput, setTagInput] = useState('');
-  const [showLinkEditor, setShowLinkEditor] = useState(false);
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(isNew);
+  const [editorMode, setEditorMode] = useState<'basic' | 'advanced'>(isNew ? 'basic' : 'advanced');
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // ── Related apps (editing only) ──
   const [relatedApps, setRelatedApps] = useState<{ id: string; name: string; icon?: string }[]>(
@@ -190,6 +192,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   );
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const initialSnapshotRef = useRef('');
+  const skipUnsavedWarningRef = useRef(false);
 
   const isIdTaken =
     isNew && !!formData.id?.trim() && existingApps.some((a) => a.id === formData.id?.trim());
@@ -208,20 +212,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) =>
     (links || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url! }));
 
-  const getStatusProps = (state?: string) => {
-    switch (state?.toLowerCase()) {
-      case 'etabliert': case 'graduated':
-        return { color: 'success' as const, label: state || '' };
-      case 'in erprobung': case 'incubating':
-        return { color: 'accent' as const, label: state || '' };
-      case 'sandbox':
-        return { color: 'warning' as const, label: state || '' };
-      default:
-        return state ? { color: 'default' as const, label: state } : null;
-    }
-  };
-
-  const statusInfo = getStatusProps(formData.status);
   const repositories = formData.repositories && formData.repositories.length > 0
     ? formData.repositories
     : [];
@@ -234,6 +224,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
+    setSaveSuccess(false);
     try {
       const method = isNew ? 'POST' : 'PUT';
       const url = isNew ? '/apps' : `/apps/${initialApp!.id}`;
@@ -244,17 +235,27 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         repositories: sanitizeLinks(formData.repositories) as AppConfig['repositories'],
         customLinks: sanitizeLinks(formData.customLinks) as AppConfig['customLinks'],
         liveDemos: (formData.liveDemos || []).filter((d) => d.url?.trim()),
+        status: formData.status?.trim() || (isNew ? DRAFT_STATUS : formData.status),
       };
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.ok) {
+        initialSnapshotRef.current = createSnapshot();
+        skipUnsavedWarningRef.current = true;
         setSaveSuccess(true);
+        toast.success(
+          isDraft
+            ? (isNew ? 'Der Entwurf wurde angelegt.' : 'Der Entwurf wurde gespeichert.')
+            : 'Die Änderungen wurden gespeichert.'
+        );
         setTimeout(() => router.push(backUrl), 1200);
       } else {
         const err = await res.json().catch(() => ({}));
         setSaveError((err as { message?: string }).message || 'Speichern fehlgeschlagen');
+        toast.danger((err as { message?: string }).message || 'Speichern fehlgeschlagen');
       }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Fehler');
+      toast.danger(err instanceof Error ? err.message : 'Fehler beim Speichern');
     } finally {
       setSaving(false);
     }
@@ -324,12 +325,72 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         a.id.toLowerCase().includes(relatedSearch.toLowerCase()))
   );
 
-  const canSave = !!formData.name && !!formData.id && (formData.categories?.length ?? 0) > 0 && !isIdTaken;
+  const isDraft = isDraftStatus(formData.status || (isNew ? DRAFT_STATUS : undefined));
+  const requiresExpandedDetails = !!formData.status?.trim() && !isDraft;
+  const draftRequiredItems = [
+    { label: 'Name', done: !!formData.name?.trim() },
+    { label: 'ID', done: !!formData.id?.trim() && !isIdTaken },
+  ];
+  const rolloutItems = [
+    { label: 'Kategorie', done: (formData.categories?.length ?? 0) > 0 },
+    { label: 'Kurzbeschreibung', done: !!formData.description?.trim() },
+  ];
+  const requiredItems = [...draftRequiredItems, ...rolloutItems];
+  const canSave = draftRequiredItems.every((item) => item.done) && (!requiresExpandedDetails || rolloutItems.every((item) => item.done));
+  const requiredDoneCount = requiredItems.filter((item) => item.done).length;
 
   /* Build metadata for Fachliche Details tab */
   const fieldValueMap = new Map((formData.customFields ?? []).map(f => [f.key, f.value]));
   const metaFields = (settings.detailFields ?? [])
     .map(def => ({ key: def.key, label: def.label, value: fieldValueMap.get(def.key) || '', icon: resolveIcon(def.icon) }));
+
+  const createSnapshot = () => JSON.stringify({
+    appGroupIds: Array.from(appGroupIds).sort(),
+    formData: {
+      ...formData,
+      categories: [...(formData.categories || [])],
+      customFields: [...(formData.customFields || [])],
+      customLinks: sanitizeLinks(formData.customLinks),
+      liveDemos: sanitizeLinks(formData.liveDemos),
+      repositories: sanitizeLinks(formData.repositories),
+      tags: [...(formData.tags || [])],
+      techStack: [...(formData.techStack || [])],
+    },
+    relatedApps: relatedApps.map((app) => app.id).sort(),
+  });
+
+  const hasUnsavedChanges = createSnapshot() !== initialSnapshotRef.current;
+
+  useEffect(() => {
+    initialSnapshotRef.current = createSnapshot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (skipUnsavedWarningRef.current || !hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const requestNavigation = (path: string) => {
+    if (saving) return;
+    if (!skipUnsavedWarningRef.current && hasUnsavedChanges) {
+      setPendingNavigation(path);
+      return;
+    }
+    router.push(path);
+  };
+
+  const confirmNavigation = () => {
+    if (!pendingNavigation) return;
+    skipUnsavedWarningRef.current = true;
+    router.push(pendingNavigation);
+  };
 
   // ════════════════════════════════════════════════════════════════════════════
   // RENDER — mirrors /apps/[id] detail page layout exactly
@@ -337,10 +398,53 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   return (
     <div className="max-w-5xl mx-auto pb-20">
 
+      {isNew && (
+        <section className="mb-6 rounded-3xl border border-border bg-surface p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">Neue App anlegen</p>
+              <h2 className="text-xl font-bold text-foreground">Starten Sie mit einem Entwurf und ergänzen Sie technische Details später.</h2>
+              <p className="text-sm text-muted">
+                Für den ersten Entwurf reichen Name und ID. Sobald die App einen fachlichen Status erhält, sollten Kategorie und Kurzbeschreibung ergänzt werden.
+              </p>
+            </div>
+
+            <div className="flex rounded-2xl border border-border bg-surface-secondary p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setEditorMode('basic')}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${editorMode === 'basic' ? 'bg-accent text-white' : 'text-muted hover:text-foreground'}`}
+              >
+                Basisdaten
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('advanced')}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${editorMode === 'advanced' ? 'bg-accent text-white' : 'text-muted hover:text-foreground'}`}
+              >
+                Erweiterte Angaben
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {requiredItems.map((item) => (
+              <div key={item.label} className={`rounded-2xl border px-4 py-3 text-sm ${item.done ? 'border-success/30 bg-success/10 text-foreground' : 'border-border bg-surface-secondary/50 text-muted'}`}>
+                <div className="flex items-center gap-2 font-semibold">
+                  {item.done ? <Check className="w-4 h-4 text-success" /> : <div className="h-4 w-4 rounded-full border border-border" />}
+                  {item.label}
+                </div>
+                <p className="mt-1 text-xs">{item.done ? 'Erledigt' : item.label === 'Kategorie' || item.label === 'Kurzbeschreibung' ? 'Für sichtbare App empfohlen' : 'Noch offen'}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── Nav row (matches detail page) ── */}
       <div className="flex justify-between items-center mb-6">
         <button
-          onClick={() => router.push(backUrl)}
+          onClick={() => requestNavigation(backUrl)}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -350,7 +454,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
             <button
-              onClick={() => router.push(backUrl)}
+              onClick={() => requestNavigation(backUrl)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
             >
               Abbrechen
@@ -362,7 +466,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              {saving ? 'Speichert...' : isNew ? 'Erstellen' : 'Speichern'}
+              {saving ? 'Speichert...' : isDraft ? (isNew ? 'Entwurf speichern' : 'Entwurf sichern') : (isNew ? 'App speichern' : 'Speichern')}
             </button>
           </div>
         </div>
@@ -460,7 +564,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           <div className="flex-1 min-w-0">
             {/* Required field note */}
             <p className="text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">
-              Name &amp; Kategorien <span className="text-danger font-normal normal-case">* Pflichtfelder</span>
+              Entwurf: Name &amp; ID <span className="text-danger font-normal normal-case">* Pflichtfelder</span>
             </p>
 
             {/* Title row: name + category chips + status chip + reuse chip */}
@@ -521,14 +625,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setFormData(p => ({ ...p, status: p.status === s ? '' : s }))}
+                    onClick={() => setFormData(p => ({ ...p, status: s }))}
                     className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all border ${
-                      formData.status === s
+                      (formData.status || (isNew ? DRAFT_STATUS : '')) === s
                         ? 'bg-accent text-white border-accent shadow-sm'
                         : 'bg-transparent border-border text-muted hover:border-accent/40 hover:text-foreground'
                     }`}
                   >
-                    {s}
+                    {getAppStatusLabel(s) || s}
                   </button>
                 ))}
                 {formData.status && !PREDEFINED_STATUSES.includes(formData.status) && (
@@ -635,13 +739,13 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               {liveDemos.map((demo, idx) => (
                 <span key={`demo-${idx}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold shadow-sm">
                   <ExternalLink className="w-4 h-4" />
-                  {demo.label || 'Live Demo'}
+                  {demo.label || 'Live-Zugang'}
                 </span>
               ))}
               {repositories.map((repo, idx) => (
                 <span key={`repo-${idx}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm">
                   <Github className="w-4 h-4" />
-                  {repo.label || 'Repository'}
+                  {repo.label || 'Quellcode'}
                 </span>
               ))}
               {customLinks.map((link, idx) => (
@@ -665,15 +769,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   onChange={(e) => setFormData(p => ({ ...p, license: e.target.value }))}
                 />
               </div>
-              {/* Edit links button */}
-              <button
-                type="button"
-                onClick={() => setShowLinkEditor(v => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-dashed border-accent/30 text-xs font-semibold text-accent hover:bg-accent/10 transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Links bearbeiten
-              </button>
             </div>
           </div>
         </div>
@@ -774,31 +869,28 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           </div>
         )}
 
-        {/* ── Link editor panel ── */}
-        {showLinkEditor && (
-          <div className="relative z-10 mt-5 p-5 rounded-2xl bg-surface border border-border shadow-lg space-y-6">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground">Links & Ressourcen bearbeiten</span>
-              <button onClick={() => setShowLinkEditor(false)} className="text-muted hover:text-foreground">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="relative z-10 mt-5 rounded-2xl border border-border bg-surface p-5 shadow-lg">
+          <div className="mb-5 flex flex-col gap-1">
+            <span className="text-sm font-bold text-foreground">Ressourcen & Links</span>
+            <p className="text-sm text-muted">Hinterlegen Sie direkte Einstiege, Quellcode und weiterführende Dokumentation sichtbar an einer Stelle.</p>
+          </div>
+          <div className="space-y-6">
             <LinkListEditor
-              title="Live Demos"
+              title="Live-Zugänge"
               icon={<ExternalLink className="w-4 h-4 text-muted" />}
               items={formData.liveDemos || []}
               onChange={(demos) => setFormData((p) => ({ ...p, liveDemos: demos }))}
               addLabel="Hinzufügen"
-              placeholderLabel="Produktion"
+              placeholderLabel="Produktivumgebung"
               placeholderUrl="https://..."
             />
             <LinkListEditor
-              title="Repositories"
+              title="Quellcode"
               icon={<Github className="w-4 h-4 text-muted" />}
               items={formData.repositories || []}
               onChange={(repos) => setFormData((p) => ({ ...p, repositories: repos }))}
               addLabel="Hinzufügen"
-              placeholderLabel="GitHub"
+              placeholderLabel="Repository"
               placeholderUrl="https://github.com/..."
             />
             <LinkListEditor
@@ -810,21 +902,33 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               placeholderLabel="Link"
               placeholderUrl="https://..."
             />
-            <div className="grid grid-cols-1 gap-4 pt-2 border-t border-border">
+            <div className="grid grid-cols-1 gap-4 border-t border-border pt-2 md:grid-cols-2">
               <TextField onChange={(val) => setFormData((p) => ({ ...p, docsUrl: val }))}>
                 <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Dokumentation URL</Label>
                 <Input value={formData.docsUrl || ''} placeholder="https://docs..." className="bg-field-background h-8 font-mono text-sm" />
               </TextField>
+              <TextField onChange={(val) => setFormData((p) => ({ ...p, authority: val }))}>
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Herausgeber</Label>
+                <Input value={formData.authority || ''} placeholder="z.B. Bundesinnenministerium" className="bg-field-background h-8 text-sm" />
+              </TextField>
             </div>
           </div>
-        )}
+        </div>
       </header>
 
+      {isNew && editorMode === 'basic' && (
+        <div className="mb-8 rounded-2xl border border-dashed border-border/70 bg-surface-secondary/40 p-4 text-sm text-muted">
+          Erweiterte Angaben wie Technik, ausführliche Dokumentation, Deployment und Verknüpfungen können Sie jetzt oder nach dem ersten Speichern ergänzen.
+        </div>
+      )}
+
+      {(!isNew || editorMode === 'advanced') && (
+      <>
       {/* ── Tech stack strip (matches detail page position exactly) ── */}
       <div className="flex items-start gap-4 mb-8 bg-surface-secondary/50 p-4 rounded-2xl border border-border">
         <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2 pt-1">
           <Layers className="w-4 h-4 text-accent" />
-          Tech Stack
+          Technik
         </span>
         <div className="flex gap-2 flex-wrap items-center flex-1">
           {(formData.techStack || []).map((tech: string) => (
@@ -891,7 +995,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 </Switch>
               </div>
               <p className="text-sm text-muted mb-3">
-                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Behörden die bestehende Installation des Anbieters mitnutzen.
+                Diese App kann als bestehende Installation mitgenutzt werden. Eine technische Installationsanleitung kann optional trotzdem zusätzlich hinterlegt werden.
               </p>
               <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
                 <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
@@ -934,13 +1038,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               Fachliche Details
               <Tabs.Indicator />
             </Tabs.Tab>
-            {!formData.isReuse && (
-              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
-                <Server className="w-4 h-4" />
-                Deployment
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            )}
+            <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
+              <Server className="w-4 h-4" />
+              Deployment
+              <Tabs.Indicator />
+            </Tabs.Tab>
             <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
@@ -1043,121 +1145,119 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         </Tabs.Panel>
 
         {/* Deployment tab */}
-        {!formData.isReuse && (
-          <Tabs.Panel id="deployment">
-            <div className="space-y-6">
-              <p className="text-sm text-muted">
-                Hier können technische Installationsanleitungen hinterlegt werden. Leer lassen, wenn nicht benötigt – der Deployment-Bereich wird dann in der App-Ansicht ausgeblendet.
-              </p>
-              <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
-                <div>
-                  <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
-                  <p className="text-xs text-muted">Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.</p>
-                </div>
-                <Switch
-                  isSelected={formData.hasDeploymentAssistant ?? true}
-                  onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
-                >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
-                </Switch>
+        <Tabs.Panel id="deployment">
+          <div className="space-y-6">
+            <p className="text-sm text-muted">
+              Hier können technische Installationsanleitungen hinterlegt werden. Dieser Bereich kann unabhängig von Nachnutzung aktiviert werden.
+            </p>
+            <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
+              <div>
+                <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
+                <p className="text-xs text-muted">Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.</p>
               </div>
-
-              {formData.hasDeploymentAssistant !== false && (
-                <>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { key: 'showHelm', label: 'Helm Chart', icon: <Server className="w-4 h-4" /> },
-                      { key: 'showCompose', label: 'Docker Compose', icon: <Terminal className="w-4 h-4" /> },
-                      { key: 'showDocker', label: 'Docker', icon: <Terminal className="w-4 h-4" /> },
-                    ].map(({ key, label, icon }) => {
-                      const active = formData[key as keyof AppConfig] !== false;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setFormData((p) => ({ ...p, [key]: !p[key as keyof AppConfig] }))}
-                          className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
-                            active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
-                          }`}
-                        >
-                          {icon}
-                          <span className="text-xs font-semibold">{label}</span>
-                          <span className="text-[10px]">{active ? 'Aktiv' : 'Ausgeblendet'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Helm config */}
-                  {formData.showHelm !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Server className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Helm Chart</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, helmRepo: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Helm Chart Repo</Label>
-                        <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Benutzerdefiniertes Helm-Kommando</Label>
-                        <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm repo add bund https://...\nhelm install ${formData.id || 'appname'} bund/${formData.id || 'appname'}`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmValues: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Values.yaml Inhalt</Label>
-                        <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest\nreplicas: 1" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customHelmNote || ''} placeholder="Zusätzliche Hinweise..." className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-
-                  {/* Compose config */}
-                  {formData.showCompose !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Terminal className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Docker Compose</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Compose-Setup</Label>
-                        <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`version: '3.8'\nservices:\n  ${formData.id || 'app'}:\n    image: ...`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customComposeNote || ''} className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-
-                  {/* Docker config */}
-                  {formData.showDocker !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Terminal className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Docker</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, dockerRepo: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker Image</Label>
-                        <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker-Kommando</Label>
-                        <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker pull ...\ndocker run -d --name ${formData.id || 'app'} -p 8080:80 ...`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customDockerNote || ''} className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-                </>
-              )}
+              <Switch
+                isSelected={formData.hasDeploymentAssistant ?? true}
+                onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
+              >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+              </Switch>
             </div>
-          </Tabs.Panel>
-        )}
+
+            {formData.hasDeploymentAssistant !== false && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { key: 'showHelm', label: 'Helm Chart', icon: <Server className="w-4 h-4" /> },
+                    { key: 'showCompose', label: 'Docker Compose', icon: <Terminal className="w-4 h-4" /> },
+                    { key: 'showDocker', label: 'Docker', icon: <Terminal className="w-4 h-4" /> },
+                  ].map(({ key, label, icon }) => {
+                    const active = formData[key as keyof AppConfig] !== false;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFormData((p) => ({ ...p, [key]: !p[key as keyof AppConfig] }))}
+                        className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
+                          active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
+                        }`}
+                      >
+                        {icon}
+                        <span className="text-xs font-semibold">{label}</span>
+                        <span className="text-[10px]">{active ? 'Aktiv' : 'Ausgeblendet'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Helm config */}
+                {formData.showHelm !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Server className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Helm Chart</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, helmRepo: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Helm Chart Repo</Label>
+                      <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Benutzerdefiniertes Helm-Kommando</Label>
+                      <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm repo add bund https://...\nhelm install ${formData.id || 'appname'} bund/${formData.id || 'appname'}`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmValues: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Values.yaml Inhalt</Label>
+                      <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest\nreplicas: 1" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customHelmNote || ''} placeholder="Zusätzliche Hinweise..." className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+
+                {/* Compose config */}
+                {formData.showCompose !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Terminal className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Docker Compose</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Compose-Setup</Label>
+                      <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`version: '3.8'\nservices:\n  ${formData.id || 'app'}:\n    image: ...`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customComposeNote || ''} className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+
+                {/* Docker config */}
+                {formData.showDocker !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Terminal className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Docker</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, dockerRepo: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker Image</Label>
+                      <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker-Kommando</Label>
+                      <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker pull ...\ndocker run -d --name ${formData.id || 'app'} -p 8080:80 ...`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customDockerNote || ''} className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </Tabs.Panel>
 
         {/* Bewertungen tab */}
         <Tabs.Panel id="ratings">
@@ -1334,6 +1434,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           )}
           </Tabs.Panel>
       </Tabs>
+          </>
+          )}
 
       {/* ── Footer meta (matches detail page) ── */}
       <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted">
@@ -1349,9 +1451,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-border shadow-lg">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
+            {hasUnsavedChanges && !saveError && !saveSuccess && (
+              <p className="text-xs text-muted truncate mb-1">
+                Ungespeicherte Änderungen. Erfasste Angaben: <span className="font-semibold">{requiredDoneCount}/{requiredItems.length}</span>
+              </p>
+            )}
             {!canSave && !saveError && !saveSuccess && (
               <p className="text-xs text-muted truncate">
-                Pflichtfelder: <span className="font-semibold">Name</span>, <span className="font-semibold">Kategorie</span> und <span className="font-semibold">ID</span> müssen ausgefüllt sein.
+                Für einen Entwurf sind <span className="font-semibold">Name</span> und <span className="font-semibold">ID</span> nötig. Für Status außer Entwurf zusätzlich <span className="font-semibold">Kategorie</span> und <span className="font-semibold">Kurzbeschreibung</span>.
               </p>
             )}
             {saveError && <p className="text-sm text-danger font-medium truncate">{saveError}</p>}
@@ -1362,8 +1469,20 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-muted md:inline-flex">
+              Arbeitsstand: {getAppStatusLabel(formData.status || (isNew ? DRAFT_STATUS : '')) || 'Offen'}
+            </span>
+            {isNew && (
+              <button
+                type="button"
+                onClick={() => setEditorMode((mode) => mode === 'basic' ? 'advanced' : 'basic')}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary border border-border transition-colors"
+              >
+                {editorMode === 'basic' ? 'Erweitert öffnen' : 'Basisansicht'}
+              </button>
+            )}
             <button
-              onClick={() => router.push(backUrl)}
+              onClick={() => requestNavigation(backUrl)}
               className="px-4 py-2 rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary border border-border transition-colors"
             >
               Abbrechen
@@ -1374,11 +1493,22 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? 'Speichert...' : isNew ? 'App erstellen' : 'Änderungen speichern'}
+              {saving ? 'Speichert...' : isDraft ? 'Entwurf speichern' : (isNew ? 'App speichern' : 'Änderungen speichern')}
             </button>
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        confirmLabel="Seite verlassen"
+        description="Es gibt ungespeicherte Änderungen. Wenn Sie die Seite jetzt verlassen, gehen diese Anpassungen verloren."
+        isOpen={!!pendingNavigation}
+        onConfirm={confirmNavigation}
+        onOpenChange={(open) => {
+          if (!open) setPendingNavigation(null);
+        }}
+        title="Ungespeicherte Änderungen verwerfen?"
+      />
     </div>
   );
 }

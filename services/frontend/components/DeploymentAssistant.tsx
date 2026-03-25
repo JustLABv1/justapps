@@ -11,7 +11,6 @@ interface DeploymentAssistantProps {
 
 export const DeploymentAssistant: React.FC<DeploymentAssistantProps> = ({ app }) => {
   const [copied, setCopied] = useState(false);
-  const [showValues, setShowValues] = useState(false);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(-1);
 
   const variants = app.deploymentVariants ?? [];
@@ -21,6 +20,7 @@ export const DeploymentAssistant: React.FC<DeploymentAssistantProps> = ({ app })
   const activeVariant: DeploymentVariant | null = selectedVariantIdx >= 0 ? (variants[selectedVariantIdx] ?? null) : null;
 
   const helmValues = activeVariant?.helmValues || app.customHelmValues;
+  const showValues = Boolean(helmValues);
 
   const helmCommand = (activeVariant?.helmCommand || app.customHelmCommand) ||
     `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}

@@ -1,8 +1,9 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
+import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { Button, Input, TextField } from "@heroui/react";
-import { Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppCard } from "./AppCard";
 
@@ -16,6 +17,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -32,32 +34,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
     initialApps.forEach(app => {
       if (app.status) sts.add(app.status);
     });
-    // Define a stable sorting order for lifecycles (German labels)
-    const order = ['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
-    return Array.from(sts).sort((a, b) => {
-      const idxA = order.indexOf(a);
-      const idxB = order.indexOf(b);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b);
-    });
+    return sortAppStatuses(Array.from(sts));
   }, [initialApps]);
-
-  const getStatusLabel = (state: string) => {
-    switch (state?.toLowerCase()) {
-      case 'graduated':
-      case 'etabliert':
-      case 'produktiv': return 'Etabliert';
-      case 'incubating':
-      case 'in inkubation':
-      case 'in erprobung': return 'In Erprobung';
-      case 'sandbox': return 'Sandbox';
-      case 'mvp': return 'MVP';
-      case 'poc': return 'POC';
-      default: return state;
-    }
-  };
 
   const filteredApps = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -73,7 +51,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       const matchesStatus = !selectedStatus || app.status === selectedStatus;
       const matchesType = !selectedType ||
         (selectedType === 'reuse' && app.isReuse) ||
-        (selectedType === 'install' && !app.isReuse);
+        (selectedType === 'install' && app.hasDeploymentAssistant !== false);
       const matchesGroup = !selectedGroup || app.appGroups?.some(g => g.id === selectedGroup);
 
       return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup;
@@ -96,12 +74,89 @@ export function AppGrid({ initialApps }: AppGridProps) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [initialApps]);
 
+  const quickCategories = categories.slice(0, 6);
+  const quickStatuses = statuses.slice(0, 4);
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory(null);
+    setSelectedStatus(null);
+    setSelectedType(null);
+    setSelectedGroup(null);
+  };
+
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; clear: () => void }> = [];
+
+    if (searchQuery) {
+      filters.push({
+        key: 'search',
+        label: `Suche: ${searchQuery}`,
+        clear: () => setSearchQuery(""),
+      });
+    }
+
+    if (selectedCategory) {
+      filters.push({
+        key: 'category',
+        label: `Kategorie: ${selectedCategory}`,
+        clear: () => setSelectedCategory(null),
+      });
+    }
+
+    if (selectedStatus) {
+      filters.push({
+        key: 'status',
+        label: `Status: ${getAppStatusLabel(selectedStatus) || selectedStatus}`,
+        clear: () => setSelectedStatus(null),
+      });
+    }
+
+    if (selectedType) {
+      filters.push({
+        key: 'type',
+        label: selectedType === 'install' ? 'Art: Selbst installieren' : 'Art: Nachnutzung',
+        clear: () => setSelectedType(null),
+      });
+    }
+
+    if (selectedGroup) {
+      const groupName = groups.find(group => group.id === selectedGroup)?.name ?? selectedGroup;
+      filters.push({
+        key: 'group',
+        label: `Gruppe: ${groupName}`,
+        clear: () => setSelectedGroup(null),
+      });
+    }
+
+    return filters;
+  }, [groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType]);
+
+  const filterSummary = useMemo(() => {
+    const summary = [];
+
+    if (categories.length > 0) {
+      summary.push(`${categories.length} Kategorien`);
+    }
+    if (statuses.length > 0) {
+      summary.push(`${statuses.length} Status`);
+    }
+    if (hasReuseApps) {
+      summary.push('Art');
+    }
+    if (groups.length > 0) {
+      summary.push(`${groups.length} Gruppen`);
+    }
+
+    return summary.join(' · ');
+  }, [categories.length, groups.length, hasReuseApps, statuses.length]);
+
   return (
     <div className="flex flex-col gap-8">
       {/* Filter bar */}
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-2xl">
             <TextField value={searchQuery} onChange={setSearchQuery} className="w-full">
               <Input
                 placeholder="Apps suchen..."
@@ -110,123 +165,220 @@ export function AppGrid({ initialApps }: AppGridProps) {
             </TextField>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          <div className="flex items-center gap-2 self-start lg:self-auto">
             <Button
-              size="sm"
-              variant={!selectedCategory ? "primary" : "secondary"}
-              onPress={() => setSelectedCategory(null)}
-              className={`rounded-full text-xs h-9 px-4 font-medium ${!selectedCategory ? 'text-background' : ''}`}
+              variant={showFilters || hasActiveFilters ? "primary" : "secondary"}
+              onPress={() => setShowFilters(!showFilters)}
+              className={`h-11 rounded-xl px-4 gap-2 font-medium ${showFilters || hasActiveFilters ? 'text-background' : ''}`}
             >
-              Alle Kategorien
+              <SlidersHorizontal className="w-4 h-4" />
+              Filter
+              {activeFilters.length > 0 && (
+                <span className="inline-flex min-w-5 justify-center rounded-full bg-background/20 px-1.5 py-0.5 text-[11px] font-semibold text-current">
+                  {activeFilters.length}
+                </span>
+              )}
+              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
-            {categories.map((cat) => (
+            {hasActiveFilters && (
               <Button
-                key={cat}
-                variant={selectedCategory === cat ? "primary" : "secondary"}
+                variant="outline"
                 size="sm"
-                onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                className={`rounded-full text-xs h-9 px-4 font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
+                className="h-11 rounded-xl px-4 text-xs gap-1.5 text-muted hover:text-foreground"
+                onPress={clearAllFilters}
               >
-                {cat}
+                <X className="w-3.5 h-3.5" />
+                Zurücksetzen
               </Button>
-            ))}
+            )}
           </div>
         </div>
 
-        {hasReuseApps && (
-          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Art:</span>
-              <div className="flex flex-wrap gap-2">
+        {(quickCategories.length > 0 || quickStatuses.length > 0) && (
+          <div className="flex flex-col gap-3 border-t border-border/50 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted/80">Schnellfilter</span>
+              {quickCategories.map((cat) => (
                 <Button
-                  variant={!selectedType ? "primary" : "secondary"}
+                  key={`quick-cat-${cat}`}
                   size="sm"
-                  onPress={() => setSelectedType(null)}
-                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedType ? 'text-background' : ''}`}
+                  variant={selectedCategory === cat ? "primary" : "secondary"}
+                  onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
                 >
-                  Alle
+                  {cat}
                 </Button>
+              ))}
+              {quickStatuses.map((status) => (
                 <Button
-                  variant={selectedType === 'install' ? "primary" : "secondary"}
+                  key={`quick-status-${status}`}
                   size="sm"
-                  onPress={() => setSelectedType(selectedType === 'install' ? null : 'install')}
-                  className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'install' ? 'text-background' : ''}`}
+                  variant={selectedStatus === status ? "primary" : "secondary"}
+                  onPress={() => setSelectedStatus(selectedStatus === status ? null : status)}
+                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedStatus === status ? 'text-background' : ''}`}
                 >
-                  Selbst installieren
+                  {getAppStatusLabel(status) || status}
                 </Button>
-                <Button
-                  variant={selectedType === 'reuse' ? "primary" : "secondary"}
-                  size="sm"
-                  onPress={() => setSelectedType(selectedType === 'reuse' ? null : 'reuse')}
-                  className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'reuse' ? 'text-background' : ''}`}
-                >
-                  Nachnutzung
-                </Button>
-              </div>
+              ))}
             </div>
           </div>
         )}
 
-        {statuses.length > 0 && (
-          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Status:</span>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={!selectedStatus ? "primary" : "secondary"}
-                  size="sm"
-                  onPress={() => setSelectedStatus(null)}
-                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
-                >
-                  Alle
-                </Button>
-                {statuses.map((st) => (
-                  <Button
-                    key={st}
-                    variant={selectedStatus === st ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
-                  >
-                    {getStatusLabel(st)}
-                  </Button>
-                ))}
-              </div>
-            </div>
+        <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted">
+              Starten Sie direkt mit Suche oder Schnellfiltern. Für feinere Auswahl stehen Kategorie, Status, Art und Gruppe bereit.
+            </p>
+            {!showFilters && filterSummary && (
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted/80">
+                {filterSummary}
+              </p>
+            )}
           </div>
-        )}
 
-        {groups.length > 0 && (
-          <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Gruppe:</span>
-              <div className="flex flex-wrap gap-2">
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {activeFilters.map((filter) => (
                 <Button
-                  variant={!selectedGroup ? "primary" : "secondary"}
+                  key={filter.key}
                   size="sm"
-                  onPress={() => setSelectedGroup(null)}
-                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedGroup ? 'text-background' : ''}`}
+                  variant="secondary"
+                  onPress={filter.clear}
+                  className="h-8 rounded-full px-3 text-xs font-medium"
                 >
-                  Alle
+                  {filter.label}
+                  <X className="w-3 h-3" />
                 </Button>
-                {groups.map((g) => (
+              ))}
+            </div>
+          )}
+        </div>
+
+        {showFilters && (
+          <div className="grid gap-4 border-t border-border/50 pt-4 lg:grid-cols-2">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted">Kategorien</span>
+                <Button
+                  variant={!selectedCategory ? "primary" : "secondary"}
+                  size="sm"
+                  onPress={() => setSelectedCategory(null)}
+                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedCategory ? 'text-background' : ''}`}
+                >
+                  Alle Kategorien
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 min-w-0">
+                {categories.map((cat) => (
                   <Button
-                    key={g.id}
-                    variant={selectedGroup === g.id ? "primary" : "secondary"}
+                    key={cat}
+                    variant={selectedCategory === cat ? "primary" : "secondary"}
                     size="sm"
-                    onPress={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${selectedGroup === g.id ? 'text-background' : ''}`}
+                    onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                    className={`rounded-full text-xs h-8 px-3 font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
                   >
-                    {g.name}
+                    {cat}
                   </Button>
                 ))}
               </div>
             </div>
+
+            {hasReuseApps && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Art</span>
+                  <Button
+                    variant={!selectedType ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedType(null)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedType ? 'text-background' : ''}`}
+                  >
+                    Alle
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={selectedType === 'install' ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedType(selectedType === 'install' ? null : 'install')}
+                    className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'install' ? 'text-background' : ''}`}
+                  >
+                    Selbst installieren
+                  </Button>
+                  <Button
+                    variant={selectedType === 'reuse' ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedType(selectedType === 'reuse' ? null : 'reuse')}
+                    className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'reuse' ? 'text-background' : ''}`}
+                  >
+                    Nachnutzung
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {statuses.length > 0 && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Status</span>
+                  <Button
+                    variant={!selectedStatus ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedStatus(null)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
+                  >
+                    Alle
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {statuses.map((st) => (
+                    <Button
+                      key={st}
+                      variant={selectedStatus === st ? "primary" : "secondary"}
+                      size="sm"
+                      onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
+                      className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
+                    >
+                      {getAppStatusLabel(st) || st}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {groups.length > 0 && (
+              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4 lg:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Gruppe</span>
+                  <Button
+                    variant={!selectedGroup ? "primary" : "secondary"}
+                    size="sm"
+                    onPress={() => setSelectedGroup(null)}
+                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedGroup ? 'text-background' : ''}`}
+                  >
+                    Alle
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {groups.map((g) => (
+                    <Button
+                      key={g.id}
+                      variant={selectedGroup === g.id ? "primary" : "secondary"}
+                      size="sm"
+                      onPress={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
+                      className={`rounded-full text-[11px] h-7 px-3 ${selectedGroup === g.id ? 'text-background' : ''}`}
+                    >
+                      {g.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Results count */}
       <div className="flex items-center justify-between px-1">
         <p className="text-sm font-medium text-muted">
           <span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden
@@ -236,13 +388,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
             variant="outline"
             size="sm"
             className="text-xs gap-1.5 text-muted hover:text-foreground"
-            onPress={() => {
-              setSearchQuery("");
-              setSelectedCategory(null);
-              setSelectedStatus(null);
-              setSelectedType(null);
-              setSelectedGroup(null);
-            }}
+            onPress={clearAllFilters}
           >
             <X className="w-3.5 h-3.5" />
             Filter zurücksetzen
@@ -271,13 +417,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
           <Button 
             variant="secondary"
             size="sm"
-            onPress={() => {
-              setSearchQuery("");
-              setSelectedCategory(null);
-              setSelectedStatus(null);
-              setSelectedType(null);
-              setSelectedGroup(null);
-            }}
+            onPress={clearAllFilters}
           >
             Filter zurücksetzen
           </Button>

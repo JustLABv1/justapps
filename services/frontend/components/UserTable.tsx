@@ -1,24 +1,24 @@
 'use client';
 
 import {
-  Button,
-  Chip,
-  Dropdown,
-  EmptyState,
-  Input,
-  Pagination,
-  Table
+    Button,
+    Chip,
+    Dropdown,
+    EmptyState,
+    Input,
+    Pagination,
+    Table
 } from '@heroui/react';
 import {
-  Info,
-  Lock,
-  MoreVertical,
-  Pencil,
-  Search,
-  ShieldCheck,
-  Trash2,
-  Unlock,
-  User
+    Info,
+    Lock,
+    MoreVertical,
+    Pencil,
+    Search,
+    ShieldCheck,
+    Trash2,
+    Unlock,
+    User
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
@@ -151,7 +151,7 @@ export function UserTable({
       {topContent}
       <Table variant="secondary">
         <Table.ScrollContainer>
-          <Table.Content aria-label="Users Management Table" className="min-w-[800px]">
+          <Table.Content aria-label="Tabelle der Benutzer" className="min-w-[800px]">
             <Table.Header>
               <Table.Column isRowHeader>Benutzer</Table.Column>
               <Table.Column>Rolle</Table.Column>
@@ -182,7 +182,7 @@ export function UserTable({
                   </Table.Cell>
                   <Table.Cell>
                     <div className="flex items-center gap-2">
-                    <Chip size="sm" variant="soft" className={`font-bold text-[9px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role}</Chip>
+                    <Chip size="sm" variant="soft" className={`font-bold text-[9px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role === 'admin' ? 'Administrator' : 'Benutzer'}</Chip>
                     {u.authType && (
                       <Chip size="sm" variant="primary" className="font-bold text-[9px] uppercase tracking-wider opacity-70 border-border/50">
                         {u.authType === 'oidc' ? 'OIDC' : 'Lokal'}
@@ -193,7 +193,7 @@ export function UserTable({
                   <Table.Cell>
                     <div className="flex flex-wrap gap-1">
                       {u.canSubmitApps === false && (
-                        <Chip size="sm" variant="soft" color="warning" className="font-bold text-[9px] uppercase tracking-wider bg-warning/10 text-warning">App Erstellung Gesperrt</Chip>
+                        <Chip size="sm" variant="soft" color="warning" className="font-bold text-[9px] uppercase tracking-wider bg-warning/10 text-warning">App-Erstellung gesperrt</Chip>
                       )}
                       {u.disabled && (
                         <Chip size="sm" variant="soft" className="font-bold text-[9px] uppercase tracking-wider bg-danger/10 text-danger text-danger">Deaktiviert</Chip>
@@ -209,7 +209,7 @@ export function UserTable({
                         <Pencil className="w-4 h-4 text-muted" />
                       </Button>
                       <Dropdown>
-                        <Button isIconOnly size="sm" variant="tertiary" aria-label="Benutzer Aktionen">
+                        <Button isIconOnly size="sm" variant="tertiary" aria-label="Benutzeraktionen">
                           <MoreVertical className="w-4 h-4 text-muted" />
                         </Button>
                         <Dropdown.Popover>
@@ -219,16 +219,16 @@ export function UserTable({
                             if (key === 'edit') handleEditUser(u);
                             if (key === 'delete') handleDeleteUser(u.id);
                           }}>
-                            <Dropdown.Item id="state" textValue={u.disabled ? 'Konto Aktivieren' : 'Konto Sperren'}>
+                            <Dropdown.Item id="state" textValue={u.disabled ? 'Konto aktivieren' : 'Konto sperren'}>
                               <div className={`flex items-center gap-2 ${u.disabled ? 'text-success' : 'text-danger'}`}>
                                 {u.disabled ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                {u.disabled ? 'Konto Aktivieren' : 'Konto Sperren'}
+                                {u.disabled ? 'Konto aktivieren' : 'Konto sperren'}
                               </div>
                             </Dropdown.Item>
-                            <Dropdown.Item id="submission" textValue={u.canSubmitApps === false ? 'Einreichung Erlauben' : 'Einreichung Sperren'}>
+                            <Dropdown.Item id="submission" textValue={u.canSubmitApps === false ? 'Einreichung erlauben' : 'Einreichung sperren'}>
                               <div className={`flex items-center gap-2 ${u.canSubmitApps === false ? 'text-success' : 'text-danger'}`}>
                                 {u.canSubmitApps === false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                {u.canSubmitApps === false ? 'Einreichung Erlauben' : 'Einreichung Sperren'}
+                                {u.canSubmitApps === false ? 'Einreichung erlauben' : 'Einreichung sperren'}
                               </div>
                             </Dropdown.Item>
                             <Dropdown.Item id="delete" textValue="Löschen" className="text-danger">
