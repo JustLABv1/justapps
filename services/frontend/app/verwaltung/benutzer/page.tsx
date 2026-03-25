@@ -1,15 +1,17 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { UserTable } from '@/components/UserTable';
 import { fetchApi } from '@/lib/api';
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  TextField
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    TextField,
+    toast
 } from '@heroui/react';
 import { Loader2, ShieldCheck, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -33,6 +35,8 @@ export default function BenutzerPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [formData, setFormData] = useState<Partial<SystemUser & { password?: string }>>({});
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const loadUsers = async () => {
     try {
@@ -67,11 +71,28 @@ export default function BenutzerPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Benutzer wirklich löschen?')) return;
+    setDeleteUserId(userId);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteUserId) return;
+
+    setIsDeletingUser(true);
     try {
-      const res = await fetchApi(`/admin/users/${userId}`, { method: 'DELETE' });
-      if (res.ok) loadUsers();
-    } catch (err) { console.error(err); }
+      const res = await fetchApi(`/admin/users/${deleteUserId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Der Benutzer wurde gelöscht.');
+        setDeleteUserId(null);
+        await loadUsers();
+      } else {
+        toast.danger('Der Benutzer konnte nicht gelöscht werden.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.danger('Beim Löschen des Benutzers ist ein Fehler aufgetreten.');
+    } finally {
+      setIsDeletingUser(false);
+    }
   };
 
   const handleToggleUserState = async (u: SystemUser) => {
@@ -97,7 +118,7 @@ export default function BenutzerPage() {
         }),
       });
       if (res.ok) loadUsers();
-      else console.error('Failed to update submission status');
+      else console.error('Aktualisierung des Einreichungsstatus fehlgeschlagen');
     } catch (err) { console.error(err); }
   };
 
@@ -129,7 +150,7 @@ export default function BenutzerPage() {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div className="flex-grow">{error}</div>
-          <Button size="sm" variant="secondary" onPress={loadUsers} className="h-8">Retry</Button>
+          <Button size="sm" variant="secondary" onPress={loadUsers} className="h-8">Wiederholen</Button>
         </div>
       )}
 
@@ -164,7 +185,7 @@ export default function BenutzerPage() {
                     <Input value={formData.username || ''} placeholder="max.mustermann" className="bg-field-background" />
                   </TextField>
                   <TextField isRequired type="email" onChange={(val) => setFormData({ ...formData, email: val })}>
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Email</Label>
+                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">E-Mail</Label>
                     <Input value={formData.email || ''} placeholder="max@beispiel.de" className="bg-field-background" />
                   </TextField>
                   {!selectedUser && (
@@ -185,8 +206,8 @@ export default function BenutzerPage() {
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        <ListBox.Item id="user" textValue="User">User<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="admin" textValue="Admin">Admin<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="user" textValue="Benutzer">Benutzer<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="admin" textValue="Administrator">Administrator<ListBox.ItemIndicator /></ListBox.Item>
                       </ListBox>
                     </Select.Popover>
                   </Select>
@@ -202,6 +223,19 @@ export default function BenutzerPage() {
           </Modal.Container>
         </Modal.Backdrop>
       </Modal>
+
+      <ConfirmDialog
+        confirmLabel="Benutzer löschen"
+        description="Der Benutzerzugang wird dauerhaft entfernt. Dieser Schritt kann nicht rückgängig gemacht werden."
+        isDanger
+        isLoading={isDeletingUser}
+        isOpen={!!deleteUserId}
+        onConfirm={confirmDeleteUser}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingUser) setDeleteUserId(null);
+        }}
+        title="Benutzer wirklich löschen?"
+      />
     </div>
   );
 }

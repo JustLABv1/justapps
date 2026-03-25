@@ -43,7 +43,7 @@ export default function LoginPage() {
         login(data.token, data.user);
         router.push('/');
       } else {
-        setError(data.message || 'Login failed');
+        setError(data.message || 'Anmeldung fehlgeschlagen');
       }
     } catch (err) {
       console.error(err);
@@ -70,7 +70,7 @@ export default function LoginPage() {
             <>
               <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <TextField isRequired className="w-full" onChange={setEmail}>
-                  <Label className="text-sm font-medium text-foreground mb-1">Email oder Benutzername</Label>
+                  <Label className="text-sm font-medium text-foreground mb-1">E-Mail oder Benutzername</Label>
                   <Input
                     placeholder="E-Mail eingeben"
                     className="w-full"

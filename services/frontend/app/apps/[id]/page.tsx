@@ -6,23 +6,24 @@ import { AppConfig } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
+import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  AlertTriangle,
-  BookOpen,
-  ChevronLeft,
-  ExternalLink,
-  Github,
-  Layers,
-  LayoutDashboard,
-  Link2,
-  Loader2,
-  Pencil,
-  Scale,
-  Server,
-  Share2,
-  Star
+    AlertTriangle,
+    BookOpen,
+    ChevronLeft,
+    ExternalLink,
+    Github,
+    Layers,
+    LayoutDashboard,
+    Link2,
+    Loader2,
+    Pencil,
+    Scale,
+    Server,
+    Share2,
+    Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -84,30 +85,15 @@ export default function AppPage() {
   if (!app) return notFound();
 
   const isAdmin = user?.role === 'admin';
+  const isOwner = !!user?.id && (app.ownerId === user.id || app.owner?.id === user.id);
+  if (isDraftStatus(app.status) && !isOwner && !isAdmin) return notFound();
+
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
-
-  const getStatusProps = (state?: string) => {
-    switch (state?.toLowerCase()) {
-      case 'graduated':
-        return { color: 'success' as const, label: 'Produktiv' };
-      case 'incubating':
-        return { color: 'accent' as const, label: 'In Inkubation' };
-      case 'sandbox':
-        return { color: 'warning' as const, label: 'Sandbox' };
-      case 'mvp':
-        return { color: 'default' as const, label: 'MVP' };
-      case 'poc':
-        return { color: 'default' as const, label: 'POC' };
-      default:
-        return state ? { color: 'default' as const, label: state } : null;
-    }
-  };
-
-  const statusInfo = getStatusProps(app.status);
+  const statusInfo = getAppStatusMeta(app.status);
   const repositories = app.repositories && app.repositories.length > 0
     ? app.repositories
-    : (app.repoUrl ? [{ label: 'Repository', url: app.repoUrl }] : []);
+    : (app.repoUrl ? [{ label: 'Quellcode', url: app.repoUrl }] : []);
   const customLinks = app.customLinks || [];
 
   /* Build metadata pairs from the admin-configured field schema + app's customFields values */
@@ -239,7 +225,7 @@ export default function AppPage() {
               {(() => {
                 const allDemos = app.liveDemos && app.liveDemos.length > 0
                   ? app.liveDemos
-                  : (app.liveUrl ? [{ label: 'Live Demo', url: app.liveUrl }] : []);
+                  : (app.liveUrl ? [{ label: 'Live-Zugang', url: app.liveUrl }] : []);
 
                 if (allDemos.length === 1) {
                   return (
@@ -258,12 +244,12 @@ export default function AppPage() {
                       <Dropdown.Trigger>
                         <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm outline-none">
                           <ExternalLink className="w-4 h-4" />
-                          Live Demos ({allDemos.length})
+                          Live-Zugänge ({allDemos.length})
                         </button>
                       </Dropdown.Trigger>
                       <Dropdown.Popover>
                         <Dropdown.Menu 
-                          aria-label="Live Demo Links"
+                          aria-label="Links zu Live-Zugängen"
                           onAction={(key) => {
                             const idx = parseInt(key.toString().replace('demo-', ''));
                             if (!isNaN(idx)) window.open(allDemos[idx].url, '_blank');
@@ -296,7 +282,7 @@ export default function AppPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
                   <Github className="w-4 h-4" />
-                  {repo.label || 'Repository'}
+                  {repo.label || 'Quellcode'}
                 </Link>
               ))}
               {customLinks.map((customLink, idx) => (
@@ -336,12 +322,12 @@ export default function AppPage() {
         </div>
       </header>
 
-      {/* ── Tech stack strip (if available) ── */}
+      {/* ── Technik-Streifen (if available) ── */}
       {app.techStack && app.techStack.length > 0 && (
         <div className="flex items-center gap-4 mb-8 overflow-x-auto bg-surface-secondary/50 p-4 rounded-2xl border border-border">
           <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2">
             <Layers className="w-4 h-4 text-accent" />
-            Tech Stack
+            Technik
           </span>
           <div className="flex gap-2 flex-wrap">
             {app.techStack.map((tech: string) => (
@@ -361,7 +347,7 @@ export default function AppPage() {
             <div className="flex-1">
               <h3 className="text-sm font-bold text-foreground mb-1">Nachnutzung</h3>
               <p className="text-sm text-muted mb-3">
-                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Sie die bestehende Installation des Anbieters mitnutzen.
+                Diese App kann als bestehende Installation mitgenutzt werden. Falls vorhanden, finden Sie zusätzlich unten technische Installationsanleitungen für einen Eigenbetrieb.
               </p>
               {app.reuseRequirements && (
                 <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
@@ -390,7 +376,7 @@ export default function AppPage() {
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            {!app.isReuse && app.hasDeploymentAssistant !== false && (
+            {app.hasDeploymentAssistant !== false && (
               <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
@@ -437,7 +423,7 @@ export default function AppPage() {
         )}
 
         {/* Deployment */}
-        {!app.isReuse && app.hasDeploymentAssistant !== false && (
+        {app.hasDeploymentAssistant !== false && (
           <Tabs.Panel id="deployment">
             <DeploymentAssistant app={app} />
           </Tabs.Panel>

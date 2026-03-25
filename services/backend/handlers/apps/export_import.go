@@ -16,6 +16,10 @@ func ExportApps(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	for index := range apps {
+		normalizeAppModelStatus(&apps[index])
+	}
+
 	c.JSON(http.StatusOK, apps)
 }
 
@@ -39,7 +43,14 @@ func ImportApps(c *gin.Context, db *bun.DB) {
 	}
 	defer tx.Rollback()
 
+	importedDrafts := 0
+
 	for _, app := range apps {
+		normalizeAppModelStatus(&app)
+		if IsDraftStatus(app.Status) {
+			importedDrafts++
+		}
+
 		// Check if app exists
 		exists, err := tx.NewSelect().Model((*models.Apps)(nil)).Where("id = ?", app.ID).Exists(c.Request.Context())
 		if err != nil {
@@ -64,5 +75,9 @@ func ImportApps(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Successfully imported apps"})
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Apps wurden erfolgreich importiert",
+		"importedCount": len(apps),
+		"draftCount":    importedDrafts,
+	})
 }

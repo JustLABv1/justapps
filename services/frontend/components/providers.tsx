@@ -1,6 +1,6 @@
 'use client';
 
-import { RouterProvider } from '@heroui/react';
+import { RouterProvider, Toast } from '@heroui/react';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             disableTransitionOnChange
           >
             <RouterProvider navigate={router.push}>
+              <Toast.Provider placement="bottom end" />
               {children}
             </RouterProvider>
           </NextThemesProvider>
