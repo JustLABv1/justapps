@@ -1,21 +1,22 @@
 'use client';
 
 import { AppConfig } from '@/config/apps';
+import { getAppStatusLabel } from '@/lib/appStatus';
 import {
-  Button,
-  Card,
-  Chip,
-  Dropdown,
+    Button,
+    Card,
+    Chip,
+    Dropdown,
 } from '@heroui/react';
 import {
-  ExternalLink,
-  Info,
-  Lock,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Unlock,
-  User,
+    ExternalLink,
+    Info,
+    Lock,
+    MoreVertical,
+    Pencil,
+    Trash2,
+    Unlock,
+    User,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -66,7 +67,7 @@ export function AppList({ apps, handleEditApp, handleDeleteApp, handleToggleAppL
                 </div>
                 {app.status && (
                   <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md border border-accent/20 uppercase tracking-wider">
-                    {app.status}
+                    {getAppStatusLabel(app.status) || app.status}
                   </div>
                 )}
                 {app.isLocked && (

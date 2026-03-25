@@ -1,6 +1,7 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
+import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { Button, Input, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -33,32 +34,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
     initialApps.forEach(app => {
       if (app.status) sts.add(app.status);
     });
-    // Define a stable sorting order for lifecycles (German labels)
-    const order = ['POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
-    return Array.from(sts).sort((a, b) => {
-      const idxA = order.indexOf(a);
-      const idxB = order.indexOf(b);
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.localeCompare(b);
-    });
+    return sortAppStatuses(Array.from(sts));
   }, [initialApps]);
-
-  const getStatusLabel = (state: string) => {
-    switch (state?.toLowerCase()) {
-      case 'graduated':
-      case 'etabliert':
-      case 'produktiv': return 'Etabliert';
-      case 'incubating':
-      case 'in inkubation':
-      case 'in erprobung': return 'In Erprobung';
-      case 'sandbox': return 'Sandbox';
-      case 'mvp': return 'MVP';
-      case 'poc': return 'POC';
-      default: return state;
-    }
-  };
 
   const filteredApps = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -97,6 +74,9 @@ export function AppGrid({ initialApps }: AppGridProps) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [initialApps]);
 
+  const quickCategories = categories.slice(0, 6);
+  const quickStatuses = statuses.slice(0, 4);
+
   const clearAllFilters = () => {
     setSearchQuery("");
     setSelectedCategory(null);
@@ -127,7 +107,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     if (selectedStatus) {
       filters.push({
         key: 'status',
-        label: `Status: ${getStatusLabel(selectedStatus)}`,
+        label: `Status: ${getAppStatusLabel(selectedStatus) || selectedStatus}`,
         clear: () => setSelectedStatus(null),
       });
     }
@@ -215,10 +195,40 @@ export function AppGrid({ initialApps }: AppGridProps) {
           </div>
         </div>
 
+        {(quickCategories.length > 0 || quickStatuses.length > 0) && (
+          <div className="flex flex-col gap-3 border-t border-border/50 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted/80">Schnellfilter</span>
+              {quickCategories.map((cat) => (
+                <Button
+                  key={`quick-cat-${cat}`}
+                  size="sm"
+                  variant={selectedCategory === cat ? "primary" : "secondary"}
+                  onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
+                >
+                  {cat}
+                </Button>
+              ))}
+              {quickStatuses.map((status) => (
+                <Button
+                  key={`quick-status-${status}`}
+                  size="sm"
+                  variant={selectedStatus === status ? "primary" : "secondary"}
+                  onPress={() => setSelectedStatus(selectedStatus === status ? null : status)}
+                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedStatus === status ? 'text-background' : ''}`}
+                >
+                  {getAppStatusLabel(status) || status}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted">
-              Suchen Sie direkt oder filtern Sie kompakt nach Kategorie, Status, Art und Gruppe.
+              Starten Sie direkt mit Suche oder Schnellfiltern. Für feinere Auswahl stehen Kategorie, Status, Art und Gruppe bereit.
             </p>
             {!showFilters && filterSummary && (
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted/80">
@@ -330,7 +340,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
                       onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
                       className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
                     >
-                      {getStatusLabel(st)}
+                      {getAppStatusLabel(st) || st}
                     </Button>
                   ))}
                 </div>

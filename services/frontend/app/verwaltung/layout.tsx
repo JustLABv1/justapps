@@ -42,10 +42,10 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col gap-1 mb-6">
         <h1 className="text-3xl font-bold text-foreground tracking-tight">Verwaltung</h1>
-        <p className="text-sm text-muted">Plattformverwaltung für Admins</p>
+        <p className="text-sm text-muted">Plattformverwaltung für Administratoren</p>
       </div>
 
-      <nav className="flex gap-1 border-b border-border mb-8" aria-label="Admin navigation">
+      <nav className="flex gap-1 border-b border-border mb-8" aria-label="Navigation der Verwaltung">
         {adminNavLinks.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/');
           return (

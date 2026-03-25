@@ -5,26 +5,40 @@ import (
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
 // GetRelatedApps returns all apps related to the given app (bidirectional).
 func GetRelatedApps(c *gin.Context, db *bun.DB) {
 	id := c.Param("id")
+	viewerID, viewerRole, hasViewer := getViewerContext(c)
+
+	var baseApp models.Apps
+	if err := db.NewSelect().Model(&baseApp).Where("id = ?", id).Scan(c); err != nil {
+		httperror.StatusNotFound(c, "App not found", err)
+		return
+	}
+	if !canViewApp(baseApp, viewerID, viewerRole, hasViewer) {
+		httperror.StatusNotFound(c, "App not found", nil)
+		return
+	}
 
 	type relRow struct {
-		RelatedAppID string `bun:"related_app_id"`
-		Name         string `bun:"name"`
-		Icon         string `bun:"icon"`
+		RelatedAppID string    `bun:"related_app_id"`
+		Name         string    `bun:"name"`
+		Icon         string    `bun:"icon"`
+		OwnerID      uuid.UUID `bun:"owner_id"`
+		Status       string    `bun:"status"`
 	}
 	var rows []relRow
 	err := db.NewRaw(`
-		SELECT r.related_app_id, a.name, a.icon
+		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status
 		FROM app_relations r
 		JOIN apps a ON a.id = r.related_app_id
 		WHERE r.app_id = ?
 		UNION
-		SELECT r.app_id AS related_app_id, a.name, a.icon
+		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status
 		FROM app_relations r
 		JOIN apps a ON a.id = r.app_id
 		WHERE r.related_app_id = ?
@@ -36,6 +50,10 @@ func GetRelatedApps(c *gin.Context, db *bun.DB) {
 
 	result := make([]models.AppRelationSummary, 0, len(rows))
 	for _, r := range rows {
+		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer) {
+			continue
+		}
 		result = append(result, models.AppRelationSummary{
 			ID:   r.RelatedAppID,
 			Name: r.Name,
@@ -177,15 +195,18 @@ func DeleteGroup(c *gin.Context, db *bun.DB) {
 // GetGroupMembers returns all apps in a group.
 func GetGroupMembers(c *gin.Context, db *bun.DB) {
 	groupID := c.Param("groupId")
+	viewerID, viewerRole, hasViewer := getViewerContext(c)
 
 	type memberRow struct {
-		AppID string `bun:"app_id"`
-		Name  string `bun:"name"`
-		Icon  string `bun:"icon"`
+		AppID   string    `bun:"app_id"`
+		Name    string    `bun:"name"`
+		Icon    string    `bun:"icon"`
+		OwnerID uuid.UUID `bun:"owner_id"`
+		Status  string    `bun:"status"`
 	}
 	var rows []memberRow
 	err := db.NewRaw(`
-		SELECT m.app_id, a.name, a.icon
+		SELECT m.app_id, a.name, a.icon, a.owner_id, a.status
 		FROM app_group_members m
 		JOIN apps a ON a.id = m.app_id
 		WHERE m.app_group_id = ?::uuid
@@ -197,6 +218,10 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 
 	result := make([]models.AppRelationSummary, 0, len(rows))
 	for _, r := range rows {
+		memberApp := models.Apps{ID: r.AppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		if !canViewApp(memberApp, viewerID, viewerRole, hasViewer) {
+			continue
+		}
 		result = append(result, models.AppRelationSummary{ID: r.AppID, Name: r.Name, Icon: r.Icon})
 	}
 	c.JSON(200, result)
