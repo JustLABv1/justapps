@@ -4,6 +4,7 @@ import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
+import { isDraftStatus } from '@/lib/appStatus';
 import { Button, Modal, toast } from '@heroui/react';
 import { Check, Download, Loader2, Plus, ShieldCheck, Upload, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,6 +31,7 @@ function AppsContent() {
   const [transferring, setTransferring] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const draftCount = apps.filter((app) => isDraftStatus(app.status)).length;
 
   const loadApps = async () => {
     try {
@@ -164,7 +166,14 @@ function AppsContent() {
         const appsData = JSON.parse(event.target?.result as string);
         const res = await fetchApi('/apps/import', { method: 'POST', body: JSON.stringify(appsData) });
         if (res.ok) {
-          toast.success('Apps wurden erfolgreich importiert.');
+          const result = await res.json().catch(() => null);
+          const importedCount = typeof result?.importedCount === 'number' ? result.importedCount : Array.isArray(appsData) ? appsData.length : null;
+          const importedDraftCount = typeof result?.draftCount === 'number' ? result.draftCount : null;
+          const parts = [importedCount !== null ? `${importedCount} Apps importiert` : 'Apps wurden erfolgreich importiert'];
+          if (importedDraftCount !== null) {
+            parts.push(`${importedDraftCount} Entwürfe`);
+          }
+          toast.success(parts.join(' · '));
           loadApps();
         } else {
           toast.danger('Der Import ist fehlgeschlagen.');
@@ -189,7 +198,10 @@ function AppsContent() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted">{apps.length} App{apps.length !== 1 ? 's' : ''} im Store</p>
+        <p className="text-sm text-muted">
+          {apps.length} App{apps.length !== 1 ? 's' : ''} im Store
+          {draftCount > 0 ? `, davon ${draftCount} Entwurf${draftCount !== 1 ? 'e' : ''}` : ''}
+        </p>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onPress={handleExportApps} className="gap-2">
             <Download className="w-4 h-4" /> Export

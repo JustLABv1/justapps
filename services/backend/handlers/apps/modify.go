@@ -62,6 +62,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
 	}
+	normalizeAppModelStatus(&app)
 	if user.Role != "admin" {
 		app.IsFeatured = false
 	}
@@ -148,6 +149,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
 	}
+	normalizeAppModelStatus(&app)
 	if !isAdmin {
 		app.IsFeatured = existingApp.IsFeatured
 	}
