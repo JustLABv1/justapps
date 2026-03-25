@@ -13,7 +13,6 @@ import {
   Tabs,
   TextArea,
   TextField,
-  Tooltip,
 } from '@heroui/react';
 import {
   AlertTriangle,
@@ -208,20 +207,6 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) =>
     (links || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url! }));
 
-  const getStatusProps = (state?: string) => {
-    switch (state?.toLowerCase()) {
-      case 'etabliert': case 'graduated':
-        return { color: 'success' as const, label: state || '' };
-      case 'in erprobung': case 'incubating':
-        return { color: 'accent' as const, label: state || '' };
-      case 'sandbox':
-        return { color: 'warning' as const, label: state || '' };
-      default:
-        return state ? { color: 'default' as const, label: state } : null;
-    }
-  };
-
-  const statusInfo = getStatusProps(formData.status);
   const repositories = formData.repositories && formData.repositories.length > 0
     ? formData.repositories
     : [];
@@ -891,7 +876,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 </Switch>
               </div>
               <p className="text-sm text-muted mb-3">
-                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Behörden die bestehende Installation des Anbieters mitnutzen.
+                Diese App kann als bestehende Installation mitgenutzt werden. Eine technische Installationsanleitung kann optional trotzdem zusätzlich hinterlegt werden.
               </p>
               <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
                 <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
@@ -934,13 +919,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               Fachliche Details
               <Tabs.Indicator />
             </Tabs.Tab>
-            {!formData.isReuse && (
-              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
-                <Server className="w-4 h-4" />
-                Deployment
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            )}
+            <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
+              <Server className="w-4 h-4" />
+              Deployment
+              <Tabs.Indicator />
+            </Tabs.Tab>
             <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
@@ -1043,121 +1026,119 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         </Tabs.Panel>
 
         {/* Deployment tab */}
-        {!formData.isReuse && (
-          <Tabs.Panel id="deployment">
-            <div className="space-y-6">
-              <p className="text-sm text-muted">
-                Hier können technische Installationsanleitungen hinterlegt werden. Leer lassen, wenn nicht benötigt – der Deployment-Bereich wird dann in der App-Ansicht ausgeblendet.
-              </p>
-              <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
-                <div>
-                  <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
-                  <p className="text-xs text-muted">Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.</p>
-                </div>
-                <Switch
-                  isSelected={formData.hasDeploymentAssistant ?? true}
-                  onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
-                >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
-                </Switch>
+        <Tabs.Panel id="deployment">
+          <div className="space-y-6">
+            <p className="text-sm text-muted">
+              Hier können technische Installationsanleitungen hinterlegt werden. Dieser Bereich kann unabhängig von Nachnutzung aktiviert werden.
+            </p>
+            <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
+              <div>
+                <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
+                <p className="text-xs text-muted">Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.</p>
               </div>
-
-              {formData.hasDeploymentAssistant !== false && (
-                <>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { key: 'showHelm', label: 'Helm Chart', icon: <Server className="w-4 h-4" /> },
-                      { key: 'showCompose', label: 'Docker Compose', icon: <Terminal className="w-4 h-4" /> },
-                      { key: 'showDocker', label: 'Docker', icon: <Terminal className="w-4 h-4" /> },
-                    ].map(({ key, label, icon }) => {
-                      const active = formData[key as keyof AppConfig] !== false;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setFormData((p) => ({ ...p, [key]: !p[key as keyof AppConfig] }))}
-                          className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
-                            active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
-                          }`}
-                        >
-                          {icon}
-                          <span className="text-xs font-semibold">{label}</span>
-                          <span className="text-[10px]">{active ? 'Aktiv' : 'Ausgeblendet'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Helm config */}
-                  {formData.showHelm !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Server className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Helm Chart</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, helmRepo: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Helm Chart Repo</Label>
-                        <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Benutzerdefiniertes Helm-Kommando</Label>
-                        <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm repo add bund https://...\nhelm install ${formData.id || 'appname'} bund/${formData.id || 'appname'}`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmValues: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Values.yaml Inhalt</Label>
-                        <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest\nreplicas: 1" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customHelmNote || ''} placeholder="Zusätzliche Hinweise..." className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-
-                  {/* Compose config */}
-                  {formData.showCompose !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Terminal className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Docker Compose</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Compose-Setup</Label>
-                        <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`version: '3.8'\nservices:\n  ${formData.id || 'app'}:\n    image: ...`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customComposeNote || ''} className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-
-                  {/* Docker config */}
-                  {formData.showDocker !== false && (
-                    <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                      <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <Terminal className="w-4 h-4 text-muted" />
-                        <span className="text-sm font-bold">Docker</span>
-                      </div>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, dockerRepo: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker Image</Label>
-                        <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerCommand: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker-Kommando</Label>
-                        <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker pull ...\ndocker run -d --name ${formData.id || 'app'} -p 8080:80 ...`} />
-                      </TextField>
-                      <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerNote: val }))}>
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                        <Input value={formData.customDockerNote || ''} className="bg-field-background" />
-                      </TextField>
-                    </div>
-                  )}
-                </>
-              )}
+              <Switch
+                isSelected={formData.hasDeploymentAssistant ?? true}
+                onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
+              >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+              </Switch>
             </div>
-          </Tabs.Panel>
-        )}
+
+            {formData.hasDeploymentAssistant !== false && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { key: 'showHelm', label: 'Helm Chart', icon: <Server className="w-4 h-4" /> },
+                    { key: 'showCompose', label: 'Docker Compose', icon: <Terminal className="w-4 h-4" /> },
+                    { key: 'showDocker', label: 'Docker', icon: <Terminal className="w-4 h-4" /> },
+                  ].map(({ key, label, icon }) => {
+                    const active = formData[key as keyof AppConfig] !== false;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFormData((p) => ({ ...p, [key]: !p[key as keyof AppConfig] }))}
+                        className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
+                          active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
+                        }`}
+                      >
+                        {icon}
+                        <span className="text-xs font-semibold">{label}</span>
+                        <span className="text-[10px]">{active ? 'Aktiv' : 'Ausgeblendet'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Helm config */}
+                {formData.showHelm !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Server className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Helm Chart</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, helmRepo: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Helm Chart Repo</Label>
+                      <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Benutzerdefiniertes Helm-Kommando</Label>
+                      <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm repo add bund https://...\nhelm install ${formData.id || 'appname'} bund/${formData.id || 'appname'}`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmValues: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Values.yaml Inhalt</Label>
+                      <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest\nreplicas: 1" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customHelmNote || ''} placeholder="Zusätzliche Hinweise..." className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+
+                {/* Compose config */}
+                {formData.showCompose !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Terminal className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Docker Compose</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Compose-Setup</Label>
+                      <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`version: '3.8'\nservices:\n  ${formData.id || 'app'}:\n    image: ...`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customComposeNote || ''} className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+
+                {/* Docker config */}
+                {formData.showDocker !== false && (
+                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Terminal className="w-4 h-4 text-muted" />
+                      <span className="text-sm font-bold">Docker</span>
+                    </div>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, dockerRepo: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker Image</Label>
+                      <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerCommand: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker-Kommando</Label>
+                      <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker pull ...\ndocker run -d --name ${formData.id || 'app'} -p 8080:80 ...`} />
+                    </TextField>
+                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerNote: val }))}>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
+                      <Input value={formData.customDockerNote || ''} className="bg-field-background" />
+                    </TextField>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </Tabs.Panel>
 
         {/* Bewertungen tab */}
         <Tabs.Panel id="ratings">

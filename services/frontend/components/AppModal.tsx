@@ -3,40 +3,40 @@
 import { AppConfig, AppField } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
+import { uploadFile } from '@/lib/api';
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  TextArea,
-  TextField
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Surface,
+    Switch,
+    TextArea,
+    TextField
 } from '@heroui/react';
 import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  FileText,
-  Github,
-  Globe,
-  Info,
-  Layers,
-  Loader2,
-  Plus,
-  Server,
-  Share2,
-  ShieldCheck,
-  Terminal,
-  Trash2,
-  Upload,
-  X
+    BookOpen,
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    ExternalLink,
+    FileText,
+    Github,
+    Globe,
+    Info,
+    Layers,
+    Loader2,
+    Plus,
+    Server,
+    Share2,
+    ShieldCheck,
+    Terminal,
+    Trash2,
+    Upload,
+    X
 } from 'lucide-react';
-import { uploadFile } from '@/lib/api';
 import Image from 'next/image';
 import React, { useRef, useState } from 'react';
 
@@ -122,6 +122,7 @@ export function AppModal({
   const isIdTaken = !selectedApp && !!appFormData.id?.trim() && existingApps.some(a => a.id === appFormData.id?.trim());
   const [prevInitialData, setPrevInitialData] = useState<Partial<AppConfig> | undefined>(initialData);
   const [currentStep, setCurrentStep] = useState(0);
+  const deploymentAssistantEnabled = appFormData.hasDeploymentAssistant ?? true;
 
   if (initialData !== prevInitialData) {
     setPrevInitialData(initialData);
@@ -492,30 +493,30 @@ export function AppModal({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button
                           type="button"
-                          onClick={() => setAppFormData({ ...appFormData, isReuse: false })}
+                          onClick={() => setAppFormData({ ...appFormData, hasDeploymentAssistant: !deploymentAssistantEnabled })}
                           className={`p-5 rounded-2xl border-2 text-left transition-all ${
-                            !appFormData.isReuse
+                            deploymentAssistantEnabled
                               ? 'border-accent bg-accent/5 shadow-sm'
                               : 'border-border hover:border-accent/30 bg-surface'
                           }`}
                         >
                           <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!appFormData.isReuse ? 'bg-accent/10' : 'bg-surface-secondary'}`}>
-                              <Terminal className={`w-5 h-5 ${!appFormData.isReuse ? 'text-accent' : 'text-muted'}`} />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${deploymentAssistantEnabled ? 'bg-accent/10' : 'bg-surface-secondary'}`}>
+                              <Terminal className={`w-5 h-5 ${deploymentAssistantEnabled ? 'text-accent' : 'text-muted'}`} />
                             </div>
                             <div>
-                              <h3 className={`text-sm font-bold ${!appFormData.isReuse ? 'text-accent' : 'text-foreground'}`}>Selbst installieren</h3>
-                              <p className="text-[11px] text-muted">Andere installieren die App eigenständig</p>
+                              <h3 className={`text-sm font-bold ${deploymentAssistantEnabled ? 'text-accent' : 'text-foreground'}`}>Selbst installieren</h3>
+                              <p className="text-[11px] text-muted">Technische Anleitung für eigene Installation</p>
                             </div>
                           </div>
                           <p className="text-xs text-muted leading-relaxed">
-                            Stellen Sie Ihre App mit Installationsanleitung, Docker-Images oder Helm-Charts bereit, damit andere sie in ihrem eigenen Cluster betreiben können.
+                            Aktivieren Sie den Deployment Assistant, wenn Docker-, Compose- oder Helm-Anleitungen für einen Eigenbetrieb bereitgestellt werden sollen.
                           </p>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => setAppFormData({ ...appFormData, isReuse: true })}
+                          onClick={() => setAppFormData({ ...appFormData, isReuse: !appFormData.isReuse })}
                           className={`p-5 rounded-2xl border-2 text-left transition-all ${
                             appFormData.isReuse
                               ? 'border-warning bg-warning/5 shadow-sm'
@@ -532,13 +533,12 @@ export function AppModal({
                             </div>
                           </div>
                           <p className="text-xs text-muted leading-relaxed">
-                            Bieten Sie Ihre bestehende Installation zur Mitnutzung an. Andere müssen die App nicht selbst betreiben.
+                            Bieten Sie Ihre bestehende Installation zur Mitnutzung an. Diese Option kann zusätzlich zur Installationsanleitung aktiviert werden.
                           </p>
                         </button>
                       </div>
 
-                      {/* Conditional content based on type */}
-                      {appFormData.isReuse ? (
+                      {appFormData.isReuse && (
                         <div className="space-y-6 pt-2">
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b border-border pb-2">
@@ -617,7 +617,9 @@ export function AppModal({
                             </TextField>
                           </div>
                         </div>
-                      ) : (
+                      )}
+
+                      {deploymentAssistantEnabled && (
                         <div className="space-y-4 pt-2">
                           <div className="flex items-center gap-2 border-b border-border pb-2">
                             <Terminal className="w-4 h-4 text-accent" />
@@ -628,11 +630,11 @@ export function AppModal({
                             <div className="flex items-center justify-between">
                               <Label className="text-sm font-semibold">Deployment Assistant aktivieren</Label>
                               <Switch
-                                isSelected={appFormData.hasDeploymentAssistant !== false}
+                                isSelected={deploymentAssistantEnabled}
                                 onChange={(isSelected) => setAppFormData({ ...appFormData, hasDeploymentAssistant: isSelected })}
                               ><Switch.Control><Switch.Thumb /></Switch.Control></Switch>
                             </div>
-                            {appFormData.hasDeploymentAssistant !== false && (
+                            {deploymentAssistantEnabled && (
                               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-border">
                                 {(['Docker', 'Compose', 'Helm'] as const).map(type => (
                                   <div key={type} className="flex flex-col gap-2 items-center">
@@ -985,7 +987,6 @@ export function AppModal({
                 <div>
                   {currentStep > 0 && (
                     <Button
-                      variant="secondary"
                       onPress={() => setCurrentStep(currentStep - 1)}
                       className="font-semibold gap-1.5"
                     >

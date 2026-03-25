@@ -62,6 +62,9 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
 	}
+	if user.Role != "admin" {
+		app.IsFeatured = false
+	}
 
 	// 4. Set Metadata
 	// If ID is provided, we use it (after validation/sanitization could be added),
@@ -144,6 +147,9 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	if err := c.ShouldBindJSON(&app); err != nil {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
+	}
+	if !isAdmin {
+		app.IsFeatured = existingApp.IsFeatured
 	}
 	app.ID = id
 	app.UpdatedAt = time.Now()

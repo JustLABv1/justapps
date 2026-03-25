@@ -9,20 +9,20 @@ import { fetchApi } from "@/lib/api";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  AlertTriangle,
-  BookOpen,
-  ChevronLeft,
-  ExternalLink,
-  Github,
-  Layers,
-  LayoutDashboard,
-  Link2,
-  Loader2,
-  Pencil,
-  Scale,
-  Server,
-  Share2,
-  Star
+    AlertTriangle,
+    BookOpen,
+    ChevronLeft,
+    ExternalLink,
+    Github,
+    Layers,
+    LayoutDashboard,
+    Link2,
+    Loader2,
+    Pencil,
+    Scale,
+    Server,
+    Share2,
+    Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -361,7 +361,7 @@ export default function AppPage() {
             <div className="flex-1">
               <h3 className="text-sm font-bold text-foreground mb-1">Nachnutzung</h3>
               <p className="text-sm text-muted mb-3">
-                Diese App wird nicht zur eigenen Installation angeboten. Stattdessen können Sie die bestehende Installation des Anbieters mitnutzen.
+                Diese App kann als bestehende Installation mitgenutzt werden. Falls vorhanden, finden Sie zusätzlich unten technische Installationsanleitungen für einen Eigenbetrieb.
               </p>
               {app.reuseRequirements && (
                 <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
@@ -390,7 +390,7 @@ export default function AppPage() {
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            {!app.isReuse && app.hasDeploymentAssistant !== false && (
+            {app.hasDeploymentAssistant !== false && (
               <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
@@ -437,7 +437,7 @@ export default function AppPage() {
         )}
 
         {/* Deployment */}
-        {!app.isReuse && app.hasDeploymentAssistant !== false && (
+        {app.hasDeploymentAssistant !== false && (
           <Tabs.Panel id="deployment">
             <DeploymentAssistant app={app} />
           </Tabs.Panel>
