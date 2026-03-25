@@ -54,10 +54,19 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 			httperror.InternalServerError(c, "Failed to retrieve settings", err)
 			return
 		}
-		// Ensure DetailFields is never nil/empty — seed defaults so the UI always has a schema
-		if len(settings.DetailFields) == 0 {
-			settings.DetailFields = defaultDetailFields
-		}
+	}
+
+	// Fresh installs may still have NULL arrays if the row was created before
+	// defaults were enforced in the base schema. Normalize the response so the
+	// frontend always receives arrays.
+	if len(settings.DetailFields) == 0 {
+		settings.DetailFields = defaultDetailFields
+	}
+	if settings.FooterLinks == nil {
+		settings.FooterLinks = []models.FooterLink{}
+	}
+	if settings.PinnedApps == nil {
+		settings.PinnedApps = []string{}
 	}
 
 	c.JSON(200, settingsResponse{

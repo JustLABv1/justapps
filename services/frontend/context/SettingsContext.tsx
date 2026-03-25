@@ -83,6 +83,22 @@ export const defaultSettings: StoreSettings = {
   pinnedApps: [],
 };
 
+function normalizeSettings(data: Partial<StoreSettings>): StoreSettings {
+  return {
+    ...defaultSettings,
+    ...data,
+    detailFields: Array.isArray(data.detailFields) && data.detailFields.length > 0
+      ? data.detailFields
+      : defaultDetailFields,
+    footerLinks: Array.isArray(data.footerLinks)
+      ? data.footerLinks
+      : [],
+    pinnedApps: Array.isArray(data.pinnedApps)
+      ? data.pinnedApps
+      : [],
+  };
+}
+
 interface SettingsContextType {
   settings: StoreSettings;
   loaded: boolean;
@@ -104,14 +120,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const res = await fetchApi('/settings', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        setSettings({
-          ...defaultSettings,
-          ...data,
-          // Guard: if the API returns null/empty detailFields, keep the built-in defaults
-          detailFields: (data.detailFields && data.detailFields.length > 0)
-            ? data.detailFields
-            : defaultDetailFields,
-        });
+        setSettings(normalizeSettings(data));
       }
     } catch (e) {
       console.error('Failed to load settings:', e);

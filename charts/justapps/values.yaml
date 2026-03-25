@@ -42,7 +42,7 @@ config:
     # normally resolve to <release-name>-justapps-postgresql
     server: justapps-postgresql
     port: 5432
-    name: just_apps
+    name: justapps
     user: postgres
     # Leave passwords empty here; provide them via Kubernetes Secrets or Vault
     password: ""
@@ -157,7 +157,7 @@ postgresql:
     storageClassName: ocs-external-storagecluster-ceph-rbd
     size: 20Gi
   auth:
-    database: just_apps
+    database: justapps
     # password: keep empty here; use Kubernetes Secret or Vault
     password: ""
     username: postgres

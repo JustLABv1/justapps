@@ -62,6 +62,24 @@ const defaultState: SettingsState = {
   pinnedApps: [],
 };
 
+function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
+  return {
+    ...defaultState,
+    ...data,
+    detailFields: Array.isArray(data.detailFields) && data.detailFields.length > 0
+      ? data.detailFields
+      : defaultDetailFields,
+    footerLinks: Array.isArray(data.footerLinks)
+      ? data.footerLinks
+      : [],
+    appSortField: data.appSortField || 'name',
+    appSortDirection: data.appSortDirection || 'asc',
+    pinnedApps: Array.isArray(data.pinnedApps)
+      ? data.pinnedApps
+      : [],
+  };
+}
+
 export default function EinstellungenPage() {
   const { refreshSettings } = useSettings();
   const [settings, setSettings] = useState<SettingsState>(defaultState);
@@ -96,16 +114,7 @@ export default function EinstellungenPage() {
     fetchApi('/settings')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data) setSettings({
-          ...defaultState,
-          ...data,
-          detailFields: (data.detailFields && data.detailFields.length > 0)
-            ? data.detailFields
-            : defaultDetailFields,
-          appSortField: data.appSortField || 'name',
-          appSortDirection: data.appSortDirection || 'asc',
-          pinnedApps: data.pinnedApps || [],
-        });
+        if (data) setSettings(normalizeSettingsState(data));
       })
       .finally(() => setLoading(false));
   }, []);
