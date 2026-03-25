@@ -1,10 +1,13 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig } from '@/config/apps';
+import { getAppStatusLabel } from '@/lib/appStatus';
 import {
     Button,
     Card,
-    Chip
+    Chip,
+    toast
 } from '@heroui/react';
 import {
     ChevronLeft,
@@ -30,6 +33,8 @@ function MyAppsContent() {
   const [settings, setSettings] = useState({ allowAppSubmissions: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 
 
@@ -66,10 +71,10 @@ function MyAppsContent() {
         const myApps = data.filter(app => app.ownerId === user.id);
         setApps(myApps);
       } else {
-        setError(`Failed to load apps: ${res.statusText}`);
+        setError(`Fehler beim Laden Ihrer Apps: ${res.statusText}`);
       }
     } catch (err) {
-      setError(`Error connecting to API: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -82,11 +87,11 @@ function MyAppsContent() {
 
   const handleCreateApp = () => {
     if (!user?.canSubmitApps) {
-      alert('Submission blocked for your account');
+      toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
       return;
     }
     if (!settings.allowAppSubmissions && user?.role !== 'admin') {
-      alert('App submissions are currently disabled system-wide.');
+      toast.info('App-Einreichungen sind derzeit systemweit deaktiviert.');
       return;
     }
     router.push('/meine-apps/new');
@@ -99,9 +104,26 @@ function MyAppsContent() {
 
   const handleDeleteApp = async (app: AppConfig) => {
     if (app.isLocked) return;
-    if (confirm('Bist du sicher? Diese App wird unwiderruflich gelöscht.')) {
-      await fetchApi(`/apps/${app.id}`, { method: 'DELETE' });
-      loadData();
+    setDeleteCandidate(app);
+  };
+
+  const confirmDeleteApp = async () => {
+    if (!deleteCandidate) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetchApi(`/apps/${deleteCandidate.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success(`"${deleteCandidate.name}" wurde gelöscht.`);
+        setDeleteCandidate(null);
+        await loadData();
+      } else {
+        toast.danger('Die App konnte nicht gelöscht werden.');
+      }
+    } catch {
+      toast.danger('Beim Löschen der App ist ein Fehler aufgetreten.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -214,12 +236,12 @@ function MyAppsContent() {
                     </div>
                     {app.status && (
                       <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md border border-accent/20 uppercase tracking-wider">
-                        {app.status}
+                        {getAppStatusLabel(app.status) || app.status}
                       </div>
                     )}
                     {app.isLocked && (
                       <div className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-1 rounded-md border border-warning/20 uppercase tracking-wider flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Locked
+                        <Lock className="w-3 h-3" /> Gesperrt
                       </div>
                     )}
                   </div>
@@ -279,10 +301,22 @@ function MyAppsContent() {
         </div>
       )}
 
+      <ConfirmDialog
+        confirmLabel="App löschen"
+        description={deleteCandidate ? `Die App "${deleteCandidate.name}" wird dauerhaft entfernt. Dieser Schritt kann nicht rückgängig gemacht werden.` : ''}
+        isDanger
+        isLoading={isDeleting}
+        isOpen={!!deleteCandidate}
+        onConfirm={confirmDeleteApp}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteCandidate(null);
+        }}
+        title="App wirklich löschen?"
+      />
+
     </div>
   );
 }
-
 export default function MyAppsPage() {
   return (
     <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>}>

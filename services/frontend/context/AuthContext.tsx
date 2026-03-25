@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authType: s.user.authType,
       canSubmitApps: s.user.canSubmitApps,
     };
-  }, [status, s?.user?.id, s?.user?.name, s?.user?.email, s?.user?.role, s?.user?.authType, s?.user?.canSubmitApps]);
+  }, [status, s?.user]);
 
   const user = React.useMemo(() => {
     // If we have fetched detailed user data from backend, use it as source of truth
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [status, s?.idToken, s?.accessToken, oidcUser]);
+  }, [status, s, oidcUser]);
 
   // Load local user on mount (only if status is unauthenticated)
   useEffect(() => {

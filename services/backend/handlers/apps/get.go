@@ -2,13 +2,53 @@ package apps
 
 import (
 	"fmt"
+	"strings"
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
+
+const draftStatus = "entwurf"
+
+func isDraftApp(app models.Apps) bool {
+	return strings.EqualFold(strings.TrimSpace(app.Status), draftStatus)
+}
+
+func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
+	role := c.GetString("role")
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		return uuid.Nil, role, false
+	}
+
+	switch value := userIDVal.(type) {
+	case uuid.UUID:
+		return value, role, true
+	case string:
+		parsed, err := uuid.Parse(value)
+		if err == nil {
+			return parsed, role, true
+		}
+	}
+
+	return uuid.Nil, role, false
+}
+
+func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewer bool) bool {
+	if !isDraftApp(app) {
+		return true
+	}
+
+	if viewerRole == "admin" {
+		return true
+	}
+
+	return hasViewer && app.OwnerID == viewerID
+}
 
 // allowedSortFields maps frontend-safe field names to DB column names.
 var allowedSortFields = map[string]string{
@@ -20,6 +60,8 @@ var allowedSortFields = map[string]string{
 }
 
 func GetApps(c *gin.Context, db *bun.DB) {
+	viewerID, viewerRole, hasViewer := getViewerContext(c)
+
 	// Load platform settings to determine sort order and pinned apps
 	var settings models.PlatformSettings
 	_ = db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c)
@@ -43,6 +85,14 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Error fetching apps", err)
 		return
 	}
+
+	visibleApps := make([]models.Apps, 0, len(apps))
+	for _, app := range apps {
+		if canViewApp(app, viewerID, viewerRole, hasViewer) {
+			visibleApps = append(visibleApps, app)
+		}
+	}
+	apps = visibleApps
 
 	// Move pinned apps to the front (in configured order), then featured, then rest
 	if len(settings.PinnedApps) > 0 {
@@ -105,27 +155,34 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 func GetApp(c *gin.Context, db *bun.DB) {
 	id := c.Param("id")
+	viewerID, viewerRole, hasViewer := getViewerContext(c)
 	var app models.Apps
 	err := db.NewSelect().Model(&app).Where("a.id = ?", id).Relation("Owner").Scan(c)
 	if err != nil {
 		httperror.StatusNotFound(c, "App not found", err)
 		return
 	}
+	if !canViewApp(app, viewerID, viewerRole, hasViewer) {
+		httperror.StatusNotFound(c, "App not found", nil)
+		return
+	}
 
 	// Load related apps (bidirectional)
 	type relRow struct {
-		RelatedAppID string `bun:"related_app_id"`
-		Name         string `bun:"name"`
-		Icon         string `bun:"icon"`
+		RelatedAppID string    `bun:"related_app_id"`
+		Name         string    `bun:"name"`
+		Icon         string    `bun:"icon"`
+		OwnerID      uuid.UUID `bun:"owner_id"`
+		Status       string    `bun:"status"`
 	}
 	var related []relRow
 	_ = db.NewRaw(`
-		SELECT r.related_app_id, a.name, a.icon
+		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status
 		FROM app_relations r
 		JOIN apps a ON a.id = r.related_app_id
 		WHERE r.app_id = ?
 		UNION
-		SELECT r.app_id AS related_app_id, a.name, a.icon
+		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status
 		FROM app_relations r
 		JOIN apps a ON a.id = r.app_id
 		WHERE r.related_app_id = ?
@@ -133,6 +190,10 @@ func GetApp(c *gin.Context, db *bun.DB) {
 
 	app.RelatedApps = make([]models.AppRelationSummary, 0, len(related))
 	for _, r := range related {
+		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer) {
+			continue
+		}
 		app.RelatedApps = append(app.RelatedApps, models.AppRelationSummary{
 			ID:   r.RelatedAppID,
 			Name: r.Name,

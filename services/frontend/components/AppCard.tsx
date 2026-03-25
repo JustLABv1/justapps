@@ -1,8 +1,9 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
-import { Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, Star } from "lucide-react";
+import { getAppStatusMeta } from "@/lib/appStatus";
+import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
+import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useState } from "react";
@@ -25,53 +26,39 @@ function getRelativeTime(dateStr: string | undefined, now: number): { label: str
 export function AppCard({ app }: { app: AppConfig }) {
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const [now] = useState(() => Date.now());
-
-  const getStatusProps = (state?: string) => {
-    switch (state?.toLowerCase()) {
-      case 'etabliert':
-      case 'produktiv':
-      case 'graduated':
-        return { color: 'success' as const, label: 'Etabliert' };
-      case 'in erprobung':
-      case 'in inkubation':
-      case 'incubating':
-        return { color: 'accent' as const, label: 'In Erprobung' };
-      case 'sandbox':
-        return { color: 'warning' as const, label: 'Sandbox' };
-      case 'mvp':
-        return { color: 'default' as const, label: 'MVP' };
-      case 'poc':
-        return { color: 'default' as const, label: 'POC' };
-      default:
-        return state ? { color: 'default' as const, label: state } : null;
-    }
-  };
-
-  const statusInfo = getStatusProps(app.status);
+  const statusInfo = getAppStatusMeta(app.status);
   const isFeatured = app.isFeatured;
 
   const relativeTime = getRelativeTime(app.updatedAt, now);
 
-  const allDemos = app.liveDemos && app.liveDemos.length > 0 
-    ? app.liveDemos 
-    : (app.liveUrl ? [{ label: 'Live Demo', url: app.liveUrl }] : []);
+  const allDemos = app.liveDemos && app.liveDemos.length > 0
+    ? app.liveDemos
+    : (app.liveUrl ? [{ label: 'Live-Zugang', url: app.liveUrl }] : []);
   const repositories = app.repositories && app.repositories.length > 0
     ? app.repositories
-    : (app.repoUrl ? [{ label: 'Repository', url: app.repoUrl }] : []);
+    : (app.repoUrl ? [{ label: 'Quellcode', url: app.repoUrl }] : []);
   const customLinks = app.customLinks || [];
+  const resourceItems = [
+    ...allDemos.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'demo' })),
+    ...repositories.map((link) => ({ ...link, icon: <Github className="w-3 h-3" />, kind: 'repository' })),
+    ...customLinks.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'link' })),
+    ...(app.docsUrl ? [{ label: 'Dokumentation', url: app.docsUrl, icon: <BookOpen className="w-3 h-3" />, kind: 'docs' }] : []),
+  ];
+  const spotlightBadge = app.isReuse ? 'Nachnutzung' : relativeTime?.isRecent ? 'Neu' : null;
+  const spotlightBadgeColor = app.isReuse ? 'warning' : 'success';
 
   return (
     <Card 
-      className={`w-full flex flex-col group transition-all duration-500 hover:shadow-xl hover:-translate-y-1.5 bg-surface overflow-visible p-0 
+      className={`w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 
         ${isFeatured 
-          ? 'border-accent/50 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.06] scale-[1.02] z-10' 
+          ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10' 
           : 'hover:border-accent/40 border-border'
         }`} 
       variant="default"
     >
       {isFeatured && (
-        <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center p-2 rounded-full bg-gov-gold shadow-lg shadow-gov-gold/30 animate-in zoom-in-50 duration-500">
-          <Star className="w-4 h-4 text-white fill-white" />
+        <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center rounded-full bg-gov-gold p-2 shadow-lg shadow-gov-gold/20">
+          <Star className="w-3.5 h-3.5 text-white fill-white" />
         </div>
       )}
       {app.knownIssue && (
@@ -108,27 +95,17 @@ export function AppCard({ app }: { app: AppConfig }) {
           )}
         </div>
         <div className="flex flex-col min-w-0 flex-1 pt-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1.5">
             <Card.Title className={`text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
               {app.name}
             </Card.Title>
-            {app.isReuse && (
-              <Chip size="sm" color="warning" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2">
-                Nachnutzung
-              </Chip>
-            )}
-            {isFeatured && (
-              <Chip size="sm" color="accent" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2 shadow-md shadow-accent/20 animate-pulse">
-                Ausgezeichnet
-              </Chip>
-            )}
-            {relativeTime?.isRecent && !isFeatured && (
-              <Chip size="sm" color="success" variant="soft" className="text-[10px] h-4 font-black uppercase tracking-widest shrink-0 px-2">
-                Neu
+            {spotlightBadge && (
+              <Chip size="sm" color={spotlightBadgeColor as 'warning' | 'success'} variant="soft" className="h-5 shrink-0 px-2 text-[10px] font-bold uppercase tracking-[0.16em]">
+                {spotlightBadge}
               </Chip>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-muted">
             <span className="text-xs font-semibold text-muted uppercase tracking-wider line-clamp-1">
               {app.categories?.join(', ')}
             </span>
@@ -156,7 +133,7 @@ export function AppCard({ app }: { app: AppConfig }) {
         <div className="mt-auto flex flex-col gap-3">
           {statusInfo && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status:</span>
+              <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status</span>
               <Chip 
                 size="sm" 
                 color={statusInfo.color} 
@@ -183,7 +160,7 @@ export function AppCard({ app }: { app: AppConfig }) {
       </Card.Content>
 
       {/* ── Footer: primary action + quick-links ── */}
-      <Card.Footer className="p-0 mt-auto bg-surface-secondary/30 border-t border-border/50 group-hover:bg-accent/5 transition-colors overflow-hidden">
+      <Card.Footer className="mt-auto overflow-hidden border-t border-border/50 bg-surface-secondary/30 p-0 transition-colors group-hover:bg-accent/5">
         <div className="flex items-center justify-between w-full px-6 py-4">
           {/* Primary action */}
           <NextLink
@@ -195,166 +172,51 @@ export function AppCard({ app }: { app: AppConfig }) {
           </NextLink>
 
           {/* Quick-links */}
-          <div className="flex items-center gap-1.5">
-            {allDemos.length === 1 && (
+          <div className="flex items-center gap-2">
+            {resourceItems.length === 1 && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>
                   <Link
-                    href={allDemos[0].url}
+                    href={resourceItems[0].url}
                     target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm"
-                    aria-label={`${allDemos[0].label} öffnen`}
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm transition-all hover:border-accent/30 hover:bg-accent/10 hover:text-accent"
+                    aria-label={`${resourceItems[0].label} öffnen`}
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    {resourceItems[0].icon}
+                    {resourceItems[0].label}
                   </Link>
                 </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">{allDemos[0].label}</Tooltip.Content>
+                <Tooltip.Content placement="bottom">Direktzugriff</Tooltip.Content>
               </Tooltip>
             )}
 
-            {allDemos.length > 1 && (
+            {resourceItems.length > 1 && (
               <Dropdown>
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <Dropdown.Trigger
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
-                      aria-label="Live Demos anzeigen"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Dropdown.Trigger>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content placement="bottom">Live Demos</Tooltip.Content>
-                </Tooltip>
-                <Dropdown.Popover>
-                  <Dropdown.Menu 
-                    aria-label="Live Demo Links"
-                    onAction={(key) => {
-                      const idx = parseInt(key.toString().replace('demo-', ''));
-                      if (!isNaN(idx)) window.open(allDemos[idx].url, '_blank');
-                    }}
-                  >
-                    {allDemos.map((demo, idx) => (
-                      <Dropdown.Item 
-                        key={idx} 
-                        id={`demo-${idx}`} 
-                        textValue={demo.label}
-                      >
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>{demo.label}</span>
-                        </div>
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown>
-            )}
-
-            {repositories.length === 1 && (
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Link
-                    href={repositories[0].url}
-                    target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm"
-                    aria-label="Repository öffnen"
-                  >
-                    <Github className="w-3.5 h-3.5" />
-                  </Link>
-                </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">{repositories[0].label || 'Repository'}</Tooltip.Content>
-              </Tooltip>
-            )}
-
-            {repositories.length > 1 && (
-              <Dropdown>
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <Dropdown.Trigger
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
-                      aria-label="Repositories anzeigen"
-                    >
-                      <Github className="w-3.5 h-3.5" />
-                    </Dropdown.Trigger>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content placement="bottom">Repositories</Tooltip.Content>
-                </Tooltip>
+                <Dropdown.Trigger>
+                  <Button size="sm" variant="secondary" className="gap-2 rounded-full px-3 text-xs font-semibold">
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                    Schnellzugriff
+                  </Button>
+                </Dropdown.Trigger>
                 <Dropdown.Popover>
                   <Dropdown.Menu
-                    aria-label="Repository Links"
+                    aria-label="Ressourcen"
                     onAction={(key) => {
-                      const idx = parseInt(key.toString().replace('repo-', ''));
-                      if (!isNaN(idx)) window.open(repositories[idx].url, '_blank');
+                      const index = parseInt(key.toString().replace('resource-', ''), 10);
+                      if (!Number.isNaN(index)) window.open(resourceItems[index].url, '_blank');
                     }}
                   >
-                    {repositories.map((repo, idx) => (
-                      <Dropdown.Item
-                        key={idx}
-                        id={`repo-${idx}`}
-                        textValue={repo.label || 'Repository'}
-                      >
+                    {resourceItems.map((resource, index) => (
+                      <Dropdown.Item key={`${resource.kind}-${index}`} id={`resource-${index}`} textValue={resource.label}>
                         <div className="flex items-center gap-2">
-                          <Github className="w-3 h-3" />
-                          <span>{repo.label || 'Repository'}</span>
+                          {resource.icon}
+                          <span>{resource.label}</span>
                         </div>
                       </Dropdown.Item>
                     ))}
                   </Dropdown.Menu>
                 </Dropdown.Popover>
               </Dropdown>
-            )}
-
-            {customLinks.length > 0 && (
-              <Dropdown>
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <Dropdown.Trigger
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
-                      aria-label="Links anzeigen"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Dropdown.Trigger>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content placement="bottom">Links</Tooltip.Content>
-                </Tooltip>
-                <Dropdown.Popover>
-                  <Dropdown.Menu
-                    aria-label="Links"
-                    onAction={(key) => {
-                      const idx = parseInt(key.toString().replace('custom-', ''));
-                      if (!isNaN(idx)) window.open(customLinks[idx].url, '_blank');
-                    }}
-                  >
-                    {customLinks.map((customLink, idx) => (
-                      <Dropdown.Item
-                        key={idx}
-                        id={`custom-${idx}`}
-                        textValue={customLink.label || 'Link'}
-                      >
-                        <div className="flex items-center gap-2">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>{customLink.label || 'Link'}</span>
-                        </div>
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown>
-            )}
-            {app.docsUrl && (
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Link
-                    href={app.docsUrl}
-                    target="_blank"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface border border-border text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/10 transition-all shadow-sm outline-none"
-                    aria-label="Dokumentation öffnen"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                  </Link>
-                </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">Dokumentation</Tooltip.Content>
-              </Tooltip>
             )}
           </div>
         </div>

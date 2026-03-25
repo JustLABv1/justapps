@@ -1,19 +1,19 @@
 'use client';
 
 import {
-  Button,
-  Card,
-  Chip,
-  Dropdown,
+    Button,
+    Card,
+    Chip,
+    Dropdown,
 } from '@heroui/react';
 import {
-  Lock,
-  MoreVertical,
-  Pencil,
-  ShieldCheck,
-  Trash2,
-  Unlock,
-  User,
+    Lock,
+    MoreVertical,
+    Pencil,
+    ShieldCheck,
+    Trash2,
+    Unlock,
+    User,
 } from 'lucide-react';
 
 interface SystemUser {
@@ -54,14 +54,14 @@ export function UserList({
             <div className="flex-grow text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-1.5 flex-wrap">
                 <h3 className="text-lg font-bold text-foreground">{u.username}</h3>
-                <Chip size="sm" variant="soft" className={`font-bold text-[10px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role}</Chip>
+                <Chip size="sm" variant="soft" className={`font-bold text-[10px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role === 'admin' ? 'Administrator' : 'Benutzer'}</Chip>
                 {u.authType && (
                   <Chip size="sm" variant="primary" className="font-bold text-[10px] uppercase tracking-wider opacity-70 border-border/50">
                     {u.authType === 'oidc' ? 'OIDC' : 'Lokal'}
                   </Chip>
                 )}
                 {u.canSubmitApps === false && (
-                  <Chip size="sm" variant="soft" color="warning" className="font-bold text-[10px] uppercase tracking-wider bg-warning/10 text-warning">App Erstellung Gesperrt</Chip>
+                  <Chip size="sm" variant="soft" color="warning" className="font-bold text-[10px] uppercase tracking-wider bg-warning/10 text-warning">App-Erstellung gesperrt</Chip>
                 )}
                 {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider bg-danger/10 text-danger">Deaktiviert</Chip>}
               </div>
@@ -83,26 +83,26 @@ export function UserList({
               </Button>
               
               <Dropdown>
-                <Button aria-label="Benutzer Aktionen" size="sm" variant="secondary" isIconOnly>
+                <Button aria-label="Benutzeraktionen" size="sm" variant="secondary" isIconOnly>
                   <MoreVertical className="w-4 h-4" />
                 </Button>
                 <Dropdown.Popover>
-                  <Dropdown.Menu aria-label="Benutzer Aktionen" onAction={(key) => {
+                  <Dropdown.Menu aria-label="Benutzeraktionen" onAction={(key) => {
                     if (key === 'state') handleToggleUserState(u);
                     if (key === 'submission') handleToggleUserSubmission(u);
                     if (key === 'edit') handleEditUser(u);
                     if (key === 'delete') handleDeleteUser(u.id);
                   }}>
-                    <Dropdown.Item id="state" textValue={u.disabled ? 'Konto Aktivieren' : 'Konto Sperren'}>
+                    <Dropdown.Item id="state" textValue={u.disabled ? 'Konto aktivieren' : 'Konto sperren'}>
                        <div className={`flex items-center gap-2 ${u.disabled ? 'text-success' : 'text-danger'}`}>
                           {u.disabled ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                          {u.disabled ? 'Konto Aktivieren' : 'Konto Sperren'}
+                          {u.disabled ? 'Konto aktivieren' : 'Konto sperren'}
                       </div>
                     </Dropdown.Item>
-                    <Dropdown.Item id="submission" textValue={u.canSubmitApps === false ? 'Einreichung Erlauben' : 'Einreichung Sperren'}>
+                    <Dropdown.Item id="submission" textValue={u.canSubmitApps === false ? 'Einreichung erlauben' : 'Einreichung sperren'}>
                         <div className={`flex items-center gap-2 ${u.canSubmitApps === false ? 'text-success' : 'text-danger'}`}>
                             {u.canSubmitApps === false ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                            {u.canSubmitApps === false ? 'Einreichung Erlauben' : 'Einreichung Sperren'}
+                            {u.canSubmitApps === false ? 'Einreichung erlauben' : 'Einreichung sperren'}
                         </div>
                     </Dropdown.Item>
                     <Dropdown.Item id="edit" textValue="Bearbeiten">

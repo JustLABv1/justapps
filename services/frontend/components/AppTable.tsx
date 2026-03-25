@@ -1,6 +1,7 @@
 'use client';
 
 import { AppConfig } from '@/config/apps';
+import { getAppStatusLabel } from '@/lib/appStatus';
 import {
     Button,
     Chip,
@@ -64,22 +65,6 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
 
     return filteredItems.slice(start, end);
   }, [page, filteredItems, rowsPerPage]);
-
-  const getStatusLabel = (status: string | undefined) => {
-    if (!status) return null;
-    const s = status.toUpperCase();
-    const labels: Record<string, string> = {
-      'POC': 'POC',
-      'MVP': 'MVP',
-      'SANDBOX': 'Sandbox',
-      'IN ERPROBUNG': 'In Erprobung',
-      'ETABLIERT': 'Etabliert',
-      'INCUBATING': 'In Erprobung',
-      'GRADUATED': 'Etabliert',
-      'TEST': 'Test'
-    };
-    return labels[s] || status;
-  };
 
   const onSearchChange = React.useCallback((value: string) => {
     setFilterValue(value);
@@ -154,7 +139,7 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
       {topContent}
       <Table variant="secondary">
         <Table.ScrollContainer>
-          <Table.Content aria-label="Apps Management Table" className="min-w-[800px]">
+          <Table.Content aria-label="Tabelle der Apps" className="min-w-[800px]">
             <Table.Header>
               <Table.Column isRowHeader>App</Table.Column>
               <Table.Column>Kategorien</Table.Column>
@@ -210,7 +195,7 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                     <div className="flex items-center gap-2">
                       {app.status && (
                         <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded border border-accent/20 uppercase tracking-wider">
-                          {getStatusLabel(app.status)}
+                          {getAppStatusLabel(app.status) || app.status}
                         </div>
                       )}
                       {app.isLocked && (
