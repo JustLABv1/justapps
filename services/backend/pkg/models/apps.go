@@ -86,6 +86,18 @@ type Apps struct {
 	UpdatedAt              time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
 	RelatedApps            []AppRelationSummary `bun:"-" json:"relatedApps,omitempty"`
 	AppGroups              []AppGroupSummary    `bun:"-" json:"appGroups,omitempty"`
+	// Legacy detail-field aliases kept for JSON import/export compatibility.
+	Focus           string `bun:"-" json:"focus"`
+	AppType         string `bun:"-" json:"app_type"`
+	UseCase         string `bun:"-" json:"use_case"`
+	Visualization   string `bun:"-" json:"visualization"`
+	Deployment      string `bun:"-" json:"deployment"`
+	Infrastructure  string `bun:"-" json:"infrastructure"`
+	Database        string `bun:"-" json:"database"`
+	Transferability string `bun:"-" json:"transferability"`
+	ContactPerson   string `bun:"-" json:"contact_person"`
+	Authority       string `bun:"-" json:"authority"`
+	AdditionalInfo  string `bun:"-" json:"additional_info"`
 }
 
 // AppRelationSummary is a lightweight representation of a related app.
