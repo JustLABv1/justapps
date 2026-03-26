@@ -63,6 +63,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 	normalizeAppModelStatus(&app)
+	normalizeAppDetailFields(&app)
 	if user.Role != "admin" {
 		app.IsFeatured = false
 	}
@@ -150,6 +151,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 	normalizeAppModelStatus(&app)
+	normalizeAppDetailFields(&app)
 	if !isAdmin {
 		app.IsFeatured = existingApp.IsFeatured
 	}

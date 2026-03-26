@@ -82,6 +82,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	visibleApps := make([]models.Apps, 0, len(apps))
 	for _, app := range apps {
 		normalizeAppModelStatus(&app)
+		normalizeAppDetailFields(&app)
 		if canViewApp(app, viewerID, viewerRole, hasViewer) {
 			visibleApps = append(visibleApps, app)
 		}
@@ -157,6 +158,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 	normalizeAppModelStatus(&app)
+	normalizeAppDetailFields(&app)
 	if !canViewApp(app, viewerID, viewerRole, hasViewer) {
 		httperror.StatusNotFound(c, "App not found", nil)
 		return
