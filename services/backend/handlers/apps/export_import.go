@@ -18,6 +18,7 @@ func ExportApps(c *gin.Context, db *bun.DB) {
 
 	for index := range apps {
 		normalizeAppModelStatus(&apps[index])
+		normalizeAppDetailFields(&apps[index])
 	}
 
 	c.JSON(http.StatusOK, apps)
@@ -47,6 +48,7 @@ func ImportApps(c *gin.Context, db *bun.DB) {
 
 	for _, app := range apps {
 		normalizeAppModelStatus(&app)
+		normalizeAppDetailFields(&app)
 		if IsDraftStatus(app.Status) {
 			importedDrafts++
 		}
