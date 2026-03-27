@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchApi } from '@/lib/api';
+import { usePathname } from 'next/navigation';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export interface DetailFieldDef {
@@ -114,6 +115,7 @@ const SettingsContext = createContext<SettingsContextType>({
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
   const [loaded, setLoaded] = useState(false);
+  const pathname = usePathname();
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -153,7 +155,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [settings.accentColor]);
 
-  // Inject dynamic favicon (cache-busted so browsers pick up changes immediately)
+  // Reapply the custom favicon after client-side navigation because Next updates head metadata.
   useEffect(() => {
     const id = 'store-dynamic-favicon';
     let el = document.getElementById(id) as HTMLLinkElement | null;
@@ -168,14 +170,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     } else if (el) {
       el.remove();
     }
-  }, [settings.faviconUrl]);
+  }, [pathname, settings.faviconUrl]);
 
-  // Update document title dynamically
+  // Reapply the branded title after client-side navigation because Next resets metadata-derived titles.
   useEffect(() => {
-    if (settings.storeName) {
-      document.title = settings.storeName;
-    }
-  }, [settings.storeName]);
+    document.title = settings.storeName || 'JustApps';
+  }, [pathname, settings.storeName]);
 
   return (
     <SettingsContext.Provider value={{ settings, loaded, refreshSettings: fetchSettings }}>

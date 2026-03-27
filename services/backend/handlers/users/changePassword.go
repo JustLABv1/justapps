@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -13,9 +12,8 @@ import (
 )
 
 func ChangeUserPassword(context *gin.Context, db *bun.DB) {
-	userID, err := auth.GetUserIDFromToken(context.GetHeader("Authorization"))
-	if err != nil {
-		httperror.Unauthorized(context, "Error receiving userID from token", err)
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
 		return
 	}
 
@@ -39,7 +37,7 @@ func ChangeUserPassword(context *gin.Context, db *bun.DB) {
 
 	// check if user exists
 	var user models.Users
-	err = db.NewSelect().Model(&user).Where("id = ?", userID).Scan(context)
+	err := db.NewSelect().Model(&user).Where("id = ?", userID).Scan(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error collecting user data from db", err)
 		return

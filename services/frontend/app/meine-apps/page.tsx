@@ -26,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchApi } from '../../lib/api';
 
 function MyAppsContent() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, profileReady, profileError, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
@@ -53,7 +53,7 @@ function MyAppsContent() {
   }, [user, authLoading, router]);
 
   const loadData = async () => {
-    if (!user) return;
+    if (!user || !profileReady) return;
     setLoading(true);
     setError(null);
     try {
@@ -81,11 +81,20 @@ function MyAppsContent() {
   };
 
   useEffect(() => {
-    loadData();
+    if (profileReady) {
+      loadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, profileReady]);
 
-  const handleCreateApp = () => {
+  const handleCreateApp = async () => {
+    if (!profileReady) {
+      const refreshed = await refreshUser();
+      if (!refreshed) {
+        toast.danger('Ihr Benutzerprofil ist noch nicht bereit. Bitte erneut versuchen.');
+        return;
+      }
+    }
     if (!user?.canSubmitApps) {
       toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
       return;
@@ -144,6 +153,20 @@ function MyAppsContent() {
 
   if (!user) {
     return null;
+  }
+
+  if (!profileReady) {
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">Profil wird noch synchronisiert</h1>
+          <p className="text-sm text-muted mb-4">
+            {profileError || 'Nach der Anmeldung wird Ihr Benutzerprofil gerade mit dem Backend abgeglichen. Versuchen Sie es in wenigen Sekunden erneut.'}
+          </p>
+          <Button onPress={() => void refreshUser()}>Erneut laden</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

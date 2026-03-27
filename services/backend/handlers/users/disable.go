@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -13,9 +12,8 @@ import (
 )
 
 func DisableUser(context *gin.Context, db *bun.DB) {
-	userID, err := auth.GetUserIDFromToken(context.GetHeader("Authorization"))
-	if err != nil {
-		httperror.Unauthorized(context, "Error receiving userID from token", err)
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
 		return
 	}
 
@@ -24,7 +22,7 @@ func DisableUser(context *gin.Context, db *bun.DB) {
 	user.Disabled = true
 	user.UpdatedAt = time.Now()
 
-	_, err = db.NewUpdate().Model(&user).Column("disabled", "updated_at").Where("id = ?", userID).Exec(context)
+	_, err := db.NewUpdate().Model(&user).Column("disabled", "updated_at").Where("id = ?", userID).Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error disable user on db", err)
 		return

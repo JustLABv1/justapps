@@ -3,7 +3,6 @@ package users
 import (
 	"net/http"
 
-	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -14,9 +13,8 @@ import (
 )
 
 func ChangeUserDetails(context *gin.Context, db *bun.DB) {
-	userID, err := auth.GetUserIDFromToken(context.GetHeader("Authorization"))
-	if err != nil {
-		httperror.Unauthorized(context, "Error receiving userID from token", err)
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
 		return
 	}
 
@@ -26,7 +24,7 @@ func ChangeUserDetails(context *gin.Context, db *bun.DB) {
 		return
 	}
 
-	_, err = db.NewUpdate().Model(&user).Column("username", "email").Where("id = ?", userID).Exec(context)
+	_, err := db.NewUpdate().Model(&user).Column("username", "email").Where("id = ?", userID).Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error updating user on db", err)
 		return

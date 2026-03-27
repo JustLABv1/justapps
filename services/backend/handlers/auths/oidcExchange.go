@@ -3,7 +3,6 @@ package auths
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
@@ -103,6 +102,16 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 			httperror.InternalServerError(c, "Error creating user", err)
 			return
 		}
+
+		err = db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(c)
+		if err != nil {
+			httperror.InternalServerError(c, "Error fetching created user", err)
+			return
+		}
+		if user.ID == uuid.Nil {
+			httperror.InternalServerError(c, "Created user is missing an ID", errors.New("created user has empty id"))
+			return
+		}
 		log.WithField("email", user.Email).Info("Created new OIDC user")
 	} else {
 		// Fetch existing user to get ID and check disabled status
@@ -128,29 +137,17 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 		}
 	}
 
-	// Generate a standard User JWT (same as local login)
-	// This token will include the user ID and allow the auth middleware to load the user from DB.
-	sessionToken, expiresAt, err := auth.GenerateJWT(user.ID, false)
-	if err != nil {
-		log.WithError(err).Error("OIDC Exchange: Failed to generate session JWT")
-		httperror.InternalServerError(c, "Failed to create session token", err)
+	if user.ID == uuid.Nil {
+		httperror.InternalServerError(c, "OIDC user is missing an ID", errors.New("oidc user has empty id"))
 		return
 	}
 
-	// For standard tokens (type "user"), we MUST save explicitly to the database
-	// because ValidateTokenDBEntry middleware checks for token existence.
-	tokenEntry := models.Tokens{
-		UserID:      user.ID.String(),
-		Key:         sessionToken,
-		Description: "OIDC User Session",
-		Type:        "user",
-		ExpiresAt:   time.Unix(expiresAt, 0),
-		CreatedAt:   time.Now(),
-	}
-	_, err = db.NewInsert().Model(&tokenEntry).Exec(c)
+	// Generate a dedicated OIDC session JWT.
+	// The auth middleware resolves the live user from the database via email.
+	sessionToken, expiresAt, err := auth.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)
 	if err != nil {
-		log.WithError(err).Error("OIDC Exchange: Failed to save session token to DB")
-		httperror.InternalServerError(c, "Failed to save session token", err)
+		log.WithError(err).Error("OIDC Exchange: Failed to generate session JWT")
+		httperror.InternalServerError(c, "Failed to create session token", err)
 		return
 	}
 

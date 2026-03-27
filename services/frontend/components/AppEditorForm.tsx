@@ -133,7 +133,7 @@ interface AppEditorFormProps {
 
 export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profileReady, refreshUser } = useAuth();
   const { settings } = useSettings();
 
   const isNew = !initialApp;
@@ -222,6 +222,16 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
   // ── Save ──
   const handleSave = async () => {
+    if (!profileReady) {
+      const refreshed = await refreshUser();
+      if (!refreshed) {
+        const message = 'Ihr Benutzerprofil wird noch synchronisiert. Bitte erneut versuchen.';
+        setSaveError(message);
+        toast.danger(message);
+        return;
+      }
+    }
+
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
@@ -462,7 +472,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             <div className="w-px h-4 bg-border mx-1" />
             <button
               onClick={handleSave}
-              disabled={saving || !canSave}
+              disabled={saving || !canSave || !profileReady}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -1461,6 +1471,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 Für einen Entwurf sind <span className="font-semibold">Name</span> und <span className="font-semibold">ID</span> nötig. Für Status außer Entwurf zusätzlich <span className="font-semibold">Kategorie</span> und <span className="font-semibold">Kurzbeschreibung</span>.
               </p>
             )}
+            {!profileReady && !saveError && !saveSuccess && (
+              <p className="text-xs text-muted truncate">
+                Ihr Benutzerprofil wird noch synchronisiert. Sobald das Backend die Sitzung bestätigt hat, können Sie speichern.
+              </p>
+            )}
             {saveError && <p className="text-sm text-danger font-medium truncate">{saveError}</p>}
             {saveSuccess && (
               <span className="text-sm text-success flex items-center gap-1 font-medium">
@@ -1489,7 +1504,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !canSave}
+              disabled={saving || !canSave || !profileReady}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

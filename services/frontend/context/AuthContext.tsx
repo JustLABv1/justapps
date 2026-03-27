@@ -16,9 +16,12 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  profileReady: boolean;
+  profileError: string | null;
   login: (token: string, userData: User) => void;
   logout: () => void;
   oidcLogin: () => void;
+  refreshUser: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [localUser, setLocalUser] = useState<User | null>(null);
   const [localToken, setLocalToken] = useState<string | null>(null);
   const [fetchedUser, setFetchedUser] = useState<User | null>(null);
+  const [profileReady, setProfileReady] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Derive the active user and token immediately from session if available
   const s = session as {
@@ -80,6 +85,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (status === 'authenticated') ? (s?.idToken || s?.accessToken || null) : (status === 'unauthenticated' ? localToken : null);
   }, [status, s?.idToken, s?.accessToken, localToken]);
 
+  const refreshUser = async () => {
+    if (status !== 'authenticated') {
+      setProfileReady(false);
+      setProfileError(null);
+      return !!localUser;
+    }
+
+    if (!token) {
+      setFetchedUser(null);
+      setProfileReady(false);
+      setProfileError('Backend-Sitzung fehlt. Bitte erneut anmelden.');
+      return false;
+    }
+
+    setProfileReady(false);
+    setProfileError(null);
+
+    try {
+      const { fetchApi } = await import('@/lib/api');
+      const response = await fetchApi('/user/');
+
+      if (response.status === 401) {
+        console.warn('Backend rejected token, logging out...');
+        logout();
+        return false;
+      }
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const message = (errorBody as { message?: string }).message || 'Benutzerprofil konnte nicht geladen werden.';
+        setFetchedUser(null);
+        setProfileError(message);
+        return false;
+      }
+
+      const data = await response.json();
+      if (!data.user) {
+        setFetchedUser(null);
+        setProfileError('Benutzerprofil konnte nicht geladen werden.');
+        return false;
+      }
+
+      setFetchedUser(data.user);
+      setProfileReady(true);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Benutzerprofil konnte nicht geladen werden.';
+      console.error('Failed to validate token and fetch user:', error);
+      setFetchedUser(null);
+      setProfileError(message);
+      return false;
+    }
+  };
+
   // Sync token to localStorage when OIDC session changes manually to avoid race conditions
   useEffect(() => {
     if (status === 'authenticated' && s && oidcUser) {
@@ -111,32 +170,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [status]);
 
-  // Fetch user data on mount or when token changes (or auth type changes)
+  // Fetch user data on mount or when the backend token changes.
   useEffect(() => {
-    const fetchUserData = async () => {
-      // Don't fetch during loading or if no token
-      if (status === 'loading' || !token) return;
+    if (status === 'loading') return;
 
-      try {
-        const { fetchApi } = await import('@/lib/api');
-        // Ensure trailing slash to match backend router
-        const response = await fetchApi('/user/');
-        
-        if (response.status === 401) {
-          console.warn('Backend rejected token, logging out...');
-          logout();
-        } else if (response.ok) {
-           const data = await response.json();
-           if (data.user) {
-             setFetchedUser(data.user);
-           }
-        }
-      } catch (error) {
-        console.error('Failed to validate token and fetch user:', error);
-      }
-    };
+    if (status !== 'authenticated') {
+      setFetchedUser(null);
+      setProfileReady(false);
+      setProfileError(null);
+      return;
+    }
 
-    fetchUserData();
+    setFetchedUser(null);
+    setProfileReady(false);
+    setProfileError(null);
+
+    void refreshUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, status]);
 
@@ -147,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setLocalUser(userData);
     setLocalToken(token);
+    setProfileError(null);
   };
 
   const logout = () => {
@@ -156,6 +206,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setLocalUser(null);
     setLocalToken(null);
+    setFetchedUser(null);
+    setProfileReady(false);
+    setProfileError(null);
     if (status === 'authenticated') {
       // If we have an idToken, we can try a Federated logout from Keycloak
       // Note: This matches the issuer in process.env.AUTH_KEYCLOAK_ISSUER
@@ -180,11 +233,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     nextAuthSignIn('keycloak', { callbackUrl: '/' });
   };
 
-  // Improved loading state that waits for user hydration
-  const isLoading = status === 'loading' || (status === 'authenticated' && !user);
+  // Keep privileged UI in loading state until the backend confirms the authenticated user.
+  const isLoading = status === 'loading' || (status === 'authenticated' && !profileReady && !profileError);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading: isLoading, login, logout, oidcLogin }}>
+    <AuthContext.Provider value={{ user, token, loading: isLoading, profileReady, profileError, login, logout, oidcLogin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
