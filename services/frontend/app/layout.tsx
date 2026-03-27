@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "JustApps",
-  description: "Zentraler Community Store für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
+  description: "Zentraler App Store für Softwarelösungen der Bundesverwaltung, Länder und Kommunen.",
 };
 
 export default function RootLayout({

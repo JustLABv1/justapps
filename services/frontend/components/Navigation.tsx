@@ -46,7 +46,7 @@ export function Navigation() {
   };
 
   const regularNavLinks = [
-    { href: "/", label: "Community Store", active: pathname === '/' },
+    { href: "/", label: "Apps", active: pathname === '/' },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
   ];
 
