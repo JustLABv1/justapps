@@ -3,7 +3,6 @@ package users
 import (
 	"net/http"
 
-	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -14,18 +13,17 @@ import (
 )
 
 func GetUserDetails(context *gin.Context, db *bun.DB) {
-	userID, err := auth.GetUserIDFromToken(context.GetHeader("Authorization"))
-	if err != nil {
-		httperror.Unauthorized(context, "Error receiving userID from token", err)
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
 		return
 	}
 
 	var user models.Users
-	err = db.NewSelect().Model(&user).Column("id", "username", "email", "role", "created_at", "updated_at", "can_submit_apps", "auth_type").Where("id = ?", userID).Scan(context)
+	err := db.NewSelect().Model(&user).Column("id", "username", "email", "role", "created_at", "updated_at", "can_submit_apps", "auth_type").Where("id = ?", userID).Scan(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error collecting user data from db", err)
 		return
 	}
 
-	context.JSON(http.StatusCreated, gin.H{"result": "success", "user": user})
+	context.JSON(http.StatusOK, gin.H{"result": "success", "user": user})
 }

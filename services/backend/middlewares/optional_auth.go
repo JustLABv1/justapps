@@ -32,21 +32,19 @@ func populateOptionalAuthContext(context *gin.Context, db *bun.DB, tokenString s
 	// Try backend-issued OIDC session token first.
 	sessionClaims, err := auth.ValidateOIDCSessionToken(tokenString)
 	if err == nil {
-		context.Set("user_email", sessionClaims.Email)
-		context.Set("username", sessionClaims.PreferredUsername)
-
 		var user models.Users
 		dbErr := db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
-		if dbErr == nil {
-			if user.Disabled {
-				return false
-			}
-			context.Set("user_id", user.ID)
-			context.Set("role", user.Role)
-		} else {
-			context.Set("role", sessionClaims.Role)
+		if dbErr != nil {
 			log.Warnf("OptionalAuth: OIDC session token user %s not found in DB: %v", sessionClaims.Email, dbErr)
+			return false
 		}
+		if user.Disabled {
+			return false
+		}
+		context.Set("user_id", user.ID)
+		context.Set("role", user.Role)
+		context.Set("username", user.Username)
+		context.Set("user_email", user.Email)
 
 		return true
 	}
@@ -68,6 +66,8 @@ func populateOptionalAuthContext(context *gin.Context, db *bun.DB, tokenString s
 				}
 				context.Set("user_id", user.ID)
 				context.Set("role", user.Role)
+				context.Set("username", user.Username)
+				context.Set("user_email", user.Email)
 			} else {
 				if auth.IsAdminOIDC(claims) {
 					context.Set("role", "admin")

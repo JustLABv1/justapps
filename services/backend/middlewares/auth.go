@@ -24,24 +24,23 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 		// Try backend-issued OIDC session token first (most common for OIDC users)
 		sessionClaims, err := auth.ValidateOIDCSessionToken(tokenString)
 		if err == nil {
-			context.Set("user_email", sessionClaims.Email)
-			context.Set("username", sessionClaims.PreferredUsername)
-
 			// Load user from DB to get current role and live permissions (not stale cached claims)
 			var user models.Users
 			dbErr := db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
-			if dbErr == nil {
-				if user.Disabled {
-					httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
-					return
-				}
-				context.Set("user_id", user.ID)
-				context.Set("role", user.Role)
-			} else {
-				// Fallback to cached role from token claims if DB lookup fails
-				context.Set("role", sessionClaims.Role)
+			if dbErr != nil {
 				log.Warnf("OIDC session token user %s not found in DB: %v", sessionClaims.Email, dbErr)
+				httperror.Unauthorized(context, "OIDC session token is not linked to a valid user", errors.New("oidc session user not found"))
+				return
 			}
+			if user.Disabled {
+				httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
+				return
+			}
+
+			context.Set("user_id", user.ID)
+			context.Set("role", user.Role)
+			context.Set("username", user.Username)
+			context.Set("user_email", user.Email)
 
 			context.Next()
 			return
@@ -69,6 +68,8 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 					}
 					context.Set("user_id", user.ID)
 					context.Set("role", user.Role)
+					context.Set("username", user.Username)
+					context.Set("user_email", user.Email)
 				} else {
 					// User not in DB yet (first login with raw Keycloak token, exchange not yet complete)
 					// Set role from OIDC claims but leave user_id unset to enforce re-authentication

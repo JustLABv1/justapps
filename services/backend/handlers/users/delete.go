@@ -3,7 +3,6 @@ package users
 import (
 	"net/http"
 
-	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -13,13 +12,12 @@ import (
 )
 
 func DeleteUser(context *gin.Context, db *bun.DB) {
-	userID, err := auth.GetUserIDFromToken(context.GetHeader("Authorization"))
-	if err != nil {
-		httperror.Unauthorized(context, "Error receiving userID from token", err)
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
 		return
 	}
 
-	_, err = db.NewDelete().Model(&models.Users{}).Where("id = ?", userID).Exec(context)
+	_, err := db.NewDelete().Model(&models.Users{}).Where("id = ?", userID).Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error deleting user on db", err)
 		return

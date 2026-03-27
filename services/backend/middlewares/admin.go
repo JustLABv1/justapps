@@ -25,10 +25,22 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 		// Try backend-issued OIDC session token first (most common for OIDC users)
 		sessionClaims, err := auth.ValidateOIDCSessionToken(tokenString)
 		if err == nil {
-			if sessionClaims.Role == "admin" {
-				context.Set("user_email", sessionClaims.Email)
-				context.Set("username", sessionClaims.PreferredUsername)
-				context.Set("role", "admin")
+			var user models.Users
+			dbErr := db.NewSelect().Model(&user).Where("email = ?", sessionClaims.Email).Scan(context)
+			if dbErr != nil {
+				log.WithError(dbErr).Warnf("Admin Auth: OIDC session token user %s not found in DB", sessionClaims.Email)
+				httperror.Unauthorized(context, "OIDC session token is not linked to a valid admin user", errors.New("oidc session user not found"))
+				return
+			}
+			if user.Disabled {
+				httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
+				return
+			}
+			if user.Role == "admin" {
+				context.Set("user_id", user.ID)
+				context.Set("user_email", user.Email)
+				context.Set("username", user.Username)
+				context.Set("role", user.Role)
 				context.Next()
 				return
 			}
@@ -43,10 +55,26 @@ func Admin(db *bun.DB) gin.HandlerFunc {
 			claims, err := auth.GetOIDCClaims(idToken)
 			if err == nil {
 				if auth.IsAdminOIDC(claims) {
+					var user models.Users
+					dbErr := db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(context)
+					if dbErr != nil {
+						log.WithError(dbErr).Warnf("Admin Auth: OIDC admin user %s not found in DB", claims.Email)
+						httperror.Unauthorized(context, "OIDC admin user is not provisioned in the backend", errors.New("oidc admin user not found"))
+						return
+					}
+					if user.Disabled {
+						httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
+						return
+					}
+					if user.Role != "admin" {
+						httperror.Unauthorized(context, "You are not an admin", errors.New("not an admin"))
+						return
+					}
 					context.Set("oidc_claims", claims)
-					context.Set("user_email", claims.Email)
-					context.Set("username", claims.PreferredUser)
-					context.Set("role", "admin")
+					context.Set("user_id", user.ID)
+					context.Set("user_email", user.Email)
+					context.Set("username", user.Username)
+					context.Set("role", user.Role)
 					context.Next()
 					return
 				}
