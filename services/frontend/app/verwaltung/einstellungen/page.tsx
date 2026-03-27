@@ -4,16 +4,16 @@ import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/
 import { fetchApi, uploadFile } from '@/lib/api';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Select,
-    Surface,
-    Switch,
-    Tabs,
-    TextField,
-    Tooltip
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Select,
+  Surface,
+  Switch,
+  Tabs,
+  TextField,
+  Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, ExternalLink, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -395,7 +395,7 @@ export default function EinstellungenPage() {
                   onChange={(val) => setSettings({ ...settings, storeDescription: val })}
                 >
                   <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Store Beschreibung (SEO / Metadata)</Label>
-                  <Input placeholder="Zentraler Community Store fuer Softwareloesungen..." className="bg-field-background" />
+                  <Input placeholder="Zentraler App Store fuer Softwareloesungen..." className="bg-field-background" />
                 </TextField>
               </div>
               {uploadError && (
