@@ -2,7 +2,7 @@
 
 import { useSettings } from "@/context/SettingsContext";
 import { AlertTriangle, Sparkles, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 const BANNER_STYLES = {
   info: {
@@ -33,7 +33,7 @@ export function TopBanner() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && sessionStorage.getItem(dismissKey)) {
-      setDismissed(true);
+      startTransition(() => setDismissed(true));
     }
   }, [dismissKey]);
 
