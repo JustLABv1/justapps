@@ -2,15 +2,15 @@
 
 import { AppConfig } from "@/config/apps";
 import { useFavorites } from "@/context/FavoritesContext";
-import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { fetchApi } from "@/lib/api";
+import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { RecentApp, getRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Input, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppCard } from "./AppCard";
 
 interface AppGridProps {
@@ -234,34 +234,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Recently viewed — only when no active filters */}
-      {!hasActiveFilters && recentApps.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-muted" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted">Zuletzt gesehen</span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {recentApps.map((app) => (
-              <NextLink
-                key={app.id}
-                href={`/apps/${app.id}`}
-                className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
-              >
-                {app.icon?.startsWith('http') ? (
-                  <div className="relative w-5 h-5 shrink-0">
-                    <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
-                  </div>
-                ) : (
-                  <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
-                )}
-                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
-              </NextLink>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Filter bar */}
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -499,12 +471,40 @@ export function AppGrid({ initialApps }: AppGridProps) {
         )}
       </div>
 
+      {/* Recently viewed — only when no active filters */}
+      {!hasActiveFilters && recentApps.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-muted" />
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Zuletzt gesehen</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {recentApps.map((app) => (
+              <NextLink
+                key={app.id}
+                href={`/apps/${app.id}`}
+                className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
+              >
+                {app.icon?.startsWith('http') ? (
+                  <div className="relative w-5 h-5 shrink-0">
+                    <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
+                  </div>
+                ) : (
+                  <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
+                )}
+                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
+              </NextLink>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-1">
         <p className="text-sm font-medium text-muted">
           {serverLoading ? (
             <span className="text-muted">Suche läuft...</span>
           ) : (
-            <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden</>
+            <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
           )}
         </p>
         {hasActiveFilters && (
@@ -521,7 +521,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       </div>
 
       {/* Apps grid — masonry layout so cards size to their own content */}
-      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12">
+      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12" aria-label="App-Liste">
         {filteredApps.map((app) => (
           <div key={app.id} className="break-inside-avoid mb-5">
             <AppCard app={app} />

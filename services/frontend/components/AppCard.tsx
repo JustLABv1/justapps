@@ -5,7 +5,7 @@ import { getAppStatusMeta } from "@/lib/appStatus";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
-import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FavoriteButton } from "./FavoriteButton";
 
@@ -25,6 +25,7 @@ function getRelativeTime(dateStr: string | undefined, now: number): { label: str
 }
 
 export function AppCard({ app }: { app: AppConfig }) {
+  const router = useRouter();
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const [now] = useState(() => Date.now());
   const statusInfo = getAppStatusMeta(app.status);
@@ -49,13 +50,14 @@ export function AppCard({ app }: { app: AppConfig }) {
   const spotlightBadgeColor = app.isReuse ? 'warning' : 'success';
 
   return (
-    <Card 
-      className={`relative w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 
-        ${isFeatured 
-          ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10' 
+    <Card
+      className={`relative w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 cursor-pointer
+        ${isFeatured
+          ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10'
           : 'hover:border-accent/40 border-border'
-        }`} 
+        }`}
       variant="default"
+      onClick={() => router.push(`/apps/${app.id}`)}
     >
       {isFeatured && (
         <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center rounded-full bg-gov-gold p-2 shadow-lg shadow-gov-gold/20">
@@ -169,20 +171,13 @@ export function AppCard({ app }: { app: AppConfig }) {
       {/* ── Footer: primary action + quick-links ── */}
       <Card.Footer className="mt-auto overflow-hidden border-t border-border/50 bg-surface-secondary/30 p-0 transition-colors group-hover:bg-accent/5">
         <div className="flex items-center justify-between w-full px-6 py-4">
-          {/* Primary action */}
-          <div className="flex items-center gap-2">
+          {/* Favorite */}
+          <div onClick={(e) => e.stopPropagation()}>
             <FavoriteButton appId={app.id} />
-            <NextLink
-              href={`/apps/${app.id}`}
-              className="inline-flex items-center gap-2 text-sm font-bold text-foreground group-hover:text-accent transition-colors"
-            >
-              Details ansehen
-              <ExternalLink className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </NextLink>
           </div>
 
           {/* Quick-links */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             {resourceItems.length === 1 && (
               <Tooltip delay={0}>
                 <Tooltip.Trigger>
