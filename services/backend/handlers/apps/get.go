@@ -2,6 +2,7 @@ package apps
 
 import (
 	"fmt"
+	"strings"
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
@@ -69,11 +70,21 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 
 	apps := make([]models.Apps, 0)
-	err := db.NewSelect().
+	q := c.Query("q")
+	query := db.NewSelect().
 		Model(&apps).
 		Relation("Owner").
-		Order("is_featured DESC", fmt.Sprintf("%s %s", sortField, sortDir)).
-		Scan(c)
+		Order("is_featured DESC", fmt.Sprintf("%s %s", sortField, sortDir))
+
+	if q != "" {
+		pattern := "%" + strings.ToLower(q) + "%"
+		query = query.Where(
+			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ? OR LOWER(a.authority) LIKE ?",
+			pattern, pattern, pattern,
+		)
+	}
+
+	err := query.Scan(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching apps", err)
 		return

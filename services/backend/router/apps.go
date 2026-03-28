@@ -70,7 +70,19 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 		}
 
-		// 3. Related apps — read is public, write requires auth
+		// 3. Favorites — requires auth
+		favGroup := appsGroup.Group("/:id/favorite")
+		favGroup.Use(middlewares.Auth(db))
+		{
+			favGroup.POST("", func(c *gin.Context) {
+				apps.AddFavorite(c, db)
+			})
+			favGroup.DELETE("", func(c *gin.Context) {
+				apps.RemoveFavorite(c, db)
+			})
+		}
+
+		// 4. Related apps — read is public, write requires auth
 		appsGroup.GET("/:id/related", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRelatedApps(c, db)
 		})

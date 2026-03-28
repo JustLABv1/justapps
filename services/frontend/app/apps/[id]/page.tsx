@@ -30,6 +30,7 @@ import Image from "next/image";
 import NextLink from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -63,6 +64,7 @@ export default function AppPage() {
         if (res.ok) {
           const data = await res.json();
           setApp(data);
+          addRecentlyViewed({ id: data.id, name: data.name, icon: data.icon });
         } else {
           setApp(null);
         }
