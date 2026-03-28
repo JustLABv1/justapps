@@ -159,21 +159,21 @@ export function AppCard({ app }: { app: AppConfig }) {
               <span className="text-xs line-clamp-1">{app.authority}</span>
             </div>
           )}
-          {relativeTime && (
-            <div className="flex items-center gap-2 text-muted/70">
-              <Clock className="w-3 h-3" />
-              <span className="text-[11px]">{relativeTime.label}</span>
-            </div>
-          )}
         </div>
       </Card.Content>
 
       {/* ── Footer: primary action + quick-links ── */}
       <Card.Footer className="mt-auto overflow-hidden border-t border-border/50 bg-surface-secondary/30 p-0 transition-colors group-hover:bg-accent/5">
         <div className="flex items-center justify-between w-full px-6 py-4">
-          {/* Favorite */}
-          <div onClick={(e) => e.stopPropagation()}>
+          {/* Favorite + timestamp */}
+          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
             <FavoriteButton appId={app.id} />
+            {relativeTime && (
+              <div className="flex items-center gap-1.5 text-muted/60">
+                <Clock className="w-3 h-3" />
+                <span className="text-[11px]">{relativeTime.label}</span>
+              </div>
+            )}
           </div>
 
           {/* Quick-links */}
