@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Card, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
+import { AuthLayout } from '@/components/AuthLayout';
+import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +22,6 @@ export default function RegisterPage() {
     if (user) {
       router.push('/');
     }
-    // Redirect if registration or local auth is disabled
     if (settings.disableRegistration || settings.disableLocalAuth) {
       router.push('/login');
     }
@@ -58,80 +58,69 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-12rem)] px-4">
-      <Card className="w-full max-w-md" variant="default">
-        <Card.Header className="p-6 pb-2 text-center">
-          <div className="mb-2">
-            <Card.Title className="text-xl font-semibold text-foreground">Registrieren</Card.Title>
-            <Card.Description className="text-sm text-muted mt-1">Erstellen Sie ein neues Konto.</Card.Description>
-          </div>
-        </Card.Header>
-
-        <Card.Content className="p-6 pt-4">
-          <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <TextField isRequired className="w-full" onChange={setEmail}>
-              <Label className="text-sm font-medium text-foreground mb-1">E-Mail</Label>
-              <Input
-                placeholder="E-Mail eingeben"
-                type="email"
-                className="w-full"
-                value={email}
-              />
-            </TextField>
-
-            <TextField isRequired className="w-full" onChange={setUsername}>
-              <Label className="text-sm font-medium text-foreground mb-1">Benutzername</Label>
-              <Input
-                placeholder="Benutzername wählen"
-                className="w-full"
-                value={username}
-              />
-            </TextField>
-
-            <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-              <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
-              <Input
-                placeholder="Passwort wählen"
-                className="w-full"
-                value={password}
-              />
-            </TextField>
-
-            {error && <p className="text-danger text-sm">{error}</p>}
-
-            <Button 
-              type="submit" 
-              isPending={loading}
-              className="w-full mt-2"
-            >
-              {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
-            </Button>
-          </Form>
-
-          <div className="my-5 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted font-medium uppercase">Oder</span>
-            <Separator className="flex-1" />
-          </div>
-
-          <Button
-            onPress={handleOIDCLogin}
-            variant="outline"
+    <AuthLayout title="Konto erstellen" subtitle="Registrieren Sie sich für einen neuen Account.">
+      <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <TextField isRequired className="w-full" onChange={setEmail}>
+          <Label className="text-sm font-medium text-foreground mb-1">E-Mail</Label>
+          <Input
+            placeholder="E-Mail eingeben"
+            type="email"
             className="w-full"
-          >
-            Mit Keycloak anmelden
-          </Button>
+            value={email}
+          />
+        </TextField>
 
-          <div className="mt-5 text-center text-sm">
-            <p className="text-muted">
-              Haben Sie bereits ein Konto?{' '}
-              <Link href="/login" className="text-accent font-medium">
-                Anmelden
-              </Link>
-            </p>
-          </div>
-        </Card.Content>
-      </Card>
-    </div>
+        <TextField isRequired className="w-full" onChange={setUsername}>
+          <Label className="text-sm font-medium text-foreground mb-1">Benutzername</Label>
+          <Input
+            placeholder="Benutzername wählen"
+            className="w-full"
+            value={username}
+          />
+        </TextField>
+
+        <TextField isRequired className="w-full" type="password" onChange={setPassword}>
+          <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
+          <Input
+            placeholder="Passwort wählen"
+            className="w-full"
+            value={password}
+          />
+        </TextField>
+
+        {error && <p className="text-danger text-sm">{error}</p>}
+
+        <Button
+          type="submit"
+          isPending={loading}
+          className="w-full mt-2"
+        >
+          {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
+        </Button>
+      </Form>
+
+      <div className="my-5 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs text-muted font-medium uppercase">Oder</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <Button
+        onPress={handleOIDCLogin}
+        variant="outline"
+        className="w-full"
+      >
+        Mit Keycloak anmelden
+      </Button>
+
+      <div className="mt-6 text-center text-sm">
+        <p className="text-muted">
+          Haben Sie bereits ein Konto?{' '}
+          <Link href="/login" className="text-accent font-medium">
+            Anmelden
+          </Link>
+        </p>
+      </div>
+    </AuthLayout>
   );
 }
