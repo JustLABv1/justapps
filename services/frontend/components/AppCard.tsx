@@ -7,6 +7,7 @@ import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHor
 import Image from "next/image";
 import NextLink from "next/link";
 import { useState } from "react";
+import { FavoriteButton } from "./FavoriteButton";
 
 // Pure helper defined outside component to avoid impurity lint warnings
 function getRelativeTime(dateStr: string | undefined, now: number): { label: string; isRecent: boolean } | null {
@@ -169,13 +170,16 @@ export function AppCard({ app }: { app: AppConfig }) {
       <Card.Footer className="mt-auto overflow-hidden border-t border-border/50 bg-surface-secondary/30 p-0 transition-colors group-hover:bg-accent/5">
         <div className="flex items-center justify-between w-full px-6 py-4">
           {/* Primary action */}
-          <NextLink
-            href={`/apps/${app.id}`}
-            className="inline-flex items-center gap-2 text-sm font-bold text-foreground group-hover:text-accent transition-colors"
-          >
-            Details ansehen
-            <ExternalLink className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </NextLink>
+          <div className="flex items-center gap-2">
+            <FavoriteButton appId={app.id} />
+            <NextLink
+              href={`/apps/${app.id}`}
+              className="inline-flex items-center gap-2 text-sm font-bold text-foreground group-hover:text-accent transition-colors"
+            >
+              Details ansehen
+              <ExternalLink className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </NextLink>
+          </div>
 
           {/* Quick-links */}
           <div className="flex items-center gap-2">
