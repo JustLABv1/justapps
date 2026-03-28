@@ -52,14 +52,19 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   // Ensure we don't have double slashes if endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_URL}${cleanEndpoint}`;
-  
+
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    ...options.headers,
-  };
+  const headers = new Headers(options.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (!headers.has('Authorization') && token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const hadAuthorization = headers.has('Authorization');
 
   try {
     const response = await fetch(url, {
@@ -67,7 +72,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
       headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && hadAuthorization) {
        if (typeof window !== 'undefined') {
          localStorage.removeItem('token');
          localStorage.removeItem('user');

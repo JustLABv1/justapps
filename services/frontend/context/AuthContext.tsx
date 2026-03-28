@@ -87,9 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (status !== 'authenticated') {
-      setProfileReady(false);
+      const hasLocalSession = !!localToken && !!localUser;
+      setFetchedUser(null);
+      setProfileReady(hasLocalSession);
       setProfileError(null);
-      return !!localUser;
+      return hasLocalSession;
     }
 
     if (!token) {
@@ -104,7 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { fetchApi } = await import('@/lib/api');
-      const response = await fetchApi('/user/');
+      
+      // Explicitly pass the current token in headers to avoid race conditions 
+      // where localStorage hasn't been updated yet by the other useEffect
+      const response = await fetchApi('/user/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
       if (response.status === 401) {
         console.warn('Backend rejected token, logging out...');
@@ -162,10 +171,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const parsedUser = JSON.parse(storedUser);
           setLocalUser(parsedUser);
           setLocalToken(storedToken);
+          setProfileReady(true);
+          setProfileError(null);
         } catch {
           localStorage.removeItem('user');
           localStorage.removeItem('token');
+          setLocalUser(null);
+          setLocalToken(null);
+          setProfileReady(false);
+          setProfileError(null);
         }
+      } else {
+        setLocalUser(null);
+        setLocalToken(null);
+        setProfileReady(false);
+        setProfileError(null);
       }
     }
   }, [status]);
@@ -176,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (status !== 'authenticated') {
       setFetchedUser(null);
-      setProfileReady(false);
+      setProfileReady(!!localToken && !!localUser);
       setProfileError(null);
       return;
     }
@@ -187,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void refreshUser();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, status]);
+  }, [token, status, localToken, localUser]);
 
   const login = (token: string, userData: User) => {
     if (typeof window !== 'undefined') {
@@ -196,6 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setLocalUser(userData);
     setLocalToken(token);
+    setProfileReady(true);
     setProfileError(null);
   };
 
