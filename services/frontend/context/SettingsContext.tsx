@@ -37,6 +37,7 @@ export interface StoreSettings {
   footerLinks: FooterLink[];
   showFlagBar: boolean;
   // Auth config (runtime, not stored in DB)
+  oidcEnabled: boolean;
   disableLocalAuth: boolean;
   disableRegistration: boolean;
   // App sort configuration
@@ -79,6 +80,7 @@ export const defaultSettings: StoreSettings = {
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  oidcEnabled: false,
   disableLocalAuth: false,
   disableRegistration: false,
   appSortField: 'name',
