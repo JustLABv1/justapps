@@ -5,6 +5,7 @@ import (
 
 	"justapps-backend/config"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -94,7 +95,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	_, err := db.NewUpdate().
 		Model(&req).
 		Column(
-			"allow_app_submissions", "show_top_banner", "top_banner_text",
+			"allow_app_submissions", "show_top_banner", "top_banner_text", "top_banner_type",
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
@@ -109,5 +110,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	callerID := c.GetString("user_id")
+	audit.WriteAudit(c.Request.Context(), db, callerID, "settings.update", "updated platform settings")
 	c.JSON(200, req)
 }

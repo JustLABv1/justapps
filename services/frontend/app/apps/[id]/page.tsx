@@ -15,6 +15,7 @@ import {
     ChevronLeft,
     ExternalLink,
     Github,
+    History,
     Layers,
     LayoutDashboard,
     Link2,
@@ -178,6 +179,11 @@ export default function AppPage() {
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">{app.name}</h1>
+              {app.version && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-border bg-surface text-xs font-mono text-muted shadow-sm">
+                  v{app.version}
+                </span>
+              )}
               {app.categories?.map(cat => (
                 <Chip key={cat} size="sm" variant="soft" color="accent" className="text-[11px] uppercase font-bold tracking-wider">
                   {cat}
@@ -391,6 +397,13 @@ export default function AppPage() {
               )}
               <Tabs.Indicator />
             </Tabs.Tab>
+            {app.changelog && (
+              <Tabs.Tab id="changelog" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+                <History className="w-4 h-4" />
+                Änderungsprotokoll
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            )}
             {(app.relatedApps && app.relatedApps.length > 0) && (
               <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
                 <Link2 className="w-4 h-4" />
@@ -433,6 +446,15 @@ export default function AppPage() {
         <Tabs.Panel id="ratings">
           <RatingSection appId={app.id} />
         </Tabs.Panel>
+
+        {/* Änderungsprotokoll */}
+        {app.changelog && (
+          <Tabs.Panel id="changelog">
+            <div className="prose prose-bund max-w-none min-h-[200px]">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{app.changelog}</ReactMarkdown>
+            </div>
+          </Tabs.Panel>
+        )}
 
         {/* Verwandte Apps */}
         {app.relatedApps && app.relatedApps.length > 0 && (

@@ -36,6 +36,7 @@ import {
   Server,
   Share2,
   Star,
+  Tag,
   Terminal,
   Trash2,
   Upload,
@@ -196,6 +197,48 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [creatingGroup, setCreatingGroup] = useState(false);
   const initialSnapshotRef = useRef('');
   const skipUnsavedWarningRef = useRef(false);
+
+  // ── Auto-save state ──
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
+  const autoSaveAppIdRef = useRef<string | null>(initialApp?.id || null);
+
+  // ── Auto-save effect (drafts only) ──
+  useEffect(() => {
+    const isDraftNow = isDraftStatus(formData.status);
+    if (!isDraftNow) return;
+
+    const interval = setInterval(async () => {
+      if (saving) return;
+      const body: Partial<AppConfig> = {
+        ...formData,
+        categories: Array.isArray(formData.categories) ? formData.categories : [],
+        techStack: Array.isArray(formData.techStack) ? formData.techStack : [],
+        repositories: (formData.repositories || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url })),
+        customLinks: (formData.customLinks || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url })),
+        liveDemos: (formData.liveDemos || []).filter((d) => d.url?.trim()),
+        status: DRAFT_STATUS,
+      };
+
+      try {
+        if (!autoSaveAppIdRef.current) {
+          if (!formData.name?.trim()) return;
+          const res = await fetchApi('/apps', { method: 'POST', body: JSON.stringify(body) });
+          if (res.ok) {
+            const created: AppConfig = await res.json();
+            autoSaveAppIdRef.current = created.id;
+            setFormData((p) => ({ ...p, id: created.id }));
+            setLastAutoSave(new Date());
+          }
+        } else {
+          const res = await fetchApi(`/apps/${autoSaveAppIdRef.current}`, { method: 'PUT', body: JSON.stringify(body) });
+          if (res.ok) setLastAutoSave(new Date());
+        }
+      } catch { /* silent — auto-save must never block the user */ }
+    }, 30_000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraftStatus(formData.status), saving]);
 
   const isIdTaken =
     isNew && !!formData.id?.trim() && existingApps.some((a) => a.id === formData.id?.trim());
@@ -1481,6 +1524,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   <CheckCircle2 className="w-4 h-4" /> Gespeichert!
                 </span>
               )}
+              {lastAutoSave && !saveError && !saveSuccess && (
+                <p className="truncate text-xs text-muted">
+                  Auto-gespeichert um {lastAutoSave.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
@@ -2228,6 +2276,25 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 className="bg-field-background font-mono text-sm min-h-[500px]"
               />
             </TextField>
+
+            {/* Versionierung */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5" /> Versionierung
+              </span>
+              <TextField onChange={(val) => setFormData((p) => ({ ...p, version: val }))}>
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Version</Label>
+                <Input value={formData.version || ''} placeholder="z.B. 1.2.3" className="bg-field-background h-8 text-sm font-mono" />
+              </TextField>
+              <TextField onChange={(val) => setFormData((p) => ({ ...p, changelog: val }))}>
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Änderungsprotokoll</Label>
+                <TextArea
+                  value={formData.changelog || ''}
+                  placeholder={`## 1.2.3\n- Änderung 1\n- Fehlerbehebung 2`}
+                  className="bg-field-background font-mono text-sm min-h-[160px]"
+                />
+              </TextField>
+            </div>
           </div>
         </Tabs.Panel>
 
