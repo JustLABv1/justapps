@@ -1,5 +1,9 @@
 'use client';
 
+import { useSettings } from '@/context/SettingsContext';
+import { fetchApi } from '@/lib/api';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 import { LayoutGrid, Shield } from 'lucide-react';
 
 const SAMPLE_APPS = [
@@ -19,6 +23,24 @@ interface AuthLayoutProps {
 }
 
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+  const { settings } = useSettings();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  const storeName = settings.storeName || 'JustApps';
+  const storeDescription = settings.storeDescription || 'Zentraler App Store für Softwarelösungen der öffentlichen Verwaltung.';
+  const logoSrc = isDark
+    ? (settings.logoDarkUrl || settings.logoUrl || null)
+    : (settings.logoUrl || null);
+
+  const [appCount, setAppCount] = useState<number | null>(null);
+  useEffect(() => {
+    fetchApi('/apps')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: unknown) => { if (Array.isArray(data)) setAppCount(data.length); })
+      .catch(() => {});
+  }, []);
+
   return (
     <>
       <style>{`
@@ -75,18 +97,25 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
           {/* Center branding */}
           <div className="relative z-10 flex flex-col items-center text-center gap-5 px-14">
-            <div className="w-16 h-16 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shadow-xl shadow-accent/10">
-              <LayoutGrid className="w-8 h-8 text-accent" />
-            </div>
+            {logoSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shadow-xl shadow-accent/10">
+                <LayoutGrid className="w-8 h-8 text-accent" />
+              </div>
+            )}
             <div>
-              <h2 className="text-3xl font-bold text-foreground tracking-tight">JustApps</h2>
+              <h2 className="text-3xl font-bold text-foreground tracking-tight">{storeName}</h2>
               <p className="text-sm text-muted mt-2 max-w-[260px] leading-relaxed">
-                Zentraler App Store für Softwarelösungen der öffentlichen Verwaltung.
+                {storeDescription}
               </p>
             </div>
             <div className="flex items-center gap-6 mt-1">
               <div className="flex flex-col items-center gap-1">
-                <span className="text-lg font-bold text-foreground">100+</span>
+                <span className="text-lg font-bold text-foreground">
+                  {appCount !== null ? appCount : '—'}
+                </span>
                 <span className="text-[10px] text-muted uppercase tracking-wider">Apps</span>
               </div>
               <div className="w-px h-8 bg-border" />
@@ -114,13 +143,6 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
         {/* ── Right form panel ── */}
         <div className="w-full lg:w-[440px] shrink-0 flex flex-col justify-center bg-surface px-8 py-10 lg:px-12">
-          {/* Mobile logo (only shown on small screens) */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-accent/15 border border-accent/25 flex items-center justify-center">
-              <LayoutGrid className="w-4 h-4 text-accent" />
-            </div>
-            <span className="text-sm font-bold text-foreground">JustApps</span>
-          </div>
 
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
