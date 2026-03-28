@@ -12,7 +12,7 @@ import { ChevronDown, Layers, Menu, Search, Settings, Users, X } from "lucide-re
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import JustLABLogo from '../public/justlab_logo_compact.png';
@@ -37,8 +37,10 @@ export function Navigation() {
 
   // Close search and clear on navigation
   useEffect(() => {
-    setSearchOpen(false);
-    setSearchQuery('');
+    startTransition(() => {
+      setSearchOpen(false);
+      setSearchQuery('');
+    });
   }, [pathname]);
 
   // Cmd+K / Ctrl+K opens search; Escape closes

@@ -1,7 +1,7 @@
 'use client';
 
 import { fetchApi } from '@/lib/api';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, startTransition, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 interface FavoritesContextType {
@@ -23,20 +23,26 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      setFavorites(new Set());
-      setIsLoaded(false);
+      startTransition(() => {
+        setFavorites(new Set());
+        setIsLoaded(false);
+      });
       return;
     }
 
-    setIsLoaded(false);
-    fetchApi('/user/favorites')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { app_ids?: string[] } | null) => {
+    async function load() {
+      setIsLoaded(false);
+      try {
+        const res = await fetchApi('/user/favorites');
+        const data: { app_ids?: string[] } | null = res.ok ? await res.json() : null;
         setFavorites(new Set(data?.app_ids ?? []));
         setIsLoaded(true);
-      })
-      .catch(() => setIsLoaded(true));
-  }, [user?.id]);
+      } catch {
+        setIsLoaded(true);
+      }
+    }
+    load();
+  }, [user]);
 
   const toggle = useCallback(async (appId: string) => {
     const isFav = favorites.has(appId);

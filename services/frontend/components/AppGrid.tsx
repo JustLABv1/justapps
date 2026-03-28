@@ -81,10 +81,10 @@ export function AppGrid({ initialApps }: AppGridProps) {
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   }, [router, searchParams]);
 
-  const setSelectedCategory = (v: string | null) => updateParam('category', v);
-  const setSelectedStatus = (v: string | null) => updateParam('status', v);
-  const setSelectedType = (v: string | null) => updateParam('type', v);
-  const setSelectedGroup = (v: string | null) => updateParam('group', v);
+  const setSelectedCategory = useCallback((v: string | null) => updateParam('category', v), [updateParam]);
+  const setSelectedStatus = useCallback((v: string | null) => updateParam('status', v), [updateParam]);
+  const setSelectedType = useCallback((v: string | null) => updateParam('type', v), [updateParam]);
+  const setSelectedGroup = useCallback((v: string | null) => updateParam('group', v), [updateParam]);
   const commitSearch = useCallback((v: string) => updateParam('q', v || null), [updateParam]);
 
   const categories = useMemo(() => {
@@ -211,7 +211,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     }
 
     return filters;
-  }, [groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType, showFavoritesOnly]);
+  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedStatus, setSelectedType, showFavoritesOnly]);
 
   const filterSummary = useMemo(() => {
     const summary = [];

@@ -57,20 +57,25 @@ export default function AuditPage() {
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    const offset = (page - 1) * LIMIT;
-    const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
-    if (operationFilter) params.set('operation', operationFilter);
-
-    fetchApi(`/admin/audit?${params}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject('Fehler beim Laden')))
-      .then((data: AuditResponse) => {
+    async function load() {
+      setLoading(true);
+      const offset = (page - 1) * LIMIT;
+      const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
+      if (operationFilter) params.set('operation', operationFilter);
+      try {
+        const res = await fetchApi(`/admin/audit?${params}`);
+        if (!res.ok) throw new Error('Fehler beim Laden');
+        const data: AuditResponse = await res.json();
         setEntries(data.entries ?? []);
         setHasMore((data.entries ?? []).length === LIMIT);
         setError(null);
-      })
-      .catch((err) => setError(String(err)))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [page, operationFilter]);
 
   const totalPagesEstimate = useMemo(
