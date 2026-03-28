@@ -246,7 +246,6 @@ export default function EinstellungenPage() {
                     selectedKey={settings.topBannerType || 'info'}
                     onSelectionChange={(key) => setSettings({ ...settings, topBannerType: String(key) })}
                     className="w-40"
-                    size="sm"
                     aria-label="Banner-Typ"
                   >
                     <Select.Trigger>
