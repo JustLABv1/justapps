@@ -1,9 +1,11 @@
 package admins
 
 import (
+	"fmt"
 	"net/http"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -20,5 +22,7 @@ func DeleteUser(context *gin.Context, db *bun.DB) {
 		return
 	}
 
+	callerID := context.GetString("user_id")
+	audit.WriteAudit(context.Request.Context(), db, callerID, "user.delete", fmt.Sprintf("deleted user id: %s", userID))
 	context.JSON(http.StatusOK, gin.H{"result": "success"})
 }

@@ -23,7 +23,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border bg-surface mt-auto">
       <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-3">
             <div className="flex flex-cols mb-3 gap-2 items-center">
               {logoSrc ? (
@@ -50,6 +50,16 @@ export function Footer() {
               ))}
             </ul>
           </div>
+        </div>
+        <div className="border-t border-border/50 pt-6 flex items-center justify-between">
+          <span className="text-[11px] text-muted/50">
+            © {new Date().getFullYear()} JustLAB. Alle Rechte vorbehalten.
+          </span>
+          {process.env.NEXT_PUBLIC_APP_VERSION && (
+            <span className="text-[11px] text-muted/40 font-mono">
+              v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </span>
+          )}
         </div>
       </div>
     </footer>

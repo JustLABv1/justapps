@@ -5,6 +5,7 @@ import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { AuthProvider } from '../context/AuthContext';
+import { FavoritesProvider } from '../context/FavoritesContext';
 import { SettingsProvider } from '../context/SettingsContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider refetchInterval={60} refetchOnWindowFocus={true}>
       <AuthProvider>
+        <FavoritesProvider>
         <SettingsProvider>
           <NextThemesProvider
             attribute="class"
@@ -26,6 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </RouterProvider>
           </NextThemesProvider>
         </SettingsProvider>
+        </FavoritesProvider>
       </AuthProvider>
     </SessionProvider>
   );

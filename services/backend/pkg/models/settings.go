@@ -23,6 +23,7 @@ type PlatformSettings struct {
 	AllowAppSubmissions bool   `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
 	ShowTopBanner       bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
 	TopBannerText       string `bun:"top_banner_text" json:"topBannerText"`
+	TopBannerType       string `bun:"top_banner_type,notnull,default:'info'" json:"topBannerType"`
 	// DetailFields is the admin-configurable schema for the "Fachliche Details" tab.
 	DetailFields []DetailFieldDef `bun:"detail_fields,type:jsonb,notnull,default:'[]'" json:"detailFields"`
 

@@ -26,6 +26,7 @@ interface SystemUser {
   disabledReason?: string;
   createdAt?: string;
   authType?: string;
+  lastLoginAt?: string;
 }
 
 export default function BenutzerPage() {

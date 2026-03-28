@@ -6,7 +6,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +108,9 @@ export default function Home() {
       </section>
 
       <div id="all-apps" className="scroll-mt-8">
-        <AppGrid initialApps={apps} />
+        <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-surface-secondary border border-border" />}>
+          <AppGrid initialApps={apps} />
+        </Suspense>
       </div>
     </div>
   );

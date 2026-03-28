@@ -8,11 +8,11 @@ import {
   Link,
   Separator
 } from "@heroui/react";
-import { ChevronDown, Layers, Menu, Settings, Users, X } from "lucide-react";
+import { ChevronDown, Layers, Menu, Search, Settings, Users, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import JustLABLogo from '../public/justlab_logo_compact.png';
@@ -29,8 +29,42 @@ export function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
   const { resolvedTheme } = useTheme();
+
+  // Close search and clear on navigation
+  useEffect(() => {
+    startTransition(() => {
+      setSearchOpen(false);
+      setSearchQuery('');
+    });
+  }, [pathname]);
+
+  // Cmd+K / Ctrl+K opens search; Escape closes
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [searchOpen]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
   const isDark = resolvedTheme === 'dark';
 
   const storeName = settings.storeName || 'JustApps';
@@ -129,6 +163,43 @@ export function Navigation() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Global search */}
+          <div className="hidden sm:flex items-center">
+            {searchOpen ? (
+              <form onSubmit={handleSearchSubmit} className="flex items-center">
+                <input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
+                  placeholder="Apps suchen..."
+                  className="w-52 h-8 rounded-lg border border-border bg-surface-secondary px-3 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/60"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                    className="ml-1 p-1 text-muted hover:text-foreground transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </form>
+            ) : (
+              <button
+                onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm text-muted hover:text-foreground hover:bg-default transition-colors"
+                aria-label="Suche öffnen (Cmd+K)"
+              >
+                <Search className="w-4 h-4" />
+                <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted/70">
+                  ⌘K
+                </kbd>
+              </button>
+            )}
+          </div>
+
           <ThemeSwitcher />
 
           {loading ? (
@@ -192,6 +263,17 @@ export function Navigation() {
       {/* Mobile nav */}
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-surface p-4 space-y-2">
+          {/* Mobile search */}
+          <form onSubmit={(e) => { handleSearchSubmit(e); setMobileOpen(false); }} className="relative mb-2">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Apps suchen..."
+              className="w-full h-9 rounded-lg border border-border bg-surface-secondary pl-9 pr-3 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/60"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+          </form>
+
           {regularNavLinks.map(link => (
             <Link
               key={link.href}

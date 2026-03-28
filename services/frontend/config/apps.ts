@@ -78,6 +78,8 @@ export interface AppConfig {
   ratingCount?: number;
   updatedAt?: string;
   deploymentVariants?: DeploymentVariant[];
+  version?: string;
+  changelog?: string;
   // Related apps (populated by GetApp)
   relatedApps?: { id: string; name: string; icon?: string }[];
   // Groups this app belongs to

@@ -5,6 +5,7 @@ import (
 
 	"justapps-backend/config"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,7 @@ type settingsResponse struct {
 	models.PlatformSettings
 	DisableLocalAuth    bool `json:"disableLocalAuth"`
 	DisableRegistration bool `json:"disableRegistration"`
+	OIDCEnabled         bool `json:"oidcEnabled"`
 }
 
 // defaultDetailFields is the built-in field schema used when none has been configured yet.
@@ -73,6 +75,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 		PlatformSettings:    settings,
 		DisableLocalAuth:    config.Config != nil && config.Config.OIDC.DisableLocalAuth,
 		DisableRegistration: config.Config != nil && config.Config.OIDC.DisableRegistration,
+		OIDCEnabled:         config.Config != nil && config.Config.OIDC.Enabled,
 	})
 }
 
@@ -94,7 +97,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	_, err := db.NewUpdate().
 		Model(&req).
 		Column(
-			"allow_app_submissions", "show_top_banner", "top_banner_text",
+			"allow_app_submissions", "show_top_banner", "top_banner_text", "top_banner_type",
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
@@ -109,5 +112,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	callerID := c.GetString("user_id")
+	audit.WriteAudit(c.Request.Context(), db, callerID, "settings.update", "updated platform settings")
 	c.JSON(200, req)
 }
