@@ -1,10 +1,12 @@
 package admins
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -28,5 +30,11 @@ func DisableUser(context *gin.Context, db *bun.DB) {
 		return
 	}
 
+	operation := "user.enable"
+	if user.Disabled {
+		operation = "user.disable"
+	}
+	callerID := context.GetString("user_id")
+	audit.WriteAudit(context.Request.Context(), db, callerID, operation, fmt.Sprintf("state changed for user id: %s", userID))
 	context.JSON(http.StatusOK, gin.H{"result": "success", "response": res})
 }

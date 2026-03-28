@@ -2,9 +2,11 @@ package apps
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -88,6 +90,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.create", fmt.Sprintf("created app %s (%s)", app.Name, app.ID))
 	c.JSON(201, app)
 }
 
@@ -172,7 +175,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
 			"tags", "collections", "live_demos", "updated_at",
 			"is_reuse", "reuse_requirements", "known_issue",
-			"deployment_variants",
+			"deployment_variants", "version", "changelog",
 		)
 
 	// Admin can also update admin-only fields if they are sent?
@@ -193,6 +196,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.update", fmt.Sprintf("updated app %s (%s)", app.Name, app.ID))
 	c.JSON(200, app)
 }
 
@@ -254,6 +258,7 @@ func DeleteApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.delete", fmt.Sprintf("deleted app %s", id))
 	c.Status(204)
 }
 

@@ -4,7 +4,8 @@ import { AppConfig } from "@/config/apps";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { Button, Input, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppCard } from "./AppCard";
 
 interface AppGridProps {
@@ -12,12 +13,39 @@ interface AppGridProps {
 }
 
 export function AppGrid({ initialApps }: AppGridProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const searchQuery = searchParams.get('q') ?? '';
+  const selectedCategory = searchParams.get('category');
+  const selectedStatus = searchParams.get('status');
+  const selectedType = searchParams.get('type');
+  const selectedGroup = searchParams.get('group');
+
+  const [inputValue, setInputValue] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Keep input in sync if URL changes externally (e.g. global search, back button)
+  useEffect(() => {
+    setInputValue(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  const updateParam = useCallback((key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  }, [router, searchParams]);
+
+  const setSelectedCategory = (v: string | null) => updateParam('category', v);
+  const setSelectedStatus = (v: string | null) => updateParam('status', v);
+  const setSelectedType = (v: string | null) => updateParam('type', v);
+  const setSelectedGroup = (v: string | null) => updateParam('group', v);
+  const commitSearch = useCallback((v: string) => updateParam('q', v || null), [updateParam]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -78,11 +106,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const quickStatuses = statuses.slice(0, 4);
 
   const clearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory(null);
-    setSelectedStatus(null);
-    setSelectedType(null);
-    setSelectedGroup(null);
+    setInputValue('');
+    router.replace('/', { scroll: false });
   };
 
   const activeFilters = useMemo(() => {
@@ -92,7 +117,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       filters.push({
         key: 'search',
         label: `Suche: ${searchQuery}`,
-        clear: () => setSearchQuery(""),
+        clear: () => { setInputValue(''); commitSearch(''); },
       });
     }
 
@@ -157,10 +182,12 @@ export function AppGrid({ initialApps }: AppGridProps) {
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-2xl">
-            <TextField value={searchQuery} onChange={setSearchQuery} className="w-full">
+            <TextField value={inputValue} onChange={(v) => setInputValue(v)} className="w-full">
               <Input
                 placeholder="Apps suchen..."
                 className="w-full bg-field-background h-11 rounded-xl pl-10"
+                onKeyDown={(e) => { if (e.key === 'Enter') commitSearch(inputValue); }}
+                onBlur={() => { if (inputValue !== searchQuery) commitSearch(inputValue); }}
               />
             </TextField>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />

@@ -20,6 +20,7 @@ export interface StoreSettings {
   allowAppSubmissions: boolean;
   showTopBanner: boolean;
   topBannerText: string;
+  topBannerType: string;
   /** Schema for the "Fachliche Details" tab — admin-configurable */
   detailFields: DetailFieldDef[];
   // Branding
@@ -64,6 +65,7 @@ export const defaultSettings: StoreSettings = {
   allowAppSubmissions: true,
   showTopBanner: false,
   topBannerText: '',
+  topBannerType: 'info',
   detailFields: defaultDetailFields,
   storeName: '',
   storeDescription: '',

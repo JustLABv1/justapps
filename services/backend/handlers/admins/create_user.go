@@ -1,15 +1,16 @@
 package admins
 
 import (
+	"fmt"
 	"net/http"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
+	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"
-
-	"github.com/gin-gonic/gin"
 )
 
 func CreateUser(context *gin.Context, db *bun.DB) {
@@ -41,5 +42,7 @@ func CreateUser(context *gin.Context, db *bun.DB) {
 		return
 	}
 
+	callerID := context.GetString("user_id")
+	audit.WriteAudit(context.Request.Context(), db, callerID, "user.create", fmt.Sprintf("created user %s", user.Email))
 	context.JSON(http.StatusCreated, gin.H{"result": "success"})
 }

@@ -83,6 +83,8 @@ type Apps struct {
 	IsReuse                bool                 `bun:"is_reuse,notnull,default:false" json:"isReuse"`
 	ReuseRequirements      string               `bun:"reuse_requirements" json:"reuseRequirements"`
 	DeploymentVariants     []DeploymentVariant  `bun:"deployment_variants,type:jsonb" json:"deploymentVariants"`
+	Version                string               `bun:"version,notnull,default:''" json:"version"`
+	Changelog              string               `bun:"changelog,notnull,default:''" json:"changelog"`
 	UpdatedAt              time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
 	RelatedApps            []AppRelationSummary `bun:"-" json:"relatedApps,omitempty"`
 	AppGroups              []AppGroupSummary    `bun:"-" json:"appGroups,omitempty"`

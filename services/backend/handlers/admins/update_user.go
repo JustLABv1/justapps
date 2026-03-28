@@ -1,11 +1,13 @@
 package admins
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -48,5 +50,7 @@ func UpdateUser(context *gin.Context, db *bun.DB) {
 		return
 	}
 
+	callerID := context.GetString("user_id")
+	audit.WriteAudit(context.Request.Context(), db, callerID, "user.update", fmt.Sprintf("updated user %s (id: %s)", user.Email, userID))
 	context.JSON(http.StatusCreated, gin.H{"result": "success"})
 }

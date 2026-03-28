@@ -32,6 +32,7 @@ interface SystemUser {
   disabledReason?: string;
   createdAt?: string;
   authType?: string;
+  lastLoginAt?: string;
 }
 
 interface UserTableProps {
@@ -151,11 +152,13 @@ export function UserTable({
       {topContent}
       <Table variant="secondary">
         <Table.ScrollContainer>
-          <Table.Content aria-label="Tabelle der Benutzer" className="min-w-[800px]">
+          <Table.Content aria-label="Tabelle der Benutzer" className="min-w-[1000px]">
             <Table.Header>
               <Table.Column isRowHeader>Benutzer</Table.Column>
               <Table.Column>Rolle</Table.Column>
               <Table.Column>Status</Table.Column>
+              <Table.Column>Erstellt</Table.Column>
+              <Table.Column>Letzter Login</Table.Column>
               <Table.Column className="text-right">Aktionen</Table.Column>
             </Table.Header>
             <Table.Body 
@@ -202,6 +205,20 @@ export function UserTable({
                         <Chip size="sm" variant="soft" className="font-bold text-[9px] uppercase tracking-wider bg-success/10 text-success text-success">Aktiv</Chip>
                       )}
                     </div>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span className="text-xs text-default-500">
+                      {u.createdAt
+                        ? new Date(u.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : '—'}
+                    </span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span className="text-xs text-default-500">
+                      {u.lastLoginAt
+                        ? new Date(u.lastLoginAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : 'Nie'}
+                    </span>
                   </Table.Cell>
                   <Table.Cell>
                     <div className="flex items-center justify-end gap-1">

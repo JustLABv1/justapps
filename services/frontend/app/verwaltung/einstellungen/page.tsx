@@ -22,6 +22,7 @@ type SettingsState = {
   allowAppSubmissions: boolean;
   showTopBanner: boolean;
   topBannerText: string;
+  topBannerType: string;
   detailFields: DetailFieldDef[];
   storeName: string;
   storeDescription: string;
@@ -44,6 +45,7 @@ const defaultState: SettingsState = {
   allowAppSubmissions: true,
   showTopBanner: false,
   topBannerText: '',
+  topBannerType: 'info',
   detailFields: defaultDetailFields,
   storeName: '',
   storeDescription: '',
@@ -233,10 +235,31 @@ export default function EinstellungenPage() {
                     size="sm"
                     className="bg-accent text-white"
                     isDisabled={saving}
-                    onPress={() => save({ topBannerText: settings.topBannerText }, 'banner')}
+                    onPress={() => save({ topBannerText: settings.topBannerText, topBannerType: settings.topBannerType }, 'banner')}
                   >
                     {savedSection === 'banner' ? 'Gespeichert ✓' : 'Speichern'}
                   </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted">Typ</span>
+                  <Select
+                    selectedKey={settings.topBannerType || 'info'}
+                    onSelectionChange={(key) => setSettings({ ...settings, topBannerType: String(key) })}
+                    className="w-40"
+                    size="sm"
+                    aria-label="Banner-Typ"
+                  >
+                    <Select.Trigger>
+                      <Select.Value />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id="info">Info</ListBox.Item>
+                        <ListBox.Item id="warning">Warnung</ListBox.Item>
+                        <ListBox.Item id="critical">Kritisch</ListBox.Item>
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
                   <span className="text-xs font-bold uppercase tracking-widest text-muted">Status</span>
