@@ -39,6 +39,7 @@ type SettingsState = {
   appSortField: string;
   appSortDirection: string;
   pinnedApps: string[];
+  enableLinkProbing: boolean;
 };
 
 const defaultState: SettingsState = {
@@ -62,6 +63,7 @@ const defaultState: SettingsState = {
   appSortField: 'name',
   appSortDirection: 'asc',
   pinnedApps: [],
+  enableLinkProbing: false,
 };
 
 function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
@@ -792,6 +794,36 @@ export default function EinstellungenPage() {
                   }, 'sort')}
                 >
                   {savedSection === 'sort' ? 'Gespeichert ✓' : 'Sortierung speichern'}
+                </Button>
+              </div>
+            </Surface>
+
+            <Surface className="p-6 border border-border/50 shadow-sm">
+              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-accent" /> Link-Status-Prüfung
+              </h3>
+              <p className="text-xs text-muted mb-5">
+                Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links serverseitig geprüft und ein farbiger Status-Punkt angezeigt. Einzelne Apps können die Prüfung über ihre eigene Einstellung deaktivieren (z.B. bei Links hinter Authentifizierung).
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">Status-Prüfung aktivieren</span>
+                  <p className="text-xs text-muted max-w-xs">Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links an.</p>
+                </div>
+                <Switch
+                  isSelected={settings.enableLinkProbing}
+                  onChange={(val) => setSettings({ ...settings, enableLinkProbing: val })}
+                >
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
+              <div className="flex justify-end mt-4 pt-4 border-t border-border">
+                <Button
+                  className="bg-accent text-white"
+                  isDisabled={saving}
+                  onPress={() => save({ enableLinkProbing: settings.enableLinkProbing }, 'linkProbing')}
+                >
+                  {savedSection === 'linkProbing' ? 'Gespeichert ✓' : 'Speichern'}
                 </Button>
               </div>
             </Surface>

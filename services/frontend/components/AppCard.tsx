@@ -1,6 +1,7 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
+import { useSettings } from "@/context/SettingsContext";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
@@ -8,6 +9,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FavoriteButton } from "./FavoriteButton";
+import { LinkStatusDot } from "./LinkStatusDot";
 
 // Pure helper defined outside component to avoid impurity lint warnings
 function getRelativeTime(dateStr: string | undefined, now: number): { label: string; isRecent: boolean } | null {
@@ -26,6 +28,8 @@ function getRelativeTime(dateStr: string | undefined, now: number): { label: str
 
 export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
+  const { settings } = useSettings();
+  const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const [now] = useState(() => Date.now());
   const statusInfo = getAppStatusMeta(app.status);
@@ -189,6 +193,9 @@ export function AppCard({ app }: { app: AppConfig }) {
                   >
                     {resourceItems[0].icon}
                     {resourceItems[0].label}
+                    {probeEnabled && resourceItems[0].kind === 'demo' && (
+                      <LinkStatusDot url={resourceItems[0].url} />
+                    )}
                   </Link>
                 </Tooltip.Trigger>
                 <Tooltip.Content placement="bottom">Direktzugriff</Tooltip.Content>
@@ -216,6 +223,9 @@ export function AppCard({ app }: { app: AppConfig }) {
                         <div className="flex items-center gap-2">
                           {resource.icon}
                           <span>{resource.label}</span>
+                          {probeEnabled && resource.kind === 'demo' && (
+                            <LinkStatusDot url={resource.url} />
+                          )}
                         </div>
                       </Dropdown.Item>
                     ))}

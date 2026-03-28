@@ -44,6 +44,8 @@ export interface StoreSettings {
   appSortField: string;
   appSortDirection: string;
   pinnedApps: string[];
+  /** Globally enable live-demo link status probing */
+  enableLinkProbing: boolean;
 }
 
 /** Default field schema — matches the 11 legacy columns so apps with old data still display correctly. */
@@ -86,6 +88,7 @@ export const defaultSettings: StoreSettings = {
   appSortField: 'name',
   appSortDirection: 'asc',
   pinnedApps: [],
+  enableLinkProbing: false,
 };
 
 function normalizeSettings(data: Partial<StoreSettings>): StoreSettings {

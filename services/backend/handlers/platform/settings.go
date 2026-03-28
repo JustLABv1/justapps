@@ -103,6 +103,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
 			"footer_text", "footer_links", "show_flag_bar",
 			"app_sort_field", "app_sort_direction", "pinned_apps",
+			"enable_link_probing",
 		).
 		Where("id = ?", "default").
 		Exec(c)
