@@ -1,6 +1,7 @@
 package router
 
 import (
+	"justapps-backend/handlers/apps"
 	"justapps-backend/handlers/users"
 	"justapps-backend/middlewares"
 
@@ -27,6 +28,10 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 
 		user.DELETE("/", func(c *gin.Context) {
 			users.DeleteUser(c, db)
+		})
+
+		user.GET("/favorites", func(c *gin.Context) {
+			apps.GetFavorites(c, db)
 		})
 	}
 }

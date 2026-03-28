@@ -8,37 +8,39 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField, toast
+  Chip,
+  Input,
+  Label,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField, toast
 } from '@heroui/react';
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ExternalLink,
-    Github,
-    Grip,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Terminal,
-    Trash2,
-    Upload,
-    X,
+  AlertTriangle,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Github,
+  Grip,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Tag,
+  Terminal,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -176,6 +178,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [tagInput, setTagInput] = useState('');
   const [showCategoryPicker, setShowCategoryPicker] = useState(isNew);
   const [editorMode, setEditorMode] = useState<'basic' | 'advanced'>(isNew ? 'basic' : 'advanced');
+  const [currentCreateStep, setCurrentCreateStep] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // ── Related apps (editing only) ──
@@ -194,6 +197,48 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [creatingGroup, setCreatingGroup] = useState(false);
   const initialSnapshotRef = useRef('');
   const skipUnsavedWarningRef = useRef(false);
+
+  // ── Auto-save state ──
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
+  const autoSaveAppIdRef = useRef<string | null>(initialApp?.id || null);
+
+  // ── Auto-save effect (drafts only) ──
+  useEffect(() => {
+    const isDraftNow = isDraftStatus(formData.status);
+    if (!isDraftNow) return;
+
+    const interval = setInterval(async () => {
+      if (saving) return;
+      const body: Partial<AppConfig> = {
+        ...formData,
+        categories: Array.isArray(formData.categories) ? formData.categories : [],
+        techStack: Array.isArray(formData.techStack) ? formData.techStack : [],
+        repositories: (formData.repositories || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url })),
+        customLinks: (formData.customLinks || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url })),
+        liveDemos: (formData.liveDemos || []).filter((d) => d.url?.trim()),
+        status: DRAFT_STATUS,
+      };
+
+      try {
+        if (!autoSaveAppIdRef.current) {
+          if (!formData.name?.trim()) return;
+          const res = await fetchApi('/apps', { method: 'POST', body: JSON.stringify(body) });
+          if (res.ok) {
+            const created: AppConfig = await res.json();
+            autoSaveAppIdRef.current = created.id;
+            setFormData((p) => ({ ...p, id: created.id }));
+            setLastAutoSave(new Date());
+          }
+        } else {
+          const res = await fetchApi(`/apps/${autoSaveAppIdRef.current}`, { method: 'PUT', body: JSON.stringify(body) });
+          if (res.ok) setLastAutoSave(new Date());
+        }
+      } catch { /* silent — auto-save must never block the user */ }
+    }, 30_000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraftStatus(formData.status), saving]);
 
   const isIdTaken =
     isNew && !!formData.id?.trim() && existingApps.some((a) => a.id === formData.id?.trim());
@@ -354,6 +399,165 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const metaFields = (settings.detailFields ?? [])
     .map(def => ({ key: def.key, label: def.label, value: fieldValueMap.get(def.key) || '', icon: resolveIcon(def.icon) }));
 
+  const createSteps = [
+    {
+      id: 'identity',
+      phase: 'Basisdaten',
+      label: 'Identitaet',
+      hint: 'Icon, Name, ID und Kategorien',
+      icon: <Pencil className="w-4 h-4" />,
+    },
+    {
+      id: 'profile',
+      phase: 'Basisdaten',
+      label: 'Kurzprofil',
+      hint: 'Status, Beschreibung und Schlagwoerter',
+      icon: <CheckCircle2 className="w-4 h-4" />,
+    },
+    {
+      id: 'deployment',
+      phase: 'Erweiterte Angaben',
+      label: 'Bereitstellung',
+      hint: 'Nachnutzung und Installationswege',
+      icon: <Server className="w-4 h-4" />,
+    },
+    {
+      id: 'resources',
+      phase: 'Erweiterte Angaben',
+      label: 'Ressourcen',
+      hint: 'Links, Repositories und Doku-URL',
+      icon: <ExternalLink className="w-4 h-4" />,
+    },
+    {
+      id: 'details',
+      phase: 'Erweiterte Angaben',
+      label: 'Fachliche Angaben',
+      hint: 'Herausgeber, Details und Hinweise',
+      icon: <Layers className="w-4 h-4" />,
+    },
+    {
+      id: 'documentation',
+      phase: 'Erweiterte Angaben',
+      label: 'Dokumentation',
+      hint: 'Markdown fuer die Detailansicht',
+      icon: <BookOpen className="w-4 h-4" />,
+    },
+  ] as const;
+  const lastCreateStepIndex = createSteps.length - 1;
+  const currentCreateStepDef = createSteps[currentCreateStep];
+  const currentCreatePhase = currentCreateStepDef.phase;
+  const isCreateStepValid = (stepIndex: number) => {
+    switch (stepIndex) {
+      case 0:
+        return !!formData.name?.trim() && !!formData.id?.trim() && (formData.categories?.length ?? 0) > 0 && !isIdTaken;
+      case 1:
+        return !requiresExpandedDetails || !!formData.description?.trim();
+      case 2:
+        return true;
+      case 3:
+        return true;
+      case 4:
+        return true;
+      case 5:
+        return true;
+      default:
+        return true;
+    }
+  };
+  const isCreateStepCompleted = (stepIndex: number) => {
+    switch (stepIndex) {
+      case 0:
+        return isCreateStepValid(0);
+      case 1:
+        return !!formData.description?.trim()
+          || (formData.status?.trim() && formData.status !== DRAFT_STATUS)
+          || (formData.tags?.length ?? 0) > 0
+          || (!!formData.license?.trim() && formData.license !== 'MIT');
+      case 2:
+        return !!formData.reuseRequirements?.trim()
+          || !!formData.isReuse
+          || formData.hasDeploymentAssistant === false
+          || formData.showDocker === false
+          || formData.showCompose === false
+          || formData.showHelm === false
+          || !!formData.helmRepo?.trim()
+          || !!formData.dockerRepo?.trim()
+          || !!formData.customHelmCommand?.trim()
+          || !!formData.customComposeCommand?.trim()
+          || !!formData.customDockerCommand?.trim()
+          || !!formData.customHelmNote?.trim()
+          || !!formData.customComposeNote?.trim()
+          || !!formData.customDockerNote?.trim()
+          || !!formData.customHelmValues?.trim();
+      case 3:
+        return (formData.liveDemos?.some((demo) => demo.url?.trim()) ?? false)
+          || (formData.repositories?.some((repository) => repository.url?.trim()) ?? false)
+          || (formData.customLinks?.some((link) => link.url?.trim()) ?? false)
+          || !!formData.docsUrl?.trim();
+      case 4:
+        return !!formData.authority?.trim()
+          || (formData.techStack?.length ?? 0) > 0
+          || (formData.customFields?.length ?? 0) > 0
+          || !!formData.knownIssue?.trim()
+          || !!formData.isFeatured;
+      case 5:
+        return !!formData.markdownContent?.trim();
+      default:
+        return false;
+    }
+  };
+  const completedCreateStepCount = createSteps.filter((_, index) => isCreateStepCompleted(index)).length;
+  const canProceedCreateStep = isCreateStepValid(currentCreateStep);
+  const canJumpToCreateStep = (targetIndex: number) => {
+    if (targetIndex <= currentCreateStep) return true;
+    for (let index = 0; index < targetIndex; index += 1) {
+      if (!isCreateStepValid(index)) return false;
+    }
+    return true;
+  };
+  const createChecklist = (() => {
+    switch (currentCreateStep) {
+      case 0:
+        return [
+          { label: 'Name vergeben', done: !!formData.name?.trim() },
+          { label: 'ID verfuegbar', done: !!formData.id?.trim() && !isIdTaken },
+          { label: 'Mindestens eine Kategorie', done: (formData.categories?.length ?? 0) > 0 },
+        ];
+      case 1:
+        return [
+          { label: 'Status festgelegt', done: !!formData.status?.trim() },
+          { label: 'Kurzbeschreibung fuer sichtbare App', done: !requiresExpandedDetails || !!formData.description?.trim() },
+          { label: 'Schlagwoerter optional', done: (formData.tags?.length ?? 0) > 0 },
+        ];
+      case 2:
+        return [
+          { label: 'Nachnutzung eingeordnet', done: formData.isReuse !== undefined },
+          { label: 'Deployment Assistant konfiguriert', done: formData.hasDeploymentAssistant !== undefined },
+          { label: 'Installationswege gewaehlt', done: (formData.showDocker !== false) || (formData.showCompose !== false) || (formData.showHelm !== false) },
+        ];
+      case 3:
+        return [
+          { label: 'Live-Zugang optional', done: !!(formData.liveDemos || []).some((demo) => demo.url?.trim()) },
+          { label: 'Repository oder Ressource optional', done: (formData.repositories?.length ?? 0) > 0 || (formData.customLinks?.length ?? 0) > 0 || !!formData.docsUrl?.trim() },
+          { label: 'Dokumentationslink optional', done: !!formData.docsUrl?.trim() },
+        ];
+      case 4:
+        return [
+          { label: 'Herausgeber optional', done: !!formData.authority?.trim() },
+          { label: 'Fachliche Details gepflegt', done: (formData.customFields?.length ?? 0) > 0 },
+          { label: 'Bekanntes Problem bei Bedarf', done: !formData.knownIssue || !!formData.knownIssue.trim() },
+        ];
+      case 5:
+        return [
+          { label: 'Markdown optional', done: !!formData.markdownContent?.trim() },
+          { label: 'Entwurf speicherbar', done: canSave },
+          { label: 'Bereit fuer ersten Review', done: requiredDoneCount >= draftRequiredItems.length },
+        ];
+      default:
+        return [];
+    }
+  })();
+
   const createSnapshot = () => JSON.stringify({
     appGroupIds: Array.from(appGroupIds).sort(),
     formData: {
@@ -401,6 +605,997 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     skipUnsavedWarningRef.current = true;
     router.push(pendingNavigation);
   };
+
+  if (isNew) {
+    return (
+      <div className="max-w-6xl mx-auto pb-28">
+        <section className="relative overflow-hidden rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
+          <div className="absolute inset-0 pointer-events-none opacity-60">
+            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-accent/15 blur-3xl animate-pulse" />
+            <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-gov-gold/15 blur-3xl animate-pulse" />
+          </div>
+
+          <div className="relative z-10 flex flex-col gap-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="max-w-2xl space-y-1.5 animate-in fade-in slide-in-from-top-4 duration-500">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">Neue App erstellen</p>
+                <h1 className="text-2xl font-bold text-foreground">Schritt fuer Schritt zum ersten Entwurf.</h1>
+                <p className="max-w-xl text-sm leading-relaxed text-muted">
+                  Weniger Felder pro Schritt, gleicher Datenumfang am Ende.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[20rem] xl:max-w-sm xl:flex-1">
+                {['Basisdaten', 'Erweiterte Angaben'].map((phase) => {
+                  const phaseSteps = createSteps.filter((step) => step.phase === phase);
+                  const phaseCompleted = phaseSteps.filter((step) => {
+                    const stepIndex = createSteps.findIndex((entry) => entry.id === step.id);
+                    return stepIndex >= 0 && isCreateStepCompleted(stepIndex);
+                  }).length;
+                  const isActivePhase = currentCreatePhase === phase;
+
+                  return (
+                    <div
+                      key={phase}
+                      className={`rounded-2xl border px-3.5 py-3 transition-all duration-300 ${
+                        isActivePhase ? 'border-accent/30 bg-accent/10 shadow-sm shadow-accent/10' : 'border-border bg-surface/85'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Phase</p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">{phase}</p>
+                        </div>
+                        <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
+                          {phaseCompleted}/{phaseSteps.length}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                        {phase === 'Basisdaten'
+                          ? 'Identitaet und Kurzprofil zuerst.'
+                          : 'Technik, Links und Details danach.'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="-mx-1 overflow-x-auto pb-1">
+              <div className="flex min-w-max gap-2 px-1">
+                {createSteps.map((step, index) => {
+                  const isActive = index === currentCreateStep;
+                  const isCompleted = !isActive && isCreateStepCompleted(index);
+                  const isEnabled = canJumpToCreateStep(index);
+
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => {
+                        if (isEnabled) setCurrentCreateStep(index);
+                      }}
+                      disabled={!isEnabled}
+                      className={`group min-w-[11.5rem] rounded-2xl border px-3.5 py-3 text-left transition-all duration-300 md:min-w-[12.5rem] ${
+                        isActive
+                          ? 'border-accent bg-accent text-white shadow-lg shadow-accent/20'
+                          : isCompleted
+                            ? 'border-accent/20 bg-accent/10 text-foreground hover:border-accent/40 hover:bg-accent/15'
+                            : 'border-border bg-surface/90 text-foreground hover:border-border/80 disabled:cursor-not-allowed disabled:opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-semibold transition-colors ${
+                          isActive
+                            ? 'border-white/20 bg-white/15 text-white'
+                            : isCompleted
+                              ? 'border-accent/20 bg-accent/15 text-accent'
+                              : 'border-border bg-surface-secondary text-muted'
+                        }`}>
+                          {isCompleted ? <Check className="w-4 h-4" /> : step.icon}
+                        </span>
+                        <span className={`text-[11px] font-bold uppercase tracking-[0.2em] ${isActive ? 'text-white/75' : 'text-muted/70'}`}>
+                          {index + 1}
+                        </span>
+                      </div>
+                      <p className={`mt-3 text-sm font-semibold ${isActive ? 'text-white' : 'text-foreground'}`}>{step.label}</p>
+                      <p className={`mt-1 text-[11px] leading-relaxed ${isActive ? 'text-white/75' : 'text-muted'} ${isActive ? 'block' : 'hidden md:block'}`}>{step.hint}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <button
+            onClick={() => requestNavigation(backUrl)}
+            className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-muted shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Zurueck zur Uebersicht
+          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted shadow-sm">
+              Schritt {currentCreateStep + 1} von {createSteps.length}
+            </span>
+            <span className="inline-flex rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-muted shadow-sm">
+              Arbeitsstand: {getAppStatusLabel(formData.status || DRAFT_STATUS) || 'Entwurf'}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(19rem,0.9fr)]">
+          <div
+            key={currentCreateStepDef.id}
+            className="rounded-[2rem] border border-border bg-surface p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500 md:p-8"
+          >
+            <div className="mb-6 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                  {currentCreateStepDef.icon}
+                </span>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/70">{currentCreatePhase}</p>
+                  <h2 className="mt-1 text-xl font-bold text-foreground">{currentCreateStepDef.label}</h2>
+                  <p className="mt-0.5 text-sm text-muted">{currentCreateStepDef.hint}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-foreground shadow-sm">
+                  {completedCreateStepCount} von {createSteps.length} Schritten vorbereitet
+                </span>
+                <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted shadow-sm">
+                  Entwurf jederzeit speicherbar
+                </span>
+              </div>
+            </div>
+
+            {currentCreateStep === 0 && (
+              <div className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
+                  <div className="space-y-4 rounded-3xl border border-accent/15 bg-accent/5 p-5">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent/80">App-Icon</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowIconPicker((value) => !value)}
+                      className="group relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[1.75rem] border-2 border-dashed border-accent/30 bg-surface text-6xl shadow-sm transition-all hover:border-accent/50"
+                    >
+                      {formData.icon?.startsWith('http') ? (
+                        <Image src={formData.icon} alt="Icon" fill className="object-contain p-4" sizes="320px" unoptimized />
+                      ) : (
+                        formData.icon || '🏛️'
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/25">
+                        <Pencil className="w-5 h-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                      </div>
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => iconFileInputRef.current?.click()}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary"
+                      >
+                        {uploadingIcon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        Bild hochladen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowIconPicker((value) => !value)}
+                        className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
+                      >
+                        Emoji
+                      </button>
+                    </div>
+                    <input
+                      ref={iconFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        setUploadingIcon(true);
+                        setIconUploadError(null);
+                        try {
+                          const url = await uploadFile('/upload/logo', file);
+                          setFormData((previous) => ({ ...previous, icon: url }));
+                          setIconUrlInput(url);
+                        } catch {
+                          setIconUploadError('Upload fehlgeschlagen');
+                        } finally {
+                          setUploadingIcon(false);
+                          event.target.value = '';
+                        }
+                      }}
+                    />
+                    {showIconPicker && (
+                      <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="grid grid-cols-6 gap-2">
+                          {ICON_OPTIONS.map(({ emoji, label }) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              title={label}
+                              onClick={() => {
+                                setFormData((previous) => ({ ...previous, icon: emoji }));
+                                setIconUrlInput('');
+                                setShowIconPicker(false);
+                              }}
+                              className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl transition-all ${
+                                formData.icon === emoji ? 'border-accent bg-accent/10 shadow-sm scale-105' : 'border-border bg-surface-secondary hover:border-accent/30'
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          className="mt-3 w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm font-mono outline-none transition-colors focus:border-accent"
+                          placeholder="Oder Bild-URL: https://..."
+                          value={iconUrlInput}
+                          onChange={(event) => {
+                            setIconUrlInput(event.target.value);
+                            if (event.target.value.startsWith('http')) {
+                              setFormData((previous) => ({ ...previous, icon: event.target.value }));
+                            }
+                          }}
+                        />
+                        {iconUploadError && <p className="mt-2 text-xs text-danger">{iconUploadError}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <TextField
+                        isRequired
+                        onChange={(value) => {
+                          const nextFormData = { ...formData, name: value };
+                          nextFormData.id = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                          setFormData(nextFormData);
+                        }}
+                      >
+                        <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">App Name</Label>
+                        <Input value={formData.name || ''} placeholder="z.B. Digi-Sign Pro" className="bg-field-background" />
+                      </TextField>
+                      <div>
+                        <TextField
+                          isRequired
+                          onChange={(value) => setFormData((previous) => ({ ...previous, id: value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                          isInvalid={isIdTaken}
+                        >
+                          <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Eindeutige ID</Label>
+                          <Input value={formData.id || ''} placeholder="z.B. digi-sign-pro" className="bg-field-background font-mono" />
+                        </TextField>
+                        <p className={`mt-2 text-xs ${isIdTaken ? 'text-danger' : 'text-muted'}`}>
+                          {isIdTaken ? 'Diese ID ist bereits vergeben.' : 'Die ID wird automatisch aus dem Namen vorgeschlagen und bleibt editierbar.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Kategorien</p>
+                          <p className="mt-1 text-xs text-muted">Mindestens eine Kategorie ist fuer die Einordnung erforderlich.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowCategoryPicker((value) => !value)}
+                          className="inline-flex items-center gap-1 rounded-full border border-dashed border-accent/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent transition-colors hover:bg-accent/10"
+                        >
+                          <Plus className="w-3 h-3" /> Kategorien waehlen
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {(formData.categories || []).map((category) => (
+                          <Chip key={category} size="sm" variant="soft" color="accent" className="text-[11px] uppercase font-bold tracking-wider">
+                            {category}
+                            <button
+                              type="button"
+                              onClick={() => setFormData((previous) => ({ ...previous, categories: previous.categories?.filter((entry) => entry !== category) }))}
+                              className="ml-1 opacity-60 hover:opacity-100"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Chip>
+                        ))}
+                        {(formData.categories?.length ?? 0) === 0 && (
+                          <p className="text-sm text-muted">Noch keine Kategorie gesetzt.</p>
+                        )}
+                      </div>
+
+                      {showCategoryPicker && (
+                        <div className="mt-4 rounded-2xl border border-border bg-surface p-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                          <div className="flex flex-wrap gap-2">
+                            {PREDEFINED_CATEGORIES.map((category) => {
+                              const isSelected = formData.categories?.includes(category);
+                              return (
+                                <button
+                                  key={category}
+                                  type="button"
+                                  onClick={() => {
+                                    const currentCategories = formData.categories || [];
+                                    setFormData({
+                                      ...formData,
+                                      categories: isSelected
+                                        ? currentCategories.filter((entry) => entry !== category)
+                                        : [...currentCategories, category],
+                                    });
+                                  }}
+                                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                                    isSelected ? 'border-accent bg-accent text-white shadow-sm' : 'border-border bg-surface text-muted hover:border-accent/30 hover:text-foreground'
+                                  }`}
+                                >
+                                  {category}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              className="flex-1 rounded-xl border border-border bg-field-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+                              placeholder="Eigene Kategorie..."
+                              value={categoryInput}
+                              onChange={(event) => setCategoryInput(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' && categoryInput.trim()) {
+                                  event.preventDefault();
+                                  const currentCategories = formData.categories || [];
+                                  if (!currentCategories.includes(categoryInput.trim())) {
+                                    setFormData({ ...formData, categories: [...currentCategories, categoryInput.trim()] });
+                                  }
+                                  setCategoryInput('');
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentCategories = formData.categories || [];
+                                if (categoryInput.trim() && !currentCategories.includes(categoryInput.trim())) {
+                                  setFormData({ ...formData, categories: [...currentCategories, categoryInput.trim()] });
+                                }
+                                setCategoryInput('');
+                              }}
+                              className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-2 text-white transition-colors hover:bg-accent/90"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentCreateStep === 1 && (
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
+                  <p className="text-sm font-semibold text-foreground">Status</p>
+                  <p className="mt-1 text-xs text-muted">Ein Entwurf braucht nur Name und ID. Sobald Sie einen weitergehenden Status setzen, wird eine Kurzbeschreibung erwartet.</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {PREDEFINED_STATUSES.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setFormData((previous) => ({ ...previous, status }))}
+                        className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                          (formData.status || DRAFT_STATUS) === status
+                            ? 'border-accent bg-accent text-white shadow-sm'
+                            : 'border-border bg-surface text-muted hover:border-accent/30 hover:text-foreground'
+                        }`}
+                      >
+                        {getAppStatusLabel(status) || status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+                  <div className="rounded-3xl border border-border bg-surface p-5">
+                    <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Kurzbeschreibung</Label>
+                    <textarea
+                      className="min-h-[180px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                      placeholder="Wofuer steht die App? Welche Wirkung hat sie im Alltag?"
+                      value={formData.description || ''}
+                      onChange={(event) => setFormData((previous) => ({ ...previous, description: event.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="rounded-3xl border border-border bg-surface p-5">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Lizenz</Label>
+                      <input
+                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                        placeholder="z.B. MIT oder EUPL"
+                        value={formData.license || ''}
+                        onChange={(event) => setFormData((previous) => ({ ...previous, license: event.target.value }))}
+                      />
+                    </div>
+
+                    <div className="rounded-3xl border border-border bg-surface p-5">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Schlagwoerter</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(formData.tags || []).map((tag) => (
+                          <Chip key={tag} size="sm" variant="soft" className="text-xs font-medium bg-surface-secondary border border-border">
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => setFormData((previous) => ({ ...previous, tags: previous.tags?.filter((entry) => entry !== tag) }))}
+                              className="ml-1 opacity-60 hover:opacity-100"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Chip>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
+                          placeholder="Tag hinzufuegen..."
+                          value={tagInput}
+                          onChange={(event) => setTagInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if ((event.key === 'Enter' || event.key === ',') && tagInput.trim()) {
+                              event.preventDefault();
+                              const currentTags = formData.tags || [];
+                              if (!currentTags.includes(tagInput.trim())) {
+                                setFormData((previous) => ({ ...previous, tags: [...(previous.tags || []), tagInput.trim()] }));
+                              }
+                              setTagInput('');
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (tagInput.trim()) {
+                              const currentTags = formData.tags || [];
+                              if (!currentTags.includes(tagInput.trim())) {
+                                setFormData((previous) => ({ ...previous, tags: [...(previous.tags || []), tagInput.trim()] }));
+                              }
+                              setTagInput('');
+                            }
+                          }}
+                          disabled={!tagInput.trim()}
+                          className="inline-flex items-center justify-center rounded-full p-1 text-accent transition-colors hover:bg-accent/10 disabled:opacity-30"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentCreateStep === 2 && (
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border bg-surface p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Nachnutzung</p>
+                      <p className="mt-1 text-xs text-muted">Aktivieren Sie diesen Modus, wenn die App als bestehende Loesung mitgenutzt werden kann.</p>
+                    </div>
+                    <Switch
+                      isSelected={formData.isReuse || false}
+                      onChange={(value) => setFormData((previous) => ({ ...previous, isReuse: value }))}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
+                  </div>
+                  <textarea
+                    className="mt-4 min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                    placeholder="Welche Stellen koennen die App nachnutzen? Welche Voraussetzungen oder Grenzen gibt es?"
+                    value={formData.reuseRequirements || ''}
+                    onChange={(event) => setFormData((previous) => ({ ...previous, reuseRequirements: event.target.value }))}
+                  />
+                </div>
+
+                <div className="rounded-3xl border border-border bg-surface p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-foreground">Deployment Assistant</p>
+                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">Waehlen Sie, welche Installationswege im Store gezeigt werden sollen. Sie koennen die technischen Angaben auch spaeter noch pro Weg ergaenzen.</p>
+                    </div>
+                    <Switch
+                      isSelected={formData.hasDeploymentAssistant ?? true}
+                      onChange={(value) => setFormData((previous) => ({ ...previous, hasDeploymentAssistant: value }))}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {[
+                      { key: 'showHelm', label: 'Helm', description: 'Chart und Values fuer Kubernetes-basierte Installationen.', icon: <Server className="w-4 h-4" /> },
+                      { key: 'showCompose', label: 'Compose', description: 'Mehrere Container mit gemeinsamem Setup.', icon: <Terminal className="w-4 h-4" /> },
+                      { key: 'showDocker', label: 'Docker', description: 'Direkter Container-Start fuer einfache Deployments.', icon: <Terminal className="w-4 h-4" /> },
+                    ].map(({ key, label, description, icon }) => {
+                      const active = formData[key as keyof AppConfig] !== false;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setFormData((previous) => ({ ...previous, [key]: !previous[key as keyof AppConfig] }))}
+                          className={`flex min-h-36 flex-col rounded-[1.75rem] border-2 p-5 text-left transition-all ${
+                            active ? 'border-accent bg-accent/6 text-accent shadow-sm shadow-accent/10' : 'border-border bg-surface-secondary/55 text-muted hover:border-border/80'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
+                              {icon}
+                            </span>
+                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
+                              {active ? 'Aktiv' : 'Ausgeblendet'}
+                            </span>
+                          </div>
+                          <div className="mt-5 space-y-2">
+                            <p className={`text-xl font-semibold leading-tight ${active ? 'text-accent' : 'text-foreground'}`}>{label}</p>
+                            <p className={`text-sm leading-relaxed ${active ? 'text-accent/75' : 'text-muted'}`}>{description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {formData.hasDeploymentAssistant !== false && (
+                  <div className="space-y-4">
+                    {formData.showHelm !== false && (
+                      <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
+                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Server className="w-4 h-4 text-accent" /> Helm</div>
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, helmRepo: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Helm Repo</Label>
+                            <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
+                          </TextField>
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customHelmNote: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Hinweis</Label>
+                            <Input value={formData.customHelmNote || ''} placeholder="Zusatz fuer die Einfuehrung" className="bg-field-background text-sm" />
+                          </TextField>
+                        </div>
+                        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customHelmCommand: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Helm-Kommando</Label>
+                            <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm install ${formData.id || 'app'} repo/${formData.id || 'app'}`} />
+                          </TextField>
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customHelmValues: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Values.yaml</Label>
+                            <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest" />
+                          </TextField>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.showCompose !== false && (
+                      <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
+                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Terminal className="w-4 h-4 text-accent" /> Docker Compose</div>
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customComposeCommand: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Setup</Label>
+                            <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`services:\n  ${formData.id || 'app'}:\n    image: ...`} />
+                          </TextField>
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customComposeNote: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Hinweis</Label>
+                            <Input value={formData.customComposeNote || ''} className="bg-field-background text-sm" placeholder="Netzwerk, Volumes oder Voraussetzungen" />
+                          </TextField>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.showDocker !== false && (
+                      <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
+                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Terminal className="w-4 h-4 text-accent" /> Docker</div>
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, dockerRepo: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Docker Image</Label>
+                            <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
+                          </TextField>
+                          <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customDockerNote: value }))}>
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Hinweis</Label>
+                            <Input value={formData.customDockerNote || ''} className="bg-field-background text-sm" placeholder="Ports, Secrets oder Startparameter" />
+                          </TextField>
+                        </div>
+                        <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customDockerCommand: value }))}>
+                          <Label className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-wider text-muted">Docker-Kommando</Label>
+                          <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker run -d --name ${formData.id || 'app'} ...`} />
+                        </TextField>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentCreateStep === 3 && (
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
+                  <p className="text-sm font-semibold text-foreground">Direkte Einstiege</p>
+                  <p className="mt-1 text-xs text-muted">Sammeln Sie die wichtigsten Einstiege fuer Live-Zugaenge, Code und weitere Informationen.</p>
+                </div>
+
+                <div className="space-y-6">
+                  <LinkListEditor
+                    title="Live-Zugaenge"
+                    icon={<ExternalLink className="w-4 h-4 text-muted" />}
+                    items={formData.liveDemos || []}
+                    onChange={(liveDemosValue) => setFormData((previous) => ({ ...previous, liveDemos: liveDemosValue }))}
+                    addLabel="Hinzufuegen"
+                    placeholderLabel="Produktivumgebung"
+                    placeholderUrl="https://..."
+                  />
+                  <LinkListEditor
+                    title="Quellcode"
+                    icon={<Github className="w-4 h-4 text-muted" />}
+                    items={formData.repositories || []}
+                    onChange={(repositoriesValue) => setFormData((previous) => ({ ...previous, repositories: repositoriesValue }))}
+                    addLabel="Hinzufuegen"
+                    placeholderLabel="Repository"
+                    placeholderUrl="https://github.com/..."
+                  />
+                  <LinkListEditor
+                    title="Weitere Links"
+                    icon={<ExternalLink className="w-4 h-4 text-muted" />}
+                    items={formData.customLinks || []}
+                    onChange={(customLinksValue) => setFormData((previous) => ({ ...previous, customLinks: customLinksValue }))}
+                    addLabel="Hinzufuegen"
+                    placeholderLabel="Link"
+                    placeholderUrl="https://..."
+                  />
+                  <TextField onChange={(value) => setFormData((previous) => ({ ...previous, docsUrl: value }))}>
+                    <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Dokumentation URL</Label>
+                    <Input value={formData.docsUrl || ''} placeholder="https://docs..." className="bg-field-background font-mono text-sm" />
+                  </TextField>
+                </div>
+              </div>
+            )}
+
+            {currentCreateStep === 4 && (
+              <div className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
+                  <div className="space-y-6">
+                    <div className="rounded-3xl border border-border bg-surface p-5">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Herausgeber</Label>
+                      <input
+                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                        placeholder="z.B. Bundesinnenministerium"
+                        value={formData.authority || ''}
+                        onChange={(event) => setFormData((previous) => ({ ...previous, authority: event.target.value }))}
+                      />
+                    </div>
+
+                    <div className="rounded-3xl border border-border bg-surface p-5">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Technik-Stack</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(formData.techStack || []).map((tech) => (
+                          <Chip key={tech} size="sm" variant="soft" className="text-xs font-medium bg-surface-secondary border border-border shadow-sm">
+                            {tech}
+                            <button
+                              type="button"
+                              onClick={() => setFormData((previous) => ({ ...previous, techStack: previous.techStack?.filter((entry) => entry !== tech) }))}
+                              className="ml-1 opacity-60 hover:opacity-100"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Chip>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
+                          placeholder="Technologie hinzufuegen..."
+                          value={techInput}
+                          onChange={(event) => setTechInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if ((event.key === 'Enter' || event.key === ',') && techInput.trim()) {
+                              event.preventDefault();
+                              const currentStack = formData.techStack || [];
+                              if (!currentStack.includes(techInput.trim())) {
+                                setFormData((previous) => ({ ...previous, techStack: [...(previous.techStack || []), techInput.trim()] }));
+                              }
+                              setTechInput('');
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (techInput.trim()) {
+                              const currentStack = formData.techStack || [];
+                              if (!currentStack.includes(techInput.trim())) {
+                                setFormData((previous) => ({ ...previous, techStack: [...(previous.techStack || []), techInput.trim()] }));
+                              }
+                              setTechInput('');
+                            }
+                          }}
+                          disabled={!techInput.trim()}
+                          className="inline-flex items-center justify-center rounded-full p-1 text-accent transition-colors hover:bg-accent/10 disabled:opacity-30"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="rounded-3xl border border-border bg-surface p-5">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Bekanntes Problem</Label>
+                      <textarea
+                        className="min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                        placeholder="Optional: bekannte Einschraenkungen oder Risiken"
+                        value={formData.knownIssue || ''}
+                        onChange={(event) => setFormData((previous) => ({ ...previous, knownIssue: event.target.value }))}
+                      />
+                    </div>
+
+                    {isAdmin && (
+                      <div className="rounded-3xl border border-accent/10 bg-accent/5 p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Ausgezeichnet</p>
+                            <p className="mt-1 text-xs text-muted">Nur fuer Admins: Empfehlung fuer hervorgehobene Apps.</p>
+                          </div>
+                          <Switch
+                            isSelected={formData.isFeatured || false}
+                            onChange={(value) => setFormData((previous) => ({ ...previous, isFeatured: value }))}
+                          >
+                            <Switch.Control><Switch.Thumb /></Switch.Control>
+                          </Switch>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-surface p-5">
+                  <p className="text-sm font-semibold text-foreground">Fachliche Details</p>
+                  <p className="mt-1 text-xs text-muted">Nur Felder mit Inhalt erscheinen spaeter in der Detailansicht.</p>
+                  <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {metaFields.map((field) => (
+                      <div key={field.key} className="rounded-2xl border border-border bg-surface-secondary/40 p-4 transition-colors hover:border-accent/30">
+                        <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                          {field.icon && <span className="text-accent">{field.icon}</span>}
+                          {field.label}
+                        </dt>
+                        <dd className="mt-3">
+                          <input
+                            className="w-full border-b border-transparent bg-transparent pb-1 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted/40 hover:border-accent/30 focus:border-accent"
+                            value={field.value}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              const fields: AppField[] = [...(formData.customFields ?? [])];
+                              const index = fields.findIndex((entry) => entry.key === field.key);
+                              if (value) {
+                                if (index >= 0) fields[index] = { key: field.key, value };
+                                else fields.push({ key: field.key, value });
+                              } else if (index >= 0) {
+                                fields.splice(index, 1);
+                              }
+                              setFormData((previous) => ({ ...previous, customFields: fields }));
+                            }}
+                            placeholder={field.label}
+                          />
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </div>
+            )}
+
+            {currentCreateStep === 5 && (
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
+                  <p className="text-sm font-semibold text-foreground">Markdown fuer die Detailansicht</p>
+                  <p className="mt-1 text-xs text-muted">Beschreiben Sie die App ausfuehrlicher. Dieser Schritt bleibt bewusst eigenstaendig, damit die Dokumentation nicht zwischen andere Angaben gequetscht wird.</p>
+                </div>
+                <TextField onChange={(value) => setFormData((previous) => ({ ...previous, markdownContent: value }))}>
+                  <TextArea
+                    value={formData.markdownContent || ''}
+                    placeholder={`# ${formData.name || 'App Name'}\n\nBeschreiben Sie die App hier im Detail...\n\n## Features\n\n- Feature 1\n- Feature 2`}
+                    className="min-h-[520px] bg-field-background font-mono text-sm"
+                  />
+                </TextField>
+              </div>
+            )}
+          </div>
+
+          <aside className="space-y-4">
+            <div className="overflow-hidden rounded-[2rem] border border-border bg-surface shadow-sm">
+              <div className="relative border-b border-border bg-surface-secondary/60 px-5 py-5">
+                <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-accent/10 blur-3xl" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Live-Vorschau</p>
+                <div className="relative mt-4 flex items-start gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface text-3xl shadow-sm">
+                    {formData.icon?.startsWith('http') ? (
+                      <Image src={formData.icon} alt={formData.name || 'App Icon'} width={64} height={64} className="h-full w-full object-contain p-2" unoptimized />
+                    ) : (
+                      formData.icon || '🏛️'
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-lg font-bold text-foreground">{formData.name || 'Neue App'}</p>
+                    <p className="mt-1 text-sm text-muted">{formData.description || 'Kurzbeschreibung folgt in einem der naechsten Schritte.'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Status</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Chip size="sm" variant="soft" color="accent" className="text-[11px] font-bold uppercase tracking-wider">
+                      {getAppStatusLabel(formData.status || DRAFT_STATUS) || 'Entwurf'}
+                    </Chip>
+                    {formData.isReuse && (
+                      <Chip size="sm" variant="soft" color="warning" className="text-[11px] font-bold uppercase tracking-wider">
+                        Nachnutzung
+                      </Chip>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Kategorien</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(formData.categories || []).length > 0 ? (
+                      (formData.categories || []).map((category) => (
+                        <Chip key={category} size="sm" variant="soft" className="text-[11px] font-medium bg-surface-secondary border border-border">
+                          {category}
+                        </Chip>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted">Noch keine Kategorien gewaehlt.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">ID</p>
+                  <p className="mt-2 rounded-xl border border-border bg-surface-secondary px-3 py-2 font-mono text-xs text-foreground">{formData.id || 'wird automatisch erstellt'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-border bg-surface px-5 py-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Checkliste</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{currentCreateStepDef.label}</p>
+                </div>
+                <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
+                  {createChecklist.filter((item) => item.done).length}/{createChecklist.length}
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {createChecklist.map((item) => (
+                  <div key={item.label} className={`flex items-start gap-3 rounded-2xl border px-3 py-3 text-sm ${item.done ? 'border-success/25 bg-success/10 text-foreground' : 'border-border bg-surface-secondary/45 text-muted'}`}>
+                    <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full ${item.done ? 'bg-success/15 text-success' : 'bg-surface text-muted border border-border'}`}>
+                      {item.done ? <Check className="w-3.5 h-3.5" /> : <span className="h-2 w-2 rounded-full bg-current opacity-40" />}
+                    </span>
+                    <span className="leading-relaxed">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-border bg-surface px-5 py-5 shadow-sm">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Speicherbereitschaft</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                {requiredItems.map((item) => (
+                  <div key={item.label} className={`rounded-2xl border px-4 py-3 text-sm ${item.done ? 'border-success/25 bg-success/10 text-foreground' : 'border-border bg-surface-secondary/45 text-muted'}`}>
+                    <div className="flex items-center gap-2 font-semibold">
+                      {item.done ? <Check className="w-4 h-4 text-success" /> : <div className="h-4 w-4 rounded-full border border-border" />}
+                      {item.label}
+                    </div>
+                    <p className="mt-1 text-xs">{item.done ? 'Erledigt' : 'Fuer den aktuellen Stand noch offen.'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface/95 shadow-lg backdrop-blur-sm">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              {hasUnsavedChanges && !saveError && !saveSuccess && (
+                <p className="mb-1 truncate text-xs text-muted">
+                  Ungespeicherte Aenderungen. Erfasste Angaben: <span className="font-semibold">{requiredDoneCount}/{requiredItems.length}</span>
+                </p>
+              )}
+              {!canProceedCreateStep && !saveError && !saveSuccess && (
+                <p className="truncate text-xs text-muted">Ergaenzen Sie die offenen Punkte in diesem Schritt, bevor Sie weitergehen.</p>
+              )}
+              {!profileReady && !saveError && !saveSuccess && (
+                <p className="truncate text-xs text-muted">Ihr Benutzerprofil wird noch synchronisiert. Speichern ist moeglich, sobald die Sitzung bestaetigt ist.</p>
+              )}
+              {saveError && <p className="truncate text-sm font-medium text-danger">{saveError}</p>}
+              {saveSuccess && (
+                <span className="flex items-center gap-1 text-sm font-medium text-success">
+                  <CheckCircle2 className="w-4 h-4" /> Gespeichert!
+                </span>
+              )}
+              {lastAutoSave && !saveError && !saveSuccess && (
+                <p className="truncate text-xs text-muted">
+                  Auto-gespeichert um {lastAutoSave.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => requestNavigation(backUrl)}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentCreateStep((step) => Math.max(0, step - 1))}
+                disabled={currentCreateStep === 0}
+                className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft className="w-4 h-4" /> Zurueck
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !canSave || !profileReady}
+                className="inline-flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent shadow-sm transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Speichert...' : 'Entwurf speichern'}
+              </button>
+              {currentCreateStep < lastCreateStepIndex ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (canProceedCreateStep) {
+                      setCurrentCreateStep((step) => Math.min(lastCreateStepIndex, step + 1));
+                    }
+                  }}
+                  disabled={!canProceedCreateStep}
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Weiter <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !canSave || !profileReady}
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Speichert...' : (isDraft ? 'Entwurf speichern' : 'App speichern')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <ConfirmDialog
+          confirmLabel="Seite verlassen"
+          description="Es gibt ungespeicherte Aenderungen. Wenn Sie die Seite jetzt verlassen, gehen diese Anpassungen verloren."
+          isOpen={!!pendingNavigation}
+          onConfirm={confirmNavigation}
+          onOpenChange={(open) => {
+            if (!open) setPendingNavigation(null);
+          }}
+          title="Ungespeicherte Aenderungen verwerfen?"
+        />
+      </div>
+    );
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // RENDER — mirrors /apps/[id] detail page layout exactly
@@ -1081,6 +2276,25 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 className="bg-field-background font-mono text-sm min-h-[500px]"
               />
             </TextField>
+
+            {/* Versionierung */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5" /> Versionierung
+              </span>
+              <TextField onChange={(val) => setFormData((p) => ({ ...p, version: val }))}>
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Version</Label>
+                <Input value={formData.version || ''} placeholder="z.B. 1.2.3" className="bg-field-background h-8 text-sm font-mono" />
+              </TextField>
+              <TextField onChange={(val) => setFormData((p) => ({ ...p, changelog: val }))}>
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Änderungsprotokoll</Label>
+                <TextArea
+                  value={formData.changelog || ''}
+                  placeholder={`## 1.2.3\n- Änderung 1\n- Fehlerbehebung 2`}
+                  className="bg-field-background font-mono text-sm min-h-[160px]"
+                />
+              </TextField>
+            </div>
           </div>
         </Tabs.Panel>
 

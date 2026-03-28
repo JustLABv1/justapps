@@ -1,10 +1,16 @@
 'use client';
 
 import { AppConfig } from "@/config/apps";
+import { useFavorites } from "@/context/FavoritesContext";
+import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
+import { RecentApp, getRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Input, TextField } from "@heroui/react";
-import { ChevronDown, ChevronUp, Search, SlidersHorizontal, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
+import Image from "next/image";
+import NextLink from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppCard } from "./AppCard";
 
 interface AppGridProps {
@@ -12,12 +18,74 @@ interface AppGridProps {
 }
 
 export function AppGrid({ initialApps }: AppGridProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const searchQuery = searchParams.get('q') ?? '';
+  const selectedCategory = searchParams.get('category');
+  const selectedStatus = searchParams.get('status');
+  const selectedType = searchParams.get('type');
+  const selectedGroup = searchParams.get('group');
+
+  const [inputValue, setInputValue] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);
+  const [serverResults, setServerResults] = useState<AppConfig[] | null>(null);
+  const [serverLoading, setServerLoading] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [recentApps, setRecentApps] = useState<RecentApp[]>([]);
+
+  const { favorites, isLoaded: favoritesLoaded } = useFavorites();
+
+  // Load recently viewed on mount (client-only)
+  useEffect(() => {
+    setRecentApps(getRecentlyViewed());
+  }, []);
+
+  // Keep input in sync if URL changes externally (e.g. global search, back button)
+  // Idempotent check prevents looping when we ourselves triggered the URL update.
+  useEffect(() => {
+    const urlQ = searchParams.get('q') ?? '';
+    setInputValue((prev) => (prev !== urlQ ? urlQ : prev));
+  }, [searchParams]);
+
+  // Server-side search: debounce 300ms, fire when query changes
+  useEffect(() => {
+    if (!searchQuery) {
+      setServerResults(null);
+      setServerLoading(false);
+      return;
+    }
+    setServerLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchApi(`/apps?q=${encodeURIComponent(searchQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setServerResults(Array.isArray(data) ? data : []);
+        }
+      } catch { /* silent */ } finally {
+        setServerLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const updateParam = useCallback((key: string, value: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  }, [router, searchParams]);
+
+  const setSelectedCategory = useCallback((v: string | null) => updateParam('category', v), [updateParam]);
+  const setSelectedStatus = useCallback((v: string | null) => updateParam('status', v), [updateParam]);
+  const setSelectedType = useCallback((v: string | null) => updateParam('type', v), [updateParam]);
+  const setSelectedGroup = useCallback((v: string | null) => updateParam('group', v), [updateParam]);
+  const commitSearch = useCallback((v: string) => updateParam('q', v || null), [updateParam]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -37,28 +105,35 @@ export function AppGrid({ initialApps }: AppGridProps) {
     return sortAppStatuses(Array.from(sts));
   }, [initialApps]);
 
+  // Source: server results when searching, otherwise all apps
+  const sourceApps = serverResults ?? initialApps;
+
   const filteredApps = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return initialApps.filter((app) => {
-      const matchesSearch = 
-        app.name.toLowerCase().includes(query) ||
-        app.description.toLowerCase().includes(query) ||
-        app.authority?.toLowerCase().includes(query) ||
-        app.categories?.some(cat => cat.toLowerCase().includes(query)) ||
-        app.tags?.some(tag => tag.toLowerCase().includes(query));
-      
+    return sourceApps.filter((app) => {
+      // Skip client-side text search when server already filtered
+      const matchesSearch = serverResults
+        ? true
+        : (!query ||
+            app.name.toLowerCase().includes(query) ||
+            app.description.toLowerCase().includes(query) ||
+            app.authority?.toLowerCase().includes(query) ||
+            app.categories?.some(cat => cat.toLowerCase().includes(query)) ||
+            app.tags?.some(tag => tag.toLowerCase().includes(query)));
+
       const matchesCategory = !selectedCategory || app.categories?.includes(selectedCategory);
       const matchesStatus = !selectedStatus || app.status === selectedStatus;
       const matchesType = !selectedType ||
         (selectedType === 'reuse' && app.isReuse) ||
         (selectedType === 'install' && app.hasDeploymentAssistant !== false);
       const matchesGroup = !selectedGroup || app.appGroups?.some(g => g.id === selectedGroup);
+      const matchesFavorites = !showFavoritesOnly || favorites.has(app.id);
 
-      return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup;
+      return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup && matchesFavorites;
     });
-  }, [initialApps, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup]);
+  }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || showFavoritesOnly;
 
   const hasReuseApps = useMemo(() => initialApps.some(app => app.isReuse), [initialApps]);
 
@@ -78,11 +153,9 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const quickStatuses = statuses.slice(0, 4);
 
   const clearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory(null);
-    setSelectedStatus(null);
-    setSelectedType(null);
-    setSelectedGroup(null);
+    setInputValue('');
+    setShowFavoritesOnly(false);
+    router.replace('/', { scroll: false });
   };
 
   const activeFilters = useMemo(() => {
@@ -92,7 +165,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       filters.push({
         key: 'search',
         label: `Suche: ${searchQuery}`,
-        clear: () => setSearchQuery(""),
+        clear: () => { setInputValue(''); commitSearch(''); },
       });
     }
 
@@ -129,8 +202,16 @@ export function AppGrid({ initialApps }: AppGridProps) {
       });
     }
 
+    if (showFavoritesOnly) {
+      filters.push({
+        key: 'favorites',
+        label: 'Meine Favoriten',
+        clear: () => setShowFavoritesOnly(false),
+      });
+    }
+
     return filters;
-  }, [groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType]);
+  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedStatus, setSelectedType, showFavoritesOnly]);
 
   const filterSummary = useMemo(() => {
     const summary = [];
@@ -157,7 +238,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-2xl">
-            <TextField value={searchQuery} onChange={setSearchQuery} className="w-full">
+            <TextField value={inputValue} onChange={(v) => { setInputValue(v); commitSearch(v); }} className="w-full">
               <Input
                 placeholder="Apps suchen..."
                 className="w-full bg-field-background h-11 rounded-xl pl-10"
@@ -195,10 +276,21 @@ export function AppGrid({ initialApps }: AppGridProps) {
           </div>
         </div>
 
-        {(quickCategories.length > 0 || quickStatuses.length > 0) && (
+        {(quickCategories.length > 0 || quickStatuses.length > 0 || favoritesLoaded) && (
           <div className="flex flex-col gap-3 border-t border-border/50 pt-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted/80">Schnellfilter</span>
+              {favoritesLoaded && favorites.size > 0 && (
+                <Button
+                  size="sm"
+                  variant={showFavoritesOnly ? "primary" : "secondary"}
+                  onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className={`h-8 rounded-full px-3 text-xs font-medium gap-1.5 ${showFavoritesOnly ? 'text-background' : ''}`}
+                >
+                  <Heart className={`w-3 h-3 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                  Favoriten ({favorites.size})
+                </Button>
+              )}
               {quickCategories.map((cat) => (
                 <Button
                   key={`quick-cat-${cat}`}
@@ -379,9 +471,41 @@ export function AppGrid({ initialApps }: AppGridProps) {
         )}
       </div>
 
+      {/* Recently viewed — only when no active filters */}
+      {!hasActiveFilters && recentApps.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-muted" />
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Zuletzt gesehen</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {recentApps.map((app) => (
+              <NextLink
+                key={app.id}
+                href={`/apps/${app.id}`}
+                className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
+              >
+                {app.icon?.startsWith('http') ? (
+                  <div className="relative w-5 h-5 shrink-0">
+                    <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
+                  </div>
+                ) : (
+                  <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
+                )}
+                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
+              </NextLink>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-1">
         <p className="text-sm font-medium text-muted">
-          <span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden
+          {serverLoading ? (
+            <span className="text-muted">Suche läuft...</span>
+          ) : (
+            <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+          )}
         </p>
         {hasActiveFilters && (
           <Button
@@ -397,7 +521,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       </div>
 
       {/* Apps grid — masonry layout so cards size to their own content */}
-      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12">
+      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12" aria-label="App-Liste">
         {filteredApps.map((app) => (
           <div key={app.id} className="break-inside-avoid mb-5">
             <AppCard app={app} />

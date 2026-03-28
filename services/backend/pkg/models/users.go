@@ -20,8 +20,9 @@ type Users struct {
 	CanSubmitApps  bool      `bun:"can_submit_apps,type:bool,default:true" json:"canSubmitApps"`
 	Disabled       bool      `bun:"disabled,type:bool,default:false" json:"disabled"`
 	DisabledReason string    `bun:"disabled_reason,type:text,default:''" json:"disabled_reason"`
-	CreatedAt      time.Time `bun:"created_at,type:timestamptz,default:now()" json:"created_at"`
-	UpdatedAt      time.Time `bun:"updated_at,type:timestamptz" json:"updated_at"`
+	CreatedAt      time.Time  `bun:"created_at,type:timestamptz,default:now()" json:"created_at"`
+	UpdatedAt      time.Time  `bun:"updated_at,type:timestamptz" json:"updated_at"`
+	LastLoginAt    *time.Time `bun:"last_login_at,type:timestamptz,nullzero" json:"lastLoginAt"`
 }
 
 func (user *Users) HashPassword(password string) error {

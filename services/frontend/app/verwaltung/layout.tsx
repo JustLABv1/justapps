@@ -2,14 +2,17 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { Link } from '@heroui/react';
-import { Layers, Loader2, Settings, Users } from 'lucide-react';
+import { Activity, KeyRound, LayoutDashboard, Layers, Loader2, Settings, Users } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 const adminNavLinks = [
-  { href: '/verwaltung/apps', label: 'Apps', icon: Layers },
-  { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users },
-  { href: '/verwaltung/einstellungen', label: 'Einstellungen', icon: Settings },
+  { href: '/verwaltung', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/verwaltung/apps', label: 'Apps', icon: Layers, exact: false },
+  { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users, exact: false },
+  { href: '/verwaltung/audit', label: 'Audit', icon: Activity, exact: false },
+  { href: '/verwaltung/tokens', label: 'Tokens', icon: KeyRound, exact: false },
+  { href: '/verwaltung/einstellungen', label: 'Einstellungen', icon: Settings, exact: false },
 ];
 
 export default function VerwaltungLayout({ children }: { children: React.ReactNode }) {
@@ -46,8 +49,8 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
       </div>
 
       <nav className="flex gap-1 border-b border-border mb-8" aria-label="Navigation der Verwaltung">
-        {adminNavLinks.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(href + '/');
+        {adminNavLinks.map(({ href, label, icon: Icon, exact }) => {
+          const isActive = exact ? pathname === href : (pathname === href || pathname.startsWith(href + '/'));
           return (
             <Link
               key={href}

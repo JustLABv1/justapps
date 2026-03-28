@@ -20,6 +20,7 @@ export interface StoreSettings {
   allowAppSubmissions: boolean;
   showTopBanner: boolean;
   topBannerText: string;
+  topBannerType: string;
   /** Schema for the "Fachliche Details" tab — admin-configurable */
   detailFields: DetailFieldDef[];
   // Branding
@@ -36,6 +37,7 @@ export interface StoreSettings {
   footerLinks: FooterLink[];
   showFlagBar: boolean;
   // Auth config (runtime, not stored in DB)
+  oidcEnabled: boolean;
   disableLocalAuth: boolean;
   disableRegistration: boolean;
   // App sort configuration
@@ -64,6 +66,7 @@ export const defaultSettings: StoreSettings = {
   allowAppSubmissions: true,
   showTopBanner: false,
   topBannerText: '',
+  topBannerType: 'info',
   detailFields: defaultDetailFields,
   storeName: '',
   storeDescription: '',
@@ -77,6 +80,7 @@ export const defaultSettings: StoreSettings = {
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  oidcEnabled: false,
   disableLocalAuth: false,
   disableRegistration: false,
   appSortField: 'name',

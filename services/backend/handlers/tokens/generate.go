@@ -76,6 +76,13 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		return
 	}
 
+	// Update last_login_at; failure is non-fatal — login must not be blocked.
+	now := time.Now()
+	_, _ = db.NewUpdate().TableExpr("users").
+		Set("last_login_at = ?", now).
+		Where("id = ?", user.ID).
+		Exec(context)
+
 	type UserResponse struct {
 		ID             uuid.UUID `json:"id"`
 		Email          string    `json:"email"`
