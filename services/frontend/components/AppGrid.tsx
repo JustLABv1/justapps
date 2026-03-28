@@ -42,8 +42,10 @@ export function AppGrid({ initialApps }: AppGridProps) {
   }, []);
 
   // Keep input in sync if URL changes externally (e.g. global search, back button)
+  // Idempotent check prevents looping when we ourselves triggered the URL update.
   useEffect(() => {
-    setInputValue(searchParams.get('q') ?? '');
+    const urlQ = searchParams.get('q') ?? '';
+    setInputValue((prev) => (prev !== urlQ ? urlQ : prev));
   }, [searchParams]);
 
   // Server-side search: debounce 300ms, fire when query changes
@@ -264,12 +266,10 @@ export function AppGrid({ initialApps }: AppGridProps) {
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-2xl">
-            <TextField value={inputValue} onChange={(v) => setInputValue(v)} className="w-full">
+            <TextField value={inputValue} onChange={(v) => { setInputValue(v); commitSearch(v); }} className="w-full">
               <Input
                 placeholder="Apps suchen..."
                 className="w-full bg-field-background h-11 rounded-xl pl-10"
-                onKeyDown={(e) => { if (e.key === 'Enter') commitSearch(inputValue); }}
-                onBlur={() => { if (inputValue !== searchQuery) commitSearch(inputValue); }}
               />
             </TextField>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
