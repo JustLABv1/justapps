@@ -17,6 +17,7 @@ type settingsResponse struct {
 	models.PlatformSettings
 	DisableLocalAuth    bool `json:"disableLocalAuth"`
 	DisableRegistration bool `json:"disableRegistration"`
+	OIDCEnabled         bool `json:"oidcEnabled"`
 }
 
 // defaultDetailFields is the built-in field schema used when none has been configured yet.
@@ -74,6 +75,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 		PlatformSettings:    settings,
 		DisableLocalAuth:    config.Config != nil && config.Config.OIDC.DisableLocalAuth,
 		DisableRegistration: config.Config != nil && config.Config.OIDC.DisableRegistration,
+		OIDCEnabled:         config.Config != nil && config.Config.OIDC.Enabled,
 	})
 }
 
