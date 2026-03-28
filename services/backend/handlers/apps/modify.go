@@ -176,6 +176,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"tags", "collections", "live_demos", "updated_at",
 			"is_reuse", "reuse_requirements", "known_issue",
 			"deployment_variants", "version", "changelog",
+			"skip_link_probe",
 		)
 
 	// Admin can also update admin-only fields if they are sent?

@@ -1254,6 +1254,19 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Dokumentation URL</Label>
                     <Input value={formData.docsUrl || ''} placeholder="https://docs..." className="bg-field-background font-mono text-sm" />
                   </TextField>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-semibold text-foreground">Status-Prüfung deaktivieren</span>
+                      <p className="text-xs text-muted">Aktivieren, wenn die Live-Links hinter Authentifizierung oder VPN liegen und der Erreichbarkeitscheck immer fehlschlagen würde.</p>
+                    </div>
+                    <Switch
+                      isSelected={formData.skipLinkProbe || false}
+                      onChange={(val) => setFormData((previous) => ({ ...previous, skipLinkProbe: val }))}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
+                  </div>
                 </div>
               </div>
             )}
@@ -1975,6 +1988,20 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 />
               </div>
             </div>
+
+            {/* Skip link probe toggle — shown directly below the link buttons */}
+            <div className="mt-3 flex items-center justify-between gap-4 px-1">
+              <p className="text-xs text-muted">
+                <span className="font-semibold text-foreground">Status-Prüfung deaktivieren:</span>{' '}
+                Aktivieren, wenn die Live-Links hinter Authentifizierung oder VPN liegen.
+              </p>
+              <Switch
+                isSelected={formData.skipLinkProbe || false}
+                onChange={(val) => setFormData((p) => ({ ...p, skipLinkProbe: val }))}
+              >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+              </Switch>
+            </div>
           </div>
         </div>
 
@@ -2365,6 +2392,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 </Switch>
               </div>
             )}
+
           </div>
         </Tabs.Panel>
 

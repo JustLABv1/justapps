@@ -84,6 +84,8 @@ export interface AppConfig {
   relatedApps?: { id: string; name: string; icon?: string }[];
   // Groups this app belongs to
   appGroups?: { id: string; name: string }[];
+  /** Opt out of the global link-probing feature for this app (e.g. links behind auth/VPN) */
+  skipLinkProbe?: boolean;
 }
 
 export const getApps = (): AppConfig[] => {

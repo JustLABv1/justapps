@@ -8,6 +8,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { resolveIcon } from "@/lib/detailFieldIcons";
+import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
     AlertTriangle,
@@ -91,6 +92,7 @@ export default function AppPage() {
   const isOwner = !!user?.id && (app.ownerId === user.id || app.owner?.id === user.id);
   if (isDraftStatus(app.status) && !isOwner && !isAdmin) return notFound();
 
+  const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const statusInfo = getAppStatusMeta(app.status);
@@ -244,6 +246,7 @@ export default function AppPage() {
                     >
                       <ExternalLink className="w-4 h-4" />
                       {allDemos[0].label}
+                      {probeEnabled && <LinkStatusDot url={allDemos[0].url} />}
                     </Link>
                   );
                 } else if (allDemos.length > 1) {
@@ -256,7 +259,7 @@ export default function AppPage() {
                         </button>
                       </Dropdown.Trigger>
                       <Dropdown.Popover>
-                        <Dropdown.Menu 
+                        <Dropdown.Menu
                           aria-label="Links zu Live-Zugängen"
                           onAction={(key) => {
                             const idx = parseInt(key.toString().replace('demo-', ''));
@@ -264,14 +267,15 @@ export default function AppPage() {
                           }}
                         >
                           {allDemos.map((demo, idx) => (
-                            <Dropdown.Item 
-                              key={idx} 
-                              id={`demo-${idx}`} 
+                            <Dropdown.Item
+                              key={idx}
+                              id={`demo-${idx}`}
                               textValue={demo.label}
                             >
                               <div className="flex items-center gap-2">
                                 <ExternalLink className="w-3 h-3" />
                                 <span>{demo.label}</span>
+                                {probeEnabled && <LinkStatusDot url={demo.url} />}
                               </div>
                             </Dropdown.Item>
                           ))}
