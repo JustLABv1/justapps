@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"justapps-backend/functions/httperror"
+	gitlabsync "justapps-backend/functions/integrations/gitlab"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
@@ -198,6 +199,9 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.update", fmt.Sprintf("updated app %s (%s)", app.Name, app.ID))
+	if err := gitlabsync.MarkManualChangePendingApproval(c.Request.Context(), db, id); err != nil {
+		log.WithError(err).WithField("appID", id).Warn("Failed to mark GitLab sync as requiring approval after manual app update")
+	}
 	c.JSON(200, app)
 }
 

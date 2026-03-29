@@ -1,46 +1,48 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AppConfig, AppField } from '@/config/apps';
+import { AppConfig, AppField, GitLabIntegrationState } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-  Chip,
-  Input,
-  Label,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField, toast
+    Chip,
+    Input,
+    Label,
+    Switch,
+    Tabs,
+    TextArea,
+    TextField, toast
 } from '@heroui/react';
 import {
-  AlertTriangle,
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  Github,
-  Grip,
-  Layers,
-  Link2,
-  Loader2,
-  Pencil,
-  Plus,
-  Save,
-  Scale,
-  Server,
-  Share2,
-  Star,
-  Tag,
-  Terminal,
-  Trash2,
-  Upload,
-  X,
+    AlertTriangle,
+    BookOpen,
+    Check,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    CloudDownload,
+    ExternalLink,
+    GitBranch,
+    Github,
+    Grip,
+    Layers,
+    Link2,
+    Loader2,
+    Pencil,
+    Plus,
+    Save,
+    Scale,
+    Server,
+    Share2,
+    Star,
+    Tag,
+    Terminal,
+    Trash2,
+    Upload,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -70,6 +72,52 @@ const ICON_OPTIONS = [
 ];
 
 const PREDEFINED_STATUSES = [DRAFT_STATUS, 'POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
+
+type GitLabFormState = {
+  providerKey: string;
+  projectPath: string;
+  branch: string;
+  readmePath: string;
+  helmValuesPath: string;
+  composeFilePath: string;
+};
+
+const defaultGitLabFormState: GitLabFormState = {
+  providerKey: '',
+  projectPath: '',
+  branch: '',
+  readmePath: '',
+  helmValuesPath: '',
+  composeFilePath: '',
+};
+
+function normalizeGitLabFormState(integration: GitLabIntegrationState | null): GitLabFormState {
+  const fallbackProviderKey = integration?.availableProviders?.[0]?.key || '';
+
+  return {
+    providerKey: integration?.providerKey || fallbackProviderKey,
+    projectPath: integration?.projectPath || '',
+    branch: integration?.branch || '',
+    readmePath: integration?.readmePath || '',
+    helmValuesPath: integration?.helmValuesPath || '',
+    composeFilePath: integration?.composeFilePath || '',
+  };
+}
+
+function getGitLabStatusMeta(status?: string) {
+  switch (status) {
+    case 'success':
+      return { label: 'Synchronisiert', className: 'border-success/30 bg-success/10 text-success' };
+    case 'warning':
+      return { label: 'Mit Hinweisen', className: 'border-warning/30 bg-warning/10 text-warning' };
+    case 'pending_approval':
+      return { label: 'Wartet auf Freigabe', className: 'border-warning/30 bg-warning/10 text-warning' };
+    case 'error':
+      return { label: 'Fehlgeschlagen', className: 'border-danger/30 bg-danger/10 text-danger' };
+    default:
+      return { label: 'Noch nicht synchronisiert', className: 'border-border bg-surface text-muted' };
+  }
+}
 
 // ── LinkListEditor ────────────────────────────────────────────────────────────
 
@@ -195,6 +243,12 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   );
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [gitLabIntegration, setGitLabIntegration] = useState<GitLabIntegrationState | null>(null);
+  const [gitLabForm, setGitLabForm] = useState<GitLabFormState>(defaultGitLabFormState);
+  const [loadingGitLab, setLoadingGitLab] = useState(!isNew);
+  const [savingGitLab, setSavingGitLab] = useState(false);
+  const [syncingGitLab, setSyncingGitLab] = useState(false);
+  const [gitLabError, setGitLabError] = useState<string | null>(null);
   const initialSnapshotRef = useRef('');
   const skipUnsavedWarningRef = useRef(false);
 
@@ -252,6 +306,53 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         .catch(() => {});
     }
   }, [isNew, isAdmin]);
+
+    useEffect(() => {
+      if (isNew || !initialApp) {
+        setLoadingGitLab(false);
+        return;
+      }
+
+      let active = true;
+      setLoadingGitLab(true);
+
+      fetchApi(`/apps/${initialApp.id}/gitlab`, { cache: 'no-store' })
+        .then(async (response) => {
+          if (!active) return;
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error((error as { message?: string }).message || 'GitLab-Daten konnten nicht geladen werden.');
+          }
+
+          const data = await response.json() as GitLabIntegrationState;
+          setGitLabIntegration(data);
+          setGitLabForm(normalizeGitLabFormState(data));
+          setGitLabError(null);
+        })
+        .catch((error) => {
+          if (!active) return;
+          setGitLabError(error instanceof Error ? error.message : 'GitLab-Daten konnten nicht geladen werden.');
+        })
+        .finally(() => {
+          if (active) setLoadingGitLab(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [initialApp, isNew]);
+
+    useEffect(() => {
+      const selectedProvider = gitLabIntegration?.availableProviders?.find((provider) => provider.key === gitLabForm.providerKey);
+      if (!selectedProvider) return;
+
+      setGitLabForm((prev) => ({
+        ...prev,
+        readmePath: prev.readmePath || selectedProvider.defaultReadmePath || '',
+        helmValuesPath: prev.helmValuesPath || selectedProvider.defaultHelmValuesPath || '',
+        composeFilePath: prev.composeFilePath || selectedProvider.defaultComposeFilePath || '',
+      }));
+    }, [gitLabForm.providerKey, gitLabIntegration?.availableProviders]);
 
   // ── Helpers ──
   const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) =>
@@ -372,6 +473,180 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     }
   };
 
+  const reloadCurrentApp = async () => {
+    if (!initialApp) return;
+    const response = await fetchApi(`/apps/${initialApp.id}`, { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json() as AppConfig;
+    setFormData(data);
+    initialSnapshotRef.current = buildSnapshot(data);
+  };
+
+  const handleSaveGitLabLink = async () => {
+    if (!initialApp) return;
+    setSavingGitLab(true);
+    setGitLabError(null);
+    try {
+      const response = await fetchApi(`/apps/${initialApp.id}/gitlab`, {
+        method: 'PUT',
+        body: JSON.stringify(gitLabForm),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error((data as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht gespeichert werden.');
+      }
+
+      const integration = data as GitLabIntegrationState;
+      setGitLabIntegration(integration);
+      setGitLabForm(normalizeGitLabFormState(integration));
+      toast.success('GitLab-Verknüpfung gespeichert.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GitLab-Verknüpfung konnte nicht gespeichert werden.';
+      setGitLabError(message);
+      toast.danger(message);
+    } finally {
+      setSavingGitLab(false);
+    }
+  };
+
+  const handleSyncGitLab = async () => {
+    if (!initialApp) return;
+    setSyncingGitLab(true);
+    setGitLabError(null);
+    try {
+      const response = await fetchApi(`/apps/${initialApp.id}/gitlab/sync`, {
+        method: 'POST',
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error((data as { message?: string }).message || 'GitLab-Synchronisation fehlgeschlagen.');
+      }
+
+      const integration = data as GitLabIntegrationState;
+      setGitLabIntegration(integration);
+      setGitLabForm(normalizeGitLabFormState(integration));
+      if (integration.approvalRequired) {
+        toast.success('GitLab-Sync erzeugt eine freizugebende Änderung.');
+      } else {
+        await reloadCurrentApp();
+        toast.success(integration.lastSyncStatus === 'warning' ? 'GitLab synchronisiert, aber mit Hinweisen.' : 'GitLab erfolgreich synchronisiert.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GitLab-Synchronisation fehlgeschlagen.';
+      setGitLabError(message);
+      toast.danger(message);
+    } finally {
+      setSyncingGitLab(false);
+    }
+  };
+
+  const handleDeleteGitLabLink = async () => {
+    if (!initialApp) return;
+    setSavingGitLab(true);
+    setGitLabError(null);
+    try {
+      const response = await fetchApi(`/apps/${initialApp.id}/gitlab`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error((data as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht entfernt werden.');
+      }
+
+      const integration = data as GitLabIntegrationState;
+      setGitLabIntegration(integration);
+      setGitLabForm(normalizeGitLabFormState(integration));
+      toast.success('GitLab-Verknüpfung entfernt.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GitLab-Verknüpfung konnte nicht entfernt werden.';
+      setGitLabError(message);
+      toast.danger(message);
+    } finally {
+      setSavingGitLab(false);
+    }
+  };
+
+  const handleApproveGitLab = async () => {
+    if (!initialApp) return;
+    setSavingGitLab(true);
+    setGitLabError(null);
+    try {
+      const response = await fetchApi(`/apps/${initialApp.id}/gitlab/approve`, {
+        method: 'POST',
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error((data as { message?: string }).message || 'GitLab-Änderung konnte nicht freigegeben werden.');
+      }
+
+      const integration = data as GitLabIntegrationState;
+      setGitLabIntegration(integration);
+      setGitLabForm(normalizeGitLabFormState(integration));
+      await reloadCurrentApp();
+      toast.success('GitLab-Änderung wurde freigegeben und übernommen.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GitLab-Änderung konnte nicht freigegeben werden.';
+      setGitLabError(message);
+      toast.danger(message);
+    } finally {
+      setSavingGitLab(false);
+    }
+  };
+
+  const handleApplyGitLabReadme = () => {
+    const readmeContent = gitLabIntegration?.snapshot?.readmeContent?.trim();
+    if (!readmeContent) return;
+
+    setFormData((prev) => ({ ...prev, markdownContent: readmeContent }));
+    toast.success('README in den Editor übernommen.');
+  };
+
+  const handleApplyGitLabMetadata = () => {
+    const snapshot = gitLabIntegration?.snapshot;
+    if (!snapshot) return;
+
+    setFormData((prev) => {
+      const nextRepositories = [...(prev.repositories || [])];
+      if (snapshot.projectWebUrl && !nextRepositories.some((link) => link.url === snapshot.projectWebUrl)) {
+        nextRepositories.push({ label: 'GitLab', url: snapshot.projectWebUrl });
+      }
+
+      const topicSet = new Set([...(prev.tags || [])]);
+      for (const topic of snapshot.topics || []) {
+        if (topic?.trim()) topicSet.add(topic.trim());
+      }
+
+      return {
+        ...prev,
+        description: snapshot.description?.trim() || prev.description,
+        license: snapshot.license?.trim() || prev.license,
+        repositories: nextRepositories,
+        tags: Array.from(topicSet),
+      };
+    });
+
+    toast.success('GitLab-Metadaten in den Editor übernommen.');
+  };
+
+  const handleApplyGitLabDeployment = () => {
+    const snapshot = gitLabIntegration?.snapshot;
+    if (!snapshot) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      showHelm: snapshot.helmValuesContent?.trim() ? true : prev.showHelm,
+      showCompose: snapshot.composeFileContent?.trim() ? true : prev.showCompose,
+      customHelmValues: snapshot.helmValuesContent?.trim() || prev.customHelmValues,
+      customComposeCommand: snapshot.composeFileContent?.trim() || prev.customComposeCommand,
+    }));
+
+    toast.success('GitLab-Deploymentdaten in den Editor übernommen.');
+  };
+
   const filteredRelatable = existingApps.filter(
     (a) =>
       a.id !== (initialApp?.id || formData.id) &&
@@ -446,6 +721,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const lastCreateStepIndex = createSteps.length - 1;
   const currentCreateStepDef = createSteps[currentCreateStep];
   const currentCreatePhase = currentCreateStepDef.phase;
+  const gitLabStatus = getGitLabStatusMeta(gitLabIntegration?.lastSyncStatus);
+  const hasGitLabProviders = (gitLabIntegration?.availableProviders?.length || 0) > 0;
+  const gitLabSnapshot = gitLabIntegration?.approvalRequired && gitLabIntegration?.pendingSnapshot
+    ? gitLabIntegration.pendingSnapshot
+    : gitLabIntegration?.snapshot;
   const isCreateStepValid = (stepIndex: number) => {
     switch (stepIndex) {
       case 0:
@@ -558,20 +838,22 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     }
   })();
 
-  const createSnapshot = () => JSON.stringify({
+  const buildSnapshot = (nextFormData: Partial<AppConfig>) => JSON.stringify({
     appGroupIds: Array.from(appGroupIds).sort(),
     formData: {
-      ...formData,
-      categories: [...(formData.categories || [])],
-      customFields: [...(formData.customFields || [])],
-      customLinks: sanitizeLinks(formData.customLinks),
-      liveDemos: sanitizeLinks(formData.liveDemos),
-      repositories: sanitizeLinks(formData.repositories),
-      tags: [...(formData.tags || [])],
-      techStack: [...(formData.techStack || [])],
+      ...nextFormData,
+      categories: [...(nextFormData.categories || [])],
+      customFields: [...(nextFormData.customFields || [])],
+      customLinks: sanitizeLinks(nextFormData.customLinks),
+      liveDemos: sanitizeLinks(nextFormData.liveDemos),
+      repositories: sanitizeLinks(nextFormData.repositories),
+      tags: [...(nextFormData.tags || [])],
+      techStack: [...(nextFormData.techStack || [])],
     },
     relatedApps: relatedApps.map((app) => app.id).sort(),
   });
+
+  const createSnapshot = () => buildSnapshot(formData);
 
   const hasUnsavedChanges = createSnapshot() !== initialSnapshotRef.current;
 
@@ -2281,6 +2563,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-secondary border border-border text-muted/70 ml-1">Nur Ansicht</span>
               <Tabs.Indicator />
             </Tabs.Tab>
+            <Tabs.Tab id="gitlab" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+              <GitBranch className="w-4 h-4" />
+              GitLab
+              <Tabs.Indicator />
+            </Tabs.Tab>
             <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
               <Link2 className="w-4 h-4" />
               Verwandte Apps
@@ -2528,6 +2815,279 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 <span className="font-bold text-foreground">{(initialApp.ratingAvg || 0).toFixed(1)}</span>
                 <span className="text-muted">({initialApp.ratingCount} Bewertungen)</span>
               </div>
+            )}
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel id="gitlab">
+          <div className="space-y-6">
+            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-secondary/40 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Repository-Import via GitLab</p>
+                  <p className="text-xs text-muted mt-1">
+                    README, Metadaten und ausgewählte Repository-Dateien werden als Import-Snapshot geladen und bei Bedarf in den Editor übernommen.
+                  </p>
+                </div>
+                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${gitLabStatus.className}`}>
+                  {gitLabStatus.label}
+                </span>
+              </div>
+              {gitLabIntegration?.linked && (
+                <div className="flex flex-col gap-1 text-xs text-muted md:flex-row md:items-center md:justify-between">
+                  <span>
+                    {gitLabIntegration.providerLabel || gitLabIntegration.providerKey} · {gitLabIntegration.projectPath}
+                  </span>
+                  <span>
+                    Letzte Synchronisation: {gitLabIntegration.lastSyncedAt ? new Date(gitLabIntegration.lastSyncedAt).toLocaleString('de-DE') : 'noch nie'}
+                  </span>
+                </div>
+              )}
+              {gitLabIntegration?.approvalRequired && (
+                <p className="text-xs text-warning">
+                  Für diese App gibt es manuelle Änderungen. Neue GitLab-Syncs werden als freizugebende Änderung vorgemerkt, bis ein Owner oder Admin sie bestätigt.
+                </p>
+              )}
+            </div>
+
+            {loadingGitLab ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
+                <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                GitLab-Daten werden geladen...
+              </div>
+            ) : !hasGitLabProviders && !gitLabIntegration?.linked ? (
+              <div className="rounded-2xl border border-warning/20 bg-warning/5 p-5 text-sm text-warning">
+                Es ist noch kein nutzbarer GitLab-Provider im Backend konfiguriert.
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">GitLab-Provider</label>
+                    <select
+                      value={gitLabForm.providerKey}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, providerKey: event.target.value }))}
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    >
+                      {(gitLabIntegration?.availableProviders || []).map((provider) => (
+                        <option key={provider.key} value={provider.key}>
+                          {provider.label} ({provider.baseUrl})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Projektpfad</label>
+                    <input
+                      value={gitLabForm.projectPath}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, projectPath: event.target.value }))}
+                      placeholder="gruppe/projekt"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Branch oder Ref</label>
+                    <input
+                      value={gitLabForm.branch}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, branch: event.target.value }))}
+                      placeholder="leer = Default Branch"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">README-Pfad</label>
+                    <input
+                      value={gitLabForm.readmePath}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, readmePath: event.target.value }))}
+                      placeholder="optional, z. B. docs/README.md"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Helm Values Pfad</label>
+                    <input
+                      value={gitLabForm.helmValuesPath}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, helmValuesPath: event.target.value }))}
+                      placeholder="optional, z. B. chart/values.yaml"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Datei Pfad</label>
+                    <input
+                      value={gitLabForm.composeFilePath}
+                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, composeFilePath: event.target.value }))}
+                      placeholder="optional, z. B. docker-compose.yml"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                </div>
+
+                {gitLabError && (
+                  <div className="rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
+                    {gitLabError}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveGitLabLink}
+                    disabled={savingGitLab || !gitLabForm.providerKey || !gitLabForm.projectPath.trim()}
+                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {savingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Verknüpfung speichern
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSyncGitLab}
+                    disabled={syncingGitLab || savingGitLab || !gitLabIntegration?.linked}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {syncingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudDownload className="h-4 w-4" />}
+                    Jetzt synchronisieren
+                  </button>
+                  {gitLabIntegration?.approvalRequired && gitLabIntegration?.pendingSnapshot && (
+                    <button
+                      type="button"
+                      onClick={handleApproveGitLab}
+                      disabled={savingGitLab || syncingGitLab}
+                      className="inline-flex items-center gap-2 rounded-xl border border-success/20 bg-success/10 px-4 py-2 text-sm font-semibold text-success transition-colors hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Check className="h-4 w-4" />
+                      Sync freigeben
+                    </button>
+                  )}
+                  {gitLabIntegration?.linked && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteGitLabLink}
+                      disabled={savingGitLab || syncingGitLab}
+                      className="inline-flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/5 px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Verknüpfung lösen
+                    </button>
+                  )}
+                  {gitLabIntegration?.projectWebUrl && (
+                    <a
+                      href={gitLabIntegration.projectWebUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Projekt öffnen
+                    </a>
+                  )}
+                </div>
+
+                {gitLabSnapshot && (
+                  <div className="space-y-5 rounded-3xl border border-border bg-surface p-5">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {gitLabIntegration?.approvalRequired ? 'Freizugebender GitLab-Snapshot' : 'Letzter Import-Snapshot'}
+                        </p>
+                        <p className="text-xs text-muted mt-1">
+                          {gitLabIntegration?.approvalRequired
+                            ? 'Dieser Snapshot wird erst nach Freigabe automatisch auf die App angewendet.'
+                            : 'Der zuletzt angewendete Snapshot aus GitLab.'}
+                        </p>
+                      </div>
+                      {gitLabSnapshot.syncedAt && (
+                        <span className="text-xs text-muted">
+                          Snapshot vom {new Date(gitLabSnapshot.syncedAt).toLocaleString('de-DE')}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {gitLabSnapshot.readmeContent?.trim() ? 'README gefunden und bereit zum Übernehmen.' : 'Keine README im Snapshot.'}
+                        </p>
+                        {!gitLabIntegration?.approvalRequired && (
+                          <button
+                            type="button"
+                            onClick={handleApplyGitLabReadme}
+                            disabled={!gitLabSnapshot.readmeContent?.trim()}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />
+                            In Dokumentation übernehmen
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Repository-Metadaten</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          Beschreibung, Lizenz, Topics und Repository-Link können in das Formular übernommen werden.
+                        </p>
+                        {!gitLabIntegration?.approvalRequired && (
+                          <button
+                            type="button"
+                            onClick={handleApplyGitLabMetadata}
+                            disabled={!gitLabSnapshot.description?.trim() && !(gitLabSnapshot.topics?.length) && !gitLabSnapshot.license?.trim() && !gitLabSnapshot.projectWebUrl}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <GitBranch className="h-3.5 w-3.5" />
+                            In Metadaten übernehmen
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Deployment-Dateien</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          Helm Values und Compose-Datei werden in die Deployment-Felder des Editors übernommen.
+                        </p>
+                        {!gitLabIntegration?.approvalRequired && (
+                          <button
+                            type="button"
+                            onClick={handleApplyGitLabDeployment}
+                            disabled={!gitLabSnapshot.helmValuesContent?.trim() && !gitLabSnapshot.composeFileContent?.trim()}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Server className="h-3.5 w-3.5" />
+                            In Deployment übernehmen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {gitLabSnapshot.warnings && gitLabSnapshot.warnings.length > 0 && (
+                      <div className="rounded-2xl border border-warning/20 bg-warning/5 p-4 text-sm text-warning">
+                        <p className="font-semibold">Hinweise aus dem letzten Import</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-5">
+                          {gitLabSnapshot.warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {gitLabSnapshot.readmeContent?.trim() && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README Vorschau</p>
+                        <textarea
+                          readOnly
+                          value={gitLabSnapshot.readmeContent}
+                          className="min-h-[220px] w-full rounded-2xl border border-border bg-field-background px-4 py-3 font-mono text-xs text-foreground outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Tabs.Panel>

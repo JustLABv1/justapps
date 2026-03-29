@@ -19,5 +19,16 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 		settings.PUT("", middlewares.Auth(db), func(c *gin.Context) {
 			platform.UpdateSettings(c, db)
 		})
+
+		gitlabProviders := settings.Group("/gitlab/providers")
+		gitlabProviders.Use(middlewares.Admin(db))
+		{
+			gitlabProviders.GET("", func(c *gin.Context) {
+				platform.ListGitLabProviders(c, db)
+			})
+			gitlabProviders.PUT("/:key", func(c *gin.Context) {
+				platform.UpdateGitLabProvider(c, db)
+			})
+		}
 	}
 }
