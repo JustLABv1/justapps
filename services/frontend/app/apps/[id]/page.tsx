@@ -1,20 +1,22 @@
 'use client';
 
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
+import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { RatingSection } from "@/components/RatingSection";
-import { AppConfig } from "@/config/apps";
+import { AppConfig, GitLabIntegrationState } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { resolveIcon } from "@/lib/detailFieldIcons";
-import { LinkStatusDot } from "@/components/LinkStatusDot";
+import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
     AlertTriangle,
     BookOpen,
     ChevronLeft,
     ExternalLink,
+    GitBranch,
     Github,
     History,
     Layers,
@@ -31,7 +33,6 @@ import Image from "next/image";
 import NextLink from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -55,23 +56,36 @@ export default function AppPage() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const [app, setApp] = useState<AppConfig | null>(null);
+  const [gitLabIntegration, setGitLabIntegration] = useState<GitLabIntegrationState | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadApp() {
       if (!id) return;
       try {
-        const res = await fetchApi(`/apps/${id}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
+        const [appResponse, gitLabResponse] = await Promise.all([
+          fetchApi(`/apps/${id}`, { cache: 'no-store' }),
+          fetchApi(`/apps/${id}/gitlab`, { cache: 'no-store' }),
+        ]);
+
+        if (appResponse.ok) {
+          const data = await appResponse.json();
           setApp(data);
           addRecentlyViewed({ id: data.id, name: data.name, icon: data.icon });
+          if (gitLabResponse.ok) {
+            const gitLabData = await gitLabResponse.json() as GitLabIntegrationState;
+            setGitLabIntegration(gitLabData.linked ? gitLabData : null);
+          } else {
+            setGitLabIntegration(null);
+          }
         } else {
           setApp(null);
+          setGitLabIntegration(null);
         }
       } catch (err) {
         console.error(err);
         setApp(null);
+        setGitLabIntegration(null);
       } finally {
         setLoading(false);
       }
@@ -96,10 +110,26 @@ export default function AppPage() {
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const statusInfo = getAppStatusMeta(app.status);
+  const gitLabStatus = (() => {
+    switch (gitLabIntegration?.lastSyncStatus) {
+      case 'success':
+        return { label: 'GitLab synchronisiert', color: 'accent' as const };
+      case 'warning':
+        return { label: 'GitLab mit Hinweisen', color: 'warning' as const };
+      case 'pending_approval':
+        return { label: 'GitLab wartet auf Freigabe', color: 'warning' as const };
+      case 'error':
+        return { label: 'GitLab Fehler', color: 'danger' as const };
+      default:
+        return gitLabIntegration?.linked ? { label: 'GitLab verknüpft', color: 'accent' as const } : null;
+    }
+  })();
   const repositories = app.repositories && app.repositories.length > 0
     ? app.repositories
     : (app.repoUrl ? [{ label: 'Quellcode', url: app.repoUrl }] : []);
   const customLinks = app.customLinks || [];
+  const gitLabRepoUrl = gitLabIntegration?.projectWebUrl?.trim();
+  const hasGitLabRepoLink = !!gitLabRepoUrl && repositories.some((repository) => repository.url === gitLabRepoUrl);
 
   /* Build metadata pairs from the admin-configured field schema + app's customFields values */
   const fieldValueMap = new Map((app.customFields ?? []).map(f => [f.key, f.value]));
@@ -203,6 +233,11 @@ export default function AppPage() {
                   {statusInfo.label}
                 </Chip>
               )}
+              {gitLabStatus && (
+                <Chip size="sm" variant="soft" color={gitLabStatus.color} className="text-[11px] uppercase font-bold tracking-wider">
+                  {gitLabStatus.label}
+                </Chip>
+              )}
               {app.isReuse && (
                 <Chip size="sm" variant="soft" color="warning" className="text-[11px] uppercase font-bold flex items-center gap-1">
                   <Share2 className="w-3 h-3" />
@@ -297,6 +332,16 @@ export default function AppPage() {
                   {repo.label || 'Quellcode'}
                 </Link>
               ))}
+              {gitLabRepoUrl && !hasGitLabRepoLink && (
+                <Link
+                  href={gitLabRepoUrl}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
+                >
+                  <GitBranch className="w-4 h-4" />
+                  {gitLabIntegration?.providerLabel || 'GitLab'}
+                </Link>
+              )}
               {customLinks.map((customLink, idx) => (
                 <Link
                   key={`${customLink.url}-${idx}`}
@@ -330,6 +375,13 @@ export default function AppPage() {
                 </Tooltip>
               )}
             </div>
+
+            {gitLabIntegration?.linked && (
+              <p className="mt-3 text-xs text-muted">
+                Quelle: {gitLabIntegration.providerLabel || gitLabIntegration.providerKey} · {gitLabIntegration.projectPath}
+                {gitLabIntegration.lastSyncedAt ? ` · zuletzt synchronisiert am ${new Date(gitLabIntegration.lastSyncedAt).toLocaleString('de-DE')}` : ''}
+              </p>
+            )}
           </div>
         </div>
       </header>
