@@ -6,20 +6,6 @@ A self-hosted application store for teams and organizations. Centrally manage, d
 [![Release](https://github.com/JustLABv1/justapps/actions/workflows/release.yml/badge.svg)](https://github.com/JustLABv1/justapps/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Configuration](#configuration)
-- [Docker](#docker)
-- [Kubernetes / Helm](#kubernetes--helm)
-- [API Reference](#api-reference)
-- [Project Structure](#project-structure)
-- [CI/CD](#cicd)
-- [Contributing](#contributing)
-- [License](#license)
-
 ## Features
 
 - **App catalog** — browse and discover applications with categories, tech stacks, and links
@@ -27,259 +13,54 @@ A self-hosted application store for teams and organizations. Centrally manage, d
 - **Deployment-ready** — built-in Docker, Docker Compose, and Helm chart deployment instructions per app
 - **Admin interface** — manage users, apps, platform branding, and settings
 - **OIDC authentication** — Keycloak integration with local username/password fallback
-- **App ownership** — users manage their own listings
-- **File uploads** — app logo storage
-- **Import/Export** — admin-level JSON bulk import/export
+- **GitLab integration** — sync app metadata from GitLab projects automatically
 
 ## Tech Stack
 
-| Layer     | Technology                                          |
-|-----------|-----------------------------------------------------|
-| Frontend  | Next.js 16, React 19, HeroUI v3, Tailwind CSS v4   |
-| Backend   | Go 1.24, Gin, bun ORM                              |
-| Database  | PostgreSQL 15+                                      |
-| Auth      | NextAuth v5, Keycloak (OIDC), JWT                  |
-| Container | Docker (multi-stage build), Kubernetes, Helm 3      |
+| Layer     | Technology                                        |
+|-----------|---------------------------------------------------|
+| Frontend  | Next.js 16, React 19, HeroUI v3, Tailwind CSS v4 |
+| Backend   | Go 1.24, Gin, bun ORM                            |
+| Database  | PostgreSQL 15+                                    |
+| Auth      | NextAuth v5, Keycloak (OIDC), JWT                |
+| Container | Docker (multi-stage), Kubernetes, Helm 3          |
 
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 24+ and [pnpm](https://pnpm.io)
-- [Go](https://go.dev/) 1.24+
-- [PostgreSQL](https://www.postgresql.org/) 15+
-- (Optional) A [Keycloak](https://www.keycloak.org/) instance for OIDC
-
-### Installation
-
-**1. Clone the repository**
+## Quick Start
 
 ```bash
-git clone https://github.com/JustLABv1/justapps.git
-cd just-app-store
+# Clone
+git clone https://github.com/JustLABv1/justapps.git && cd justapps
+
+# Backend
+cd services/backend && go mod download && go run main.go --config config.yaml
+
+# Frontend (new terminal)
+cd services/frontend && pnpm install && pnpm dev
 ```
 
-**2. Configure environment**
-
-```bash
-cp .env.example .env
-# Edit .env — see Configuration section below
-```
-
-**3. Start the backend**
-
-```bash
-cd services/backend
-go mod download
-go run main.go --config config.yaml
-```
-
-The API is available at `http://localhost:8082`.
-
-**4. Start the frontend**
-
-```bash
-cd services/frontend
-pnpm install
-pnpm dev
-```
-
-The app is available at `http://localhost:3000`.
-
-## Configuration
-
-### Backend (`services/backend/config.yaml`)
-
-```yaml
-log_level: info
-port: 8082
-
-database:
-  server: localhost
-  port: 5432
-  name: justapps
-  user: postgres
-  password: your-password
-
-jwt:
-  secret: replace-with-secure-random-string  # openssl rand -base64 32
-
-oidc:
-  enabled: true
-  issuer: https://your-keycloak/realms/your-realm
-  client_id: justapps
-  admin_group: admin
-```
-
-Use `--config` to point to a custom config file path.
-
-### Frontend (`services/frontend/.env`)
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Backend API URL (e.g. `http://localhost:8082/api/v1`) |
-| `AUTH_SECRET` | NextAuth secret — generate with `openssl rand -base64 32` |
-| `AUTH_URL` | Public URL of the frontend (e.g. `http://localhost:3000`) |
-| `AUTH_KEYCLOAK_ID` | Keycloak client ID |
-| `AUTH_KEYCLOAK_SECRET` | Keycloak client secret |
-| `AUTH_KEYCLOAK_ISSUER` | Keycloak realm URL |
-| `AUTH_ADMIN_GROUP` | Keycloak group that receives the `admin` role |
-
-See [.env.example](.env.example) for a full reference.
-
-### Keycloak Setup
-
-Configure your Keycloak realm and client:
-
-- **Client ID**: `justapps`
-- **Access Type**: `Confidential`
-- **Valid Redirect URIs**: `http://localhost:3000/api/auth/callback/keycloak`
-- **Admin group**: members of the configured `AUTH_ADMIN_GROUP` receive admin rights
-
-## Docker
-
-Build and run the combined image (frontend + backend in a single container):
-
-```bash
-docker build -t justapps .
-
-docker run -p 3000:3000 -p 8080:8080 \
-  -v /etc/justapps:/etc/justapps \
-  -v /app/data:/app/data \
-  justapps
-```
-
-The container expects a config file at `/etc/justapps/config.yaml`.
-
-### Pre-built image
+Or pull the pre-built image:
 
 ```bash
 docker pull ghcr.io/JustLABv1/justapps:latest
 ```
 
-Available tags: `latest`, `1`, `1.0`, `1.0.0`, `sha-<commit>`
+## Documentation
 
-## Kubernetes / Helm
+Full documentation is in the [project wiki](https://github.com/JustLABv1/justapps/wiki):
 
-A Helm chart is available in [`charts/justapps/`](charts/justapps/):
-
-```bash
-helm install justapps ./charts/justapps \
-  -f charts/justapps/values.yaml
-```
-
-Review and adjust `values.yaml` for your cluster (image, ingress, PostgreSQL credentials, OIDC settings).
-
-### Published Helm Chart
-
-The release pipeline also publishes the chart to GitHub Container Registry as an OCI artifact.
-
-Login once with a GitHub token that has `read:packages`:
-
-```bash
-export CR_PAT=<github-token>
-echo "$CR_PAT" | helm registry login ghcr.io -u <github-username> --password-stdin
-```
-
-Install a released chart directly from GHCR:
-
-```bash
-helm install justapps oci://ghcr.io/justlabv1/charts/justapps \
-  --version 1.0.0 \
-  -f charts/justapps/values.yaml
-```
-
-Upgrade an existing installation:
-
-```bash
-helm upgrade justapps oci://ghcr.io/justlabv1/charts/justapps \
-  --version 1.0.0 \
-  -f my-values.yaml
-```
-
-Pull the packaged chart locally if you want to inspect it before installing:
-
-```bash
-helm pull oci://ghcr.io/justlabv1/charts/justapps --version 1.0.0
-```
-
-## API Reference
-
-The backend REST API is available under `/api/v1`.
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/health` | — | Health check |
-| `GET` | `/apps` | — | List all apps |
-| `GET` | `/apps/:id` | — | Get app details |
-| `POST` | `/apps` | User | Create app |
-| `PUT` | `/apps/:id` | Owner | Update app |
-| `DELETE` | `/apps/:id` | Owner | Delete app |
-| `GET` | `/apps/:id/ratings` | — | List ratings |
-| `POST` | `/apps/:id/ratings` | User | Submit rating |
-| `DELETE` | `/apps/:id/ratings` | User | Delete own rating |
-| `POST` | `/auth/login` | — | Local login |
-| `POST` | `/auth/register` | — | Register account |
-| `POST` | `/auth/oidc/exchange` | — | Exchange Keycloak token |
-| `GET` | `/settings` | — | Platform settings |
-| `PUT` | `/settings` | Admin | Update settings |
-| `GET` | `/admin/users` | Admin | List all users |
-| `PUT` | `/admin/users/:id/state` | Admin | Enable/disable user |
-
-## Project Structure
-
-```
-just-app-store/
-├── services/
-│   ├── frontend/          # Next.js application
-│   │   ├── app/           # Pages and routes
-│   │   └── components/    # Shared UI components
-│   └── backend/           # Go REST API
-│       ├── handlers/      # HTTP handlers
-│       ├── pkg/models/    # Database models
-│       ├── database/      # Migrations
-│       └── router/        # Route definitions
-├── charts/justapps/     # Helm chart
-├── .github/workflows/     # CI/CD pipelines
-├── Dockerfile             # Multi-stage build (frontend + backend)
-└── .env.example           # Environment variable reference
-```
-
-## CI/CD
-
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| [PR Check](.github/workflows/pr-check.yml) | Pull request → `main` | TypeScript check, lint, `next build`, `go vet`, `go build` |
-| [Release](.github/workflows/release.yml) | Push tag `v*.*.*` | Builds Docker images, publishes the Helm chart to GHCR as an OCI artifact, creates GitHub Release with changelog |
-
-### Creating a release
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The image will be published to `ghcr.io/JustLABv1/justapps:1.0.0`.
-
-The Helm chart will be published to `oci://ghcr.io/justlabv1/charts/justapps` with chart version `1.0.0`.
-
-## Contributing
-
-Contributions are welcome!
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/):
-   - `feat:` new features
-   - `fix:` bug fixes
-   - `chore:` maintenance, dependencies
-   - `docs:` documentation changes
-4. Open a pull request against `main`
-
-The PR Check workflow runs automatically and must pass before merging.
-
-Please open an issue for bugs or feature requests before submitting large changes.
+| Page | Description |
+|------|-------------|
+| [Getting Started](https://github.com/JustLABv1/justapps/wiki/Getting-Started) | Install and run locally or via Docker |
+| [Configuration](https://github.com/JustLABv1/justapps/wiki/Configuration) | Backend and frontend config reference |
+| [Authentication](https://github.com/JustLABv1/justapps/wiki/Authentication) | Keycloak / OIDC setup |
+| [Docker](https://github.com/JustLABv1/justapps/wiki/Docker) | Docker and Docker Compose deployment |
+| [Kubernetes / Helm](https://github.com/JustLABv1/justapps/wiki/Kubernetes) | Helm chart deployment |
+| [API Reference](https://github.com/JustLABv1/justapps/wiki/API-Reference) | REST API endpoints |
+| [Architecture](https://github.com/JustLABv1/justapps/wiki/Architecture) | System overview and data flow |
+| [GitLab Integration](https://github.com/JustLABv1/justapps/wiki/GitLab-Integration) | Sync apps from GitLab |
+| [Admin Guide](https://github.com/JustLABv1/justapps/wiki/Admin-Guide) | Manage users and platform settings |
+| [Contributing](https://github.com/JustLABv1/justapps/wiki/Contributing) | Branching, commit style, PR workflow |
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
