@@ -2,13 +2,14 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { Link } from '@heroui/react';
-import { Activity, KeyRound, LayoutDashboard, Layers, Loader2, Settings, Users } from 'lucide-react';
+import { Activity, KeyRound, LayoutDashboard, Layers, Layers2, Loader2, Settings, Users } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 const adminNavLinks = [
   { href: '/verwaltung', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/verwaltung/apps', label: 'Apps', icon: Layers, exact: false },
+  { href: '/verwaltung/gruppen', label: 'Gruppen', icon: Layers2, exact: false },
   { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users, exact: false },
   { href: '/verwaltung/audit', label: 'Audit', icon: Activity, exact: false },
   { href: '/verwaltung/tokens', label: 'Tokens', icon: KeyRound, exact: false },

@@ -95,7 +95,7 @@ function MyAppsContent() {
         return;
       }
     }
-    if (!user?.canSubmitApps) {
+    if (!user?.canSubmitApps && user?.role !== 'admin') {
       toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
       return;
     }
@@ -187,7 +187,7 @@ function MyAppsContent() {
           </Button>
           <Button
             onPress={handleCreateApp}
-            isDisabled={!user.canSubmitApps || (!settings.allowAppSubmissions && user.role !== 'admin')}
+            isDisabled={user.role !== 'admin' && (!user.canSubmitApps || !settings.allowAppSubmissions)}
           >
             <Plus className="w-6 h-6" />
             Neue App
@@ -306,7 +306,7 @@ function MyAppsContent() {
           {apps.length === 0 && !loading && (
             <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
               <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen Apps erstellt.</p>
-              {user.canSubmitApps ? (
+              {(user.canSubmitApps || user.role === 'admin') ? (
                 <Button variant="ghost" onPress={handleCreateApp}>
                   Erste App erstellen
                 </Button>

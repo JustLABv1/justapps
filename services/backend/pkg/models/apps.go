@@ -80,6 +80,7 @@ type Apps struct {
 	Owner                  *Users               `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
 	IsLocked               bool                 `bun:"is_locked,notnull,default:false" json:"isLocked"`
 	SkipLinkProbe          bool                 `bun:"skip_link_probe,notnull,default:false" json:"skipLinkProbe"`
+	LinkProbeStatus        string               `bun:"link_probe_status,notnull,default:'unknown'" json:"linkProbeStatus"`
 	KnownIssue             string               `bun:"known_issue" json:"knownIssue"`
 	IsReuse                bool                 `bun:"is_reuse,notnull,default:false" json:"isReuse"`
 	ReuseRequirements      string               `bun:"reuse_requirements" json:"reuseRequirements"`

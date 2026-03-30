@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -30,6 +31,7 @@ type RestfulConf struct {
 	Database DatabaseConf `mapstructure:"database" validate:"required"`
 	JWT      JWTConf      `mapstructure:"jwt" validate:"required"`
 	OIDC     OIDCConf     `mapstructure:"oidc"`
+	GitLab   GitLabConf   `mapstructure:"gitlab"`
 	CORS     CORSConf     `mapstructure:"cors"`
 }
 
@@ -58,6 +60,20 @@ type OIDCConf struct {
 	Insecure            bool   `mapstructure:"insecure"`
 	DisableLocalAuth    bool   `mapstructure:"disable_local_auth"`
 	DisableRegistration bool   `mapstructure:"disable_registration"`
+}
+
+type GitLabConf struct {
+	Providers []GitLabProviderConf `mapstructure:"providers"`
+}
+
+type GitLabProviderConf struct {
+	Key                string   `mapstructure:"key"`
+	Label              string   `mapstructure:"label"`
+	BaseURL            string   `mapstructure:"base_url"`
+	Token              string   `mapstructure:"token"`
+	Enabled            bool     `mapstructure:"enabled"`
+	NamespaceAllowlist []string `mapstructure:"namespace_allowlist"`
+	TimeoutSeconds     int      `mapstructure:"timeout_seconds"`
 }
 
 // GetInstance returns the singleton configuration manager instance
@@ -102,6 +118,7 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
 		"oidc.disable_local_auth":     "BACKEND_OIDC_DISABLE_LOCAL_AUTH",
 		"oidc.disable_registration":   "BACKEND_OIDC_DISABLE_REGISTRATION",
+		"gitlab.providers":            "BACKEND_GITLAB_PROVIDERS",
 		"cors.allowed_origins":        "BACKEND_CORS_ALLOWED_ORIGINS",
 	}
 
@@ -125,6 +142,15 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 	// Unmarshal configuration
 	if err := cm.viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Override per-provider tokens from env vars: BACKEND_GITLAB_TOKEN_<KEY>
+	// (KEY is uppercased with hyphens replaced by underscores)
+	for i := range config.GitLab.Providers {
+		key := strings.ToUpper(strings.ReplaceAll(config.GitLab.Providers[i].Key, "-", "_"))
+		if token := os.Getenv("BACKEND_GITLAB_TOKEN_" + key); token != "" {
+			config.GitLab.Providers[i].Token = token
+		}
 	}
 
 	// Store the config
@@ -168,6 +194,17 @@ func (cm *ConfigurationManager) setDefaults(config *RestfulConf) {
 	}
 	if config.Database.Password == "" {
 		config.Database.Password = "postgres"
+	}
+	for index := range config.GitLab.Providers {
+		if config.GitLab.Providers[index].BaseURL == "" {
+			config.GitLab.Providers[index].BaseURL = "https://gitlab.com"
+		}
+		if config.GitLab.Providers[index].TimeoutSeconds <= 0 {
+			config.GitLab.Providers[index].TimeoutSeconds = 15
+		}
+		if config.GitLab.Providers[index].Label == "" {
+			config.GitLab.Providers[index].Label = config.GitLab.Providers[index].Key
+		}
 	}
 }
 

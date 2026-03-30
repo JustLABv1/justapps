@@ -11,13 +11,15 @@ import (
 	"justapps-backend/config"
 	"justapps-backend/database"
 	"justapps-backend/functions/auth"
+	gitlabsync "justapps-backend/functions/integrations/gitlab"
+	"justapps-backend/functions/integrations/linkprober"
 	"justapps-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
 	log "github.com/sirupsen/logrus"
 )
 
-const version string = "1.0.0-beta.8"
+const version string = "1.0.0-rc.1"
 
 var (
 	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/justapps/config.yaml").String()
@@ -74,6 +76,11 @@ func main() {
 		log.Fatal("Failed to connect to the database")
 	}
 
+	backgroundCtx, backgroundCancel := context.WithCancel(context.Background())
+	defer backgroundCancel()
+	gitlabsync.StartScheduler(backgroundCtx, db, cfg)
+	linkprober.StartScheduler(backgroundCtx, db)
+
 	// Set up signal handling for graceful shutdown
 	server := router.StartRouter(db, cfg.Port, cfg)
 
@@ -82,6 +89,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Info("Shutting down server...")
+	backgroundCancel()
 
 	// The server has 30 seconds to finish the request it is currently handling
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
