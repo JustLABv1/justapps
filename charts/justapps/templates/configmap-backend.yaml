@@ -20,5 +20,22 @@ data:
       admin_group: {{ .Values.config.oidc.adminGroup | quote }}
       insecure: {{ .Values.config.oidc.insecure | default false }}
     cors:
-      allowed_origins: 
+      allowed_origins:
         {{- toYaml .Values.config.cors.allowedOrigins | nindent 8 }}
+    {{- if .Values.config.gitlab.providers }}
+    gitlab:
+      providers:
+        {{- range .Values.config.gitlab.providers }}
+        - key: {{ .key | quote }}
+          label: {{ .label | default .key | quote }}
+          base_url: {{ .baseUrl | quote }}
+          enabled: {{ .enabled | default false }}
+          timeout_seconds: {{ .timeoutSeconds | default 15 }}
+          namespace_allowlist:
+            {{- if .namespaceAllowlist }}
+            {{- toYaml .namespaceAllowlist | nindent 12 }}
+            {{- else }}
+            []
+            {{- end }}
+        {{- end }}
+    {{- end }}
