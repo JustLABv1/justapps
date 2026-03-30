@@ -115,3 +115,13 @@ type GitLabIntegrationResponse struct {
 	Snapshot           *GitLabSyncSnapshot     `json:"snapshot,omitempty"`
 	PendingSnapshot    *GitLabSyncSnapshot     `json:"pendingSnapshot,omitempty"`
 }
+
+type GitLabSyncSummary struct {
+	Linked           bool       `json:"linked"`
+	ProviderKey      string     `json:"providerKey,omitempty"`
+	ProjectPath      string     `json:"projectPath,omitempty"`
+	LastSyncStatus   string     `json:"lastSyncStatus,omitempty"`
+	LastSyncError    string     `json:"lastSyncError,omitempty"`
+	ApprovalRequired bool       `json:"approvalRequired"`
+	LastSyncedAt     *time.Time `json:"lastSyncedAt,omitempty"`
+}
