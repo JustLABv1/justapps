@@ -179,6 +179,41 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		}
 	}
 
+	if viewerRole == "admin" && len(apps) > 0 {
+		appIDs := make([]string, 0, len(apps))
+		for _, app := range apps {
+			appIDs = append(appIDs, app.ID)
+		}
+
+		var links []models.GitLabAppLink
+		if err := db.NewSelect().Model(&links).Where("app_id IN (?)", bun.In(appIDs)).Scan(c); err == nil {
+			linkByAppID := make(map[string]models.GitLabAppLink, len(links))
+			for _, link := range links {
+				linkByAppID[link.AppID] = link
+			}
+
+			for i := range apps {
+				link, ok := linkByAppID[apps[i].ID]
+				if !ok {
+					continue
+				}
+
+				summary := &models.GitLabSyncSummary{
+					Linked:           true,
+					ProviderKey:      link.ProviderKey,
+					ProjectPath:      link.ProjectPath,
+					LastSyncStatus:   link.LastSyncStatus,
+					LastSyncError:    link.LastSyncError,
+					ApprovalRequired: link.ApprovalRequired,
+				}
+				if !link.LastSyncedAt.IsZero() {
+					summary.LastSyncedAt = &link.LastSyncedAt
+				}
+				apps[i].GitLabSync = summary
+			}
+		}
+	}
+
 	c.JSON(200, apps)
 }
 

@@ -98,6 +98,16 @@ export interface GitLabIntegrationState {
   pendingSnapshot?: GitLabSyncSnapshot;
 }
 
+export interface GitLabSyncSummary {
+  linked: boolean;
+  providerKey?: string;
+  projectPath?: string;
+  lastSyncStatus?: string;
+  lastSyncError?: string;
+  approvalRequired: boolean;
+  lastSyncedAt?: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -153,6 +163,7 @@ export interface AppConfig {
   relatedApps?: { id: string; name: string; icon?: string }[];
   // Groups this app belongs to
   appGroups?: { id: string; name: string }[];
+  gitLabSync?: GitLabSyncSummary;
   /** Opt out of the global link-probing feature for this app (e.g. links behind auth/VPN) */
   skipLinkProbe?: boolean;
 }

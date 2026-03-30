@@ -12,39 +12,39 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-  Chip,
-  Input,
-  Label,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField, toast
+    Chip,
+    Input,
+    Label,
+    Switch,
+    Tabs,
+    TextArea,
+    TextField, toast
 } from '@heroui/react';
 import {
-  AlertTriangle,
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CloudDownload,
-  ExternalLink,
-  GitBranch,
-  Github,
-  Layers,
-  Link2,
-  Loader2,
-  Pencil,
-  Plus,
-  Save,
-  Scale,
-  Server,
-  Share2,
-  Star,
-  Tag,
-  Terminal,
-  Upload,
-  X,
+    AlertTriangle,
+    BookOpen,
+    Check,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    CloudDownload,
+    ExternalLink,
+    GitBranch,
+    Github,
+    Layers,
+    Link2,
+    Loader2,
+    Pencil,
+    Plus,
+    Save,
+    Scale,
+    Server,
+    Share2,
+    Star,
+    Tag,
+    Terminal,
+    Upload,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -2927,8 +2927,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
         <Tabs.Panel id="gitlab">
           <GitLabTab
-            initialApp={initialApp}
-            isNew={isNew}
+            currentApp={formData}
             gitLabIntegration={gitLabIntegration}
             gitLabForm={gitLabForm}
             setGitLabForm={setGitLabForm}
