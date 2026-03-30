@@ -170,6 +170,38 @@ The chart will read the token from that secret and inject it as `BACKEND_GITLAB_
 
 ---
 
+## Custom CA Certificates (Self-Signed/Private CAs)
+
+If you need to trust a self-signed or private CA (for example, for GitLab or other internal services), you can mount a custom CA certificate into the backend and frontend containers using the Helm chart.
+
+### 1. Create a Kubernetes Secret or ConfigMap with your CA
+
+**As a Secret:**
+```bash
+kubectl create secret generic my-custom-ca --from-file=ca.crt=./my-root-ca.crt
+```
+
+**As a ConfigMap:**
+```bash
+kubectl create configmap my-custom-ca --from-file=ca.crt=./my-root-ca.crt
+```
+
+### 2. Reference the CA in your `values.yaml`
+
+```yaml
+customCA:
+  enabled: true
+  name: my-custom-ca         # Name of the Secret or ConfigMap
+  secret: true               # true if Secret, false if ConfigMap
+  mountPath: /etc/ssl/certs/extra-ca.crt
+```
+
+The CA will be mounted into the container at the specified path. You may need to configure your application or set environment variables (e.g. `SSL_CERT_FILE=/etc/ssl/certs/extra-ca.crt`) so that your backend/frontend trusts this CA.
+
+> **Note:** The file inside the Secret/ConfigMap must be named `ca.crt`.
+
+---
+
 ## Upgrading
 
 ```bash
