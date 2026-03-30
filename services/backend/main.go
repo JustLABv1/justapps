@@ -12,6 +12,7 @@ import (
 	"justapps-backend/database"
 	"justapps-backend/functions/auth"
 	gitlabsync "justapps-backend/functions/integrations/gitlab"
+	"justapps-backend/functions/integrations/linkprober"
 	"justapps-backend/router"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -78,6 +79,7 @@ func main() {
 	backgroundCtx, backgroundCancel := context.WithCancel(context.Background())
 	defer backgroundCancel()
 	gitlabsync.StartScheduler(backgroundCtx, db, cfg)
+	linkprober.StartScheduler(backgroundCtx, db)
 
 	// Set up signal handling for graceful shutdown
 	server := router.StartRouter(db, cfg.Port, cfg)

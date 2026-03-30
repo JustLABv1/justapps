@@ -1,52 +1,54 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AppConfig, AppField, GitLabIntegrationState } from '@/config/apps';
+import { DeploymentTab } from '@/components/editor/DeploymentTab';
+import { GitLabFormState, GitLabTab } from '@/components/editor/GitLabTab';
+import { LinkListEditor } from '@/components/editor/LinkListEditor';
+import { RelatedAppsTab } from '@/components/editor/RelatedAppsTab';
+import { AppConfig, AppField, GitLabIntegrationState, GitLabProviderSummary } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField, toast
+  Chip,
+  Input,
+  Label,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField, toast
 } from '@heroui/react';
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    CloudDownload,
-    ExternalLink,
-    GitBranch,
-    Github,
-    Grip,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Tag,
-    Terminal,
-    Trash2,
-    Upload,
-    X,
+  AlertTriangle,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CloudDownload,
+  ExternalLink,
+  GitBranch,
+  Github,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Tag,
+  Terminal,
+  Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -73,14 +75,6 @@ const ICON_OPTIONS = [
 
 const PREDEFINED_STATUSES = [DRAFT_STATUS, 'POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
 
-type GitLabFormState = {
-  providerKey: string;
-  projectPath: string;
-  branch: string;
-  readmePath: string;
-  helmValuesPath: string;
-  composeFilePath: string;
-};
 
 const defaultGitLabFormState: GitLabFormState = {
   providerKey: '',
@@ -119,60 +113,6 @@ function getGitLabStatusMeta(status?: string) {
   }
 }
 
-// ── LinkListEditor ────────────────────────────────────────────────────────────
-
-function LinkListEditor({
-  title, icon, items, onChange, addLabel, placeholderLabel, placeholderUrl,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  items: { label: string; url: string }[];
-  onChange: (items: { label: string; url: string }[]) => void;
-  addLabel: string;
-  placeholderLabel: string;
-  placeholderUrl: string;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {icon}
-          <span className="text-xs font-bold text-muted uppercase tracking-wider">{title}</span>
-        </div>
-        <button
-          type="button"
-          onClick={() => onChange([...items, { label: placeholderLabel, url: '' }])}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-accent hover:bg-accent/10 transition-colors"
-        >
-          <Plus className="w-3 h-3" />{addLabel}
-        </button>
-      </div>
-      {items.map((item, idx) => (
-        <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-          <div className="col-span-4">
-            <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], label: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Bezeichnung</Label>
-              <Input value={item.label} placeholder={placeholderLabel} className="bg-field-background h-8 text-sm" />
-            </TextField>
-          </div>
-          <div className="col-span-7">
-            <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], url: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Adresse</Label>
-              <Input value={item.url} placeholder={placeholderUrl} className="bg-field-background h-8 font-mono text-sm" />
-            </TextField>
-          </div>
-          <button
-            type="button"
-            onClick={() => { const f = [...items]; f.splice(idx, 1); onChange(f); }}
-            className="col-span-1 h-8 w-8 flex items-center justify-center rounded-lg text-danger hover:bg-danger/10 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── AppEditorForm ─────────────────────────────────────────────────────────────
 
@@ -249,6 +189,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [savingGitLab, setSavingGitLab] = useState(false);
   const [syncingGitLab, setSyncingGitLab] = useState(false);
   const [gitLabError, setGitLabError] = useState<string | null>(null);
+  const [creationProviders, setCreationProviders] = useState<GitLabProviderSummary[]>([]);
+  const [preCreatedAppId, setPreCreatedAppId] = useState<string | null>(null);
   const initialSnapshotRef = useRef('');
   const skipUnsavedWarningRef = useRef(false);
 
@@ -308,6 +250,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   }, [isNew, isAdmin]);
 
     useEffect(() => {
+      if (!isNew || currentCreateStep !== 2) return;
+      fetchApi('/settings/gitlab/providers/available')
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => setCreationProviders(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }, [isNew, currentCreateStep]);
+
+    useEffect(() => {
       if (isNew || !initialApp) {
         setLoadingGitLab(false);
         return;
@@ -354,6 +304,100 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       }));
     }, [gitLabForm.providerKey, gitLabIntegration?.availableProviders]);
 
+  // ── Creation-wizard GitLab sync ──
+  const handleCreationGitLabSync = async () => {
+    if (!gitLabForm.projectPath?.trim() || !gitLabForm.providerKey?.trim()) return;
+    setSyncingGitLab(true);
+    setGitLabError(null);
+    try {
+      // Create the draft app first if not yet done
+      let appId = preCreatedAppId;
+      if (!appId) {
+        const body: Partial<AppConfig> = {
+          ...formData,
+          categories: Array.isArray(formData.categories) ? formData.categories : [],
+          techStack: Array.isArray(formData.techStack) ? formData.techStack : [],
+          repositories: [],
+          customLinks: [],
+          liveDemos: [],
+          status: formData.status?.trim() || DRAFT_STATUS,
+        };
+        const createRes = await fetchApi('/apps', { method: 'POST', body: JSON.stringify(body) });
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          throw new Error((err as { message?: string }).message || 'App konnte nicht angelegt werden.');
+        }
+        const newApp = await createRes.json() as AppConfig;
+        appId = newApp.id;
+        setPreCreatedAppId(appId);
+      }
+      // Link GitLab
+      const linkRes = await fetchApi(`/apps/${appId}/gitlab`, {
+        method: 'PUT',
+        body: JSON.stringify(gitLabForm),
+      });
+      if (!linkRes.ok) {
+        const err = await linkRes.json().catch(() => ({}));
+        throw new Error((err as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht gespeichert werden.');
+      }
+      // Sync
+      const syncRes = await fetchApi(`/apps/${appId}/gitlab/sync`, { method: 'POST' });
+      if (!syncRes.ok) {
+        const err = await syncRes.json().catch(() => ({}));
+        throw new Error((err as { message?: string }).message || 'GitLab-Synchronisation fehlgeschlagen.');
+      }
+      const integration = await syncRes.json() as GitLabIntegrationState;
+      setGitLabIntegration(integration);
+      setGitLabForm(normalizeGitLabFormState(integration));
+
+      // Auto-apply all available snapshot data immediately
+      const snapshot = integration.snapshot;
+      if (snapshot) {
+        setFormData((prev) => {
+          const next = { ...prev };
+
+          if (snapshot.readmeContent?.trim()) {
+            next.markdownContent = snapshot.readmeContent.trim();
+          }
+
+          if (snapshot.description?.trim()) next.description = snapshot.description.trim();
+          if (snapshot.license?.trim()) next.license = snapshot.license.trim();
+
+          const topicSet = new Set([...(prev.tags || [])]);
+          for (const topic of snapshot.topics || []) {
+            if (topic?.trim()) topicSet.add(topic.trim());
+          }
+          next.tags = Array.from(topicSet);
+
+          const repos = [...(prev.repositories || [])];
+          if (snapshot.projectWebUrl && !repos.some((r) => r.url === snapshot.projectWebUrl)) {
+            repos.push({ label: 'GitLab', url: snapshot.projectWebUrl });
+          }
+          next.repositories = repos;
+
+          if (snapshot.helmValuesContent?.trim()) {
+            next.showHelm = true;
+            next.customHelmValues = snapshot.helmValuesContent.trim();
+          }
+          if (snapshot.composeFileContent?.trim()) {
+            next.showCompose = true;
+            next.customComposeCommand = snapshot.composeFileContent.trim();
+          }
+
+          return next;
+        });
+      }
+
+      toast.success('GitLab synchronisiert – Daten wurden übernommen.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GitLab-Synchronisation fehlgeschlagen.';
+      setGitLabError(message);
+      toast.danger(message);
+    } finally {
+      setSyncingGitLab(false);
+    }
+  };
+
   // ── Helpers ──
   const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) =>
     (links || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url! }));
@@ -382,8 +426,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      const method = isNew ? 'POST' : 'PUT';
-      const url = isNew ? '/apps' : `/apps/${initialApp!.id}`;
+      const effectiveAppId = preCreatedAppId || initialApp?.id;
+      const method = (isNew && !preCreatedAppId) ? 'POST' : 'PUT';
+      const url = (isNew && !preCreatedAppId) ? '/apps' : `/apps/${effectiveAppId}`;
       const body: Partial<AppConfig> = {
         ...formData,
         categories: Array.isArray(formData.categories) ? formData.categories : [],
@@ -395,6 +440,16 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       };
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.ok) {
+        // Auto-link GitLab for new apps that weren't already linked via the creation-step sync
+        if (isNew && !preCreatedAppId && gitLabForm.projectPath?.trim()) {
+          const newApp = await res.json().catch(() => null) as AppConfig | null;
+          if (newApp?.id) {
+            await fetchApi(`/apps/${newApp.id}/gitlab`, {
+              method: 'PUT',
+              body: JSON.stringify(gitLabForm),
+            }).catch(() => null);
+          }
+        }
         initialSnapshotRef.current = createSnapshot();
         skipUnsavedWarningRef.current = true;
         setSaveSuccess(true);
@@ -678,7 +733,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     {
       id: 'identity',
       phase: 'Basisdaten',
-      label: 'Identitaet',
+      label: 'Identität',
       hint: 'Icon, Name, ID und Kategorien',
       icon: <Pencil className="w-4 h-4" />,
     },
@@ -686,8 +741,15 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       id: 'profile',
       phase: 'Basisdaten',
       label: 'Kurzprofil',
-      hint: 'Status, Beschreibung und Schlagwoerter',
+      hint: 'Status, Beschreibung und Schlagwörter',
       icon: <CheckCircle2 className="w-4 h-4" />,
+    },
+    {
+      id: 'gitlab',
+      phase: 'Erweiterte Angaben',
+      label: 'GitLab-Import',
+      hint: 'Repository verknüpfen und Daten importieren',
+      icon: <GitBranch className="w-4 h-4" />,
     },
     {
       id: 'deployment',
@@ -714,7 +776,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       id: 'documentation',
       phase: 'Erweiterte Angaben',
       label: 'Dokumentation',
-      hint: 'Markdown fuer die Detailansicht',
+      hint: 'Markdown für die Detailansicht',
       icon: <BookOpen className="w-4 h-4" />,
     },
   ] as const;
@@ -732,13 +794,15 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         return !!formData.name?.trim() && !!formData.id?.trim() && (formData.categories?.length ?? 0) > 0 && !isIdTaken;
       case 1:
         return !requiresExpandedDetails || !!formData.description?.trim();
-      case 2:
+      case 2: // gitlab — always optional
         return true;
       case 3:
         return true;
       case 4:
         return true;
       case 5:
+        return true;
+      case 6:
         return true;
       default:
         return true;
@@ -753,7 +817,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           || (formData.status?.trim() && formData.status !== DRAFT_STATUS)
           || (formData.tags?.length ?? 0) > 0
           || (!!formData.license?.trim() && formData.license !== 'MIT');
-      case 2:
+      case 2: // gitlab
+        return !!gitLabForm.projectPath?.trim();
+      case 3:
         return !!formData.reuseRequirements?.trim()
           || !!formData.isReuse
           || formData.hasDeploymentAssistant === false
@@ -769,18 +835,18 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           || !!formData.customComposeNote?.trim()
           || !!formData.customDockerNote?.trim()
           || !!formData.customHelmValues?.trim();
-      case 3:
+      case 4:
         return (formData.liveDemos?.some((demo) => demo.url?.trim()) ?? false)
           || (formData.repositories?.some((repository) => repository.url?.trim()) ?? false)
           || (formData.customLinks?.some((link) => link.url?.trim()) ?? false)
           || !!formData.docsUrl?.trim();
-      case 4:
+      case 5:
         return !!formData.authority?.trim()
           || (formData.techStack?.length ?? 0) > 0
           || (formData.customFields?.length ?? 0) > 0
           || !!formData.knownIssue?.trim()
           || !!formData.isFeatured;
-      case 5:
+      case 6:
         return !!formData.markdownContent?.trim();
       default:
         return false;
@@ -800,38 +866,44 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       case 0:
         return [
           { label: 'Name vergeben', done: !!formData.name?.trim() },
-          { label: 'ID verfuegbar', done: !!formData.id?.trim() && !isIdTaken },
+          { label: 'ID verfügbar', done: !!formData.id?.trim() && !isIdTaken },
           { label: 'Mindestens eine Kategorie', done: (formData.categories?.length ?? 0) > 0 },
         ];
       case 1:
         return [
           { label: 'Status festgelegt', done: !!formData.status?.trim() },
-          { label: 'Kurzbeschreibung fuer sichtbare App', done: !requiresExpandedDetails || !!formData.description?.trim() },
-          { label: 'Schlagwoerter optional', done: (formData.tags?.length ?? 0) > 0 },
+          { label: 'Kurzbeschreibung für sichtbare App', done: !requiresExpandedDetails || !!formData.description?.trim() },
+          { label: 'Schlagwörter optional', done: (formData.tags?.length ?? 0) > 0 },
         ];
       case 2:
         return [
-          { label: 'Nachnutzung eingeordnet', done: formData.isReuse !== undefined },
-          { label: 'Deployment Assistant konfiguriert', done: formData.hasDeploymentAssistant !== undefined },
-          { label: 'Installationswege gewaehlt', done: (formData.showDocker !== false) || (formData.showCompose !== false) || (formData.showHelm !== false) },
+          { label: 'GitLab-Provider gewählt (optional)', done: !!gitLabForm.providerKey?.trim() },
+          { label: 'Projektpfad eingetragen (optional)', done: !!gitLabForm.projectPath?.trim() },
+          { label: 'Wird nach Speichern verknüpft', done: !!gitLabForm.projectPath?.trim() },
         ];
       case 3:
         return [
-          { label: 'Live-Zugang optional', done: !!(formData.liveDemos || []).some((demo) => demo.url?.trim()) },
-          { label: 'Repository oder Ressource optional', done: (formData.repositories?.length ?? 0) > 0 || (formData.customLinks?.length ?? 0) > 0 || !!formData.docsUrl?.trim() },
-          { label: 'Dokumentationslink optional', done: !!formData.docsUrl?.trim() },
+          { label: 'Nachnutzung eingeordnet (optional)', done: formData.isReuse !== undefined },
+          { label: 'Deployment Assistant konfiguriert', done: formData.hasDeploymentAssistant !== undefined },
+          { label: 'Installationswege gewählt', done: (formData.showDocker !== false) || (formData.showCompose !== false) || (formData.showHelm !== false) },
         ];
       case 4:
         return [
-          { label: 'Herausgeber optional', done: !!formData.authority?.trim() },
-          { label: 'Fachliche Details gepflegt', done: (formData.customFields?.length ?? 0) > 0 },
-          { label: 'Bekanntes Problem bei Bedarf', done: !formData.knownIssue || !!formData.knownIssue.trim() },
+          { label: 'Live-Zugang (optional)', done: !!(formData.liveDemos || []).some((demo) => demo.url?.trim()) },
+          { label: 'Repository oder Ressource (optional)', done: (formData.repositories?.length ?? 0) > 0 || (formData.customLinks?.length ?? 0) > 0 || !!formData.docsUrl?.trim() },
+          { label: 'Dokumentationslink (optional)', done: !!formData.docsUrl?.trim() },
         ];
       case 5:
         return [
-          { label: 'Markdown optional', done: !!formData.markdownContent?.trim() },
+          { label: 'Herausgeber (optional)', done: !!formData.authority?.trim() },
+          { label: 'Fachliche Details gepflegt', done: (formData.customFields?.length ?? 0) > 0 },
+          { label: 'Bekanntes Problem bei Bedarf', done: !formData.knownIssue || !!formData.knownIssue.trim() },
+        ];
+      case 6:
+        return [
+          { label: 'Markdown (optional)', done: !!formData.markdownContent?.trim() },
           { label: 'Entwurf speicherbar', done: canSave },
-          { label: 'Bereit fuer ersten Review', done: requiredDoneCount >= draftRequiredItems.length },
+          { label: 'Bereit für ersten Review', done: requiredDoneCount >= draftRequiredItems.length },
         ];
       default:
         return [];
@@ -901,7 +973,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div className="max-w-2xl space-y-1.5 animate-in fade-in slide-in-from-top-4 duration-500">
                 <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">Neue App erstellen</p>
-                <h1 className="text-2xl font-bold text-foreground">Schritt fuer Schritt zum ersten Entwurf.</h1>
+                <h1 className="text-2xl font-bold text-foreground">Schritt für Schritt zum ersten Entwurf.</h1>
                 <p className="max-w-xl text-sm leading-relaxed text-muted">
                   Weniger Felder pro Schritt, gleicher Datenumfang am Ende.
                 </p>
@@ -934,7 +1006,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       </div>
                       <p className="mt-2 text-[11px] leading-relaxed text-muted">
                         {phase === 'Basisdaten'
-                          ? 'Identitaet und Kurzprofil zuerst.'
+                          ? 'Identität und Kurzprofil zuerst.'
                           : 'Technik, Links und Details danach.'}
                       </p>
                     </div>
@@ -996,7 +1068,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-muted shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
           >
             <ChevronLeft className="w-4 h-4" />
-            Zurueck zur Uebersicht
+            Zurück zur Übersicht
           </button>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1162,14 +1234,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-foreground">Kategorien</p>
-                          <p className="mt-1 text-xs text-muted">Mindestens eine Kategorie ist fuer die Einordnung erforderlich.</p>
+                          <p className="mt-1 text-xs text-muted">Mindestens eine Kategorie ist für die Einordnung erforderlich.</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setShowCategoryPicker((value) => !value)}
                           className="inline-flex items-center gap-1 rounded-full border border-dashed border-accent/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent transition-colors hover:bg-accent/10"
                         >
-                          <Plus className="w-3 h-3" /> Kategorien waehlen
+                          <Plus className="w-3 h-3" /> Kategorien wählen
                         </button>
                       </div>
 
@@ -1285,7 +1357,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Kurzbeschreibung</Label>
                     <textarea
                       className="min-h-[180px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
-                      placeholder="Wofuer steht die App? Welche Wirkung hat sie im Alltag?"
+                      placeholder="Wofür steht die App? Welche Wirkung hat sie im Alltag?"
                       value={formData.description || ''}
                       onChange={(event) => setFormData((previous) => ({ ...previous, description: event.target.value }))}
                     />
@@ -1303,7 +1375,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     </div>
 
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Schlagwoerter</Label>
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Schlagwörter</Label>
                       <div className="flex flex-wrap gap-2">
                         {(formData.tags || []).map((tag) => (
                           <Chip key={tag} size="sm" variant="soft" className="text-xs font-medium bg-surface-secondary border border-border">
@@ -1321,7 +1393,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
                         <input
                           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
-                          placeholder="Tag hinzufuegen..."
+                          placeholder="Tag hinzufügen..."
                           value={tagInput}
                           onChange={(event) => setTagInput(event.target.value)}
                           onKeyDown={(event) => {
@@ -1360,11 +1432,134 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
             {currentCreateStep === 2 && (
               <div className="space-y-6">
+                <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
+                  <p className="text-sm font-semibold text-foreground">GitLab-Repository verknüpfen</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Optional: Verknüpfen Sie die App mit einem GitLab-Repository. README, Metadaten und Deployment-Dateien können direkt hier importiert werden, bevor Sie die nächsten Schritte ausfüllen.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">GitLab-Provider</label>
+                    {creationProviders.length > 0 ? (
+                      <select
+                        value={gitLabForm.providerKey}
+                        onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
+                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      >
+                        <option value="">— Provider wählen —</option>
+                        {creationProviders.map((provider) => (
+                          <option key={provider.key} value={provider.key}>
+                            {provider.label} ({provider.baseUrl})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={gitLabForm.providerKey}
+                        onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
+                        placeholder="Provider-Schlüssel, z. B. plain-gitlab"
+                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      />
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Projektpfad</label>
+                    <input
+                      value={gitLabForm.projectPath}
+                      onChange={(e) => setGitLabForm((p) => ({ ...p, projectPath: e.target.value }))}
+                      placeholder="gruppe/projekt"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Branch oder Ref</label>
+                    <input
+                      value={gitLabForm.branch}
+                      onChange={(e) => setGitLabForm((p) => ({ ...p, branch: e.target.value }))}
+                      placeholder="leer = Default Branch"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">README-Pfad</label>
+                    <input
+                      value={gitLabForm.readmePath}
+                      onChange={(e) => setGitLabForm((p) => ({ ...p, readmePath: e.target.value }))}
+                      placeholder="optional, z. B. docs/README.md"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Helm Values Pfad</label>
+                    <input
+                      value={gitLabForm.helmValuesPath}
+                      onChange={(e) => setGitLabForm((p) => ({ ...p, helmValuesPath: e.target.value }))}
+                      placeholder="optional, z. B. chart/values.yaml"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-border bg-surface p-4">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Datei Pfad</label>
+                    <input
+                      value={gitLabForm.composeFilePath}
+                      onChange={(e) => setGitLabForm((p) => ({ ...p, composeFilePath: e.target.value }))}
+                      placeholder="optional, z. B. docker-compose.yml"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCreationGitLabSync}
+                    disabled={syncingGitLab || !gitLabForm.providerKey?.trim() || !gitLabForm.projectPath?.trim()}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {syncingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudDownload className="h-4 w-4" />}
+                    Jetzt synchronisieren
+                  </button>
+                  {!gitLabForm.projectPath?.trim() && (
+                    <p className="text-xs text-muted">Kein Repository angegeben – dieser Schritt wird übersprungen.</p>
+                  )}
+                </div>
+
+                {gitLabError && (
+                  <div className="rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">{gitLabError}</div>
+                )}
+
+                {gitLabSnapshot && (
+                  <div className="rounded-3xl border border-success/20 bg-success/5 p-5">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 shrink-0 text-success" />
+                        <p className="text-sm font-semibold text-foreground">Synchronisation abgeschlossen – Daten wurden übernommen</p>
+                      </div>
+                      {gitLabSnapshot.syncedAt && (
+                        <span className="text-xs text-muted">{new Date(gitLabSnapshot.syncedAt).toLocaleString('de-DE')}</span>
+                      )}
+                    </div>
+                    <ul className="mt-3 space-y-1 pl-6 text-xs text-muted">
+                      {gitLabSnapshot.readmeContent?.trim() && <li>README → Dokumentation</li>}
+                      {(gitLabSnapshot.description?.trim() || gitLabSnapshot.topics?.length || gitLabSnapshot.license?.trim()) && <li>Beschreibung, Lizenz, Topics → Kurzprofil</li>}
+                      {gitLabSnapshot.projectWebUrl && <li>Repository-Link → Ressourcen</li>}
+                      {gitLabSnapshot.helmValuesContent?.trim() && <li>Helm Values → Bereitstellung</li>}
+                      {gitLabSnapshot.composeFileContent?.trim() && <li>Compose-Datei → Bereitstellung</li>}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentCreateStep === 3 && (
+              <div className="space-y-6">
                 <div className="rounded-3xl border border-border bg-surface p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Nachnutzung</p>
-                      <p className="mt-1 text-xs text-muted">Aktivieren Sie diesen Modus, wenn die App als bestehende Loesung mitgenutzt werden kann.</p>
+                      <p className="mt-1 text-xs text-muted">Aktivieren Sie diesen Modus, wenn die App als bestehende Lösung mitgenutzt werden kann.</p>
                     </div>
                     <Switch
                       isSelected={formData.isReuse || false}
@@ -1375,7 +1570,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   </div>
                   <textarea
                     className="mt-4 min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
-                    placeholder="Welche Stellen koennen die App nachnutzen? Welche Voraussetzungen oder Grenzen gibt es?"
+                    placeholder="Welche Stellen können die App nachnutzen? Welche Voraussetzungen oder Grenzen gibt es?"
                     value={formData.reuseRequirements || ''}
                     onChange={(event) => setFormData((previous) => ({ ...previous, reuseRequirements: event.target.value }))}
                   />
@@ -1385,7 +1580,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-base font-semibold text-foreground">Deployment Assistant</p>
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">Waehlen Sie, welche Installationswege im Store gezeigt werden sollen. Sie koennen die technischen Angaben auch spaeter noch pro Weg ergaenzen.</p>
+                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">Wählen Sie, welche Installationswege im Store gezeigt werden sollen. Sie können die technischen Angaben auch später noch pro Weg ergänzen.</p>
                     </div>
                     <Switch
                       isSelected={formData.hasDeploymentAssistant ?? true}
@@ -1397,9 +1592,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
                   <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {[
-                      { key: 'showHelm', label: 'Helm', description: 'Chart und Values fuer Kubernetes-basierte Installationen.', icon: <Server className="w-4 h-4" /> },
+                      { key: 'showHelm', label: 'Helm', description: 'Chart und Values für Kubernetes-basierte Installationen.', icon: <Server className="w-4 h-4" /> },
                       { key: 'showCompose', label: 'Compose', description: 'Mehrere Container mit gemeinsamem Setup.', icon: <Terminal className="w-4 h-4" /> },
-                      { key: 'showDocker', label: 'Docker', description: 'Direkter Container-Start fuer einfache Deployments.', icon: <Terminal className="w-4 h-4" /> },
+                      { key: 'showDocker', label: 'Docker', description: 'Direkter Container-Start für einfache Deployments.', icon: <Terminal className="w-4 h-4" /> },
                     ].map(({ key, label, description, icon }) => {
                       const active = formData[key as keyof AppConfig] !== false;
                       return (
@@ -1433,7 +1628,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   <div className="space-y-4">
                     {formData.showHelm !== false && (
                       <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
-                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Server className="w-4 h-4 text-accent" /> Helm</div>
+                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Server className="w-4 h-4 text-accent" /> Helm
+                          {gitLabSnapshot?.helmValuesContent?.trim() && (
+                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                              <GitBranch className="h-3 w-3" /> via GitLab
+                            </span>
+                          )}
+                        </div>
                         <div className="grid gap-4 lg:grid-cols-2">
                           <TextField onChange={(value) => setFormData((previous) => ({ ...previous, helmRepo: value }))}>
                             <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Helm Repo</Label>
@@ -1441,7 +1643,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                           </TextField>
                           <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customHelmNote: value }))}>
                             <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Hinweis</Label>
-                            <Input value={formData.customHelmNote || ''} placeholder="Zusatz fuer die Einfuehrung" className="bg-field-background text-sm" />
+                            <Input value={formData.customHelmNote || ''} placeholder="Zusatz für die Einführung" className="bg-field-background text-sm" />
                           </TextField>
                         </div>
                         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -1459,7 +1661,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
                     {formData.showCompose !== false && (
                       <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
-                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground"><Terminal className="w-4 h-4 text-accent" /> Docker Compose</div>
+                        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Terminal className="w-4 h-4 text-accent" /> Docker Compose
+                          {gitLabSnapshot?.composeFileContent?.trim() && (
+                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                              <GitBranch className="h-3 w-3" /> via GitLab
+                            </span>
+                          )}
+                        </div>
                         <div className="grid gap-4 lg:grid-cols-2">
                           <TextField onChange={(value) => setFormData((previous) => ({ ...previous, customComposeCommand: value }))}>
                             <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Setup</Label>
@@ -1497,20 +1706,20 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               </div>
             )}
 
-            {currentCreateStep === 3 && (
+            {currentCreateStep === 4 && (
               <div className="space-y-6">
                 <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
                   <p className="text-sm font-semibold text-foreground">Direkte Einstiege</p>
-                  <p className="mt-1 text-xs text-muted">Sammeln Sie die wichtigsten Einstiege fuer Live-Zugaenge, Code und weitere Informationen.</p>
+                  <p className="mt-1 text-xs text-muted">Sammeln Sie die wichtigsten Einstiege für Live-Zugänge, Code und weitere Informationen.</p>
                 </div>
 
                 <div className="space-y-6">
                   <LinkListEditor
-                    title="Live-Zugaenge"
+                    title="Live-Zugänge"
                     icon={<ExternalLink className="w-4 h-4 text-muted" />}
                     items={formData.liveDemos || []}
                     onChange={(liveDemosValue) => setFormData((previous) => ({ ...previous, liveDemos: liveDemosValue }))}
-                    addLabel="Hinzufuegen"
+                    addLabel="Hinzufügen"
                     placeholderLabel="Produktivumgebung"
                     placeholderUrl="https://..."
                   />
@@ -1519,7 +1728,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     icon={<Github className="w-4 h-4 text-muted" />}
                     items={formData.repositories || []}
                     onChange={(repositoriesValue) => setFormData((previous) => ({ ...previous, repositories: repositoriesValue }))}
-                    addLabel="Hinzufuegen"
+                    addLabel="Hinzufügen"
                     placeholderLabel="Repository"
                     placeholderUrl="https://github.com/..."
                   />
@@ -1528,7 +1737,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     icon={<ExternalLink className="w-4 h-4 text-muted" />}
                     items={formData.customLinks || []}
                     onChange={(customLinksValue) => setFormData((previous) => ({ ...previous, customLinks: customLinksValue }))}
-                    addLabel="Hinzufuegen"
+                    addLabel="Hinzufügen"
                     placeholderLabel="Link"
                     placeholderUrl="https://..."
                   />
@@ -1553,7 +1762,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               </div>
             )}
 
-            {currentCreateStep === 4 && (
+            {currentCreateStep === 5 && (
               <div className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
                   <div className="space-y-6">
@@ -1586,7 +1795,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
                         <input
                           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
-                          placeholder="Technologie hinzufuegen..."
+                          placeholder="Technologie hinzufügen..."
                           value={techInput}
                           onChange={(event) => setTechInput(event.target.value)}
                           onKeyDown={(event) => {
@@ -1625,7 +1834,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Bekanntes Problem</Label>
                       <textarea
                         className="min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
-                        placeholder="Optional: bekannte Einschraenkungen oder Risiken"
+                        placeholder="Optional: bekannte Einschränkungen oder Risiken"
                         value={formData.knownIssue || ''}
                         onChange={(event) => setFormData((previous) => ({ ...previous, knownIssue: event.target.value }))}
                       />
@@ -1636,7 +1845,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-foreground">Ausgezeichnet</p>
-                            <p className="mt-1 text-xs text-muted">Nur fuer Admins: Empfehlung fuer hervorgehobene Apps.</p>
+                            <p className="mt-1 text-xs text-muted">Nur für Admins: Empfehlung für hervorgehobene Apps.</p>
                           </div>
                           <Switch
                             isSelected={formData.isFeatured || false}
@@ -1652,7 +1861,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
                 <div className="rounded-3xl border border-border bg-surface p-5">
                   <p className="text-sm font-semibold text-foreground">Fachliche Details</p>
-                  <p className="mt-1 text-xs text-muted">Nur Felder mit Inhalt erscheinen spaeter in der Detailansicht.</p>
+                  <p className="mt-1 text-xs text-muted">Nur Felder mit Inhalt erscheinen später in der Detailansicht.</p>
                   <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {metaFields.map((field) => (
                       <div key={field.key} className="rounded-2xl border border-border bg-surface-secondary/40 p-4 transition-colors hover:border-accent/30">
@@ -1686,11 +1895,18 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               </div>
             )}
 
-            {currentCreateStep === 5 && (
+            {currentCreateStep === 6 && (
               <div className="space-y-6">
                 <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
-                  <p className="text-sm font-semibold text-foreground">Markdown fuer die Detailansicht</p>
-                  <p className="mt-1 text-xs text-muted">Beschreiben Sie die App ausfuehrlicher. Dieser Schritt bleibt bewusst eigenstaendig, damit die Dokumentation nicht zwischen andere Angaben gequetscht wird.</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">Markdown für die Detailansicht</p>
+                    {gitLabSnapshot?.readmeContent?.trim() && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                        <GitBranch className="h-3 w-3" /> via GitLab
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted">Beschreiben Sie die App ausführlicher. Dieser Schritt bleibt bewusst eigenständig, damit die Dokumentation nicht zwischen andere Angaben gequetscht wird.</p>
                 </div>
                 <TextField onChange={(value) => setFormData((previous) => ({ ...previous, markdownContent: value }))}>
                   <TextArea
@@ -1718,7 +1934,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-lg font-bold text-foreground">{formData.name || 'Neue App'}</p>
-                    <p className="mt-1 text-sm text-muted">{formData.description || 'Kurzbeschreibung folgt in einem der naechsten Schritte.'}</p>
+                    <p className="mt-1 text-sm text-muted">{formData.description || 'Kurzbeschreibung folgt in einem der nächsten Schritte.'}</p>
                   </div>
                 </div>
               </div>
@@ -1748,7 +1964,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                         </Chip>
                       ))
                     ) : (
-                      <p className="text-sm text-muted">Noch keine Kategorien gewaehlt.</p>
+                      <p className="text-sm text-muted">Noch keine Kategorien gewählt.</p>
                     )}
                   </div>
                 </div>
@@ -1791,7 +2007,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       {item.done ? <Check className="w-4 h-4 text-success" /> : <div className="h-4 w-4 rounded-full border border-border" />}
                       {item.label}
                     </div>
-                    <p className="mt-1 text-xs">{item.done ? 'Erledigt' : 'Fuer den aktuellen Stand noch offen.'}</p>
+                    <p className="mt-1 text-xs">{item.done ? 'Erledigt' : 'Für den aktuellen Stand noch offen.'}</p>
                   </div>
                 ))}
               </div>
@@ -1804,14 +2020,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             <div className="min-w-0 flex-1">
               {hasUnsavedChanges && !saveError && !saveSuccess && (
                 <p className="mb-1 truncate text-xs text-muted">
-                  Ungespeicherte Aenderungen. Erfasste Angaben: <span className="font-semibold">{requiredDoneCount}/{requiredItems.length}</span>
+                  Ungespeicherte Änderungen. Erfasste Angaben: <span className="font-semibold">{requiredDoneCount}/{requiredItems.length}</span>
                 </p>
               )}
               {!canProceedCreateStep && !saveError && !saveSuccess && (
-                <p className="truncate text-xs text-muted">Ergaenzen Sie die offenen Punkte in diesem Schritt, bevor Sie weitergehen.</p>
+                <p className="truncate text-xs text-muted">Ergänzen Sie die offenen Punkte in diesem Schritt, bevor Sie weitergehen.</p>
               )}
               {!profileReady && !saveError && !saveSuccess && (
-                <p className="truncate text-xs text-muted">Ihr Benutzerprofil wird noch synchronisiert. Speichern ist moeglich, sobald die Sitzung bestaetigt ist.</p>
+                <p className="truncate text-xs text-muted">Ihr Benutzerprofil wird noch synchronisiert. Speichern ist möglich, sobald die Sitzung bestätigt ist.</p>
               )}
               {saveError && <p className="truncate text-sm font-medium text-danger">{saveError}</p>}
               {saveSuccess && (
@@ -1840,7 +2056,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 disabled={currentCreateStep === 0}
                 className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <ChevronLeft className="w-4 h-4" /> Zurueck
+                <ChevronLeft className="w-4 h-4" /> Zurück
               </button>
               <button
                 type="button"
@@ -1880,13 +2096,13 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
         <ConfirmDialog
           confirmLabel="Seite verlassen"
-          description="Es gibt ungespeicherte Aenderungen. Wenn Sie die Seite jetzt verlassen, gehen diese Anpassungen verloren."
+          description="Es gibt ungespeicherte Änderungen. Wenn Sie die Seite jetzt verlassen, gehen diese Anpassungen verloren."
           isOpen={!!pendingNavigation}
           onConfirm={confirmNavigation}
           onOpenChange={(open) => {
             if (!open) setPendingNavigation(null);
           }}
-          title="Ungespeicherte Aenderungen verwerfen?"
+          title="Ungespeicherte Änderungen verwerfen?"
         />
       </div>
     );
@@ -2685,117 +2901,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
         {/* Deployment tab */}
         <Tabs.Panel id="deployment">
-          <div className="space-y-6">
-            <p className="text-sm text-muted">
-              Hier können technische Installationsanleitungen hinterlegt werden. Dieser Bereich kann unabhängig von Nachnutzung aktiviert werden.
-            </p>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-surface border border-border">
-              <div>
-                <span className="text-sm font-bold text-foreground">Deployment Assistant aktivieren</span>
-                <p className="text-xs text-muted">Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.</p>
-              </div>
-              <Switch
-                isSelected={formData.hasDeploymentAssistant ?? true}
-                onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
-              >
-                <Switch.Control><Switch.Thumb /></Switch.Control>
-              </Switch>
-            </div>
-
-            {formData.hasDeploymentAssistant !== false && (
-              <>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'showHelm', label: 'Helm Chart', icon: <Server className="w-4 h-4" /> },
-                    { key: 'showCompose', label: 'Docker Compose', icon: <Terminal className="w-4 h-4" /> },
-                    { key: 'showDocker', label: 'Docker', icon: <Terminal className="w-4 h-4" /> },
-                  ].map(({ key, label, icon }) => {
-                    const active = formData[key as keyof AppConfig] !== false;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setFormData((p) => ({ ...p, [key]: !p[key as keyof AppConfig] }))}
-                        className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
-                          active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
-                        }`}
-                      >
-                        {icon}
-                        <span className="text-xs font-semibold">{label}</span>
-                        <span className="text-[10px]">{active ? 'Aktiv' : 'Ausgeblendet'}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Helm config */}
-                {formData.showHelm !== false && (
-                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                    <div className="flex items-center gap-2 border-b border-border pb-2">
-                      <Server className="w-4 h-4 text-muted" />
-                      <span className="text-sm font-bold">Helm Chart</span>
-                    </div>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, helmRepo: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Helm Chart Repo</Label>
-                      <Input value={formData.helmRepo || ''} placeholder="oci://..." className="bg-field-background font-mono text-sm" />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmCommand: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Benutzerdefiniertes Helm-Kommando</Label>
-                      <TextArea value={formData.customHelmCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`helm repo add bund https://...\nhelm install ${formData.id || 'appname'} bund/${formData.id || 'appname'}`} />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmValues: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Values.yaml Inhalt</Label>
-                      <TextArea value={formData.customHelmValues || ''} className="bg-field-background font-mono text-sm" placeholder="image:\n  tag: latest\nreplicas: 1" />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customHelmNote: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                      <Input value={formData.customHelmNote || ''} placeholder="Zusätzliche Hinweise..." className="bg-field-background" />
-                    </TextField>
-                  </div>
-                )}
-
-                {/* Compose config */}
-                {formData.showCompose !== false && (
-                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                    <div className="flex items-center gap-2 border-b border-border pb-2">
-                      <Terminal className="w-4 h-4 text-muted" />
-                      <span className="text-sm font-bold">Docker Compose</span>
-                    </div>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeCommand: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Compose-Setup</Label>
-                      <TextArea value={formData.customComposeCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`version: '3.8'\nservices:\n  ${formData.id || 'app'}:\n    image: ...`} />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customComposeNote: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                      <Input value={formData.customComposeNote || ''} className="bg-field-background" />
-                    </TextField>
-                  </div>
-                )}
-
-                {/* Docker config */}
-                {formData.showDocker !== false && (
-                  <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
-                    <div className="flex items-center gap-2 border-b border-border pb-2">
-                      <Terminal className="w-4 h-4 text-muted" />
-                      <span className="text-sm font-bold">Docker</span>
-                    </div>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, dockerRepo: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker Image</Label>
-                      <Input value={formData.dockerRepo || ''} placeholder="image:latest" className="bg-field-background font-mono text-sm" />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerCommand: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Docker-Kommando</Label>
-                      <TextArea value={formData.customDockerCommand || ''} className="bg-field-background font-mono text-sm" placeholder={`docker pull ...\ndocker run -d --name ${formData.id || 'app'} -p 8080:80 ...`} />
-                    </TextField>
-                    <TextField onChange={(val) => setFormData((p) => ({ ...p, customDockerNote: val }))}>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Hinweis</Label>
-                      <Input value={formData.customDockerNote || ''} className="bg-field-background" />
-                    </TextField>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <DeploymentTab formData={formData} setFormData={setFormData} />
         </Tabs.Panel>
 
         {/* Bewertungen tab */}
@@ -2820,431 +2926,50 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         </Tabs.Panel>
 
         <Tabs.Panel id="gitlab">
-          <div className="space-y-6">
-            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-secondary/40 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Repository-Import via GitLab</p>
-                  <p className="text-xs text-muted mt-1">
-                    README, Metadaten und ausgewählte Repository-Dateien werden als Import-Snapshot geladen und bei Bedarf in den Editor übernommen.
-                  </p>
-                </div>
-                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${gitLabStatus.className}`}>
-                  {gitLabStatus.label}
-                </span>
-              </div>
-              {gitLabIntegration?.linked && (
-                <div className="flex flex-col gap-1 text-xs text-muted md:flex-row md:items-center md:justify-between">
-                  <span>
-                    {gitLabIntegration.providerLabel || gitLabIntegration.providerKey} · {gitLabIntegration.projectPath}
-                  </span>
-                  <span>
-                    Letzte Synchronisation: {gitLabIntegration.lastSyncedAt ? new Date(gitLabIntegration.lastSyncedAt).toLocaleString('de-DE') : 'noch nie'}
-                  </span>
-                </div>
-              )}
-              {gitLabIntegration?.approvalRequired && (
-                <p className="text-xs text-warning">
-                  Für diese App gibt es manuelle Änderungen. Neue GitLab-Syncs werden als freizugebende Änderung vorgemerkt, bis ein Owner oder Admin sie bestätigt.
-                </p>
-              )}
-            </div>
-
-            {loadingGitLab ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
-                <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                GitLab-Daten werden geladen...
-              </div>
-            ) : !hasGitLabProviders && !gitLabIntegration?.linked ? (
-              <div className="rounded-2xl border border-warning/20 bg-warning/5 p-5 text-sm text-warning">
-                Es ist noch kein nutzbarer GitLab-Provider im Backend konfiguriert.
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">GitLab-Provider</label>
-                    <select
-                      value={gitLabForm.providerKey}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, providerKey: event.target.value }))}
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    >
-                      {(gitLabIntegration?.availableProviders || []).map((provider) => (
-                        <option key={provider.key} value={provider.key}>
-                          {provider.label} ({provider.baseUrl})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Projektpfad</label>
-                    <input
-                      value={gitLabForm.projectPath}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, projectPath: event.target.value }))}
-                      placeholder="gruppe/projekt"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Branch oder Ref</label>
-                    <input
-                      value={gitLabForm.branch}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, branch: event.target.value }))}
-                      placeholder="leer = Default Branch"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">README-Pfad</label>
-                    <input
-                      value={gitLabForm.readmePath}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, readmePath: event.target.value }))}
-                      placeholder="optional, z. B. docs/README.md"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Helm Values Pfad</label>
-                    <input
-                      value={gitLabForm.helmValuesPath}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, helmValuesPath: event.target.value }))}
-                      placeholder="optional, z. B. chart/values.yaml"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Datei Pfad</label>
-                    <input
-                      value={gitLabForm.composeFilePath}
-                      onChange={(event) => setGitLabForm((prev) => ({ ...prev, composeFilePath: event.target.value }))}
-                      placeholder="optional, z. B. docker-compose.yml"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    />
-                  </div>
-                </div>
-
-                {gitLabError && (
-                  <div className="rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
-                    {gitLabError}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveGitLabLink}
-                    disabled={savingGitLab || !gitLabForm.providerKey || !gitLabForm.projectPath.trim()}
-                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {savingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Verknüpfung speichern
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSyncGitLab}
-                    disabled={syncingGitLab || savingGitLab || !gitLabIntegration?.linked}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {syncingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudDownload className="h-4 w-4" />}
-                    Jetzt synchronisieren
-                  </button>
-                  {gitLabIntegration?.approvalRequired && gitLabIntegration?.pendingSnapshot && (
-                    <button
-                      type="button"
-                      onClick={handleApproveGitLab}
-                      disabled={savingGitLab || syncingGitLab}
-                      className="inline-flex items-center gap-2 rounded-xl border border-success/20 bg-success/10 px-4 py-2 text-sm font-semibold text-success transition-colors hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Check className="h-4 w-4" />
-                      Sync freigeben
-                    </button>
-                  )}
-                  {gitLabIntegration?.linked && (
-                    <button
-                      type="button"
-                      onClick={handleDeleteGitLabLink}
-                      disabled={savingGitLab || syncingGitLab}
-                      className="inline-flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/5 px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Verknüpfung lösen
-                    </button>
-                  )}
-                  {gitLabIntegration?.projectWebUrl && (
-                    <a
-                      href={gitLabIntegration.projectWebUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Projekt öffnen
-                    </a>
-                  )}
-                </div>
-
-                {gitLabSnapshot && (
-                  <div className="space-y-5 rounded-3xl border border-border bg-surface p-5">
-                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {gitLabIntegration?.approvalRequired ? 'Freizugebender GitLab-Snapshot' : 'Letzter Import-Snapshot'}
-                        </p>
-                        <p className="text-xs text-muted mt-1">
-                          {gitLabIntegration?.approvalRequired
-                            ? 'Dieser Snapshot wird erst nach Freigabe automatisch auf die App angewendet.'
-                            : 'Der zuletzt angewendete Snapshot aus GitLab.'}
-                        </p>
-                      </div>
-                      {gitLabSnapshot.syncedAt && (
-                        <span className="text-xs text-muted">
-                          Snapshot vom {new Date(gitLabSnapshot.syncedAt).toLocaleString('de-DE')}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README</p>
-                        <p className="mt-2 text-sm text-foreground">
-                          {gitLabSnapshot.readmeContent?.trim() ? 'README gefunden und bereit zum Übernehmen.' : 'Keine README im Snapshot.'}
-                        </p>
-                        {!gitLabIntegration?.approvalRequired && (
-                          <button
-                            type="button"
-                            onClick={handleApplyGitLabReadme}
-                            disabled={!gitLabSnapshot.readmeContent?.trim()}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <BookOpen className="h-3.5 w-3.5" />
-                            In Dokumentation übernehmen
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Repository-Metadaten</p>
-                        <p className="mt-2 text-sm text-foreground">
-                          Beschreibung, Lizenz, Topics und Repository-Link können in das Formular übernommen werden.
-                        </p>
-                        {!gitLabIntegration?.approvalRequired && (
-                          <button
-                            type="button"
-                            onClick={handleApplyGitLabMetadata}
-                            disabled={!gitLabSnapshot.description?.trim() && !(gitLabSnapshot.topics?.length) && !gitLabSnapshot.license?.trim() && !gitLabSnapshot.projectWebUrl}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <GitBranch className="h-3.5 w-3.5" />
-                            In Metadaten übernehmen
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Deployment-Dateien</p>
-                        <p className="mt-2 text-sm text-foreground">
-                          Helm Values und Compose-Datei werden in die Deployment-Felder des Editors übernommen.
-                        </p>
-                        {!gitLabIntegration?.approvalRequired && (
-                          <button
-                            type="button"
-                            onClick={handleApplyGitLabDeployment}
-                            disabled={!gitLabSnapshot.helmValuesContent?.trim() && !gitLabSnapshot.composeFileContent?.trim()}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Server className="h-3.5 w-3.5" />
-                            In Deployment übernehmen
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {gitLabSnapshot.warnings && gitLabSnapshot.warnings.length > 0 && (
-                      <div className="rounded-2xl border border-warning/20 bg-warning/5 p-4 text-sm text-warning">
-                        <p className="font-semibold">Hinweise aus dem letzten Import</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-5">
-                          {gitLabSnapshot.warnings.map((warning) => (
-                            <li key={warning}>{warning}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {gitLabSnapshot.readmeContent?.trim() && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README Vorschau</p>
-                        <textarea
-                          readOnly
-                          value={gitLabSnapshot.readmeContent}
-                          className="min-h-[220px] w-full rounded-2xl border border-border bg-field-background px-4 py-3 font-mono text-xs text-foreground outline-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <GitLabTab
+            initialApp={initialApp}
+            isNew={isNew}
+            gitLabIntegration={gitLabIntegration}
+            gitLabForm={gitLabForm}
+            setGitLabForm={setGitLabForm}
+            loadingGitLab={loadingGitLab}
+            savingGitLab={savingGitLab}
+            syncingGitLab={syncingGitLab}
+            gitLabError={gitLabError}
+            hasGitLabProviders={hasGitLabProviders}
+            gitLabStatus={gitLabStatus}
+            gitLabSnapshot={gitLabSnapshot}
+            onSave={handleSaveGitLabLink}
+            onSync={handleSyncGitLab}
+            onDelete={handleDeleteGitLabLink}
+            onApprove={handleApproveGitLab}
+            onApplyReadme={handleApplyGitLabReadme}
+            onApplyMetadata={handleApplyGitLabMetadata}
+            onApplyDeployment={handleApplyGitLabDeployment}
+          />
         </Tabs.Panel>
 
         {/* Verwandte Apps + Gruppen tab */}
         <Tabs.Panel id="related">
-          {isNew ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-surface-secondary border border-border flex items-center justify-center">
-                <Link2 className="w-6 h-6 text-muted" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">App zuerst speichern</p>
-                <p className="text-xs text-muted mt-1">Verknüpfte Apps und Gruppen können nach dem ersten Speichern eingerichtet werden.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-8">
-              {/* Groups display (if any) */}
-              {isAdmin && appGroupIds.size > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {groups.filter(g => appGroupIds.has(g.id)).map(g => (
-                    <Chip key={g.id} size="sm" variant="soft" color="accent" className="text-xs font-semibold">
-                      {g.name}
-                    </Chip>
-                  ))}
-                </div>
-              )}
-
-              {/* Current related apps grid */}
-              {relatedApps.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {relatedApps.map(related => (
-                    <div
-                      key={related.id}
-                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                        {related.icon?.startsWith('http') ? (
-                          <Image src={related.icon} alt={related.name} width={40} height={40} className="object-contain p-1" unoptimized />
-                        ) : (
-                          related.icon || '🏛️'
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
-                        <p className="text-xs text-muted flex items-center gap-1">
-                          <Link2 className="w-3 h-3" /> {related.id}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRelated(related.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-danger/10 text-danger"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Search and add related apps */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-muted uppercase tracking-wider">App suchen und verknüpfen</span>
-                <input
-                  className="w-full bg-field-background rounded-xl px-4 py-2.5 text-sm border border-border outline-none focus:border-accent transition-colors"
-                  placeholder="App-Name oder ID suchen..."
-                  value={relatedSearch}
-                  onChange={(e) => setRelatedSearch(e.target.value)}
-                />
-                {relatedSearch && (
-                  <div className="border border-border rounded-xl bg-surface overflow-hidden max-h-64 overflow-y-auto">
-                    {filteredRelatable.slice(0, 10).map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => handleAddRelated(a)}
-                        className="w-full flex items-center gap-3 p-3 hover:bg-surface-secondary transition-colors text-left border-b border-border/50 last:border-0"
-                      >
-                        <span className="text-xl shrink-0">{a.icon?.startsWith('http') ? '🏛️' : a.icon || '🏛️'}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                          <p className="text-xs text-muted">{a.categories?.join(', ')}</p>
-                        </div>
-                        {addingRelated ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />
-                        ) : (
-                          <Plus className="w-4 h-4 text-accent shrink-0" />
-                        )}
-                      </button>
-                    ))}
-                    {filteredRelatable.length === 0 && (
-                      <p className="p-4 text-sm text-muted text-center">Keine weiteren Apps gefunden</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Groups management (admin only) */}
-              {isAdmin && (
-                <div className="space-y-4 pt-6 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Grip className="w-4 h-4 text-accent" />
-                    <span className="text-sm font-bold text-foreground">Gruppen</span>
-                  </div>
-                  <p className="text-xs text-muted">Ordnen Sie diese App einer oder mehreren Gruppen zu.</p>
-
-                  <div className="space-y-2">
-                    {groups.map((group) => {
-                      const inGroup = appGroupIds.has(group.id);
-                      return (
-                        <div
-                          key={group.id}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                            inGroup ? 'bg-accent/5 border-accent/30' : 'bg-surface border-border'
-                          }`}
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{group.name}</p>
-                            {group.description && <p className="text-xs text-muted">{group.description}</p>}
-                          </div>
-                          <Switch isSelected={inGroup} onChange={() => handleToggleGroup(group.id)}>
-                            <Switch.Control><Switch.Thumb /></Switch.Control>
-                          </Switch>
-                        </div>
-                      );
-                    })}
-                    {groups.length === 0 && (
-                      <p className="text-sm text-muted text-center py-4 bg-surface rounded-xl border border-dashed border-border/60">
-                        Noch keine Gruppen erstellt.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      className="flex-1 bg-field-background rounded-xl px-4 py-2 text-sm border border-border outline-none focus:border-accent transition-colors"
-                      placeholder="Neue Gruppe erstellen..."
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleCreateGroup(); }}
-                    />
-                    <button
-                      onClick={handleCreateGroup}
-                      disabled={!newGroupName.trim() || creatingGroup}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50"
-                    >
-                      {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                      Erstellen
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          </Tabs.Panel>
+          <RelatedAppsTab
+            isNew={isNew}
+            isAdmin={isAdmin}
+            relatedApps={relatedApps}
+            groups={groups}
+            appGroupIds={appGroupIds}
+            relatedSearch={relatedSearch}
+            setRelatedSearch={setRelatedSearch}
+            filteredRelatable={filteredRelatable}
+            addingRelated={addingRelated}
+            newGroupName={newGroupName}
+            setNewGroupName={setNewGroupName}
+            creatingGroup={creatingGroup}
+            onAddRelated={handleAddRelated}
+            onRemoveRelated={handleRemoveRelated}
+            onToggleGroup={handleToggleGroup}
+            onCreateGroup={handleCreateGroup}
+          />
+        </Tabs.Panel>
       </Tabs>
           </>
           )}

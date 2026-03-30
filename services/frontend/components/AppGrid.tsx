@@ -48,9 +48,10 @@ export function AppGrid({ initialApps }: AppGridProps) {
     setInputValue((prev) => (prev !== urlQ ? urlQ : prev));
   }, [searchParams]);
 
-  // Server-side search: debounce 300ms, fire when query changes
+  // Server-side filtering: debounce 300ms, fire when any server-filterable param changes
   useEffect(() => {
-    if (!searchQuery) {
+    const hasServerFilter = searchQuery || selectedCategory || selectedStatus || selectedGroup;
+    if (!hasServerFilter) {
       setServerResults(null);
       setServerLoading(false);
       return;
@@ -58,7 +59,12 @@ export function AppGrid({ initialApps }: AppGridProps) {
     setServerLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetchApi(`/apps?q=${encodeURIComponent(searchQuery)}`);
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('q', searchQuery);
+        if (selectedCategory) params.set('category', selectedCategory);
+        if (selectedStatus) params.set('status', selectedStatus);
+        if (selectedGroup) params.set('group', selectedGroup);
+        const res = await fetchApi(`/apps?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
           setServerResults(Array.isArray(data) ? data : []);
@@ -68,7 +74,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, selectedCategory, selectedStatus, selectedGroup]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -111,7 +117,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const filteredApps = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return sourceApps.filter((app) => {
-      // Skip client-side text search when server already filtered
+      // When server already filtered by these params, skip redundant client checks
       const matchesSearch = serverResults
         ? true
         : (!query ||
@@ -121,12 +127,13 @@ export function AppGrid({ initialApps }: AppGridProps) {
             app.categories?.some(cat => cat.toLowerCase().includes(query)) ||
             app.tags?.some(tag => tag.toLowerCase().includes(query)));
 
-      const matchesCategory = !selectedCategory || app.categories?.includes(selectedCategory);
-      const matchesStatus = !selectedStatus || app.status === selectedStatus;
+      const matchesCategory = serverResults ? true : (!selectedCategory || app.categories?.includes(selectedCategory));
+      const matchesStatus = serverResults ? true : (!selectedStatus || app.status === selectedStatus);
+      const matchesGroup = serverResults ? true : (!selectedGroup || app.appGroups?.some(g => g.id === selectedGroup));
+
       const matchesType = !selectedType ||
         (selectedType === 'reuse' && app.isReuse) ||
         (selectedType === 'install' && app.hasDeploymentAssistant !== false);
-      const matchesGroup = !selectedGroup || app.appGroups?.some(g => g.id === selectedGroup);
       const matchesFavorites = !showFavoritesOnly || favorites.has(app.id);
 
       return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup && matchesFavorites;

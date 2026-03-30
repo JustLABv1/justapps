@@ -20,6 +20,11 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			platform.UpdateSettings(c, db)
 		})
 
+		// Auth-only: available providers for app editors (non-sensitive summaries)
+		settings.GET("/gitlab/providers/available", middlewares.Auth(db), func(c *gin.Context) {
+			platform.ListAvailableGitLabProviders(c, db)
+		})
+
 		gitlabProviders := settings.Group("/gitlab/providers")
 		gitlabProviders.Use(middlewares.Admin(db))
 		{
