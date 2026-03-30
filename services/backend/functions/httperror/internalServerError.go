@@ -6,10 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+import (
+	"log"
+)
+
 func InternalServerError(context *gin.Context, message string, err error) {
 	errorMessage := "Unknown error"
 	if err != nil {
-		errorMessage = err.Error()
+		 errorMessage = err.Error()
 	}
+	// Fehlerursache ins Backend-Log schreiben
+	log.Printf("[ERROR] %s: %s", message, errorMessage)
 	context.JSON(http.StatusInternalServerError, gin.H{"message": message, "error": errorMessage})
 }
