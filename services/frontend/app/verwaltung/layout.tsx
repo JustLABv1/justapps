@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { Link } from '@heroui/react';
-import { Activity, KeyRound, LayoutDashboard, Layers, Layers2, Loader2, Settings, Users } from 'lucide-react';
+import { Activity, KeyRound, Layers, Layers2, LayoutDashboard, Loader2, Settings, Users } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -43,20 +43,20 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
   if (!user || user.role !== 'admin') return null;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col gap-1 mb-6">
+    <div className="relative left-1/2 w-screen max-w-[1720px] -translate-x-1/2 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+      <div className="mb-8 flex flex-col gap-1">
         <h1 className="text-3xl font-bold text-foreground tracking-tight">Verwaltung</h1>
         <p className="text-sm text-muted">Plattformverwaltung für Administratoren</p>
       </div>
 
-      <nav className="flex gap-1 border-b border-border mb-8" aria-label="Navigation der Verwaltung">
+      <nav className="mb-10 flex gap-1 overflow-x-auto border-b border-border pb-1" aria-label="Navigation der Verwaltung">
         {adminNavLinks.map(({ href, label, icon: Icon, exact }) => {
           const isActive = exact ? pathname === href : (pathname === href || pathname.startsWith(href + '/'));
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors no-underline border-b-2 -mb-px ${
+              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors no-underline ${
                 isActive
                   ? 'text-accent border-accent'
                   : 'text-muted border-transparent hover:text-foreground hover:border-border'
@@ -69,7 +69,9 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
         })}
       </nav>
 
-      {children}
+      <div className="pb-6">
+        {children}
+      </div>
     </div>
   );
 }

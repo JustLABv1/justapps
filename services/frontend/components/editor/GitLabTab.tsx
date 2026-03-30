@@ -1,6 +1,6 @@
 'use client';
 
-import { AppConfig, GitLabIntegrationState, GitLabSyncSnapshot } from '@/config/apps';
+import { AppConfig, AppLink, GitLabIntegrationState, GitLabSyncSnapshot } from '@/config/apps';
 import { BookOpen, Check, CloudDownload, ExternalLink, GitBranch, Loader2, Save, Server, Trash2 } from 'lucide-react';
 
 export interface GitLabFormState {
@@ -13,8 +13,7 @@ export interface GitLabFormState {
 }
 
 interface GitLabTabProps {
-  initialApp: AppConfig | null;
-  isNew: boolean;
+  currentApp: Partial<AppConfig> | null;
   gitLabIntegration: GitLabIntegrationState | null;
   gitLabForm: GitLabFormState;
   setGitLabForm: React.Dispatch<React.SetStateAction<GitLabFormState>>;
@@ -34,13 +33,175 @@ interface GitLabTabProps {
   onApplyDeployment: () => void;
 }
 
+type ApprovalDiffItem = {
+  id: string;
+  label: string;
+  current: string;
+  next: string;
+  multiline?: boolean;
+  code?: boolean;
+};
+
+function normalizeValue(value?: string | null) {
+  return value?.trim() || '';
+}
+
+function mergeTags(currentTags: string[] | undefined, nextTopics: string[] | undefined) {
+  const mergedTags: string[] = [];
+  const seenTags = new Set<string>();
+
+  for (const tag of currentTags || []) {
+    const normalizedTag = tag.trim();
+    if (!normalizedTag || seenTags.has(normalizedTag)) {
+      continue;
+    }
+    seenTags.add(normalizedTag);
+    mergedTags.push(normalizedTag);
+  }
+
+  for (const topic of nextTopics || []) {
+    const normalizedTopic = topic.trim();
+    if (!normalizedTopic || seenTags.has(normalizedTopic)) {
+      continue;
+    }
+    seenTags.add(normalizedTopic);
+    mergedTags.push(normalizedTopic);
+  }
+
+  return mergedTags;
+}
+
+function mergeRepositories(repositories: AppLink[] | undefined, projectWebUrl?: string, providerLabel?: string) {
+  const normalizedProjectWebUrl = normalizeValue(projectWebUrl);
+  const nextRepositories = [...(repositories || [])];
+
+  if (!normalizedProjectWebUrl) {
+    return nextRepositories;
+  }
+
+  const nextLabel = normalizeValue(providerLabel) || 'GitLab';
+  const existingRepository = nextRepositories.find((repository) => normalizeValue(repository.url) === normalizedProjectWebUrl);
+  if (existingRepository) {
+    existingRepository.label = nextLabel;
+    return nextRepositories;
+  }
+
+  nextRepositories.push({ label: nextLabel, url: normalizedProjectWebUrl });
+  return nextRepositories;
+}
+
+function formatList(values: string[] | undefined, emptyLabel = 'Keine Einträge') {
+  if (!values || values.length === 0) {
+    return emptyLabel;
+  }
+
+  return values.join(', ');
+}
+
+function formatRepositories(repositories: AppLink[] | undefined) {
+  if (!repositories || repositories.length === 0) {
+    return 'Keine Repository-Links';
+  }
+
+  return repositories
+    .map((repository) => `${normalizeValue(repository.label) || 'Link'}: ${normalizeValue(repository.url)}`)
+    .join('\n');
+}
+
+function buildApprovalDiffItems(currentApp: Partial<AppConfig> | null, snapshot: GitLabSyncSnapshot, providerLabel?: string) {
+  const currentRepositories = currentApp?.repositories || [];
+  const nextRepositories = mergeRepositories(currentRepositories, snapshot.projectWebUrl, providerLabel);
+  const currentTags = currentApp?.tags || [];
+  const nextTags = mergeTags(currentTags, snapshot.topics);
+
+  const items: ApprovalDiffItem[] = [
+    {
+      id: 'description',
+      label: 'Beschreibung',
+      current: normalizeValue(currentApp?.description),
+      next: normalizeValue(snapshot.description) || normalizeValue(currentApp?.description),
+      multiline: true,
+    },
+    {
+      id: 'license',
+      label: 'Lizenz',
+      current: normalizeValue(currentApp?.license),
+      next: normalizeValue(snapshot.license) || normalizeValue(currentApp?.license),
+    },
+    {
+      id: 'tags',
+      label: 'Tags',
+      current: formatList(currentTags, 'Keine Tags'),
+      next: formatList(nextTags, 'Keine Tags'),
+    },
+    {
+      id: 'repositories',
+      label: 'Repository-Links',
+      current: formatRepositories(currentRepositories),
+      next: formatRepositories(nextRepositories),
+      multiline: true,
+      code: true,
+    },
+    {
+      id: 'readme',
+      label: 'README / Dokumentation',
+      current: normalizeValue(currentApp?.markdownContent),
+      next: normalizeValue(snapshot.readmeContent) || normalizeValue(currentApp?.markdownContent),
+      multiline: true,
+      code: true,
+    },
+    {
+      id: 'helm-values',
+      label: 'Helm Values',
+      current: normalizeValue(currentApp?.customHelmValues),
+      next: normalizeValue(snapshot.helmValuesContent) || normalizeValue(currentApp?.customHelmValues),
+      multiline: true,
+      code: true,
+    },
+    {
+      id: 'compose-file',
+      label: 'Compose-Datei',
+      current: normalizeValue(currentApp?.customComposeCommand),
+      next: normalizeValue(snapshot.composeFileContent) || normalizeValue(currentApp?.customComposeCommand),
+      multiline: true,
+      code: true,
+    },
+  ];
+
+  return items.filter((item) => item.current !== item.next);
+}
+
+function renderDiffValue(item: ApprovalDiffItem, value: string) {
+  const displayValue = value || 'Kein Wert';
+
+  if (item.multiline || item.code) {
+    return (
+      <textarea
+        readOnly
+        value={displayValue}
+        className={`min-h-[160px] w-full rounded-2xl border border-border px-4 py-3 text-xs outline-none ${item.code ? 'bg-field-background font-mono text-foreground' : 'bg-surface-secondary/40 text-foreground'}`}
+      />
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface-secondary/40 px-4 py-3 text-sm text-foreground whitespace-pre-wrap">
+      {displayValue}
+    </div>
+  );
+}
+
 export function GitLabTab({
-  gitLabIntegration, gitLabForm, setGitLabForm,
+  currentApp, gitLabIntegration, gitLabForm, setGitLabForm,
   loadingGitLab, savingGitLab, syncingGitLab, gitLabError,
   hasGitLabProviders, gitLabStatus, gitLabSnapshot,
   onSave, onSync, onDelete, onApprove,
   onApplyReadme, onApplyMetadata, onApplyDeployment,
 }: GitLabTabProps) {
+  const approvalDiffItems = gitLabIntegration?.approvalRequired && gitLabIntegration.pendingSnapshot
+    ? buildApprovalDiffItems(currentApp, gitLabIntegration.pendingSnapshot, gitLabIntegration.providerLabel || gitLabIntegration.providerKey)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-secondary/40 p-4">
@@ -224,6 +385,42 @@ export function GitLabTab({
                   </span>
                 )}
               </div>
+
+              {gitLabIntegration?.approvalRequired && gitLabIntegration.pendingSnapshot && (
+                <div className="space-y-4 rounded-2xl border border-warning/20 bg-warning/5 p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">Freigabe-Vergleich</p>
+                    <p className="text-xs text-muted">
+                      Links steht der aktuelle App-Stand, rechts der Stand nach dieser GitLab-Freigabe.
+                    </p>
+                  </div>
+
+                  {approvalDiffItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {approvalDiffItems.map((item) => (
+                        <div key={item.id} className="rounded-2xl border border-border bg-surface p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{item.label}</p>
+                          <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Aktuell</p>
+                              {renderDiffValue(item, item.current)}
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-success">Nach Freigabe</p>
+                              {renderDiffValue(item, item.next)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
+                      Keine inhaltlichen Unterschiede erkannt. Die Freigabe übernimmt den vorgemerkten Snapshot ohne sichtbare Feldänderung im Editor.
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex flex-col rounded-2xl border border-border bg-surface-secondary/60 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README</p>
