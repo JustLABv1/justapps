@@ -38,6 +38,18 @@ func ListGitLabProviders(c *gin.Context, db *bun.DB) {
 	c.JSON(200, providers)
 }
 
+// ListAvailableGitLabProviders returns the non-sensitive provider summaries for
+// authenticated users (e.g. to populate a dropdown in the app-creation wizard).
+func ListAvailableGitLabProviders(c *gin.Context, db *bun.DB) {
+	providers, err := gitlabsync.ListProviderSummaries(c.Request.Context(), db, config.Config)
+	if err != nil {
+		httperror.InternalServerError(c, "GitLab-Provider konnten nicht geladen werden", err)
+		return
+	}
+
+	c.JSON(200, providers)
+}
+
 func UpdateGitLabProvider(c *gin.Context, db *bun.DB) {
 	providerKey := strings.TrimSpace(c.Param("key"))
 	if providerKey == "" {

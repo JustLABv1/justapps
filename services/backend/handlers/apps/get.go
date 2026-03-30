@@ -71,6 +71,11 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 	apps := make([]models.Apps, 0)
 	q := c.Query("q")
+	category := c.Query("category")
+	techStack := c.Query("techStack")
+	statusFilter := c.Query("status")
+	groupID := c.Query("group")
+
 	query := db.NewSelect().
 		Model(&apps).
 		Relation("Owner").
@@ -82,6 +87,24 @@ func GetApps(c *gin.Context, db *bun.DB) {
 			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ? OR LOWER(a.authority) LIKE ?",
 			pattern, pattern, pattern,
 		)
+	}
+
+	if category != "" {
+		query = query.Where("? = ANY(a.categories)", category)
+	}
+
+	if techStack != "" {
+		query = query.Where("? = ANY(a.tech_stack)", techStack)
+	}
+
+	if statusFilter != "" {
+		query = query.Where("a.status = ?", statusFilter)
+	}
+
+	if groupID != "" {
+		query = query.
+			Join("JOIN app_group_members agm ON agm.app_id = a.id").
+			Where("agm.app_group_id::text = ?", groupID)
 	}
 
 	err := query.Scan(c)
