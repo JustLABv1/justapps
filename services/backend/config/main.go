@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -141,6 +142,15 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 	// Unmarshal configuration
 	if err := cm.viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Override per-provider tokens from env vars: BACKEND_GITLAB_TOKEN_<KEY>
+	// (KEY is uppercased with hyphens replaced by underscores)
+	for i := range config.GitLab.Providers {
+		key := strings.ToUpper(strings.ReplaceAll(config.GitLab.Providers[i].Key, "-", "_"))
+		if token := os.Getenv("BACKEND_GITLAB_TOKEN_" + key); token != "" {
+			config.GitLab.Providers[i].Token = token
+		}
 	}
 
 	// Store the config
