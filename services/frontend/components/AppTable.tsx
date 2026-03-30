@@ -73,9 +73,9 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
 
   const topContent = useMemo(() => {
     return (
-      <div className="flex flex-col gap-4 mb-4">
+      <div className="mb-5 flex flex-col gap-4">
         <div className="flex justify-between gap-3 items-center">
-          <div className="relative w-full sm:max-w-[44%]">
+          <div className="relative w-full sm:max-w-[32rem]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none z-10" />
             <Input
               className="w-full pl-9"
@@ -149,16 +149,34 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
     }
   };
 
+  const getGitLabStatusMeta = (status?: string) => {
+    switch (status) {
+      case 'success':
+        return { label: 'Synchronisiert', className: 'bg-success/10 text-success border border-success/20' };
+      case 'warning':
+        return { label: 'Mit Hinweisen', className: 'bg-warning/10 text-warning border border-warning/20' };
+      case 'pending_approval':
+        return { label: 'Wartet auf Freigabe', className: 'bg-warning/10 text-warning border border-warning/20' };
+      case 'error':
+        return { label: 'Fehler', className: 'bg-danger/10 text-danger border border-danger/20' };
+      case 'never':
+        return { label: 'Noch nicht synchronisiert', className: 'bg-surface-secondary text-muted border border-border' };
+      default:
+        return { label: 'Unbekannt', className: 'bg-surface-secondary text-muted border border-border' };
+    }
+  };
+
   return (
     <div className="w-full">
       {topContent}
       <Table variant="secondary">
         <Table.ScrollContainer>
-          <Table.Content aria-label="Tabelle der Apps" className="min-w-[800px]">
+          <Table.Content aria-label="Tabelle der Apps" className="min-w-[1120px] xl:min-w-0">
             <Table.Header>
               <Table.Column isRowHeader>App</Table.Column>
               <Table.Column>Kategorien</Table.Column>
               <Table.Column>Status</Table.Column>
+              <Table.Column>GitLab Sync</Table.Column>
               <Table.Column>Lösung</Table.Column>
               <Table.Column>Besitzer</Table.Column>
               <Table.Column className="text-right">Aktionen</Table.Column>
@@ -219,6 +237,32 @@ export function AppTable({ apps, handleEditApp, handleDeleteApp, handleToggleApp
                         </Chip>
                       )}
                     </div>
+                  </Table.Cell>
+                  <Table.Cell>
+                    {app.gitLabSync?.linked ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Chip size="sm" variant="soft" className={`font-bold text-[9px] uppercase tracking-wider ${getGitLabStatusMeta(app.gitLabSync.lastSyncStatus).className}`}>
+                            {getGitLabStatusMeta(app.gitLabSync.lastSyncStatus).label}
+                          </Chip>
+                          {app.gitLabSync.approvalRequired && (
+                            <Chip size="sm" variant="soft" className="bg-warning/10 text-warning border border-warning/20 font-bold text-[9px] uppercase tracking-wider">
+                              Manuelle Änderungen
+                            </Chip>
+                          )}
+                        </div>
+                        <div className="flex flex-col text-[10px] text-muted">
+                          <span>{app.gitLabSync.providerKey} · {app.gitLabSync.projectPath}</span>
+                          <span>
+                            {app.gitLabSync.lastSyncedAt
+                              ? `Zuletzt synchronisiert: ${new Date(app.gitLabSync.lastSyncedAt).toLocaleString('de-DE')}`
+                              : 'Noch kein erfolgreicher Lauf'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted italic">Nicht verknüpft</span>
+                    )}
                   </Table.Cell>
                   <Table.Cell>
                     {app.isFeatured && (

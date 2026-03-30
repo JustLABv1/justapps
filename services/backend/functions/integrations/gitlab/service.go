@@ -142,12 +142,42 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 }
 
 func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID string) error {
+	var app models.Apps
+	if err := db.NewSelect().Model(&app).Where("id = ?", appID).Scan(ctx); err != nil {
+		return err
+	}
+
+	return MarkManualChangePendingApprovalForApp(ctx, db, app)
+}
+
+func MarkManualChangePendingApprovalForApp(ctx context.Context, db *bun.DB, app models.Apps) error {
 	var link models.GitLabAppLink
-	err := db.NewSelect().Model(&link).Where("app_id = ?", appID).Scan(ctx)
+	err := db.NewSelect().Model(&link).Where("app_id = ?", app.ID).Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
+		return err
+	}
+
+	if link.ApprovalRequired && snapshotHasContent(link.PendingSnapshot) {
+		return nil
+	}
+
+	if !appHasManualGitLabChanges(app, link) {
+		if !link.ApprovalRequired || snapshotHasContent(link.PendingSnapshot) {
+			return nil
+		}
+
+		link.ApprovalRequired = false
+		link.LastManualChangeAt = time.Time{}
+		link.UpdatedAt = time.Now().UTC()
+
+		_, err = db.NewUpdate().
+			Model(&link).
+			Where("app_id = ?", app.ID).
+			Column("approval_required", "last_manual_change_at", "updated_at").
+			Exec(ctx)
 		return err
 	}
 
@@ -158,7 +188,7 @@ func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID stri
 
 	_, err = db.NewUpdate().
 		Model(&link).
-		Where("app_id = ?", appID).
+		Where("app_id = ?", app.ID).
 		Column("approval_required", "last_manual_change_at", "updated_at").
 		Exec(ctx)
 	return err
@@ -248,4 +278,77 @@ func applySnapshotToApp(app *models.Apps, providerLabel string, snapshot models.
 		}
 		app.Tags = mergedTags
 	}
+}
+
+func appHasManualGitLabChanges(app models.Apps, link models.GitLabAppLink) bool {
+	snapshot := link.Snapshot
+	if !snapshotHasContent(snapshot) {
+		return false
+	}
+
+	if description := strings.TrimSpace(snapshot.Description); description != "" && strings.TrimSpace(app.Description) != description {
+		return true
+	}
+	if license := strings.TrimSpace(snapshot.License); license != "" && strings.TrimSpace(app.License) != license {
+		return true
+	}
+	if readme := strings.TrimSpace(snapshot.ReadmeContent); readme != "" && strings.TrimSpace(app.MarkdownContent) != readme {
+		return true
+	}
+	if helmValues := strings.TrimSpace(snapshot.HelmValuesContent); helmValues != "" && strings.TrimSpace(app.CustomHelmValues) != helmValues {
+		return true
+	}
+	if composeFile := strings.TrimSpace(snapshot.ComposeFileContent); composeFile != "" && strings.TrimSpace(app.CustomComposeCommand) != composeFile {
+		return true
+	}
+	if projectURL := strings.TrimSpace(snapshot.ProjectWebURL); projectURL != "" && !repositoriesContainURL(app.Repositories, projectURL) {
+		return true
+	}
+	if len(snapshot.Topics) > 0 && !tagsContainAllTopics(app.Tags, snapshot.Topics) {
+		return true
+	}
+
+	return false
+}
+
+func repositoriesContainURL(repositories []models.AppLink, url string) bool {
+	normalizedURL := strings.TrimSpace(url)
+	if normalizedURL == "" {
+		return true
+	}
+
+	for _, repository := range repositories {
+		if strings.TrimSpace(repository.URL) == normalizedURL {
+			return true
+		}
+	}
+
+	return false
+}
+
+func tagsContainAllTopics(tags []string, topics []string) bool {
+	if len(topics) == 0 {
+		return true
+	}
+
+	tagSet := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		normalized := strings.TrimSpace(tag)
+		if normalized == "" {
+			continue
+		}
+		tagSet[normalized] = struct{}{}
+	}
+
+	for _, topic := range topics {
+		normalized := strings.TrimSpace(topic)
+		if normalized == "" {
+			continue
+		}
+		if _, exists := tagSet[normalized]; !exists {
+			return false
+		}
+	}
+
+	return true
 }

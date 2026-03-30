@@ -90,6 +90,7 @@ type Apps struct {
 	UpdatedAt              time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
 	RelatedApps            []AppRelationSummary `bun:"-" json:"relatedApps,omitempty"`
 	AppGroups              []AppGroupSummary    `bun:"-" json:"appGroups,omitempty"`
+	GitLabSync             *GitLabSyncSummary   `bun:"-" json:"gitLabSync,omitempty"`
 	// Legacy detail-field aliases kept for JSON import/export compatibility.
 	Focus           string `bun:"-" json:"focus"`
 	AppType         string `bun:"-" json:"app_type"`

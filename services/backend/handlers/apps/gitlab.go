@@ -122,6 +122,10 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 		link.LastSyncError = ""
 		link.LastSyncedAt = time.Time{}
 		link.Snapshot = models.GitLabSyncSnapshot{}
+		link.PendingSnapshot = models.GitLabSyncSnapshot{}
+		link.ApprovalRequired = false
+		link.LastAppliedAt = time.Time{}
+		link.LastManualChangeAt = time.Time{}
 	}
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -133,7 +137,8 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 			Column(
 				"provider_key", "project_path", "branch", "readme_path",
 				"helm_values_path", "compose_file_path", "project_id", "project_web_url",
-				"last_sync_status", "last_sync_error", "last_synced_at", "snapshot", "updated_at",
+				"last_sync_status", "last_sync_error", "last_synced_at", "snapshot",
+				"pending_snapshot", "approval_required", "last_applied_at", "last_manual_change_at", "updated_at",
 			).
 			Exec(c)
 	}
