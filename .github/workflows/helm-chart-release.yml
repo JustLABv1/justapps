@@ -1,0 +1,75 @@
+name: Publish Helm Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: Chart version to publish, for example 1.0.1 or 1.0.1-chart.1
+        required: true
+        type: string
+      app_version:
+        description: Optional appVersion to embed in the chart. Defaults to the current Chart.yaml value.
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  CHART_NAME: justapps
+
+jobs:
+  chart:
+    name: Package & Push Helm Chart
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Prepare chart metadata
+        id: chart_meta
+        run: |
+          VERSION="${{ inputs.chart_version }}"
+          VERSION="${VERSION#v}"
+          APP_VERSION="${{ inputs.app_version }}"
+
+          if [ -z "$APP_VERSION" ]; then
+            APP_VERSION=$(awk -F': *' '/^appVersion:/ {gsub(/"/, "", $2); print $2}' charts/justapps/Chart.yaml)
+          fi
+
+          OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "registry_repo=oci://${{ env.REGISTRY }}/${OWNER}/charts" >> "$GITHUB_OUTPUT"
+
+      - name: Lint Helm chart
+        run: helm lint charts/justapps
+
+      - name: Log in to GitHub Container Registry for Helm
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p dist
+          helm package charts/justapps \
+            --destination dist \
+            --version "${{ steps.chart_meta.outputs.version }}" \
+            --app-version "${{ steps.chart_meta.outputs.app_version }}"
+
+      - name: Push Helm chart
+        run: |
+          helm push "dist/${{ env.CHART_NAME }}-${{ steps.chart_meta.outputs.version }}.tgz" \
+            "${{ steps.chart_meta.outputs.registry_repo }}"
+
+      - name: Print install command
+        run: |
+          echo "helm install justapps ${{ steps.chart_meta.outputs.registry_repo }}/${{ env.CHART_NAME }} --version ${{ steps.chart_meta.outputs.version }}"

@@ -203,6 +203,19 @@ secrets:
   # If you manage a Secret externally, put the name here.
   existingSecret: ""
 
+# Custom CA certificate (optional)
+# To trust a self-signed or private CA, create a Kubernetes Secret or ConfigMap
+# with your CA certificate and set these values. The CA will be mounted into the
+# container at the specified path.
+customCA:
+  enabled: false
+  # Name of the Secret or ConfigMap containing the CA cert (must have key ca.crt)
+  name: ""
+  # Set to true if using a Secret, false for ConfigMap
+  secret: true
+  # Mount path inside the container
+  mountPath: /etc/ssl/certs/extra-ca.crt
+
 nodeSelector: {}
 
 tolerations: []

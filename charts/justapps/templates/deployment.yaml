@@ -129,6 +129,11 @@ spec:
               mountPath: /etc/justapps
             - name: data
               mountPath: /app/data
+            {{- if .Values.customCA.enabled }}
+            - name: custom-ca
+              mountPath: {{ .Values.customCA.mountPath }}
+              subPath: ca.crt
+            {{- end }}
       {{- if .Values.postgresql.enabled }}
       initContainers:
         - name: wait-for-db
@@ -153,6 +158,16 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.customCA.enabled }}
+        - name: custom-ca
+          {{- if .Values.customCA.secret }}
+          secret:
+            secretName: {{ .Values.customCA.name }}
+          {{- else }}
+          configMap:
+            name: {{ .Values.customCA.name }}
+          {{- end }}
+        {{- end }}
 {{- else }}
 # Microservices Mode - Backend
 apiVersion: apps/v1
