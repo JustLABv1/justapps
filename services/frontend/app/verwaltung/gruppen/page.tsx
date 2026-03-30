@@ -134,8 +134,8 @@ export default function VerwaltungGruppenPage() {
             </TextField>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button variant="secondary" size="sm" onPress={cancelForm} disabled={saving}>Abbrechen</Button>
-            <Button size="sm" onPress={handleSave} disabled={!form.name.trim() || saving}>
+            <Button variant="secondary" size="sm" onPress={cancelForm} isDisabled={saving}>Abbrechen</Button>
+            <Button size="sm" onPress={handleSave} isDisabled={!form.name.trim() || saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {editingId ? 'Speichern' : 'Anlegen'}
             </Button>
@@ -211,9 +211,9 @@ export default function VerwaltungGruppenPage() {
         title="Gruppe löschen"
         description={`Die Gruppe „${deleteTarget?.name}" wird dauerhaft gelöscht. Apps werden nicht gelöscht, nur aus der Gruppe entfernt.`}
         confirmLabel="Löschen"
-        variant="danger"
+        isDanger={true}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
       />
     </div>
   );
