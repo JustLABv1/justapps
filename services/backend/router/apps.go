@@ -17,6 +17,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetApp(c, db)
 		})
+		appsGroup.GET("/:id/gitlab", middlewares.OptionalAuth(db), func(c *gin.Context) {
+			apps.GetGitLabIntegration(c, db)
+		})
 		appsGroup.GET("/:id/ratings", func(c *gin.Context) {
 			apps.GetRatings(c, db)
 		})
@@ -58,6 +61,23 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 			userGroup.DELETE("/:id", func(c *gin.Context) {
 				apps.DeleteApp(c, db)
+			})
+		}
+
+		gitlabGroup := appsGroup.Group("/:id/gitlab")
+		gitlabGroup.Use(middlewares.Auth(db))
+		{
+			gitlabGroup.PUT("", func(c *gin.Context) {
+				apps.UpsertGitLabIntegration(c, db)
+			})
+			gitlabGroup.POST("/sync", func(c *gin.Context) {
+				apps.SyncGitLabIntegration(c, db)
+			})
+			gitlabGroup.POST("/approve", func(c *gin.Context) {
+				apps.ApproveGitLabIntegration(c, db)
+			})
+			gitlabGroup.DELETE("", func(c *gin.Context) {
+				apps.DeleteGitLabIntegration(c, db)
 			})
 		}
 

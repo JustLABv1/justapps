@@ -8,7 +8,7 @@ import {
   Link,
   Separator
 } from "@heroui/react";
-import { ChevronDown, Layers, Menu, Search, Settings, Users, X } from "lucide-react";
+import { ChevronDown, Layers, Layers2, Menu, Search, Settings, Users, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 
 const adminSubLinks = [
   { href: '/verwaltung/apps', label: 'Apps', icon: Layers },
+  { href: '/verwaltung/gruppen', label: 'Gruppen', icon: Layers2 },
   { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users },
   { href: '/verwaltung/einstellungen', label: 'Einstellungen', icon: Settings },
 ];
@@ -81,6 +82,7 @@ export function Navigation() {
 
   const regularNavLinks = [
     { href: "/", label: "Apps", active: pathname === '/' },
+    { href: "/gruppen", label: "Gruppen", active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
   ];
 

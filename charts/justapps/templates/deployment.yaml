@@ -66,6 +66,18 @@ spec:
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
             {{- end }}
+            {{- range .Values.config.gitlab.providers }}
+            - name: BACKEND_GITLAB_TOKEN_{{ .key | upper | replace "-" "_" }}
+              valueFrom:
+                secretKeyRef:
+                  {{- if .tokenSecretRef }}
+                  name: {{ .tokenSecretRef.name }}
+                  key: {{ .tokenSecretRef.key }}
+                  {{- else }}
+                  name: {{ $secretName }}
+                  key: gitlab-token-{{ .key }}
+                  {{- end }}
+            {{- end }}
             - name: AUTH_KEYCLOAK_ID
               value: {{ .Values.config.oidc.clientId | quote }}
             - name: AUTH_KEYCLOAK_SECRET
@@ -208,6 +220,18 @@ spec:
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
+            {{- end }}
+            {{- range .Values.config.gitlab.providers }}
+            - name: BACKEND_GITLAB_TOKEN_{{ .key | upper | replace "-" "_" }}
+              valueFrom:
+                secretKeyRef:
+                  {{- if .tokenSecretRef }}
+                  name: {{ .tokenSecretRef.name }}
+                  key: {{ .tokenSecretRef.key }}
+                  {{- else }}
+                  name: {{ $secretName }}
+                  key: gitlab-token-{{ .key }}
+                  {{- end }}
             {{- end }}
           livenessProbe:
             httpGet:

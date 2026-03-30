@@ -56,6 +56,24 @@ config:
     clientSecret: ""
     adminGroup: justapps-admin
     insecure: false
+  gitlab:
+    # List of GitLab provider integrations.
+    # Token is treated as a secret and never placed in the ConfigMap.
+    # Provide it via secrets.create=true (inline token) or tokenSecretRef (external secret).
+    providers: []
+    # Example:
+    # providers:
+    #   - key: my-gitlab          # unique identifier (used to derive env var name)
+    #     label: My GitLab        # display label
+    #     baseUrl: https://gitlab.example.com
+    #     enabled: true
+    #     namespaceAllowlist: []  # empty = all namespaces allowed
+    #     timeoutSeconds: 15
+    #     token: ""               # inline token — stored in chart secret when secrets.create=true
+    #     # OR reference an existing Kubernetes secret:
+    #     # tokenSecretRef:
+    #     #   name: my-gitlab-token-secret
+    #     #   key: token
   cors:
     # Origins allowed to access the API (list)
     allowedOrigins: []

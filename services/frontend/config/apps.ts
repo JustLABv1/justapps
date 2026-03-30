@@ -29,6 +29,75 @@ export interface DeploymentVariant {
   helmValues?: string;
 }
 
+export interface GitLabProviderSummary {
+  key: string;
+  label: string;
+  baseUrl: string;
+  autoSyncEnabled?: boolean;
+  syncIntervalMinutes?: number;
+  defaultReadmePath?: string;
+  defaultHelmValuesPath?: string;
+  defaultComposeFilePath?: string;
+  namespaceAllowlist?: string[];
+}
+
+export interface GitLabProviderAdminSettings {
+  providerKey: string;
+  label: string;
+  baseUrl: string;
+  namespaceAllowlist: string[];
+  enabled: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  defaultReadmePath?: string;
+  defaultHelmValuesPath?: string;
+  defaultComposeFilePath?: string;
+  configured: boolean;
+  tokenConfigured: boolean;
+}
+
+export interface GitLabSyncSnapshot {
+  projectId?: number;
+  projectName?: string;
+  projectPath?: string;
+  projectWebUrl?: string;
+  defaultBranch?: string;
+  description?: string;
+  topics?: string[];
+  license?: string;
+  lastActivityAt?: string;
+  readmePath?: string;
+  readmeContent?: string;
+  helmValuesPath?: string;
+  helmValuesContent?: string;
+  composeFilePath?: string;
+  composeFileContent?: string;
+  warnings?: string[];
+  syncedAt?: string;
+}
+
+export interface GitLabIntegrationState {
+  linked: boolean;
+  availableProviders: GitLabProviderSummary[];
+  providerKey?: string;
+  providerLabel?: string;
+  baseUrl?: string;
+  projectPath?: string;
+  projectWebUrl?: string;
+  branch?: string;
+  readmePath?: string;
+  helmValuesPath?: string;
+  composeFilePath?: string;
+  lastSyncStatus?: string;
+  lastSyncError?: string;
+  approvalRequired?: boolean;
+  lastSyncedAt?: string;
+  lastAppliedAt?: string;
+  lastManualChangeAt?: string;
+  snapshot?: GitLabSyncSnapshot;
+  pendingSnapshot?: GitLabSyncSnapshot;
+}
+
 export interface AppConfig {
   id: string;
   name: string;

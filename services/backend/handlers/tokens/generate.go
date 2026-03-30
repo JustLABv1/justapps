@@ -90,6 +90,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		Disabled       bool      `json:"disabled"`
 		DisabledReason string    `json:"disabled_reason"`
 		Role           string    `json:"role"`
+		CanSubmitApps  bool      `json:"canSubmitApps"`
 	}
 	userResponse := UserResponse{
 		ID:             user.ID,
@@ -98,6 +99,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		Disabled:       user.Disabled,
 		DisabledReason: user.DisabledReason,
 		Role:           user.Role,
+		CanSubmitApps:  user.CanSubmitApps,
 	}
 
 	context.JSON(http.StatusOK, gin.H{"token": tokenString, "user": userResponse, "expires_at": ExpiresAt})
