@@ -5,13 +5,16 @@ import { useFavorites } from "@/context/FavoritesContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { RecentApp, getRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Input, TextField } from "@heroui/react";
+import { Button, Input, Pagination, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppCard } from "./AppCard";
+import { AppCardSkeleton } from "./AppCardSkeleton";
+
+const PAGE_SIZE = 24;
 
 interface AppGridProps {
   initialApps: AppConfig[];
@@ -33,6 +36,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [serverLoading, setServerLoading] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [recentApps, setRecentApps] = useState<RecentApp[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
 
@@ -139,6 +143,11 @@ export function AppGrid({ initialApps }: AppGridProps) {
       return matchesSearch && matchesCategory && matchesStatus && matchesType && matchesGroup && matchesFavorites;
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
+
+  // Reset to first page whenever filters/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly]);
 
   const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || showFavoritesOnly;
 
@@ -506,54 +515,135 @@ export function AppGrid({ initialApps }: AppGridProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-1">
-        <p className="text-sm font-medium text-muted">
-          {serverLoading ? (
-            <span className="text-muted">Suche läuft...</span>
-          ) : (
-            <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
-          )}
-        </p>
-        {hasActiveFilters && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs gap-1.5 text-muted hover:text-foreground"
-            onPress={clearAllFilters}
-          >
-            <X className="w-3.5 h-3.5" />
-            Filter zurücksetzen
-          </Button>
-        )}
-      </div>
+      {(() => {
+        const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
+        const safePage = Math.min(currentPage, Math.max(1, totalPages));
+        const from = filteredApps.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+        const to = Math.min(safePage * PAGE_SIZE, filteredApps.length);
+        const paginatedApps = filteredApps.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-      {/* Apps grid — masonry layout so cards size to their own content */}
-      <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-12" aria-label="App-Liste">
-        {filteredApps.map((app) => (
-          <div key={app.id} className="break-inside-avoid mb-5">
-            <AppCard app={app} />
-          </div>
-        ))}
-      </section>
+        return (
+          <>
+            <div className="flex items-center justify-between px-1">
+              <p className="text-sm font-medium text-muted">
+                {serverLoading ? (
+                  <span className="text-muted">Suche läuft...</span>
+                ) : totalPages > 1 ? (
+                  <><span className="text-foreground font-bold">{from}–{to}</span> von <span className="text-foreground font-bold">{filteredApps.length}</span> Apps &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                ) : (
+                  <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                )}
+              </p>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1.5 text-muted hover:text-foreground"
+                  onPress={clearAllFilters}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Filter zurücksetzen
+                </Button>
+              )}
+            </div>
 
-      {filteredApps.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-          <div className="w-14 h-14 bg-default rounded-full flex items-center justify-center">
-            <Search className="w-6 h-6 text-muted" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-foreground">Keine Apps gefunden</p>
-            <p className="text-sm text-muted mt-1">Versuchen Sie es mit anderen Suchbegriffen oder Kategorien.</p>
-          </div>
-          <Button 
-            variant="secondary"
-            size="sm"
-            onPress={clearAllFilters}
-          >
-            Filter zurücksetzen
-          </Button>
-        </div>
-      )}
+            {/* Apps grid — masonry layout so cards size to their own content */}
+            <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-4" aria-label="App-Liste">
+              {serverLoading ? (
+                [...Array(6)].map((_, i) => (
+                  <div key={`skeleton-${i}`} className="break-inside-avoid mb-5">
+                    <AppCardSkeleton />
+                  </div>
+                ))
+              ) : (
+                paginatedApps.map((app) => (
+                  <div key={app.id} className="break-inside-avoid mb-5">
+                    <AppCard app={app} />
+                  </div>
+                ))
+              )}
+            </section>
+
+            {!serverLoading && filteredApps.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                <div className="w-14 h-14 bg-default rounded-full flex items-center justify-center">
+                  <Search className="w-6 h-6 text-muted" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Keine Apps gefunden</p>
+                  <p className="text-sm text-muted mt-1">Versuchen Sie es mit anderen Suchbegriffen oder Kategorien.</p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onPress={clearAllFilters}
+                >
+                  Filter zurücksetzen
+                </Button>
+              </div>
+            )}
+
+            {!serverLoading && totalPages > 1 && (
+              <div className="flex justify-center pb-8">
+                <Pagination aria-label="Seitennavigation">
+                  <Pagination.Content>
+                    <Pagination.Item>
+                      <Pagination.Previous
+                        onPress={() => { setCurrentPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        isDisabled={safePage === 1}
+                        aria-label="Vorherige Seite"
+                      >
+                        <Pagination.PreviousIcon />
+                      </Pagination.Previous>
+                    </Pagination.Item>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        if (totalPages <= 7) return true;
+                        if (page === 1 || page === totalPages) return true;
+                        if (Math.abs(page - safePage) <= 1) return true;
+                        return false;
+                      })
+                      .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
+                        if (idx > 0 && (page as number) - (arr[idx - 1] as number) > 1) {
+                          acc.push('ellipsis');
+                        }
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((item, idx) =>
+                        item === 'ellipsis' ? (
+                          <Pagination.Item key={`ellipsis-${idx}`}>
+                            <Pagination.Ellipsis />
+                          </Pagination.Item>
+                        ) : (
+                          <Pagination.Item key={item}>
+                            <Pagination.Link
+                              isActive={item === safePage}
+                              onPress={() => { setCurrentPage(item as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            >
+                              {item}
+                            </Pagination.Link>
+                          </Pagination.Item>
+                        )
+                      )}
+
+                    <Pagination.Item>
+                      <Pagination.Next
+                        onPress={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        isDisabled={safePage === totalPages}
+                        aria-label="Nächste Seite"
+                      >
+                        <Pagination.NextIcon />
+                      </Pagination.Next>
+                    </Pagination.Item>
+                  </Pagination.Content>
+                </Pagination>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

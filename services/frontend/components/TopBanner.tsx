@@ -1,6 +1,7 @@
 'use client';
 
 import { useSettings } from "@/context/SettingsContext";
+import { Button } from "@heroui/react";
 import { AlertTriangle, Sparkles, X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 
@@ -55,13 +56,16 @@ export function TopBanner() {
           <Icon className="w-4 h-4 shrink-0" />
           {settings.topBannerText}
         </p>
-        <button
-          onClick={handleDismiss}
-          className={`absolute right-0 ${style.text} opacity-60 hover:opacity-100 transition-opacity p-1 rounded`}
+        <Button
+          isIconOnly
+          size="sm"
+          variant="ghost"
+          onPress={handleDismiss}
+          className={`absolute right-0 min-w-0 ${style.text} opacity-60 hover:opacity-100`}
           aria-label="Banner schließen"
         >
           <X className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );

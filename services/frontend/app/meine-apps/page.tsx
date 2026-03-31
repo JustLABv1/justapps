@@ -2,7 +2,7 @@
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig } from '@/config/apps';
-import { getAppStatusLabel } from '@/lib/appStatus';
+import { getAppStatusMeta } from '@/lib/appStatus';
 import {
     Button,
     Card,
@@ -12,7 +12,6 @@ import {
 import {
     ChevronLeft,
     ExternalLink,
-    Loader2,
     Lock,
     Pencil,
     Plus,
@@ -25,6 +24,33 @@ import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { fetchApi } from '../../lib/api';
 
+function MyAppsCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-5 animate-pulse">
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <div className="w-16 h-16 rounded-2xl bg-surface-secondary shrink-0" />
+        <div className="flex-grow space-y-3 w-full">
+          <div className="flex gap-2 justify-center md:justify-start">
+            <div className="h-5 w-40 bg-surface-secondary rounded" />
+            <div className="h-5 w-20 bg-surface-secondary rounded-full" />
+          </div>
+          <div className="h-3 w-full max-w-md bg-surface-secondary rounded" />
+          <div className="h-3 w-3/4 max-w-xs bg-surface-secondary rounded" />
+          <div className="flex gap-2 justify-center md:justify-start">
+            <div className="h-5 w-24 bg-surface-secondary rounded-md" />
+            <div className="h-5 w-20 bg-surface-secondary rounded-md" />
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <div className="h-8 w-24 bg-surface-secondary rounded" />
+          <div className="h-8 w-24 bg-surface-secondary rounded" />
+          <div className="h-8 w-20 bg-surface-secondary rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MyAppsContent() {
   const { user, loading: authLoading, profileReady, profileError, refreshUser } = useAuth();
   const router = useRouter();
@@ -36,16 +62,12 @@ function MyAppsContent() {
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-
-
   // Auth check
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
         const timer = setTimeout(() => {
-          if (!user) {
-            router.push('/');
-          }
+          if (!user) router.push('/');
         }, 500);
         return () => clearTimeout(timer);
       }
@@ -57,21 +79,19 @@ function MyAppsContent() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch settings
-      const settingsRes = await fetchApi('/settings');
+      const [settingsRes, appsRes] = await Promise.all([
+        fetchApi('/settings'),
+        fetchApi('/apps?owner=me'),
+      ]);
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         setSettings(settingsData);
       }
-
-      const res = await fetchApi('/apps');
-      if (res.ok) {
-        const data: AppConfig[] = await res.json();
-        // Filter apps where app.ownerId === user.id
-        const myApps = data.filter(app => app.ownerId === user.id);
-        setApps(myApps);
+      if (appsRes.ok) {
+        const data: AppConfig[] = await appsRes.json();
+        setApps(data);
       } else {
-        setError(`Fehler beim Laden Ihrer Apps: ${res.statusText}`);
+        setError(`Fehler beim Laden Ihrer Apps: ${appsRes.statusText}`);
       }
     } catch (err) {
       setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
@@ -81,9 +101,7 @@ function MyAppsContent() {
   };
 
   useEffect(() => {
-    if (profileReady) {
-      loadData();
-    }
+    if (profileReady) loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profileReady]);
 
@@ -111,14 +129,13 @@ function MyAppsContent() {
     router.push(`/meine-apps/${app.id}/edit`);
   };
 
-  const handleDeleteApp = async (app: AppConfig) => {
+  const handleDeleteApp = (app: AppConfig) => {
     if (app.isLocked) return;
     setDeleteCandidate(app);
   };
 
   const confirmDeleteApp = async () => {
     if (!deleteCandidate) return;
-
     setIsDeleting(true);
     try {
       const res = await fetchApi(`/apps/${deleteCandidate.id}`, { method: 'DELETE' });
@@ -139,21 +156,17 @@ function MyAppsContent() {
   // Deep linking: ?edit=<id> → redirect to full editor page
   useEffect(() => {
     const editId = searchParams?.get('edit');
-    if (editId) {
-      router.replace(`/meine-apps/${editId}/edit`);
-    }
+    if (editId) router.replace(`/meine-apps/${editId}/edit`);
   }, [searchParams, router]);
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      <p className="text-muted font-medium">Lade Ihre Apps...</p>
+      <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+      <p className="text-muted font-medium">Authentifizierung wird geprüft…</p>
     </div>
   );
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   if (!profileReady) {
     return (
@@ -177,11 +190,7 @@ function MyAppsContent() {
           <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im JustApps.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            onPress={() => router.push('/')}
-            className="font-bold gap-2"
-          >
+          <Button variant="secondary" onPress={() => router.push('/')} className="font-bold gap-2">
             <ChevronLeft className="w-4 h-4" />
             Zum Store
           </Button>
@@ -200,17 +209,14 @@ function MyAppsContent() {
           <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </div>
-          <div className="flex-grow">
-            {error}
-          </div>
+          <div className="flex-grow">{error}</div>
           <Button size="sm" variant="secondary" onPress={loadData} className="h-8">Wiederholen</Button>
         </div>
       )}
 
-      {/* Main Content */}
       <div className="pt-6">
         {!settings.allowAppSubmissions && user.role !== 'admin' && !user.canSubmitApps && (
-          <div className='flex flex-col md:flex-row gap-4 pb-4 justify-end items-center'>
+          <div className="flex flex-col md:flex-row gap-4 pb-4 justify-end items-center">
             {!settings.allowAppSubmissions && user.role !== 'admin' && (
               <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
                 <Lock className="w-4 h-4 mr-2" />
@@ -225,104 +231,105 @@ function MyAppsContent() {
             )}
           </div>
         )}
+
         <div className="grid grid-cols-1 gap-4">
-          {apps.map((app) => (
-            <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
-              <div className="flex flex-col md:flex-row items-center p-5 gap-6">
-                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
-                  {app.icon?.startsWith('http') ? (
-                    <Image
-                      src={app.icon}
-                      alt={app.name}
-                      fill
-                      className="object-contain w-full h-full p-2"
-                      unoptimized
-                    />
+          {loading ? (
+            [...Array(3)].map((_, i) => <MyAppsCardSkeleton key={i} />)
+          ) : (
+            <>
+              {apps.map((app) => {
+                const statusMeta = getAppStatusMeta(app.status);
+                return (
+                  <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
+                    <div className="flex flex-col md:flex-row items-center p-5 gap-6">
+                      <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                        {app.icon?.startsWith('http') ? (
+                          <Image src={app.icon} alt={app.name} fill className="object-contain w-full h-full p-2" unoptimized />
+                        ) : (
+                          app.icon || '🏛️'
+                        )}
+                      </div>
+
+                      <div className="flex-grow text-center md:text-left">
+                        <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">
+                          <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
+                          {app.categories?.slice(0, 3).map(cat => (
+                            <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
+                          ))}
+                          {(app.categories?.length || 0) > 3 && (
+                            <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 3}</Chip>
+                          )}
+                        </div>
+
+                        <div className="text-sm text-muted line-clamp-2 mb-3 max-w-3xl">
+                          {app.description || <span className="italic opacity-50">Keine Beschreibung</span>}
+                        </div>
+
+                        <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                          <span className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
+                            <span className="opacity-50">ID:</span> {app.id}
+                          </span>
+                          {statusMeta && (
+                            <Chip
+                              size="sm"
+                              color={statusMeta.color as 'default' | 'success' | 'warning' | 'accent'}
+                              variant="soft"
+                              className="font-bold text-[10px] uppercase tracking-wider"
+                            >
+                              {statusMeta.label}
+                            </Chip>
+                          )}
+                          {app.isLocked && (
+                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <Lock className="w-3 h-3" /> Gesperrt
+                            </Chip>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
+                        <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
+                          <ExternalLink className="w-4 h-4 text-muted" />
+                          Ansehen
+                        </Button>
+                        <Button
+                          size="sm" variant="secondary"
+                          onPress={() => handleEditApp(app)}
+                          isDisabled={!!app.isLocked}
+                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <Pencil className="w-4 h-4 text-muted" />
+                          Bearbeiten
+                        </Button>
+                        <Button
+                          size="sm" variant="danger-soft"
+                          onPress={() => handleDeleteApp(app)}
+                          isDisabled={!!app.isLocked}
+                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Löschen
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+
+              {apps.length === 0 && (
+                <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
+                  <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen Apps erstellt.</p>
+                  {(user.canSubmitApps || user.role === 'admin') ? (
+                    <Button variant="ghost" onPress={handleCreateApp}>Erste App erstellen</Button>
                   ) : (
-                    app.icon || "🏛️"
+                    <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
                   )}
                 </div>
-                <div className="flex-grow text-center md:text-left">
-                  <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">
-                    <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
-                    {app.categories?.slice(0, 3).map(cat => (
-                      <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
-                    ))}
-                    {(app.categories?.length || 0) > 3 && (
-                      <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 3}</Chip>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted line-clamp-2 mb-3 max-w-3xl">{app.description || <span className="italic opacity-50">Keine Beschreibung</span>}</div>
-                  <div className="flex items-center justify-center md:justify-start gap-3">
-                    <div className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
-                      <span className="opacity-50">ID:</span> {app.id}
-                    </div>
-                    {app.status && (
-                      <div className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md border border-accent/20 uppercase tracking-wider">
-                        {getAppStatusLabel(app.status) || app.status}
-                      </div>
-                    )}
-                    {app.isLocked && (
-                      <div className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-1 rounded-md border border-warning/20 uppercase tracking-wider flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Gesperrt
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => router.push(`/apps/${app.id}`)}
-                    className="font-bold gap-2 flex-1 md:flex-none justify-start"
-                  >
-                    <ExternalLink className="w-4 h-4 text-muted" />
-                    Ansehen
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => handleEditApp(app)}
-                    isDisabled={!!app.isLocked}
-                    className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <Pencil className="w-4 h-4 text-muted" />
-                    Bearbeiten
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger-soft"
-                    onPress={() => handleDeleteApp(app)}
-                    isDisabled={!!app.isLocked}
-                    className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Löschen
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-          {apps.length === 0 && !loading && (
-            <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
-              <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen Apps erstellt.</p>
-              {(user.canSubmitApps || user.role === 'admin') ? (
-                <Button variant="ghost" onPress={handleCreateApp}>
-                  Erste App erstellen
-                </Button>
-              ) : (
-                <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
-
-      {loading && (
-        <div className="py-20 flex justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
-      )}
 
       <ConfirmDialog
         confirmLabel="App löschen"
@@ -331,18 +338,16 @@ function MyAppsContent() {
         isLoading={isDeleting}
         isOpen={!!deleteCandidate}
         onConfirm={confirmDeleteApp}
-        onOpenChange={(open) => {
-          if (!open && !isDeleting) setDeleteCandidate(null);
-        }}
+        onOpenChange={(open) => { if (!open && !isDeleting) setDeleteCandidate(null); }}
         title="App wirklich löschen?"
       />
-
     </div>
   );
 }
+
 export default function MyAppsPage() {
   return (
-    <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+    <Suspense fallback={<div className="p-8 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" /></div>}>
       <MyAppsContent />
     </Suspense>
   );

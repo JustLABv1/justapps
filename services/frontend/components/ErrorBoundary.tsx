@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@heroui/react';
 import React from 'react';
 
 interface Props {
@@ -41,15 +42,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
               Diese Seite konnte nicht geladen werden. Bitte laden Sie die Seite neu oder versuchen Sie es später erneut.
             </p>
           </div>
-          <button
-            onClick={() => {
+          <Button
+            onPress={() => {
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
-            className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-80 transition-opacity"
+            className="px-4 text-sm font-semibold"
           >
             Seite neu laden
-          </button>
+          </Button>
         </div>
       );
     }

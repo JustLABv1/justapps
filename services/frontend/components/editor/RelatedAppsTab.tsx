@@ -1,7 +1,7 @@
 'use client';
 
 import { AppConfig } from '@/config/apps';
-import { Chip, Switch } from '@heroui/react';
+import { Button, Chip, Input, Switch } from '@heroui/react';
 import { Grip, Link2, Loader2, Plus, X } from 'lucide-react';
 import Image from 'next/image';
 
@@ -90,13 +90,16 @@ export function RelatedAppsTab({
                   <Link2 className="w-3 h-3" /> {related.id}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => onRemoveRelated(related.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-danger/10 text-danger"
+              <Button
+                isIconOnly
+                size="sm"
+                variant="danger-soft"
+                onPress={() => onRemoveRelated(related.id)}
+                aria-label={`${related.name} entfernen`}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -105,20 +108,22 @@ export function RelatedAppsTab({
       {/* Search and add related apps */}
       <div className="space-y-3">
         <span className="text-xs font-bold text-muted uppercase tracking-wider">App suchen und verknüpfen</span>
-        <input
-          className="w-full bg-field-background rounded-xl px-4 py-2.5 text-sm border border-border outline-none focus:border-accent transition-colors"
+        <Input
+          className="w-full"
           placeholder="App-Name oder ID suchen..."
           value={relatedSearch}
+          variant="secondary"
           onChange={(e) => setRelatedSearch(e.target.value)}
         />
         {relatedSearch && (
           <div className="border border-border rounded-xl bg-surface overflow-hidden max-h-64 overflow-y-auto">
             {filteredRelatable.slice(0, 10).map((a) => (
-              <button
+              <Button
                 key={a.id}
-                type="button"
-                onClick={() => onAddRelated(a)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-surface-secondary transition-colors text-left border-b border-border/50 last:border-0"
+                fullWidth
+                variant="ghost"
+                onPress={() => onAddRelated(a)}
+                className="h-auto justify-start rounded-none border-b border-border/50 px-3 py-3 text-left last:border-0"
               >
                 <span className="text-xl shrink-0">{a.icon?.startsWith('http') ? '🏛️' : a.icon || '🏛️'}</span>
                 <div className="flex-1 min-w-0">
@@ -130,7 +135,7 @@ export function RelatedAppsTab({
                 ) : (
                   <Plus className="w-4 h-4 text-accent shrink-0" />
                 )}
-              </button>
+              </Button>
             ))}
             {filteredRelatable.length === 0 && (
               <p className="p-4 text-sm text-muted text-center">Keine weiteren Apps gefunden</p>
@@ -174,21 +179,23 @@ export function RelatedAppsTab({
             )}
           </div>
           <div className="flex gap-2">
-            <input
-              className="flex-1 bg-field-background rounded-xl px-4 py-2 text-sm border border-border outline-none focus:border-accent transition-colors"
+            <Input
+              className="flex-1"
               placeholder="Neue Gruppe erstellen..."
               value={newGroupName}
+              variant="secondary"
               onChange={(e) => setNewGroupName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') onCreateGroup(); }}
             />
-            <button
-              onClick={onCreateGroup}
-              disabled={!newGroupName.trim() || creatingGroup}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50"
+            <Button
+              onPress={onCreateGroup}
+              isDisabled={!newGroupName.trim() || creatingGroup}
+              isPending={creatingGroup}
+              className="gap-1.5"
             >
-              {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {!creatingGroup ? <Plus className="w-4 h-4" /> : null}
               Erstellen
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -1,8 +1,20 @@
 'use client';
 
 import { fetchApi } from '@/lib/api';
-import { EmptyState, Pagination, Table } from '@heroui/react';
-import { Info } from 'lucide-react';
+import { Chip, EmptyState, Input, Pagination, Table, TextField } from '@heroui/react';
+import {
+  Info,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  Trash2,
+  UserCheck,
+  UserCog,
+  UserMinus,
+  UserPlus,
+  UserX,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 interface AuditEntry {
@@ -21,32 +33,33 @@ interface AuditResponse {
   offset: number;
 }
 
-const OPERATION_LABELS: Record<string, string> = {
-  'app.create': 'App erstellt',
-  'app.update': 'App aktualisiert',
-  'app.delete': 'App gelöscht',
-  'user.create': 'Benutzer erstellt',
-  'user.update': 'Benutzer aktualisiert',
-  'user.delete': 'Benutzer gelöscht',
-  'user.enable': 'Benutzer aktiviert',
-  'user.disable': 'Benutzer deaktiviert',
-  'settings.update': 'Einstellungen geändert',
+type OperationColor = 'success' | 'warning' | 'danger' | 'default' | 'accent';
+
+const OPERATION_META: Record<string, { label: string; color: OperationColor; icon: React.ReactNode }> = {
+  'app.create':      { label: 'App erstellt',            color: 'success', icon: <Plus      className="w-3 h-3" /> },
+  'app.update':      { label: 'App aktualisiert',        color: 'warning', icon: <Pencil    className="w-3 h-3" /> },
+  'app.delete':      { label: 'App gelöscht',            color: 'danger',  icon: <Trash2    className="w-3 h-3" /> },
+  'user.create':     { label: 'Benutzer erstellt',       color: 'success', icon: <UserPlus  className="w-3 h-3" /> },
+  'user.update':     { label: 'Benutzer aktualisiert',   color: 'warning', icon: <UserCog   className="w-3 h-3" /> },
+  'user.delete':     { label: 'Benutzer gelöscht',       color: 'danger',  icon: <UserMinus className="w-3 h-3" /> },
+  'user.enable':     { label: 'Benutzer aktiviert',      color: 'success', icon: <UserCheck className="w-3 h-3" /> },
+  'user.disable':    { label: 'Benutzer deaktiviert',    color: 'danger',  icon: <UserX     className="w-3 h-3" /> },
+  'settings.update': { label: 'Einstellungen geändert',  color: 'accent',  icon: <Settings  className="w-3 h-3" /> },
 };
 
+function getOperationMeta(operation: string) {
+  return OPERATION_META[operation] ?? { label: operation, color: 'default' as OperationColor, icon: null };
+}
+
 const FILTER_OPTIONS = [
-  { value: '', label: 'Alle' },
-  { value: 'app.create', label: 'App erstellt' },
-  { value: 'app.update', label: 'App aktualisiert' },
-  { value: 'app.delete', label: 'App gelöscht' },
-  { value: 'user.create', label: 'Benutzer erstellt' },
-  { value: 'user.update', label: 'Benutzer aktualisiert' },
-  { value: 'user.delete', label: 'Benutzer gelöscht' },
-  { value: 'user.enable', label: 'Benutzer aktiviert' },
-  { value: 'user.disable', label: 'Benutzer deaktiviert' },
-  { value: 'settings.update', label: 'Einstellungen geändert' },
+  { value: '', label: 'Alle Operationen' },
+  ...Object.entries(OPERATION_META).map(([value, { label }]) => ({ value, label })),
 ];
 
 const LIMIT = 50;
+
+// Skeleton row IDs used when loading
+const SKELETON_IDS = Array.from({ length: 10 }, (_, i) => `__skeleton__${i}`);
 
 export default function AuditPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -54,6 +67,7 @@ export default function AuditPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [operationFilter, setOperationFilter] = useState('');
+  const [userSearch, setUserSearch] = useState('');
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
@@ -78,10 +92,22 @@ export default function AuditPage() {
     load();
   }, [page, operationFilter]);
 
-  const totalPagesEstimate = useMemo(
-    () => (hasMore ? page + 1 : page),
-    [hasMore, page]
-  );
+  const filteredEntries = useMemo(() => {
+    if (!userSearch.trim()) return entries;
+    const q = userSearch.toLowerCase();
+    return entries.filter(
+      (e) =>
+        e.username?.toLowerCase().includes(q) ||
+        e.email?.toLowerCase().includes(q) ||
+        e.user_id?.toLowerCase().includes(q),
+    );
+  }, [entries, userSearch]);
+
+  const displayItems: AuditEntry[] = loading
+    ? SKELETON_IDS.map((id) => ({ id, user_id: '', operation: '', details: '', created_at: '' }))
+    : filteredEntries;
+
+  const totalPagesEstimate = hasMore ? page + 1 : page;
 
   const handleFilterChange = (value: string) => {
     setOperationFilter(value);
@@ -90,21 +116,43 @@ export default function AuditPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header + controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-foreground">Audit-Protokoll</h2>
-          <p className="text-xs text-muted mt-0.5">Alle administrativen Aktionen der Plattform</p>
+          <p className="text-xs text-muted mt-0.5">
+            Alle administrativen Aktionen der Plattform
+            {!loading && (
+              <span className="ml-2 text-foreground font-semibold">
+                · {filteredEntries.length} Einträge
+              </span>
+            )}
+          </p>
         </div>
 
-        <select
-          value={operationFilter}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="text-sm bg-surface border border-border rounded-xl px-3 py-2 text-foreground outline-none focus:border-accent transition-colors"
-        >
-          {FILTER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* User search */}
+          <div className="relative">
+            <TextField value={userSearch} onChange={setUserSearch}>
+              <Input
+                placeholder="Benutzer suchen…"
+                className="bg-field-background h-9 rounded-xl pl-9 text-sm w-48"
+              />
+            </TextField>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+          </div>
+
+          {/* Operation filter */}
+          <select
+            value={operationFilter}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            className="text-sm bg-surface border border-border rounded-xl px-3 py-2 text-foreground outline-none focus:border-accent transition-colors h-9"
+          >
+            {FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -119,51 +167,78 @@ export default function AuditPage() {
               <Table.Column>Details</Table.Column>
             </Table.Header>
             <Table.Body
-              items={loading ? [] : entries}
+              items={displayItems}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-10 gap-2">
                   <Info className="w-8 h-8 text-muted opacity-50" />
-                  <span className="text-muted">
-                    {loading ? 'Wird geladen...' : 'Keine Einträge gefunden'}
-                  </span>
+                  <span className="text-muted">Keine Einträge gefunden</span>
                 </EmptyState>
               )}
             >
-              {(entry) => (
-                <Table.Row key={entry.id}>
-                  <Table.Cell>
-                    <span className="text-xs text-default-500 font-mono">
-                      {new Date(entry.created_at).toLocaleString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-foreground">
-                        {entry.username || '—'}
-                      </span>
-                      {entry.email && (
-                        <span className="text-[10px] text-muted">{entry.email}</span>
+              {(entry) => {
+                const isSkeleton = entry.id.startsWith('__skeleton__');
+                const meta = isSkeleton ? null : getOperationMeta(entry.operation);
+                return (
+                  <Table.Row key={entry.id}>
+                    <Table.Cell>
+                      {isSkeleton ? (
+                        <div className="h-4 w-28 bg-surface-secondary rounded animate-pulse" />
+                      ) : (
+                        <span className="text-xs text-default-500 font-mono">
+                          {new Date(entry.created_at).toLocaleString('de-DE', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </span>
                       )}
-                    </div>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <span className="text-xs font-mono text-accent">
-                      {OPERATION_LABELS[entry.operation] ?? entry.operation}
-                    </span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <span className="text-xs text-muted max-w-xs truncate block">
-                      {entry.details || '—'}
-                    </span>
-                  </Table.Cell>
-                </Table.Row>
-              )}
+                    </Table.Cell>
+
+                    <Table.Cell>
+                      {isSkeleton ? (
+                        <div className="space-y-1.5">
+                          <div className="h-3 w-20 bg-surface-secondary rounded animate-pulse" />
+                          <div className="h-2 w-28 bg-surface-secondary rounded animate-pulse" />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-foreground">
+                            {entry.username || '—'}
+                          </span>
+                          {entry.email && (
+                            <span className="text-[10px] text-muted">{entry.email}</span>
+                          )}
+                        </div>
+                      )}
+                    </Table.Cell>
+
+                    <Table.Cell>
+                      {isSkeleton ? (
+                        <div className="h-5 w-32 bg-surface-secondary rounded-full animate-pulse" />
+                      ) : (
+                        <Chip
+                          size="sm"
+                          color={meta!.color as 'success' | 'warning' | 'danger' | 'default' | 'accent'}
+                          variant="soft"
+                          className="text-[10px] font-bold uppercase tracking-wider gap-1 pl-1.5"
+                        >
+                          {meta!.icon}
+                          {meta!.label}
+                        </Chip>
+                      )}
+                    </Table.Cell>
+
+                    <Table.Cell>
+                      {isSkeleton ? (
+                        <div className="h-3 w-48 bg-surface-secondary rounded animate-pulse" />
+                      ) : (
+                        <span className="text-xs text-muted max-w-xs truncate block">
+                          {entry.details || '—'}
+                        </span>
+                      )}
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              }}
             </Table.Body>
           </Table.Content>
         </Table.ScrollContainer>

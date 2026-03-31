@@ -2,14 +2,23 @@
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { fetchApi } from '@/lib/api';
-import { Button, Input, Label, TextArea, TextField, toast } from '@heroui/react';
-import { Layers2, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Button, Chip, Input, Label, TextArea, TextField, toast } from '@heroui/react';
+import { ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
+
+interface AppSummary {
+  id: string;
+  name: string;
+  icon?: string;
+}
 
 interface AppGroup {
   id: string;
   name: string;
   description?: string;
+  members?: AppSummary[];
+  membersLoading?: boolean;
 }
 
 interface GroupFormState {
@@ -27,6 +36,7 @@ export default function VerwaltungGruppenPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<GroupFormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<AppGroup | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const loadGroups = async () => {
     setLoading(true);
@@ -34,7 +44,7 @@ export default function VerwaltungGruppenPage() {
       const res = await fetchApi('/app-groups');
       if (res.ok) {
         const data = await res.json();
-        setGroups(Array.isArray(data) ? data : []);
+        setGroups(Array.isArray(data) ? data.map((g: AppGroup) => ({ ...g, members: undefined })) : []);
       }
     } finally {
       setLoading(false);
@@ -42,6 +52,45 @@ export default function VerwaltungGruppenPage() {
   };
 
   useEffect(() => { loadGroups(); }, []);
+
+  const loadMembers = async (groupId: string) => {
+    setGroups((prev) =>
+      prev.map((g) => g.id === groupId ? { ...g, membersLoading: true } : g)
+    );
+    try {
+      const res = await fetchApi(`/app-groups/${groupId}/members`);
+      if (res.ok) {
+        const data: AppSummary[] = await res.json();
+        setGroups((prev) =>
+          prev.map((g) => g.id === groupId ? { ...g, members: data, membersLoading: false } : g)
+        );
+      } else {
+        setGroups((prev) =>
+          prev.map((g) => g.id === groupId ? { ...g, members: [], membersLoading: false } : g)
+        );
+      }
+    } catch {
+      setGroups((prev) =>
+        prev.map((g) => g.id === groupId ? { ...g, members: [], membersLoading: false } : g)
+      );
+    }
+  };
+
+  const toggleExpand = (groupId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+        const group = groups.find((g) => g.id === groupId);
+        if (group && group.members === undefined) {
+          loadMembers(groupId);
+        }
+      }
+      return next;
+    });
+  };
 
   const openCreate = () => {
     setEditingId(null);
@@ -90,6 +139,7 @@ export default function VerwaltungGruppenPage() {
       if (res.ok) {
         toast.success('Gruppe gelöscht.');
         setGroups((prev) => prev.filter((g) => g.id !== deleteTarget.id));
+        setExpandedIds((prev) => { const next = new Set(prev); next.delete(deleteTarget.id); return next; });
       } else {
         const err = await res.json().catch(() => ({}));
         toast.danger((err as { message?: string }).message || 'Löschen fehlgeschlagen.');
@@ -119,9 +169,9 @@ export default function VerwaltungGruppenPage() {
             <p className="text-sm font-semibold text-foreground">
               {editingId ? 'Gruppe bearbeiten' : 'Neue Gruppe'}
             </p>
-            <button onClick={cancelForm} className="text-muted hover:text-foreground transition-colors">
+            <Button isIconOnly variant="ghost" size="sm" onPress={cancelForm} aria-label="Formular schließen">
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField isRequired onChange={(v) => setForm((p) => ({ ...p, name: v }))}>
@@ -158,51 +208,94 @@ export default function VerwaltungGruppenPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-surface overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary/50">
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted">Name</th>
-                <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-muted hidden sm:table-cell">Beschreibung</th>
-                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {groups.map((group) => (
-                <tr key={group.id} className="hover:bg-surface-secondary/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent shrink-0">
-                        <Layers2 className="w-3.5 h-3.5" />
-                      </span>
+        <div className="rounded-2xl border border-border bg-surface overflow-hidden divide-y divide-border">
+          {groups.map((group) => {
+            const isExpanded = expandedIds.has(group.id);
+            return (
+              <div key={group.id}>
+                {/* Group header row */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/30 transition-colors cursor-pointer"
+                  onClick={() => toggleExpand(group.id)}
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent shrink-0">
+                    <Layers2 className="w-3.5 h-3.5" />
+                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-foreground">{group.name}</span>
+                      {group.members !== undefined && !group.membersLoading && (
+                        <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase tracking-wider">
+                          {group.members.length} App{group.members.length !== 1 ? 's' : ''}
+                        </Chip>
+                      )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted hidden sm:table-cell">
-                    {group.description || <span className="italic text-muted/50">–</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(group)}
-                        className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-default transition-colors"
-                        title="Bearbeiten"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(group)}
-                        className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                        title="Löschen"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    {group.description && (
+                      <p className="text-xs text-muted mt-0.5 truncate max-w-md">{group.description}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="tertiary"
+                      onPress={() => openEdit(group)}
+                      aria-label="Gruppe bearbeiten"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="danger-soft"
+                      onPress={() => setDeleteTarget(group)}
+                      aria-label="Gruppe löschen"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="text-muted shrink-0">
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </div>
+
+                {/* Expanded member list */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-1 bg-surface-secondary/20 border-t border-border/50">
+                    {group.membersLoading ? (
+                      <div className="flex items-center gap-2 py-3">
+                        <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                        <span className="text-sm text-muted">Apps werden geladen…</span>
+                      </div>
+                    ) : group.members && group.members.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {group.members.map((app) => (
+                          <div
+                            key={app.id}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface shadow-sm"
+                          >
+                            <div className="relative w-5 h-5 shrink-0">
+                              {app.icon?.startsWith('http') ? (
+                                <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
+                              ) : (
+                                <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
+                              )}
+                            </div>
+                            <span className="text-xs font-medium text-foreground whitespace-nowrap">{app.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted italic py-3">Keine Apps in dieser Gruppe.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
