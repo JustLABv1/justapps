@@ -10,10 +10,11 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
-import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
+import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
     AlertTriangle,
     BookOpen,
+    Check,
     ChevronLeft,
     ExternalLink,
     GitBranch,
@@ -58,6 +59,27 @@ export default function AppPage() {
   const [app, setApp] = useState<AppConfig | null>(null);
   const [gitLabIntegration, setGitLabIntegration] = useState<GitLabIntegrationState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('docs');
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Read tab from URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    const validTabs = ['docs', 'details', 'deployment', 'ratings', 'changelog', 'related'];
+    if (hash && validTabs.includes(hash)) setActiveTab(hash);
+  }, []);
+
+  const handleTabChange = (key: React.Key) => {
+    const tabKey = String(key);
+    setActiveTab(tabKey);
+    window.history.replaceState(null, '', `#${tabKey}`);
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   useEffect(() => {
     async function loadApp() {
@@ -148,31 +170,47 @@ export default function AppPage() {
     <div className="max-w-5xl mx-auto pb-20">
 
       {/* ── Nav row ── */}
-      <div className="flex justify-between items-center mb-6">
-        <NextLink href="/" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm">
+      <div className="flex justify-between items-center mb-6 gap-3">
+        <NextLink href="/" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0">
           <ChevronLeft className="w-4 h-4" />
           Zurück zur Übersicht
         </NextLink>
 
-        {isAdmin && (
-          <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
-            <NextLink
-              href={`/verwaltung/apps/${app.id}/edit`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Bearbeiten
-            </NextLink>
-            <div className="w-px h-4 bg-border mx-1" />
-            <NextLink
-              href="/verwaltung"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              Verwaltung
-            </NextLink>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Share / copy-link button */}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onPress={handleShare}
+            className="gap-1.5 shadow-sm"
+          >
+            {linkCopied
+              ? <><Check className="w-4 h-4 text-success" /> Kopiert!</>
+              : <><Share2 className="w-4 h-4" /> Teilen</>
+            }
+          </Button>
+
+          {isAdmin && (
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
+              <NextLink
+                href={`/verwaltung/apps/${app.id}/edit`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Bearbeiten
+              </NextLink>
+              <div className="w-px h-4 bg-border mx-1" />
+              <NextLink
+                href="/verwaltung"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Verwaltung
+              </NextLink>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Known issue banner ── */}
@@ -288,10 +326,10 @@ export default function AppPage() {
                   return (
                     <Dropdown>
                       <Dropdown.Trigger>
-                        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm outline-none">
+                        <Button className="gap-2 px-4 shadow-sm">
                           <ExternalLink className="w-4 h-4" />
                           Live-Zugänge ({allDemos.length})
-                        </button>
+                        </Button>
                       </Dropdown.Trigger>
                       <Dropdown.Popover>
                         <Dropdown.Menu
@@ -425,7 +463,7 @@ export default function AppPage() {
       )}
 
       {/* ── Tabbed content ── */}
-      <Tabs variant="secondary" className="w-full">
+      <Tabs variant="secondary" className="w-full" selectedKey={activeTab} onSelectionChange={handleTabChange}>
         <Tabs.ListContainer className="border-b border-border mb-6">
           <Tabs.List aria-label="App-Details Bereiche" className="gap-8">
             <Tabs.Tab id="docs" className="gap-2 py-3 text-sm font-semibold">

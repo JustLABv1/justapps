@@ -12,6 +12,7 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
+  Button,
     Chip,
     Input,
     Label,
@@ -2508,9 +2509,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           <div className="relative z-10 mt-5 p-4 rounded-2xl bg-surface border border-border shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-muted">Icon auswählen</span>
-              <button onClick={() => setShowIconPicker(false)} className="text-muted hover:text-foreground">
+              <Button isIconOnly variant="ghost" size="sm" onPress={() => setShowIconPicker(false)} aria-label="Icon-Auswahl schließen">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
             <div className="grid grid-cols-8 md:grid-cols-12 gap-1.5 mb-3">
               {ICON_OPTIONS.map(({ emoji, label }) => (
@@ -2527,10 +2528,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 </button>
               ))}
             </div>
-            <input
-              className="w-full bg-field-background rounded-lg px-3 py-1.5 text-sm font-mono border border-border outline-none focus:border-accent transition-colors"
+            <Input
+              className="w-full"
               placeholder="Oder Bild-URL: https://..."
               value={iconUrlInput}
+              variant="secondary"
               onChange={(e) => {
                 setIconUrlInput(e.target.value);
                 if (e.target.value.startsWith('http')) setFormData((p) => ({ ...p, icon: e.target.value }));
@@ -2545,9 +2547,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           <div className="relative z-10 mt-5 p-4 rounded-2xl bg-surface border border-border shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-muted">Kategorien</span>
-              <button onClick={() => setShowCategoryPicker(false)} className="text-muted hover:text-foreground">
+              <Button isIconOnly variant="ghost" size="sm" onPress={() => setShowCategoryPicker(false)} aria-label="Kategorien schließen">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
               {PREDEFINED_CATEGORIES.map((cat) => {
@@ -2570,10 +2572,11 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               })}
             </div>
             <div className="flex gap-2 items-center">
-              <input
-                className="flex-1 bg-field-background rounded-lg px-3 py-1.5 text-sm border border-border outline-none focus:border-accent transition-colors"
+              <Input
+                className="flex-1"
                 placeholder="Eigene Kategorie..."
                 value={categoryInput}
+                variant="secondary"
                 onChange={(e) => setCategoryInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && categoryInput.trim()) {
@@ -2584,17 +2587,19 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                   }
                 }}
               />
-              <button
-                type="button"
-                onClick={() => {
+              <Button
+                isIconOnly
+                size="sm"
+                onPress={() => {
                   const c = formData.categories || [];
                   if (categoryInput.trim() && !c.includes(categoryInput.trim())) setFormData({ ...formData, categories: [...c, categoryInput.trim()] });
                   setCategoryInput('');
                 }}
-                className="px-3 py-1.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50"
+                isDisabled={!categoryInput.trim()}
+                aria-label="Kategorie hinzufügen"
               >
                 <Plus className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
