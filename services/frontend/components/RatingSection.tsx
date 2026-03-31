@@ -124,24 +124,28 @@ export function RatingSection({ appId }: { appId: string }) {
                 {isEditing ? "Meine Bewertung bearbeiten" : "Ihre Bewertung abgeben"}
               </Label>
               {isEditing && (
-                <button 
-                  onClick={() => setIsEditing(false)}
-                  className="text-[10px] text-muted hover:text-foreground font-medium underline"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setIsEditing(false)}
+                  className="h-auto min-w-0 px-0 py-0 text-[10px] font-medium text-muted underline underline-offset-2"
                 >
                   Abbrechen
-                </button>
+                </Button>
               )}
             </div>
             <div className="flex items-center gap-2 bg-surface p-3 rounded-lg border border-border w-fit">
               {[1, 2, 3, 4, 5].map((star) => (
-                <button
+                <Button
                   key={star}
-                  type="button"
                   aria-label={`Bewerten mit ${star} Sternen`}
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
                   onMouseEnter={() => setHoverRating(star)}
                   onMouseLeave={() => setHoverRating(0)}
-                  onClick={() => setUserRating(star)}
-                  className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                  onPress={() => setUserRating(star)}
+                  className="h-8 w-8 min-w-0 rounded-full transition-transform hover:scale-110 active:scale-95"
                 >
                   <Star
                     className={`w-6 h-6 ${
@@ -150,7 +154,7 @@ export function RatingSection({ appId }: { appId: string }) {
                         : "text-muted/20"
                     }`}
                   />
-                </button>
+                </Button>
               ))}
               <span className="ml-3 text-xs font-bold text-muted">
                 {userRating > 0 ? `${userRating} / 5` : "Wählen..."}
@@ -220,19 +224,25 @@ export function RatingSection({ appId }: { appId: string }) {
                   {/* Actions for User or Admin */}
                   <div className="flex items-center gap-2">
                     {(user?.id === r.userId) && (
-                      <button 
-                        onClick={() => handleEdit(r)}
-                        className="text-[10px] text-accent hover:underline font-bold"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onPress={() => handleEdit(r)}
+                        className="h-auto min-w-0 px-0 py-0 text-[10px] font-bold text-accent underline underline-offset-2"
                       >
                         Bearbeiten
-                      </button>
+                      </Button>
                     )}
                     {(user?.id === r.userId || user?.role === 'admin') && (
                       <AlertDialog>
                         <AlertDialog.Trigger>
-                          <button className="text-[10px] text-danger hover:underline font-bold">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto min-w-0 px-0 py-0 text-[10px] font-bold text-danger underline underline-offset-2"
+                          >
                             Löschen
-                          </button>
+                          </Button>
                         </AlertDialog.Trigger>
                         <AlertDialog.Backdrop>
                           <AlertDialog.Container>
