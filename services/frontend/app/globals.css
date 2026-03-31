@@ -133,3 +133,13 @@ body {
 .prose-bund table { @apply w-full text-sm my-4; }
 .prose-bund th { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
 .prose-bund td { @apply border-b border-separator py-2 px-3 text-muted; }
+
+/* ── Page transition animation ── */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-enter 0.22s ease-out both;
+}

@@ -107,6 +107,10 @@ func GetApps(c *gin.Context, db *bun.DB) {
 			Where("agm.app_group_id::text = ?", groupID)
 	}
 
+	if c.Query("owner") == "me" && hasViewer {
+		query = query.Where("a.owner_id = ?", viewerID)
+	}
+
 	err := query.Scan(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching apps", err)

@@ -14,6 +14,16 @@ interface AppGroup {
   description?: string;
 }
 
+async function loadGroupApps(groupId: string): Promise<AppConfig[]> {
+  const res = await fetchApi(`/apps?group=${encodeURIComponent(groupId)}`);
+  if (!res.ok) {
+    return [];
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export default function GruppenDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [group, setGroup] = useState<AppGroup | null>(null);
@@ -23,14 +33,47 @@ export default function GruppenDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      fetchApi('/app-groups').then((r) => r.ok ? r.json() as Promise<AppGroup[]> : []),
-      fetchApi(`/apps?group=${id}`).then((r) => r.ok ? r.json() as Promise<{ apps: AppConfig[] }> : { apps: [] }),
-    ]).then(([groups, appsRes]) => {
-      const found = groups.find((g) => g.id === id) ?? null;
-      if (!found) { setNotFound(true); } else { setGroup(found); }
-      setMembers(appsRes.apps ?? []);
-    }).finally(() => setLoading(false));
+
+    let isActive = true;
+
+    const loadGroupDetail = async () => {
+      setLoading(true);
+      setNotFound(false);
+
+      try {
+        const [groups, memberApps] = await Promise.all([
+          fetchApi('/app-groups').then((response) => response.ok ? response.json() as Promise<AppGroup[]> : []),
+          loadGroupApps(id),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        const found = groups.find((entry) => entry.id === id) ?? null;
+        setGroup(found);
+        setNotFound(found === null);
+        setMembers(memberApps);
+      } catch {
+        if (!isActive) {
+          return;
+        }
+
+        setGroup(null);
+        setMembers([]);
+        setNotFound(true);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadGroupDetail();
+
+    return () => {
+      isActive = false;
+    };
   }, [id]);
 
   if (loading) {
