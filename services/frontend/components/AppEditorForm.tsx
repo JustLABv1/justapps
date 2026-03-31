@@ -12,7 +12,7 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-  Button,
+    Button,
     Chip,
     Input,
     Label,
