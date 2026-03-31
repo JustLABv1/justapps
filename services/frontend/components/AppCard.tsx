@@ -72,12 +72,14 @@ export function AppCard({ app }: { app: AppConfig }) {
         <div className={`absolute z-20 ${isFeatured ? '-top-3 right-8' : '-top-2 -right-2'}`}>
           <Tooltip delay={0}>
             <Tooltip.Trigger aria-label="Bekanntes Problem anzeigen">
-              <button
-                type="button"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-warning shadow-md shadow-warning/30 cursor-help"
+              <Button
+                isIconOnly
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 min-w-0 rounded-full bg-warning shadow-md shadow-warning/30"
               >
                 <AlertTriangle className="w-3.5 h-3.5 text-white" />
-              </button>
+              </Button>
             </Tooltip.Trigger>
             <Tooltip.Content className="max-w-64" placement="bottom" showArrow>
               <Tooltip.Arrow />

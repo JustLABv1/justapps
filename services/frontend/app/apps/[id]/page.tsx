@@ -10,7 +10,7 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
-import { Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
+import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
     AlertTriangle,
     BookOpen,
@@ -178,16 +178,18 @@ export default function AppPage() {
 
         <div className="flex items-center gap-2">
           {/* Share / copy-link button */}
-          <button
+          <Button
             type="button"
-            onClick={handleShare}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm"
+            variant="secondary"
+            size="sm"
+            onPress={handleShare}
+            className="gap-1.5 shadow-sm"
           >
             {linkCopied
               ? <><Check className="w-4 h-4 text-success" /> Kopiert!</>
               : <><Share2 className="w-4 h-4" /> Teilen</>
             }
-          </button>
+          </Button>
 
           {isAdmin && (
             <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
@@ -324,10 +326,10 @@ export default function AppPage() {
                   return (
                     <Dropdown>
                       <Dropdown.Trigger>
-                        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm outline-none">
+                        <Button className="gap-2 px-4 shadow-sm">
                           <ExternalLink className="w-4 h-4" />
                           Live-Zugänge ({allDemos.length})
-                        </button>
+                        </Button>
                       </Dropdown.Trigger>
                       <Dropdown.Popover>
                         <Dropdown.Menu

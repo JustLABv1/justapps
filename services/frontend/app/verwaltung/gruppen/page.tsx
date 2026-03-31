@@ -169,9 +169,9 @@ export default function VerwaltungGruppenPage() {
             <p className="text-sm font-semibold text-foreground">
               {editingId ? 'Gruppe bearbeiten' : 'Neue Gruppe'}
             </p>
-            <button onClick={cancelForm} className="text-muted hover:text-foreground transition-colors">
+            <Button isIconOnly variant="ghost" size="sm" onPress={cancelForm} aria-label="Formular schließen">
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField isRequired onChange={(v) => setForm((p) => ({ ...p, name: v }))}>
@@ -237,20 +237,24 @@ export default function VerwaltungGruppenPage() {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => openEdit(group)}
-                      className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-default transition-colors"
-                      title="Bearbeiten"
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="tertiary"
+                      onPress={() => openEdit(group)}
+                      aria-label="Gruppe bearbeiten"
                     >
                       <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(group)}
-                      className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                      title="Löschen"
+                    </Button>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="danger-soft"
+                      onPress={() => setDeleteTarget(group)}
+                      aria-label="Gruppe löschen"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="text-muted shrink-0">
