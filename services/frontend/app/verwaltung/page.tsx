@@ -61,10 +61,33 @@ export default function VerwaltungPage() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-pulse">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 rounded-2xl bg-surface-secondary border border-border" />
-        ))}
+      <div className="space-y-8 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-20 bg-surface-secondary rounded" />
+                <div className="w-8 h-8 rounded-xl bg-surface-secondary" />
+              </div>
+              <div className="h-8 w-14 bg-surface-secondary rounded" />
+              <div className="h-3 w-28 bg-surface-secondary rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <div className="h-4 w-36 bg-surface-secondary rounded mb-6" />
+          <div className="space-y-5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-surface-secondary mt-1.5 shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-4 bg-surface-secondary rounded w-1/3" />
+                  <div className="h-3 bg-surface-secondary rounded w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

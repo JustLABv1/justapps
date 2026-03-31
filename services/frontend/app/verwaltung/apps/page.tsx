@@ -31,6 +31,8 @@ function AppsContent() {
   const [transferring, setTransferring] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const draftCount = apps.filter((app) => isDraftStatus(app.status)).length;
 
   const loadApps = async () => {
@@ -105,6 +107,53 @@ function AppsContent() {
       });
       if (res.ok) loadApps();
     } catch (err) { console.error(err); }
+  };
+
+  const handleBulkDelete = (ids: string[]) => {
+    setBulkDeleteIds(ids);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (bulkDeleteIds.length === 0) return;
+    setIsBulkDeleting(true);
+    let failCount = 0;
+    for (const id of bulkDeleteIds) {
+      try {
+        const res = await fetchApi(`/apps/${id}`, { method: 'DELETE' });
+        if (!res.ok) failCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    setIsBulkDeleting(false);
+    setBulkDeleteIds([]);
+    if (failCount === 0) {
+      toast.success(`${bulkDeleteIds.length} App${bulkDeleteIds.length !== 1 ? 's' : ''} gelöscht.`);
+    } else {
+      toast.warning(`${bulkDeleteIds.length - failCount} von ${bulkDeleteIds.length} Apps gelöscht. ${failCount} fehlgeschlagen.`);
+    }
+    await loadApps();
+  };
+
+  const handleBulkToggleLock = async (ids: string[], lock: boolean) => {
+    let failCount = 0;
+    for (const id of ids) {
+      const app = apps.find((a) => a.id === id);
+      if (!app) continue;
+      try {
+        const payload = { ...app, isLocked: lock };
+        const res = await fetchApi(`/apps/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        if (!res.ok) failCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    if (failCount === 0) {
+      toast.success(`${ids.length} App${ids.length !== 1 ? 's' : ''} ${lock ? 'gesperrt' : 'freigegeben'}.`);
+    } else {
+      toast.warning(`${ids.length - failCount} von ${ids.length} Apps ${lock ? 'gesperrt' : 'freigegeben'}. ${failCount} fehlgeschlagen.`);
+    }
+    await loadApps();
   };
 
   const handleOpenTransfer = (app: AppConfig) => {
@@ -237,19 +286,16 @@ function AppsContent() {
         </div>
       )}
 
-      {loading ? (
-        <div className="py-20 flex justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
-      ) : (
-        <AppTable
-          apps={apps}
-          handleEditApp={handleEditApp}
-          handleDeleteApp={handleDeleteApp}
-          handleToggleAppLock={handleToggleAppLock}
-          handleTransferApp={handleOpenTransfer}
-        />
-      )}
+      <AppTable
+        apps={apps}
+        isLoading={loading}
+        handleEditApp={handleEditApp}
+        handleDeleteApp={handleDeleteApp}
+        handleToggleAppLock={handleToggleAppLock}
+        handleTransferApp={handleOpenTransfer}
+        onBulkDelete={handleBulkDelete}
+        onBulkToggleLock={handleBulkToggleLock}
+      />
 
       {/* Transfer ownership modal */}
       <Modal.Backdrop isOpen={!!transferApp} onOpenChange={(open) => { if (!open) setTransferApp(null); }}>
@@ -324,6 +370,17 @@ function AppsContent() {
           if (!open && !isDeleting) setDeleteCandidate(null);
         }}
         title="App wirklich löschen?"
+      />
+
+      <ConfirmDialog
+        confirmLabel={`${bulkDeleteIds.length} Apps löschen`}
+        description={`${bulkDeleteIds.length} App${bulkDeleteIds.length !== 1 ? 's' : ''} werden dauerhaft aus dem Store entfernt. Dieser Schritt kann nicht rückgängig gemacht werden.`}
+        isDanger
+        isLoading={isBulkDeleting}
+        isOpen={bulkDeleteIds.length > 0}
+        onConfirm={confirmBulkDelete}
+        onOpenChange={(open) => { if (!open && !isBulkDeleting) setBulkDeleteIds([]); }}
+        title={`${bulkDeleteIds.length} Apps löschen?`}
       />
     </div>
   );
