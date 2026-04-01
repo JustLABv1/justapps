@@ -23,7 +23,7 @@ type LinkProbeIssue struct {
 	Name            string                   `json:"name"`
 	Icon            string                   `json:"icon"`
 	LinkProbeStatus string                   `json:"linkProbeStatus"`
-	Endpoints []LinkProbeEndpointIssue `json:"endpoints"`
+	Endpoints       []LinkProbeEndpointIssue `json:"endpoints"`
 }
 
 func GetStats(c *gin.Context, db *bun.DB) {
