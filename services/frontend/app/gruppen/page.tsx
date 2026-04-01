@@ -1,5 +1,5 @@
-import { fetchApi } from '@/lib/api';
 import { GroupIcon } from '@/components/GroupIcon';
+import { fetchApi } from '@/lib/api';
 import { Layers2 } from 'lucide-react';
 import { Metadata } from 'next';
 import Link from 'next/link';

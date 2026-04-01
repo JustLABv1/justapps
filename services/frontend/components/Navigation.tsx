@@ -1,12 +1,12 @@
 'use client';
 
 import {
-  Avatar,
-  Button,
-  Dropdown,
-  Label,
-  Link,
-  Separator
+    Avatar,
+    Button,
+    Dropdown,
+    Label,
+    Link,
+    Separator
 } from "@heroui/react";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
