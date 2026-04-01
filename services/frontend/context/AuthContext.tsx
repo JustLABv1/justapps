@@ -232,7 +232,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileError(null);
     if (status === 'authenticated') {
       // If we have an idToken, we can try a federated logout from the configured OIDC provider.
-      // The provider is still addressed internally through the legacy `keycloak` id for compatibility.
       // but we need it on the client side. If not available, we just sign out from next-auth.
       nextAuthSignOut({ callbackUrl: '/login' });
     }
@@ -251,7 +250,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [status]);
 
   const oidcLogin = () => {
-    nextAuthSignIn('keycloak', { callbackUrl: '/' });
+    nextAuthSignIn('oidc', { callbackUrl: '/' });
   };
 
   // Keep privileged UI in loading state until the backend confirms the authenticated user.

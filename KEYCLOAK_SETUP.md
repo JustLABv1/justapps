@@ -13,8 +13,8 @@ Create a new realm (e.g., `justapps`) or use an existing one.
 3. **Client Protocol**: `openid-connect`.
 4. **Access Type**: `confidential` (for NextAuth) or `public` (if exclusively using frontend-only flow, but NextAuth prefers confidential).
 5. **Valid Redirect URIs**: 
-   - `http://localhost:3000/api/auth/callback/keycloak` (Development)
-   - `https://your-domain.de/api/auth/callback/keycloak` (Production)
+   - `http://localhost:3000/api/auth/callback/oidc` (Development)
+   - `https://your-domain.de/api/auth/callback/oidc` (Production)
 6. **Web Origins**: `*` or your frontend URL.
 
 ### 3. Essential Scopes & Offline Access (Crucial for Session Persistence)

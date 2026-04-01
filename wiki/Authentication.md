@@ -24,8 +24,8 @@ Create a new realm (e.g. `justapps`) or reuse an existing one.
 3. **Client Protocol**: `openid-connect`
 4. **Access Type**: `confidential` (required for NextAuth server-side flows)
 5. **Valid Redirect URIs**:
-   - Development: `http://localhost:3000/api/auth/callback/keycloak`
-   - Production: `https://your-domain.com/api/auth/callback/keycloak`
+   - Development: `http://localhost:3000/api/auth/callback/oidc`
+   - Production: `https://your-domain.com/api/auth/callback/oidc`
 6. **Web Origins**: `*` or your frontend URL
 
 ### 3. Client Secret
