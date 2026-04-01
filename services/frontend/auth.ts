@@ -51,26 +51,30 @@ async function exchangeForBackendToken(oidcIdToken: string): Promise<{
   }
 }
 
+const oidcProvider = {
+  ...Keycloak({
+    clientId: oidcClientId,
+    clientSecret: oidcClientSecret,
+    issuer: oidcIssuer,
+    wellKnown: oidcIssuer ? `${oidcIssuer}/.well-known/openid-configuration` : undefined,
+    checks: ["pkce", "state"],
+    authorization: {
+      params: {
+        // No offline_access — we don't need upstream refresh tokens at all.
+        scope: "openid profile email",
+      },
+    },
+    client: {
+      authorization_signed_response_alg: "RS256",
+      id_token_signed_response_alg: "RS256",
+    },
+  }),
+  id: "oidc",
+  name: "OIDC",
+};
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Keycloak({
-      clientId: oidcClientId,
-      clientSecret: oidcClientSecret,
-      issuer: oidcIssuer,
-      wellKnown: oidcIssuer ? `${oidcIssuer}/.well-known/openid-configuration` : undefined,
-      checks: ["pkce", "state"],
-      authorization: {
-        params: {
-          // No offline_access — we don't need upstream refresh tokens at all.
-          scope: "openid profile email",
-        },
-      },
-      client: {
-        authorization_signed_response_alg: "RS256",
-        id_token_signed_response_alg: "RS256",
-      },
-    }),
-  ],
+  providers: [oidcProvider],
   session: {
     strategy: "jwt",
     // The session cookie lasts 8 hours, matching the backend token lifetime
