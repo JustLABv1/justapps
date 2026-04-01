@@ -12,40 +12,40 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField, toast
+  Button,
+  Chip,
+  Input,
+  Label,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField, toast
 } from '@heroui/react';
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    CloudDownload,
-    ExternalLink,
-    GitBranch,
-    Github,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Tag,
-    Terminal,
-    Upload,
-    X,
+  AlertTriangle,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CloudDownload,
+  ExternalLink,
+  GitBranch,
+  Github,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Tag,
+  Terminal,
+  Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -1460,7 +1460,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <input
                         value={gitLabForm.providerKey}
                         onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
-                        placeholder="Provider-Schlüssel, z. B. plain-gitlab"
+                        placeholder="Provider-Schlüssel, z. B. gitlab"
                         className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
                       />
                     )}
@@ -1771,7 +1771,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Herausgeber</Label>
                       <input
                         className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
-                        placeholder="z.B. Bundesinnenministerium"
+                        placeholder="z.B. Firma"
                         value={formData.authority || ''}
                         onChange={(event) => setFormData((previous) => ({ ...previous, authority: event.target.value }))}
                       />

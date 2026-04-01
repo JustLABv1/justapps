@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "frontend-check",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"check"
+			],
+			"isBackground": false
+		}
+	]
+}

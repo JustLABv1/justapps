@@ -123,7 +123,7 @@ func RemoveRelatedApp(c *gin.Context, db *bun.DB) {
 
 // ListGroups returns all app groups.
 func ListGroups(c *gin.Context, db *bun.DB) {
-	var groups []models.AppGroup
+	groups := make([]models.AppGroup, 0)
 	err := db.NewSelect().Model(&groups).Scan(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching groups", err)

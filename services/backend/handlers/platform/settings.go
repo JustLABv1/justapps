@@ -48,6 +48,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 			AllowAppSubmissions: true,
 			ShowFlagBar:         true,
 			DetailFields:        defaultDetailFields,
+			EnableLinkProbing:   true,
 		}
 		db.NewInsert().Model(&settings).Exec(c)
 	} else {

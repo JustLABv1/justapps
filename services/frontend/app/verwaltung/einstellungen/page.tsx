@@ -64,7 +64,7 @@ const defaultState: SettingsState = {
   appSortField: 'name',
   appSortDirection: 'asc',
   pinnedApps: [],
-  enableLinkProbing: false,
+  enableLinkProbing: true,
 };
 
 function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
