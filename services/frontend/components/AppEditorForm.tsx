@@ -2644,7 +2644,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               </TextField>
               <TextField onChange={(val) => setFormData((p) => ({ ...p, authority: val }))}>
                 <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Herausgeber</Label>
-                <Input value={formData.authority || ''} placeholder="z.B. Bundesinnenministerium" className="bg-field-background h-8 text-sm" />
+                <Input value={formData.authority || ''} placeholder="z.B. Firma" className="bg-field-background h-8 text-sm" />
               </TextField>
             </div>
           </div>
@@ -2851,7 +2851,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
                     value={formData.authority || ''}
                     onChange={(e) => setFormData(p => ({ ...p, authority: e.target.value }))}
-                    placeholder="z.B. Bundesinnenministerium"
+                    placeholder="z.B. Firma"
                   />
                 </dd>
               </div>
