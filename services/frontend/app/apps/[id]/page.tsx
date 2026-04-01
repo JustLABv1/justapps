@@ -129,6 +129,7 @@ export default function AppPage() {
   if (isDraftStatus(app.status) && !isOwner && !isAdmin) return notFound();
 
   const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
+  const probeStatus = probeEnabled ? app.linkProbeStatus : undefined;
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const statusInfo = getAppStatusMeta(app.status);
@@ -319,7 +320,7 @@ export default function AppPage() {
                     >
                       <ExternalLink className="w-4 h-4" />
                       {allDemos[0].label}
-                      {probeEnabled && <LinkStatusDot url={allDemos[0].url} />}
+                      {probeEnabled && <LinkStatusDot status={probeStatus} />}
                     </Link>
                   );
                 } else if (allDemos.length > 1) {
@@ -348,7 +349,7 @@ export default function AppPage() {
                               <div className="flex items-center gap-2">
                                 <ExternalLink className="w-3 h-3" />
                                 <span>{demo.label}</span>
-                                {probeEnabled && <LinkStatusDot url={demo.url} />}
+                                {probeEnabled && <LinkStatusDot status={probeStatus} />}
                               </div>
                             </Dropdown.Item>
                           ))}

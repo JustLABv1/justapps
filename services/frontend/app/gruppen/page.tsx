@@ -1,3 +1,4 @@
+import { GroupIcon } from '@/components/GroupIcon';
 import { fetchApi } from '@/lib/api';
 import { Layers2 } from 'lucide-react';
 import { Metadata } from 'next';
@@ -10,6 +11,7 @@ interface AppGroup {
   id: string;
   name: string;
   description?: string;
+  icon?: string;
   appCount?: number;
 }
 
@@ -27,7 +29,7 @@ export default async function GruppenPage() {
   const groups = await loadGroups();
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
+    <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-8 flex items-center gap-3">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
           <Layers2 className="w-5 h-5" />
@@ -53,9 +55,7 @@ export default async function GruppenPage() {
               className="group flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all hover:border-accent/40 hover:shadow-md hover:bg-surface-secondary/60"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent shrink-0">
-                  <Layers2 className="w-4 h-4" />
-                </span>
+                <GroupIcon icon={group.icon} name={group.name} className="h-9 w-9 rounded-xl bg-accent/10 text-accent shrink-0" />
                 {group.appCount !== undefined && (
                   <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-0.5 text-[11px] font-semibold text-muted">
                     {group.appCount} {group.appCount === 1 ? 'App' : 'Apps'}

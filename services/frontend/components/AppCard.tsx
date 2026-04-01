@@ -30,6 +30,7 @@ export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
   const { settings } = useSettings();
   const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
+  const probeStatus = probeEnabled ? app.linkProbeStatus : undefined;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const [now] = useState(() => Date.now());
   const statusInfo = getAppStatusMeta(app.status);
@@ -196,7 +197,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                     {resourceItems[0].icon}
                     {resourceItems[0].label}
                     {probeEnabled && resourceItems[0].kind === 'demo' && (
-                      <LinkStatusDot url={resourceItems[0].url} />
+                      <LinkStatusDot status={probeStatus} />
                     )}
                   </Link>
                 </Tooltip.Trigger>
@@ -226,7 +227,7 @@ export function AppCard({ app }: { app: AppConfig }) {
                           {resource.icon}
                           <span>{resource.label}</span>
                           {probeEnabled && resource.kind === 'demo' && (
-                            <LinkStatusDot url={resource.url} />
+                            <LinkStatusDot status={probeStatus} />
                           )}
                         </div>
                       </Dropdown.Item>
