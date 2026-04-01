@@ -77,7 +77,9 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 	if app.ID == "" {
 		app.ID = uuid.New().String()
 	}
-	app.UpdatedAt = time.Now()
+	now := time.Now()
+	app.CreatedAt = now
+	app.UpdatedAt = now
 	app.OwnerID = userID // Assign ownership
 
 	// Default status for new apps
@@ -160,6 +162,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		app.IsFeatured = existingApp.IsFeatured
 	}
 	app.ID = id
+	app.CreatedAt = existingApp.CreatedAt
 	app.UpdatedAt = time.Now()
 
 	// Update query
