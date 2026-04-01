@@ -155,6 +155,7 @@ export interface AppConfig {
   authority?: string;
   ratingAvg?: number;
   ratingCount?: number;
+  createdAt?: string;
   updatedAt?: string;
   deploymentVariants?: DeploymentVariant[];
   version?: string;

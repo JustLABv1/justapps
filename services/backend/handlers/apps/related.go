@@ -1,8 +1,10 @@
 package apps
 
 import (
+	"errors"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -231,36 +233,106 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 	c.JSON(200, result)
 }
 
-// AddGroupMember adds an app to a group.
+// AddGroupMember adds one or more apps to a group.
 func AddGroupMember(c *gin.Context, db *bun.DB) {
 	groupID := c.Param("groupId")
 
+	parsedGroupID, err := uuid.Parse(groupID)
+	if err != nil {
+		httperror.StatusBadRequest(c, "Invalid group ID", err)
+		return
+	}
+
 	var body struct {
-		AppID string `json:"appId" binding:"required"`
+		AppID  string   `json:"appId"`
+		AppIDs []string `json:"appIds"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		httperror.StatusBadRequest(c, "appId is required", err)
+		httperror.StatusBadRequest(c, "Request body is invalid", err)
 		return
 	}
 
-	// Ensure both group and app exist
-	groupExists, _ := db.NewSelect().TableExpr("app_groups").Where("id = ?::uuid", groupID).Count(c)
-	appExists, _ := db.NewSelect().TableExpr("apps").Where("id = ?", body.AppID).Count(c)
-	if groupExists == 0 || appExists == 0 {
-		httperror.StatusNotFound(c, "Group or app not found", nil)
+	uniqueAppIDs := make([]string, 0, len(body.AppIDs)+1)
+	seenAppIDs := make(map[string]struct{}, len(body.AppIDs)+1)
+	addAppID := func(appID string) {
+		trimmedID := strings.TrimSpace(appID)
+		if trimmedID == "" {
+			return
+		}
+		if _, exists := seenAppIDs[trimmedID]; exists {
+			return
+		}
+		seenAppIDs[trimmedID] = struct{}{}
+		uniqueAppIDs = append(uniqueAppIDs, trimmedID)
+	}
+
+	addAppID(body.AppID)
+	for _, appID := range body.AppIDs {
+		addAppID(appID)
+	}
+
+	if len(uniqueAppIDs) == 0 {
+		httperror.StatusBadRequest(c, "appId or appIds is required", errors.New("missing app IDs"))
 		return
 	}
 
-	_, err := db.NewRaw(`
-		INSERT INTO app_group_members (app_group_id, app_id) VALUES (?::uuid, ?)
-		ON CONFLICT DO NOTHING
-	`, groupID, body.AppID).Exec(c)
+	groupExists, err := db.NewSelect().TableExpr("app_groups").Where("id = ?", parsedGroupID).Count(c)
+	if err != nil {
+		httperror.InternalServerError(c, "Error validating group", err)
+		return
+	}
+	if groupExists == 0 {
+		httperror.StatusNotFound(c, "Group not found", errors.New("group not found"))
+		return
+	}
+
+	type appIDRow struct {
+		ID string `bun:"id"`
+	}
+
+	var existingApps []appIDRow
+	err = db.NewSelect().TableExpr("apps").Column("id").Where("id IN (?)", bun.In(uniqueAppIDs)).Scan(c, &existingApps)
+	if err != nil {
+		httperror.InternalServerError(c, "Error validating apps", err)
+		return
+	}
+	if len(existingApps) != len(uniqueAppIDs) {
+		foundAppIDs := make(map[string]struct{}, len(existingApps))
+		for _, app := range existingApps {
+			foundAppIDs[app.ID] = struct{}{}
+		}
+
+		missingAppIDs := make([]string, 0)
+		for _, appID := range uniqueAppIDs {
+			if _, exists := foundAppIDs[appID]; !exists {
+				missingAppIDs = append(missingAppIDs, appID)
+			}
+		}
+
+		httperror.StatusNotFound(c, "One or more apps not found", errors.New(strings.Join(missingAppIDs, ", ")))
+		return
+	}
+
+	members := make([]models.AppGroupMember, 0, len(uniqueAppIDs))
+	for _, appID := range uniqueAppIDs {
+		members = append(members, models.AppGroupMember{
+			AppGroupID: parsedGroupID,
+			AppID:      appID,
+		})
+	}
+
+	_, err = db.NewInsert().Model(&members).On("CONFLICT DO NOTHING").Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error adding member", err)
 		return
 	}
 
-	c.JSON(201, gin.H{"message": "Member added"})
+	message := "Member added"
+	if len(uniqueAppIDs) > 1 {
+		message = "Members added"
+	}
+
+	c.JSON(201, gin.H{"message": message, "count": len(uniqueAppIDs)})
 }
 
 // RemoveGroupMember removes an app from a group.
