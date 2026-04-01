@@ -5,9 +5,9 @@ JustApps supports two authentication modes:
 | Mode | Description |
 |------|-------------|
 | **Local** | Username/password stored in PostgreSQL, JWT-issued tokens |
-| **OIDC (Keycloak)** | OAuth2 / OpenID Connect via Keycloak, handled by NextAuth v5 |
+| **OIDC** | OAuth2 / OpenID Connect via standards-compliant providers such as Keycloak or Authentik, handled by NextAuth v5 |
 
-Both modes can coexist. OIDC users are managed in Keycloak; local users are managed in the JustApps admin UI.
+Both modes can coexist. OIDC users are managed in your identity provider; local users are managed in the JustApps admin UI.
 
 ---
 
@@ -20,7 +20,7 @@ Create a new realm (e.g. `justapps`) or reuse an existing one.
 ### 2. Create a Client
 
 1. Go to **Clients** → **Create client**
-2. **Client ID**: `justapps` (must match `AUTH_KEYCLOAK_ID` and `oidc.client_id`)
+2. **Client ID**: `justapps` (must match `AUTH_OIDC_ID` and `oidc.client_id`)
 3. **Client Protocol**: `openid-connect`
 4. **Access Type**: `confidential` (required for NextAuth server-side flows)
 5. **Valid Redirect URIs**:
@@ -30,7 +30,7 @@ Create a new realm (e.g. `justapps`) or reuse an existing one.
 
 ### 3. Client Secret
 
-Copy the **Client Secret** from the **Credentials** tab into `AUTH_KEYCLOAK_SECRET`.
+Copy the **Client Secret** from the **Credentials** tab into `AUTH_OIDC_SECRET`.
 
 ### 4. Admin Group
 
@@ -77,9 +77,9 @@ oidc:
 ### Frontend (`.env`)
 
 ```env
-AUTH_KEYCLOAK_ID=justapps
-AUTH_KEYCLOAK_SECRET=your-client-secret
-AUTH_KEYCLOAK_ISSUER=https://your-keycloak/realms/your-realm
+AUTH_OIDC_ID=justapps
+AUTH_OIDC_SECRET=your-client-secret
+AUTH_OIDC_ISSUER=https://your-keycloak/realms/your-realm
 AUTH_ADMIN_GROUP=admin
 AUTH_SECRET=random-secret-string
 AUTH_URL=https://your-domain.com

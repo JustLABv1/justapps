@@ -40,10 +40,10 @@ go run main.go --config /etc/justapps/config.yaml
 | `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL (e.g. `http://localhost:8082/api/v1`) |
 | `AUTH_SECRET` | Yes | NextAuth secret — `openssl rand -base64 32` |
 | `AUTH_URL` | Yes | Public URL of the frontend (e.g. `http://localhost:3000`) |
-| `AUTH_KEYCLOAK_ID` | OIDC only | Keycloak client ID |
-| `AUTH_KEYCLOAK_SECRET` | OIDC only | Keycloak client secret |
-| `AUTH_KEYCLOAK_ISSUER` | OIDC only | Keycloak realm URL |
-| `AUTH_ADMIN_GROUP` | OIDC only | Keycloak group that grants admin rights (e.g. `admin`) |
+| `AUTH_OIDC_ID` | OIDC only | OIDC client ID |
+| `AUTH_OIDC_SECRET` | OIDC only | OIDC client secret |
+| `AUTH_OIDC_ISSUER` | OIDC only | OIDC issuer URL |
+| `AUTH_ADMIN_GROUP` | OIDC only | OIDC group that grants admin rights (e.g. `admin`) |
 
 See [`.env.example`](https://github.com/JustLABv1/justapps/blob/main/.env.example) for a full reference template.
 

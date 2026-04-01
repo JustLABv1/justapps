@@ -2,6 +2,10 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 
+const oidcClientId = process.env.AUTH_OIDC_ID;
+const oidcClientSecret = process.env.AUTH_OIDC_SECRET;
+const oidcIssuer = process.env.AUTH_OIDC_ISSUER?.replace(/\/$/, "");
+
 declare module "next-auth" {
   interface Session extends DefaultSession {
     accessToken?: string;
@@ -17,11 +21,11 @@ declare module "next-auth" {
 }
 
 /**
- * Exchange a Keycloak ID token for a long-lived backend-issued JWT.
- * This is the key to avoiding Keycloak refresh token issues:
- * the Keycloak token is only used ONCE at login time, then discarded.
+ * Exchange an OIDC ID token for a long-lived backend-issued JWT.
+ * This avoids relying on provider refresh token semantics:
+ * the upstream token is only used ONCE at login time, then discarded.
  */
-async function exchangeForBackendToken(keycloakIdToken: string): Promise<{
+async function exchangeForBackendToken(oidcIdToken: string): Promise<{
   token: string;
   expiresAt: number;
   user: { id: string; email: string; username: string; role: string; authType: string; canSubmitApps: boolean };
@@ -31,7 +35,7 @@ async function exchangeForBackendToken(keycloakIdToken: string): Promise<{
     const response = await fetch(`${apiUrl}/auth/oidc/exchange`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token: keycloakIdToken }),
+      body: JSON.stringify({ id_token: oidcIdToken }),
     });
 
     if (!response.ok) {
@@ -47,19 +51,17 @@ async function exchangeForBackendToken(keycloakIdToken: string): Promise<{
   }
 }
 
-const keycloakIssuer = process.env.AUTH_KEYCLOAK_ISSUER?.replace(/\/$/, "");
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Keycloak({
-      clientId: process.env.AUTH_KEYCLOAK_ID,
-      clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
-      issuer: keycloakIssuer,
-      wellKnown: `${keycloakIssuer}/.well-known/openid-configuration`,
+      clientId: oidcClientId,
+      clientSecret: oidcClientSecret,
+      issuer: oidcIssuer,
+      wellKnown: oidcIssuer ? `${oidcIssuer}/.well-known/openid-configuration` : undefined,
       checks: ["pkce", "state"],
       authorization: {
         params: {
-          // No offline_access — we don't need Keycloak refresh tokens at all
+          // No offline_access — we don't need upstream refresh tokens at all.
           scope: "openid profile email",
         },
       },
@@ -76,13 +78,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async jwt({ token, account, profile }) {
-      // --- Initial sign-in: exchange Keycloak token for a backend JWT ---
+      // --- Initial sign-in: exchange the upstream OIDC token for a backend JWT ---
       if (account && profile) {
-        const keycloakIdToken = account.id_token;
+        const oidcIdToken = account.id_token;
 
-        if (keycloakIdToken) {
+        if (oidcIdToken) {
           console.log("OIDC login successful, exchanging for backend session token...");
-          const exchangeResult = await exchangeForBackendToken(keycloakIdToken);
+          const exchangeResult = await exchangeForBackendToken(oidcIdToken);
 
           if (exchangeResult) {
             console.log("Backend token exchange successful, session valid for 8 hours.");
@@ -94,12 +96,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.id = exchangeResult.user.id;
             token.authType = exchangeResult.user.authType;
             token.canSubmitApps = exchangeResult.user.canSubmitApps;
-            // Do NOT store idToken, refreshToken, or any Keycloak tokens
+            // Do NOT store upstream provider tokens in the app session.
             return token;
           }
 
-          // Exchange failed — force re-authentication instead of using the raw Keycloak token.
-          // Using the raw Keycloak token is unsafe: the user may not yet exist in the backend DB,
+          // Exchange failed — force re-authentication instead of using the raw upstream token.
+          // Using the raw OIDC token is unsafe: the user may not yet exist in the backend DB,
           // which would cause all write operations (create app, etc.) to silently fail with 401.
           console.error("Backend token exchange failed. Requesting re-authentication.");
           return { ...token, error: "ExchangeFailed" };
@@ -142,7 +144,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const token = "token" in message ? message.token : null;
       if (token?.idToken) {
         try {
-          const issuer = process.env.AUTH_KEYCLOAK_ISSUER;
+          const issuer = oidcIssuer;
+          if (!issuer) {
+            return;
+          }
           const logOutUrl = new URL(
             `${issuer}/protocol/openid-connect/logout`
           );
