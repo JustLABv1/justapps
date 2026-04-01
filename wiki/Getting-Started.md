@@ -11,6 +11,23 @@
 
 ---
 
+## Quick Install With Docker Compose
+
+If you want a full installation on a single machine without Kubernetes, use the checked-in Compose stack:
+
+```bash
+git clone https://github.com/JustLABv1/justapps.git
+cd justapps/deploy/compose
+cp .env.example .env
+docker compose up -d
+```
+
+This starts PostgreSQL, the backend, and the frontend. By default, OIDC is disabled so you can create the first local user at `http://localhost:3000` without Keycloak. The first locally registered user becomes an admin.
+
+For production-style settings, edit `deploy/compose/.env` before starting. For Keycloak setup, see [Authentication](Authentication). For container details, see [Docker](Docker).
+
+---
+
 ## Local Development
 
 ### 1. Clone the repository
@@ -59,7 +76,7 @@ The app is available at `http://localhost:3000`.
 
 ## First Login
 
-If OIDC is **disabled**, the backend seeds a default admin account on first run. Check the backend startup logs for credentials or refer to the seed file at `services/backend/database/seed.go`.
+If OIDC is **disabled**, register the first local user through the frontend at `http://localhost:3000/register`. The backend assigns the first registered local user the `admin` role automatically.
 
 If OIDC is **enabled**, log in via Keycloak. See the [Authentication](Authentication) page for setup instructions.
 
@@ -79,5 +96,5 @@ If OIDC is **enabled**, log in via Keycloak. See the [Authentication](Authentica
 
 - [Configure](Configuration) the backend and frontend
 - [Set up Keycloak](Authentication) for OIDC login
-- [Deploy with Docker](Docker) for a single-container setup
+- [Deploy with Docker Compose](Docker) for a single-host setup
 - [Deploy to Kubernetes](Kubernetes) for production

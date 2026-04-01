@@ -1,0 +1,30 @@
+log_level: info
+port: 8080
+data_path: /app/data
+
+database:
+  driver: postgres
+  server: postgres
+  port: 5432
+  name: justapps
+  user: justapps
+  password: change-me
+
+jwt:
+  secret: change-me
+
+oidc:
+  enabled: false
+  issuer: ""
+  client_id: ""
+  admin_group: admin
+  insecure: false
+  disable_local_auth: false
+  disable_registration: false
+
+gitlab:
+  providers: []
+
+cors:
+  allowed_origins:
+    - http://localhost:3000
