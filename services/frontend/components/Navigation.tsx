@@ -16,6 +16,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { adminNavLinks } from "../lib/admin-navigation";
+import { fetchApi } from "../lib/api";
 import JustLABLogo from '../public/justlab_logo_compact.png';
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -26,6 +27,7 @@ export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasGitLabProviders, setHasGitLabProviders] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
   const { resolvedTheme } = useTheme();
@@ -54,6 +56,38 @@ export function Navigation() {
     return () => window.removeEventListener('keydown', handler);
   }, [searchOpen]);
 
+  useEffect(() => {
+    if (user?.role !== 'admin') {
+      return;
+    }
+
+    let active = true;
+
+    fetchApi('/settings/gitlab/providers/available', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) {
+          return [];
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      })
+      .then((providers) => {
+        if (active) {
+          setHasGitLabProviders(providers.length > 0);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setHasGitLabProviders(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.role]);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -68,6 +102,7 @@ export function Navigation() {
     : (settings.logoUrl || null);
 
   const isInVerwaltung = pathname.startsWith('/verwaltung');
+  const visibleAdminNavLinks = adminNavLinks.filter((link) => link.href !== '/verwaltung/gitlab' || hasGitLabProviders);
 
   const handleLogout = () => {
     logout();
@@ -143,7 +178,7 @@ export function Navigation() {
                   onAction={(key) => router.push(key as string)}
                   className="min-w-[180px]"
                 >
-                  {adminNavLinks.map(({ href, label, icon: Icon }) => (
+                  {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
                     <Dropdown.Item key={href} id={href} textValue={label}>
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-muted" />
@@ -285,7 +320,7 @@ export function Navigation() {
           {user?.role === 'admin' && (
             <div className="pt-2 border-t border-separator">
               <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">Verwaltung</p>
-              {adminNavLinks.map(({ href, label, icon: Icon }) => (
+              {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}

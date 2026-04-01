@@ -17,6 +17,16 @@ interface AppGroup {
   icon?: string;
 }
 
+async function loadGroups(): Promise<AppGroup[]> {
+  const res = await fetchApi('/app-groups');
+  if (!res.ok) {
+    return [];
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 async function loadGroupApps(groupId: string): Promise<AppConfig[]> {
   const res = await fetchApi(`/apps?group=${encodeURIComponent(groupId)}`);
   if (!res.ok) {
@@ -60,7 +70,7 @@ export default function GruppenDetailPage() {
 
       try {
         const [groups, memberApps] = await Promise.all([
-          fetchApi('/app-groups').then((response) => response.ok ? response.json() as Promise<AppGroup[]> : []),
+          loadGroups(),
           loadGroupApps(id),
         ]);
 

@@ -88,8 +88,14 @@ export const defaultSettings: StoreSettings = {
   appSortField: 'name',
   appSortDirection: 'asc',
   pinnedApps: [],
-  enableLinkProbing: false,
+  enableLinkProbing: true,
 };
+
+function buildFaviconHref(faviconUrl: string) {
+  const href = faviconUrl || '/favicon.ico';
+  const separator = href.includes('?') ? '&' : '?';
+  return `${href}${separator}v=${Date.now()}`;
+}
 
 function normalizeSettings(data: Partial<StoreSettings>): StoreSettings {
   return {
@@ -164,18 +170,31 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // Reapply the custom favicon after client-side navigation because Next updates head metadata.
   useEffect(() => {
-    const id = 'store-dynamic-favicon';
-    let el = document.getElementById(id) as HTMLLinkElement | null;
-    if (settings.faviconUrl) {
+    const definitions = [
+      { id: 'store-dynamic-favicon', rel: 'icon' },
+      { id: 'store-dynamic-shortcut-icon', rel: 'shortcut icon' },
+      { id: 'store-dynamic-apple-touch-icon', rel: 'apple-touch-icon' },
+    ] as const;
+    const managedIds = new Set<string>(definitions.map((definition) => definition.id));
+    const faviconHref = buildFaviconHref(settings.faviconUrl);
+
+    document
+      .querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
+      .forEach((node) => {
+        if (!managedIds.has(node.id)) {
+          node.remove();
+        }
+      });
+
+    for (const definition of definitions) {
+      let el = document.getElementById(definition.id) as HTMLLinkElement | null;
       if (!el) {
         el = document.createElement('link');
-        el.id = id;
-        el.rel = 'icon';
+        el.id = definition.id;
         document.head.appendChild(el);
       }
-      el.href = `${settings.faviconUrl}?v=${Date.now()}`;
-    } else if (el) {
-      el.remove();
+      el.rel = definition.rel;
+      el.href = faviconHref;
     }
   }, [pathname, settings.faviconUrl]);
 

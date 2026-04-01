@@ -48,5 +48,5 @@ type PlatformSettings struct {
 	PinnedApps       []string `bun:"pinned_apps,array,notnull,default:'{}'" json:"pinnedApps"`
 
 	// Link probing
-	EnableLinkProbing bool `bun:"enable_link_probing,notnull,default:false" json:"enableLinkProbing"`
+	EnableLinkProbing bool `bun:"enable_link_probing,notnull,default:true" json:"enableLinkProbing"`
 }
