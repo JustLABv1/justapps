@@ -162,10 +162,12 @@ export interface AppConfig {
   // Related apps (populated by GetApp)
   relatedApps?: { id: string; name: string; icon?: string }[];
   // Groups this app belongs to
-  appGroups?: { id: string; name: string }[];
+  appGroups?: { id: string; name: string; icon?: string }[];
   gitLabSync?: GitLabSyncSummary;
   /** Opt out of the global link-probing feature for this app (e.g. links behind auth/VPN) */
   skipLinkProbe?: boolean;
+  /** Backend-maintained reachability status for live endpoints. */
+  linkProbeStatus?: 'ok' | 'partial' | 'down' | 'unknown';
 }
 
 export const getApps = (): AppConfig[] => {

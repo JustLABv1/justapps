@@ -116,4 +116,5 @@ type AppRelationSummary struct {
 type AppGroupSummary struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	Icon string `json:"icon"`
 }

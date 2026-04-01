@@ -1,11 +1,12 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { fetchApi } from '@/lib/api';
+import { GroupIcon } from '@/components/GroupIcon';
+import { fetchApi, uploadFile } from '@/lib/api';
 import { Button, Chip, Input, Label, TextArea, TextField, toast } from '@heroui/react';
-import { ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 
 interface AppSummary {
   id: string;
@@ -17,6 +18,7 @@ interface AppGroup {
   id: string;
   name: string;
   description?: string;
+  icon?: string;
   members?: AppSummary[];
   membersLoading?: boolean;
 }
@@ -24,9 +26,10 @@ interface AppGroup {
 interface GroupFormState {
   name: string;
   description: string;
+  icon: string;
 }
 
-const emptyForm: GroupFormState = { name: '', description: '' };
+const emptyForm: GroupFormState = { name: '', description: '', icon: '' };
 
 export default function VerwaltungGruppenPage() {
   const [groups, setGroups] = useState<AppGroup[]>([]);
@@ -37,6 +40,9 @@ export default function VerwaltungGruppenPage() {
   const [form, setForm] = useState<GroupFormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<AppGroup | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
 
   const loadGroups = async () => {
     setLoading(true);
@@ -100,7 +106,7 @@ export default function VerwaltungGruppenPage() {
 
   const openEdit = (group: AppGroup) => {
     setEditingId(group.id);
-    setForm({ name: group.name, description: group.description ?? '' });
+    setForm({ name: group.name, description: group.description ?? '', icon: group.icon ?? '' });
     setShowForm(true);
   };
 
@@ -108,13 +114,38 @@ export default function VerwaltungGruppenPage() {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    setUploadError(null);
+  };
+
+  const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setUploadingIcon(true);
+    setUploadError(null);
+
+    try {
+      const iconUrl = await uploadFile('/upload/logo', file);
+      setForm((previous) => ({ ...previous, icon: iconUrl }));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Upload fehlgeschlagen.');
+    } finally {
+      setUploadingIcon(false);
+      event.target.value = '';
+    }
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const body = { name: form.name.trim(), description: form.description.trim() || undefined };
+      const body = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        icon: form.icon.trim() || undefined,
+      };
       const res = editingId
         ? await fetchApi(`/app-groups/${editingId}`, { method: 'PUT', body: JSON.stringify(body) })
         : await fetchApi('/app-groups', { method: 'POST', body: JSON.stringify(body) });
@@ -183,6 +214,35 @@ export default function VerwaltungGruppenPage() {
               <TextArea value={form.description} placeholder="Kurze Beschreibung der Gruppe..." className="bg-field-background resize-none" rows={1} />
             </TextField>
           </div>
+          <div className="space-y-2">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Logo / Icon</p>
+              <p className="mt-1 text-xs text-muted">Emoji oder Bild-URL, optional.</p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)_auto] lg:items-center">
+              <div className="flex min-h-[78px] items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
+                <GroupIcon icon={form.icon} name={form.name || 'Gruppe'} className="h-12 w-12 rounded-2xl bg-accent/10 text-accent" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Vorschau</p>
+                  <p className="text-xs text-muted">So erscheint die Gruppe in Listen und Details.</p>
+                </div>
+              </div>
+
+              <TextField value={form.icon} onChange={(value) => setForm((previous) => ({ ...previous, icon: value }))}>
+                <Input value={form.icon} placeholder="https://... oder 🧩" className="bg-field-background" />
+              </TextField>
+
+              <div className="flex lg:justify-end">
+                <input ref={iconInputRef} type="file" accept="image/*" className="hidden" onChange={handleIconUpload} />
+                <Button variant="secondary" size="sm" className="gap-1.5" isDisabled={uploadingIcon} onPress={() => iconInputRef.current?.click()}>
+                  {uploadingIcon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploadingIcon ? 'Laedt...' : 'Upload'}
+                </Button>
+              </div>
+            </div>
+          </div>
+          {uploadError && <p className="text-xs text-danger">{uploadError}</p>}
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" size="sm" onPress={cancelForm} isDisabled={saving}>Abbrechen</Button>
             <Button size="sm" onPress={handleSave} isDisabled={!form.name.trim() || saving}>
@@ -218,9 +278,7 @@ export default function VerwaltungGruppenPage() {
                   className="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/30 transition-colors cursor-pointer"
                   onClick={() => toggleExpand(group.id)}
                 >
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent shrink-0">
-                    <Layers2 className="w-3.5 h-3.5" />
-                  </span>
+                  <GroupIcon icon={group.icon} name={group.name} className="h-7 w-7 rounded-lg bg-accent/10 text-accent shrink-0" />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -302,7 +360,7 @@ export default function VerwaltungGruppenPage() {
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title="Gruppe löschen"
-        description={`Die Gruppe „${deleteTarget?.name}" wird dauerhaft gelöscht. Apps werden nicht gelöscht, nur aus der Gruppe entfernt.`}
+        description={`Die Gruppe „${deleteTarget?.name}“ wird dauerhaft gelöscht. Apps werden nicht gelöscht, nur aus der Gruppe entfernt.`}
         confirmLabel="Löschen"
         isDanger={true}
         onConfirm={handleDelete}

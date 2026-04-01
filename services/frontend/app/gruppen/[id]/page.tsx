@@ -1,6 +1,7 @@
 'use client';
 
 import { AppCard } from '@/components/AppCard';
+import { GroupIcon } from '@/components/GroupIcon';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { ChevronLeft, Layers2, Loader2 } from 'lucide-react';
@@ -12,6 +13,7 @@ interface AppGroup {
   id: string;
   name: string;
   description?: string;
+  icon?: string;
 }
 
 async function loadGroupApps(groupId: string): Promise<AppConfig[]> {
@@ -86,7 +88,7 @@ export default function GruppenDetailPage() {
 
   if (notFound) {
     return (
-      <div className="max-w-6xl mx-auto py-10 px-4">
+      <div className="max-w-6xl mx-auto pb-10">
         <Link
           href="/gruppen"
           className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-muted hover:text-foreground transition-colors"
@@ -104,7 +106,7 @@ export default function GruppenDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4">
+    <div className="max-w-6xl mx-auto pb-10">
       <Link
         href="/gruppen"
         className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-muted hover:text-foreground transition-colors"
@@ -114,9 +116,7 @@ export default function GruppenDetailPage() {
       </Link>
 
       <div className="mb-8 flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-          <Layers2 className="w-5 h-5" />
-        </span>
+        <GroupIcon icon={group?.icon} name={group?.name || 'Gruppe'} className="h-10 w-10 rounded-2xl bg-accent/10 text-accent" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">{group?.name}</h1>
           {group?.description && (
