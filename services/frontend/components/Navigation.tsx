@@ -8,22 +8,16 @@ import {
   Link,
   Separator
 } from "@heroui/react";
-import { ChevronDown, Layers, Layers2, Menu, Search, Settings, Users, X } from "lucide-react";
+import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
+import { adminNavLinks } from "../lib/admin-navigation";
 import JustLABLogo from '../public/justlab_logo_compact.png';
 import { ThemeSwitcher } from "./ThemeSwitcher";
-
-const adminSubLinks = [
-  { href: '/verwaltung/apps', label: 'Apps', icon: Layers },
-  { href: '/verwaltung/gruppen', label: 'Gruppen', icon: Layers2 },
-  { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users },
-  { href: '/verwaltung/einstellungen', label: 'Einstellungen', icon: Settings },
-];
 
 export function Navigation() {
   const { user, loading, logout } = useAuth();
@@ -149,7 +143,7 @@ export function Navigation() {
                   onAction={(key) => router.push(key as string)}
                   className="min-w-[180px]"
                 >
-                  {adminSubLinks.map(({ href, label, icon: Icon }) => (
+                  {adminNavLinks.map(({ href, label, icon: Icon }) => (
                     <Dropdown.Item key={href} id={href} textValue={label}>
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-muted" />
@@ -291,7 +285,7 @@ export function Navigation() {
           {user?.role === 'admin' && (
             <div className="pt-2 border-t border-separator">
               <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">Verwaltung</p>
-              {adminSubLinks.map(({ href, label, icon: Icon }) => (
+              {adminNavLinks.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}

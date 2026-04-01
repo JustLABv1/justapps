@@ -160,10 +160,11 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		AppID   string `bun:"app_id"`
 		GroupID string `bun:"group_id"`
 		Name    string `bun:"name"`
+		Icon    string `bun:"icon"`
 	}
 	var groupRows []appGroupRow
 	_ = db.NewRaw(`
-		SELECT m.app_id, g.id::text AS group_id, g.name
+		SELECT m.app_id, g.id::text AS group_id, g.name, g.icon
 		FROM app_group_members m
 		JOIN app_groups g ON g.id = m.app_group_id
 	`).Scan(c, &groupRows)
@@ -173,6 +174,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		appGroupsMap[row.AppID] = append(appGroupsMap[row.AppID], models.AppGroupSummary{
 			ID:   row.GroupID,
 			Name: row.Name,
+			Icon: row.Icon,
 		})
 	}
 	for i := range apps {
@@ -275,10 +277,11 @@ func GetApp(c *gin.Context, db *bun.DB) {
 	type groupRow struct {
 		ID   string `bun:"id"`
 		Name string `bun:"name"`
+		Icon string `bun:"icon"`
 	}
 	var groups []groupRow
 	_ = db.NewRaw(`
-		SELECT g.id::text, g.name
+		SELECT g.id::text, g.name, g.icon
 		FROM app_groups g
 		JOIN app_group_members m ON m.app_group_id = g.id
 		WHERE m.app_id = ?
@@ -289,6 +292,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 		app.AppGroups = append(app.AppGroups, models.AppGroupSummary{
 			ID:   g.ID,
 			Name: g.Name,
+			Icon: g.Icon,
 		})
 	}
 
