@@ -135,6 +135,7 @@ func CreateGroup(c *gin.Context, db *bun.DB) {
 	var body struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
+		Icon        string `json:"icon"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		httperror.StatusBadRequest(c, "name is required", err)
@@ -144,6 +145,7 @@ func CreateGroup(c *gin.Context, db *bun.DB) {
 	group := &models.AppGroup{
 		Name:        body.Name,
 		Description: body.Description,
+		Icon:        body.Icon,
 	}
 	_, err := db.NewInsert().Model(group).Returning("*").Exec(c)
 	if err != nil {
@@ -161,6 +163,7 @@ func UpdateGroup(c *gin.Context, db *bun.DB) {
 	var body struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
+		Icon        string `json:"icon"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		httperror.StatusBadRequest(c, "name is required", err)
@@ -171,6 +174,7 @@ func UpdateGroup(c *gin.Context, db *bun.DB) {
 		TableExpr("app_groups").
 		Set("name = ?", body.Name).
 		Set("description = ?", body.Description).
+		Set("icon = ?", body.Icon).
 		Where("id = ?::uuid", groupID).
 		Exec(c)
 	if err != nil {

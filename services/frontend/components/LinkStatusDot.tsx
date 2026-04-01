@@ -1,51 +1,33 @@
-'use client';
-
 import { Tooltip } from '@heroui/react';
-import { useEffect, useState } from 'react';
+type ProbeStatus = 'ok' | 'partial' | 'down' | 'unknown';
 
-type ProbeState = 'loading' | 'up' | 'down' | 'unknown';
-
-interface ProbeResult {
-  ok: boolean;
-  status: number;
-  latency: number;
+function normalizeProbeStatus(status: string | undefined): ProbeStatus {
+  switch (status) {
+    case 'ok':
+    case 'partial':
+    case 'down':
+      return status;
+    default:
+      return 'unknown';
+  }
 }
 
-export function LinkStatusDot({ url }: { url: string }) {
-  const [state, setState] = useState<ProbeState>('loading');
-  const [result, setResult] = useState<ProbeResult | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/probe?url=${encodeURIComponent(url)}`)
-      .then(res => res.ok ? res.json() as Promise<ProbeResult> : null)
-      .then((data) => {
-        if (cancelled) return;
-        if (!data) { setState('unknown'); return; }
-        setResult(data);
-        setState(data.ok ? 'up' : 'down');
-      })
-      .catch(() => {
-        if (!cancelled) setState('unknown');
-      });
-    return () => { cancelled = true; };
-  }, [url]);
+export function LinkStatusDot({ status }: { status?: string }) {
+  const resolvedStatus = normalizeProbeStatus(status);
 
   const dotClass = {
-    loading: 'bg-muted/40 animate-pulse',
-    up: 'bg-success',
+    ok: 'bg-success',
+    partial: 'bg-warning',
     down: 'bg-danger',
-    unknown: 'bg-warning',
-  }[state];
+    unknown: 'bg-muted/40',
+  }[resolvedStatus];
 
   const label = {
-    loading: 'Erreichbarkeit wird geprüft…',
-    up: result ? `Erreichbar (${result.latency} ms)` : 'Erreichbar',
-    down: result?.status === 0
-      ? 'Timeout — nicht erreichbar'
-      : `Nicht erreichbar (HTTP ${result?.status ?? ''})`,
-    unknown: 'Status unbekannt',
-  }[state];
+    ok: 'Alle Live-Endpunkte erreichbar',
+    partial: 'Mindestens ein Live-Endpunkt ist nicht erreichbar',
+    down: 'Keine Live-Endpunkte erreichbar',
+    unknown: 'Noch kein Backend-Status vorhanden',
+  }[resolvedStatus];
 
   return (
     <Tooltip delay={0}>

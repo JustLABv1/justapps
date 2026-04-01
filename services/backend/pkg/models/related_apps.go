@@ -26,6 +26,7 @@ type AppGroup struct {
 	ID          uuid.UUID        `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
 	Name        string           `bun:"name,notnull" json:"name"`
 	Description string           `bun:"description,notnull,default:''" json:"description"`
+	Icon        string           `bun:"icon,notnull,default:''" json:"icon"`
 	Members     []AppGroupMember `bun:"rel:has-many,join:id=app_group_id" json:"members,omitempty"`
 }
 
