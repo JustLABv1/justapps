@@ -218,7 +218,7 @@ export function Navigation() {
                       {user.authType === 'oidc' && (
                         <div className="mt-1">
                           <span className="text-[10px] bg-sky-500/10 text-sky-500 px-1.5 py-0.5 rounded border border-sky-500/20 whitespace-nowrap">
-                            Managed by Keycloak
+                            Managed by SSO
                           </span>
                         </div>
                       )}

@@ -31,13 +31,13 @@ env:
 
 ### OIDC Configuration (NextAuth / Auth.js)
 
-To enable Keycloak integration in the frontend, set the following environment variables:
+To enable OIDC integration in the frontend, set the following environment variables:
 
-- `AUTH_KEYCLOAK_ID`: Keycloak Client ID (e.g., `justapps`)
-- `AUTH_KEYCLOAK_SECRET`: Keycloak Client Secret
-- `AUTH_KEYCLOAK_ISSUER`: Keycloak Issuer URL (e.g., `https://<keycloak-url>/realms/<realm-name>`)
+- `AUTH_OIDC_ID`: OIDC client ID (e.g., `justapps`)
+- `AUTH_OIDC_SECRET`: OIDC client secret
+- `AUTH_OIDC_ISSUER`: OIDC issuer URL (e.g., `https://<idp-url>/application/o/<slug>/` or `https://<keycloak-url>/realms/<realm-name>`)
 - `AUTH_SECRET`: A random secret for NextAuth sessions (e.g., `openssl rand -base64 32`)
-- `AUTH_ADMIN_GROUP`: Keycloak group name mapped to admin role (e.g., `2Fa` or `admin`)
+- `AUTH_ADMIN_GROUP`: OIDC group name mapped to admin role (e.g., `2Fa` or `admin`)
 
 ### Admin Management
 

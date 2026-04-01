@@ -231,8 +231,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileReady(false);
     setProfileError(null);
     if (status === 'authenticated') {
-      // If we have an idToken, we can try a Federated logout from Keycloak
-      // Note: This matches the issuer in process.env.AUTH_KEYCLOAK_ISSUER
+      // If we have an idToken, we can try a federated logout from the configured OIDC provider.
+      // The provider is still addressed internally through the legacy `keycloak` id for compatibility.
       // but we need it on the client side. If not available, we just sign out from next-auth.
       nextAuthSignOut({ callbackUrl: '/login' });
     }

@@ -110,7 +110,7 @@ export default function RegisterPage() {
         variant="outline"
         className="w-full"
       >
-        Mit Keycloak anmelden
+        Mit Single Sign-On anmelden
       </Button>
 
       <div className="mt-6 text-center text-sm">

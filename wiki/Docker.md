@@ -41,7 +41,7 @@ In this default mode, frontend and backend ports are bound to `127.0.0.1`, which
 
 The checked-in Compose setup defaults to local authentication with OIDC disabled. After the containers are up, open `http://localhost:3000` and register a user through the UI. The first locally registered user is created with the `admin` role.
 
-If you want OIDC / Keycloak instead, update `deploy/compose/.env` with the `BACKEND_OIDC_*` and `AUTH_KEYCLOAK_*` values from the [Authentication](Authentication) page, then restart the stack.
+If you want OIDC instead, update `deploy/compose/.env` with the `BACKEND_OIDC_*` and `AUTH_OIDC_*` values from the [Authentication](Authentication) page, then restart the stack.
 
 ### Single DNS entry with Coolify or another TLS proxy
 
