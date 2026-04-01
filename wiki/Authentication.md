@@ -94,6 +94,8 @@ When OIDC is disabled (or alongside OIDC), users can register and log in with a 
 - `POST /api/v1/auth/register` — create a new local account
 - `POST /api/v1/auth/login` — returns a JWT
 
+The first local user created through registration is automatically assigned the `admin` role.
+
 Admins can create and manage local users through the **Admin UI** at `/verwaltung`.
 
 ---

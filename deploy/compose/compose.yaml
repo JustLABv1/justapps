@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: justapps-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-justapps}
+      POSTGRES_USER: ${POSTGRES_USER:-justapps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-justapps}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-justapps} -d ${POSTGRES_DB:-justapps}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ghcr.io/justlabv1/justapps/backend:${JUSTAPPS_IMAGE_TAG:-latest}
+    container_name: justapps-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      BACKEND_PORT: 8080
+      BACKEND_DATABASE_SERVER: postgres
+      BACKEND_DATABASE_PORT: 5432
+      BACKEND_DATABASE_NAME: ${POSTGRES_DB:-justapps}
+      BACKEND_DATABASE_USER: ${POSTGRES_USER:-justapps}
+      BACKEND_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-justapps}
+      BACKEND_JWT_SECRET: ${BACKEND_JWT_SECRET:-change-me}
+      BACKEND_OIDC_ENABLED: ${BACKEND_OIDC_ENABLED:-false}
+      BACKEND_OIDC_ISSUER: ${BACKEND_OIDC_ISSUER:-}
+      BACKEND_OIDC_CLIENT_ID: ${BACKEND_OIDC_CLIENT_ID:-}
+      BACKEND_OIDC_ADMIN_GROUP: ${BACKEND_OIDC_ADMIN_GROUP:-admin}
+      BACKEND_OIDC_INSECURE: ${BACKEND_OIDC_INSECURE:-false}
+      BACKEND_OIDC_DISABLE_LOCAL_AUTH: ${BACKEND_OIDC_DISABLE_LOCAL_AUTH:-false}
+      BACKEND_OIDC_DISABLE_REGISTRATION: ${BACKEND_OIDC_DISABLE_REGISTRATION:-false}
+    volumes:
+      - ./backend.config.yaml:/etc/justapps/config.yaml:ro
+      - uploads-data:/app/data
+
+  frontend:
+    image: ghcr.io/justlabv1/justapps/frontend:${JUSTAPPS_IMAGE_TAG:-latest}
+    container_name: justapps-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080/api/v1}
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8080/api/v1}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_ADMIN_GROUP: ${AUTH_ADMIN_GROUP:-admin}
+      AUTH_KEYCLOAK_ID: ${AUTH_KEYCLOAK_ID:-}
+      AUTH_KEYCLOAK_SECRET: ${AUTH_KEYCLOAK_SECRET:-}
+      AUTH_KEYCLOAK_ISSUER: ${AUTH_KEYCLOAK_ISSUER:-}
+
+volumes:
+  postgres-data:
+  uploads-data:

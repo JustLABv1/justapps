@@ -9,7 +9,7 @@ A self-hosted application store for teams and organizations — centrally manage
 | [Getting Started](Getting-Started) | Install and run JustApps locally or via Docker |
 | [Configuration](Configuration) | All backend and frontend config options |
 | [Authentication](Authentication) | OIDC (Keycloak) setup and local auth |
-| [Docker Deployment](Docker) | Build and run with Docker |
+| [Docker Deployment](Docker) | Deploy with Docker Compose or the monolith Docker image |
 | [Kubernetes / Helm](Kubernetes) | Deploy to a cluster with the Helm chart |
 | [API Reference](API-Reference) | Full REST API endpoint listing |
 | [Architecture](Architecture) | System overview, services, and data flow |
