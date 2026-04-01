@@ -87,6 +87,7 @@ type Apps struct {
 	DeploymentVariants     []DeploymentVariant  `bun:"deployment_variants,type:jsonb" json:"deploymentVariants"`
 	Version                string               `bun:"version,notnull,default:''" json:"version"`
 	Changelog              string               `bun:"changelog,notnull,default:''" json:"changelog"`
+	CreatedAt              time.Time            `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt              time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
 	RelatedApps            []AppRelationSummary `bun:"-" json:"relatedApps,omitempty"`
 	AppGroups              []AppGroupSummary    `bun:"-" json:"appGroups,omitempty"`

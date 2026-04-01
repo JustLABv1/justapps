@@ -2,11 +2,12 @@
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { GroupIcon } from '@/components/GroupIcon';
+import { AppConfig } from '@/config/apps';
 import { fetchApi, uploadFile } from '@/lib/api';
-import { Button, Chip, Input, Label, TextArea, TextField, toast } from '@heroui/react';
-import { ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Button, Chip, Input, Label, Modal, TextArea, TextField, toast } from '@heroui/react';
+import { Check, ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 interface AppSummary {
   id: string;
@@ -42,6 +43,14 @@ export default function VerwaltungGruppenPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [bulkTargetId, setBulkTargetId] = useState<string | null>(null);
+  const [availableApps, setAvailableApps] = useState<AppConfig[]>([]);
+  const [appsLoaded, setAppsLoaded] = useState(false);
+  const [appsLoading, setAppsLoading] = useState(false);
+  const [appsError, setAppsError] = useState<string | null>(null);
+  const [bulkSearch, setBulkSearch] = useState('');
+  const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
   const iconInputRef = useRef<HTMLInputElement>(null);
 
   const loadGroups = async () => {
@@ -58,6 +67,39 @@ export default function VerwaltungGruppenPage() {
   };
 
   useEffect(() => { loadGroups(); }, []);
+
+  const bulkTargetGroup = useMemo(
+    () => bulkTargetId ? groups.find((group) => group.id === bulkTargetId) ?? null : null,
+    [bulkTargetId, groups]
+  );
+
+  const bulkMemberIds = useMemo(
+    () => new Set((bulkTargetGroup?.members ?? []).map((member) => member.id)),
+    [bulkTargetGroup]
+  );
+
+  const bulkCandidates = useMemo(() => {
+    const searchValue = bulkSearch.trim().toLowerCase();
+
+    return availableApps.filter((app) => {
+      if (bulkMemberIds.has(app.id)) {
+        return false;
+      }
+
+      if (!searchValue) {
+        return true;
+      }
+
+      return (
+        app.name.toLowerCase().includes(searchValue) ||
+        app.id.toLowerCase().includes(searchValue) ||
+        (app.categories ?? []).some((category) => category.toLowerCase().includes(searchValue))
+      );
+    });
+  }, [availableApps, bulkMemberIds, bulkSearch]);
+
+  const bulkMembersReady = !!bulkTargetGroup && bulkTargetGroup.members !== undefined && !bulkTargetGroup.membersLoading;
+  const isBulkListLoading = !!bulkTargetId && (!bulkMembersReady || (!appsLoaded && appsLoading));
 
   const loadMembers = async (groupId: string) => {
     setGroups((prev) =>
@@ -79,6 +121,34 @@ export default function VerwaltungGruppenPage() {
       setGroups((prev) =>
         prev.map((g) => g.id === groupId ? { ...g, members: [], membersLoading: false } : g)
       );
+    }
+  };
+
+  const loadAvailableApps = async () => {
+    setAppsLoading(true);
+    setAppsError(null);
+
+    try {
+      const res = await fetchApi('/apps', { cache: 'no-store' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const message = (err as { message?: string }).message || 'Apps konnten nicht geladen werden.';
+        setAppsError(message);
+        toast.danger(message);
+        return;
+      }
+
+      const data = await res.json();
+      const nextApps = Array.isArray(data) ? [...(data as AppConfig[])] : [];
+      nextApps.sort((left, right) => left.name.localeCompare(right.name, 'de'));
+      setAvailableApps(nextApps);
+      setAppsLoaded(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Apps konnten nicht geladen werden.';
+      setAppsError(message);
+      toast.danger(message);
+    } finally {
+      setAppsLoading(false);
     }
   };
 
@@ -104,6 +174,22 @@ export default function VerwaltungGruppenPage() {
     setShowForm(true);
   };
 
+  const resetBulkModal = () => {
+    setBulkTargetId(null);
+    setBulkSearch('');
+    setSelectedAppIds(new Set());
+    setAppsError(null);
+  };
+
+  const openBulkAdd = (groupId: string) => {
+    setBulkTargetId(groupId);
+    setBulkSearch('');
+    setSelectedAppIds(new Set());
+    setAppsError(null);
+    void loadMembers(groupId);
+    void loadAvailableApps();
+  };
+
   const openEdit = (group: AppGroup) => {
     setEditingId(group.id);
     setForm({ name: group.name, description: group.description ?? '', icon: group.icon ?? '' });
@@ -115,6 +201,30 @@ export default function VerwaltungGruppenPage() {
     setEditingId(null);
     setForm(emptyForm);
     setUploadError(null);
+  };
+
+  const toggleSelectedApp = (appId: string) => {
+    setSelectedAppIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(appId)) {
+        next.delete(appId);
+      } else {
+        next.add(appId);
+      }
+      return next;
+    });
+  };
+
+  const selectVisibleApps = () => {
+    setSelectedAppIds((prev) => {
+      const next = new Set(prev);
+      bulkCandidates.forEach((app) => next.add(app.id));
+      return next;
+    });
+  };
+
+  const clearSelectedApps = () => {
+    setSelectedAppIds(new Set());
   };
 
   const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +287,33 @@ export default function VerwaltungGruppenPage() {
       }
     } finally {
       setDeleteTarget(null);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkTargetGroup || selectedAppIds.size === 0) {
+      return;
+    }
+
+    const appIds = Array.from(selectedAppIds);
+    setBulkSaving(true);
+
+    try {
+      const res = await fetchApi(`/app-groups/${bulkTargetGroup.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ appIds }),
+      });
+
+      if (res.ok) {
+        await loadMembers(bulkTargetGroup.id);
+        toast.success(`${appIds.length} App${appIds.length !== 1 ? 's' : ''} zu „${bulkTargetGroup.name}“ hinzugefügt.`);
+        resetBulkModal();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.danger((err as { message?: string }).message || 'Apps konnten nicht zur Gruppe hinzugefügt werden.');
+      }
+    } finally {
+      setBulkSaving(false);
     }
   };
 
@@ -323,6 +460,19 @@ export default function VerwaltungGruppenPage() {
                 {/* Expanded member list */}
                 {isExpanded && (
                   <div className="px-4 pb-4 pt-1 bg-surface-secondary/20 border-t border-border/50">
+                    <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Mitglieder</p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          Bestehende Gruppenzuordnungen ansehen oder mehrere Apps gesammelt hinzufügen.
+                        </p>
+                      </div>
+                      <Button size="sm" variant="secondary" className="gap-1.5" onPress={() => openBulkAdd(group.id)}>
+                        <Plus className="w-4 h-4" />
+                        Apps hinzufügen
+                      </Button>
+                    </div>
+
                     {group.membersLoading ? (
                       <div className="flex items-center gap-2 py-3">
                         <Loader2 className="w-4 h-4 animate-spin text-accent" />
@@ -356,6 +506,205 @@ export default function VerwaltungGruppenPage() {
           })}
         </div>
       )}
+
+      <Modal>
+        <Modal.Backdrop
+          isOpen={!!bulkTargetGroup}
+          onOpenChange={(open) => {
+            if (!open && !bulkSaving) {
+              resetBulkModal();
+            }
+          }}
+        >
+          <Modal.Container size="lg">
+            <Modal.Dialog className="sm:max-w-3xl">
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Icon className="bg-accent/10 text-accent">
+                  <Plus className="w-5 h-5" />
+                </Modal.Icon>
+                <Modal.Heading>Apps gesammelt hinzufügen</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted">
+                    Wählen Sie Apps aus, die der Gruppe <strong className="text-foreground">{bulkTargetGroup?.name}</strong> hinzugefügt werden sollen.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase tracking-wider">
+                      {bulkTargetGroup?.membersLoading || bulkTargetGroup?.members === undefined
+                        ? 'Mitglieder werden geladen'
+                        : `${bulkTargetGroup.members.length} bereits enthalten`}
+                    </Chip>
+                    <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase tracking-wider">
+                      {selectedAppIds.size} ausgewählt
+                    </Chip>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted z-10" />
+                    <Input
+                      className="pl-9"
+                      placeholder="Apps nach Name, ID oder Kategorie filtern..."
+                      value={bulkSearch}
+                      onChange={(event) => setBulkSearch(event.target.value)}
+                      variant="secondary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      isDisabled={bulkCandidates.length === 0 || isBulkListLoading}
+                      onPress={selectVisibleApps}
+                    >
+                      Sichtbare auswählen
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      isDisabled={selectedAppIds.size === 0}
+                      onPress={clearSelectedApps}
+                    >
+                      Auswahl leeren
+                    </Button>
+                  </div>
+                </div>
+
+                {appsError && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3">
+                    <p className="text-sm text-danger">{appsError}</p>
+                    <Button size="sm" variant="secondary" onPress={() => void loadAvailableApps()}>
+                      Erneut laden
+                    </Button>
+                  </div>
+                )}
+
+                <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border bg-surface">
+                  {isBulkListLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-6">
+                      <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                      <span className="text-sm text-muted">Verfügbare Apps werden geladen…</span>
+                    </div>
+                  ) : bulkCandidates.length > 0 ? (
+                    <div className="divide-y divide-border/60">
+                      {bulkCandidates.map((app) => {
+                        const isSelected = selectedAppIds.has(app.id);
+
+                        return (
+                          <button
+                            key={app.id}
+                            type="button"
+                            className={`w-full px-4 py-3 text-left transition-colors ${
+                              isSelected ? 'bg-accent/10' : 'hover:bg-surface-secondary/50'
+                            }`}
+                            onClick={() => toggleSelectedApp(app.id)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-md border ${
+                                  isSelected
+                                    ? 'border-accent bg-accent text-white'
+                                    : 'border-border bg-surface-secondary text-transparent'
+                                }`}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </div>
+
+                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-secondary">
+                                {app.icon?.startsWith('http') ? (
+                                  <Image
+                                    src={app.icon}
+                                    alt={app.name}
+                                    fill
+                                    className="object-contain"
+                                    sizes="40px"
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center text-lg">
+                                    {app.icon || '🏛️'}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-foreground">{app.name}</p>
+                                <p className="mt-0.5 text-xs text-muted">{app.id}</p>
+
+                                {app.categories && app.categories.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {app.categories.slice(0, 3).map((category) => (
+                                      <Chip
+                                        key={`${app.id}-${category}`}
+                                        size="sm"
+                                        variant="soft"
+                                        className="text-[10px] font-bold uppercase tracking-wider"
+                                      >
+                                        {category}
+                                      </Chip>
+                                    ))}
+                                    {app.categories.length > 3 && (
+                                      <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase tracking-wider">
+                                        +{app.categories.length - 3}
+                                      </Chip>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-8 text-center">
+                      <p className="text-sm font-semibold text-foreground">
+                        {appsError
+                          ? 'Apps konnten nicht geladen werden'
+                          : bulkSearch.trim()
+                            ? 'Keine passenden Apps gefunden'
+                            : 'Alle Apps sind bereits in dieser Gruppe'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        {appsError
+                          ? 'Laden Sie die App-Liste erneut, um fortzufahren.'
+                          : bulkSearch.trim()
+                            ? 'Passen Sie die Suche an, um andere Apps auszuwählen.'
+                            : 'Für diese Gruppe gibt es aktuell keine weiteren Apps zum Hinzufügen.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Modal.Body>
+              <Modal.Footer>
+                <div className="flex w-full items-center justify-between gap-3">
+                  <p className="text-xs text-muted">
+                    {selectedAppIds.size > 0
+                      ? `${selectedAppIds.size} App${selectedAppIds.size !== 1 ? 's' : ''} zur Gruppe markieren.`
+                      : 'Wählen Sie mindestens eine App aus.'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" isDisabled={bulkSaving} onPress={resetBulkModal}>
+                      Abbrechen
+                    </Button>
+                    <Button
+                      className="bg-accent text-white"
+                      isDisabled={selectedAppIds.size === 0 || bulkSaving || isBulkListLoading}
+                      onPress={handleBulkAssign}
+                    >
+                      {bulkSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      Hinzufügen
+                    </Button>
+                  </div>
+                </div>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
 
       <ConfirmDialog
         isOpen={!!deleteTarget}

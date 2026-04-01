@@ -2,6 +2,7 @@
 
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
+import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
@@ -10,21 +11,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FavoriteButton } from "./FavoriteButton";
 import { LinkStatusDot } from "./LinkStatusDot";
-
-// Pure helper defined outside component to avoid impurity lint warnings
-function getRelativeTime(dateStr: string | undefined, now: number): { label: string; isRecent: boolean } | null {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return null;
-  const diffMs = now - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return { label: 'Heute', isRecent: true };
-  if (diffDays === 1) return { label: 'Gestern', isRecent: true };
-  if (diffDays < 7) return { label: `vor ${diffDays} Tagen`, isRecent: true };
-  if (diffDays < 30) return { label: `vor ${Math.floor(diffDays / 7)} Woche${Math.floor(diffDays / 7) > 1 ? 'n' : ''}`, isRecent: false };
-  if (diffDays < 365) return { label: `vor ${Math.floor(diffDays / 30)} Monat${Math.floor(diffDays / 30) > 1 ? 'en' : ''}`, isRecent: false };
-  return { label: `vor ${Math.floor(diffDays / 365)} Jahr${Math.floor(diffDays / 365) > 1 ? 'en' : ''}`, isRecent: false };
-}
 
 export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
@@ -35,8 +21,8 @@ export function AppCard({ app }: { app: AppConfig }) {
   const [now] = useState(() => Date.now());
   const statusInfo = getAppStatusMeta(app.status);
   const isFeatured = app.isFeatured;
-
-  const relativeTime = getRelativeTime(app.updatedAt, now);
+  const freshness = getAppFreshness(app, now);
+  const relativeTime = freshness.updatedRelative ?? freshness.createdRelative;
 
   const allDemos = app.liveDemos && app.liveDemos.length > 0
     ? app.liveDemos
@@ -51,8 +37,8 @@ export function AppCard({ app }: { app: AppConfig }) {
     ...customLinks.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'link' })),
     ...(app.docsUrl ? [{ label: 'Dokumentation', url: app.docsUrl, icon: <BookOpen className="w-3 h-3" />, kind: 'docs' }] : []),
   ];
-  const spotlightBadge = app.isReuse ? 'Nachnutzung' : relativeTime?.isRecent ? 'Neu' : null;
-  const spotlightBadgeColor = app.isReuse ? 'warning' : 'success';
+  const spotlightBadge = freshness.badgeLabel;
+  const spotlightBadgeColor = freshness.badgeColor;
 
   return (
     <Card
@@ -90,7 +76,7 @@ export function AppCard({ app }: { app: AppConfig }) {
           </Tooltip>
         </div>
       )}
-      {/* ── Header: icon, name, badge ── */}
+      {/* ── Header: icon, name, metadata ── */}
       <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
         <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0 transition-all duration-300 group-hover:scale-110
           ${isFeatured 
@@ -111,15 +97,10 @@ export function AppCard({ app }: { app: AppConfig }) {
           )}
         </div>
         <div className="flex flex-col min-w-0 flex-1 pt-1">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Card.Title className={`text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
+          <div className="mb-1.5 min-w-0">
+            <Card.Title className={`block text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
               {app.name}
             </Card.Title>
-            {spotlightBadge && (
-              <Chip size="sm" color={spotlightBadgeColor as 'warning' | 'success'} variant="soft" className="h-5 shrink-0 px-2 text-[10px] font-bold uppercase tracking-[0.16em]">
-                {spotlightBadge}
-              </Chip>
-            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-muted">
             <span className="text-xs font-semibold text-muted uppercase tracking-wider line-clamp-1">
@@ -147,17 +128,23 @@ export function AppCard({ app }: { app: AppConfig }) {
         </p>
 
         <div className="mt-auto flex flex-col gap-3">
-          {statusInfo && (
+          {(statusInfo || spotlightBadge) && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Status</span>
-              <Chip 
-                size="sm" 
-                color={statusInfo.color} 
-                variant="soft" 
-                className="text-[10px] font-bold uppercase h-5"
-              >
-                {statusInfo.label}
-              </Chip>
+              {statusInfo && (
+                <Chip 
+                  size="sm" 
+                  color={statusInfo.color} 
+                  variant="soft" 
+                  className="text-[10px] font-bold uppercase h-5"
+                >
+                  {statusInfo.label}
+                </Chip>
+              )}
+              {spotlightBadge && (
+                <Chip size="sm" color={spotlightBadgeColor} variant="soft" className="text-[10px] font-bold uppercase h-5">
+                  {spotlightBadge}
+                </Chip>
+              )}
             </div>
           )}
           {app.authority && (
