@@ -26,6 +26,8 @@ This starts PostgreSQL, the backend, and the frontend. By default, OIDC is disab
 
 For production-style settings, edit `deploy/compose/.env` before starting. For Keycloak setup, see [Authentication](Authentication). For container details, see [Docker](Docker).
 
+If you want a single public hostname such as `https://apps.justlab.app`, enable the optional NGINX edge proxy described on the [Docker](Docker) page.
+
 ---
 
 ## Local Development
