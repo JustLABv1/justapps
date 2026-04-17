@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "frontend-check-backup-modal",
+			"type": "shell",
+			"command": "cd",
+			"args": [
+				"services/frontend",
+				"&&",
+				"pnpm",
+				"check"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "frontend-check-backup-modal-layout",
+			"type": "shell",
+			"command": "cd",
+			"args": [
+				"services/frontend",
+				"&&",
+				"pnpm",
+				"check"
+			],
+			"isBackground": false
+		}
+	]
+}

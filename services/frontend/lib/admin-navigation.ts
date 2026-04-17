@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-import { Activity, GitBranch, KeyRound, Layers, Layers2, LayoutDashboard, Settings, Users } from 'lucide-react';
+import { Activity, Archive, GitBranch, KeyRound, Layers, Layers2, LayoutDashboard, Settings, Users } from 'lucide-react';
 
 export type AdminNavLink = {
   href: string;
@@ -11,6 +11,7 @@ export type AdminNavLink = {
 
 export const adminNavLinks: AdminNavLink[] = [
   { href: '/verwaltung', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/verwaltung/backups', label: 'Backups', icon: Archive, exact: false },
   { href: '/verwaltung/apps', label: 'Apps', icon: Layers, exact: false },
   { href: '/verwaltung/gitlab', label: 'GitLab Sync', icon: GitBranch, exact: false },
   { href: '/verwaltung/gruppen', label: 'Gruppen', icon: Layers2, exact: false },

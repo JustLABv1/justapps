@@ -9,6 +9,15 @@
 				"check"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "frontend-check-backup-modal",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"check"
+			],
+			"isBackground": false
 		}
 	]
 }
