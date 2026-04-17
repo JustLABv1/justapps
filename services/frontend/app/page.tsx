@@ -4,6 +4,7 @@ import { AppGrid } from "@/components/AppGrid";
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
+import { resolveHeroTitleColors } from "@/lib/branding";
 import { Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Suspense, useEffect, useState } from "react";
@@ -70,6 +71,8 @@ export default function Home() {
   const heroBadge = settings.heroBadge || 'Open Source. Community-getrieben.';
   const heroTitle = settings.heroTitle || 'Der App Store für alle.';
   const heroSubtitle = settings.heroSubtitle || 'Entdecken Sie Open-Source-Apps, cloud-native Lösungen und community-entwickelte Tools – frei zugänglich für jeden.';
+  const heroTitleColors = resolveHeroTitleColors(settings.heroTitlePreset, settings.heroTitleColors);
+  const heroTitleGradient = `linear-gradient(90deg, ${heroTitleColors.join(', ')})`;
 
   useEffect(() => {
     getApps().then((appsData) => {
@@ -96,7 +99,10 @@ export default function Home() {
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground mb-3 max-w-4xl leading-[1.1]">
-            <span className={`inline-block font-extrabold bg-gradient-to-r from-accent via-gov-red to-gov-gold bg-clip-text text-transparent ${isDark ? "drop-shadow-[0_0_1px_rgba(255,255,255,0.5)]" : ""}`}>
+            <span
+              className={`inline-block font-extrabold bg-clip-text text-transparent ${isDark ? "drop-shadow-[0_0_1px_rgba(255,255,255,0.5)]" : ""}`}
+              style={{ backgroundImage: heroTitleGradient }}
+            >
               {heroTitle}
             </span>
           </h1>

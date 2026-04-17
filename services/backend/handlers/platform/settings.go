@@ -35,6 +35,8 @@ var defaultDetailFields = []models.DetailFieldDef{
 	{Key: "additional_info", Label: "Sonstiges", Icon: "ClipboardList"},
 }
 
+const defaultBrandPreset = "deutschland"
+
 // GetSettings - Fetches the platform settings. Open to all users.
 // Note: We use *models.PlatformSettings(nil) in Count/Select to ensure Bun knows the model if struct is empty
 func GetSettings(c *gin.Context, db *bun.DB) {
@@ -47,6 +49,8 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 			ID:                  "default",
 			AllowAppSubmissions: true,
 			ShowFlagBar:         true,
+			TopBarPreset:        defaultBrandPreset,
+			HeroTitlePreset:     defaultBrandPreset,
 			DetailFields:        defaultDetailFields,
 			EnableLinkProbing:   true,
 		}
@@ -68,8 +72,20 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 	if settings.FooterLinks == nil {
 		settings.FooterLinks = []models.FooterLink{}
 	}
+	if settings.TopBarColors == nil {
+		settings.TopBarColors = []string{}
+	}
+	if settings.HeroTitleColors == nil {
+		settings.HeroTitleColors = []string{}
+	}
 	if settings.PinnedApps == nil {
 		settings.PinnedApps = []string{}
+	}
+	if settings.TopBarPreset == "" {
+		settings.TopBarPreset = defaultBrandPreset
+	}
+	if settings.HeroTitlePreset == "" {
+		settings.HeroTitlePreset = defaultBrandPreset
 	}
 
 	c.JSON(200, settingsResponse{
@@ -101,8 +117,8 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 			"allow_app_submissions", "show_top_banner", "top_banner_text", "top_banner_type",
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
-			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_subtitle",
-			"footer_text", "footer_links", "show_flag_bar",
+			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_title_preset", "hero_title_colors", "hero_subtitle",
+			"footer_text", "footer_links", "show_flag_bar", "top_bar_preset", "top_bar_colors",
 			"app_sort_field", "app_sort_direction", "pinned_apps",
 			"enable_link_probing",
 		).

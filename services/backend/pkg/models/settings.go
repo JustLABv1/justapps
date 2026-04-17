@@ -36,10 +36,14 @@ type PlatformSettings struct {
 	AccentColor      string       `bun:"accent_color" json:"accentColor"`
 	HeroBadge        string       `bun:"hero_badge" json:"heroBadge"`
 	HeroTitle        string       `bun:"hero_title" json:"heroTitle"`
+	HeroTitlePreset  string       `bun:"hero_title_preset,notnull,default:'deutschland'" json:"heroTitlePreset"`
+	HeroTitleColors  []string     `bun:"hero_title_colors,type:jsonb,notnull,default:'[]'" json:"heroTitleColors"`
 	HeroSubtitle     string       `bun:"hero_subtitle" json:"heroSubtitle"`
 	FooterText       string       `bun:"footer_text" json:"footerText"`
 	FooterLinks      []FooterLink `bun:"footer_links,type:jsonb,notnull,default:'[]'" json:"footerLinks"`
 	ShowFlagBar      bool         `bun:"show_flag_bar,notnull,default:true" json:"showFlagBar"`
+	TopBarPreset     string       `bun:"top_bar_preset,notnull,default:'deutschland'" json:"topBarPreset"`
+	TopBarColors     []string     `bun:"top_bar_colors,type:jsonb,notnull,default:'[]'" json:"topBarColors"`
 
 	// App sort configuration (admin-configurable)
 	// Supported values for AppSortField: name, rating_avg, updated_at, status, authority
