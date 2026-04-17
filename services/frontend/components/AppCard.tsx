@@ -4,6 +4,7 @@ import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
 import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
+import { getImageAssetUrl } from "@/lib/assets";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
 import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
@@ -20,6 +21,7 @@ export function AppCard({ app }: { app: AppConfig }) {
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const [now] = useState(() => Date.now());
   const statusInfo = getAppStatusMeta(app.status);
+  const iconSrc = getImageAssetUrl(app.icon);
   const isFeatured = app.isFeatured;
   const freshness = getAppFreshness(app, now);
   const relativeTime = freshness.updatedRelative ?? freshness.createdRelative;
@@ -83,9 +85,9 @@ export function AppCard({ app }: { app: AppConfig }) {
             ? 'bg-gradient-to-br from-accent/30 to-accent/5 border-accent/40 shadow-inner' 
             : 'bg-gradient-to-br from-surface-secondary to-surface border-border'
           }`}>
-          {app.icon?.startsWith('http') ? (
+          {iconSrc ? (
             <Image 
-              src={app.icon} 
+              src={iconSrc} 
               alt={app.name} 
               fill
               className="object-contain p-2"
@@ -194,12 +196,10 @@ export function AppCard({ app }: { app: AppConfig }) {
 
             {resourceItems.length > 1 && (
               <Dropdown>
-                <Dropdown.Trigger>
-                  <Button size="sm" variant="secondary" className="gap-2 rounded-full px-3 text-xs font-semibold">
-                    <MoreHorizontal className="w-3.5 h-3.5" />
-                    Schnellzugriff
-                  </Button>
-                </Dropdown.Trigger>
+                <Button size="sm" variant="secondary" className="gap-2 rounded-full px-3 text-xs font-semibold">
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  Schnellzugriff
+                </Button>
                 <Dropdown.Popover>
                   <Dropdown.Menu
                     aria-label="Ressourcen"

@@ -4,6 +4,7 @@ import { AppConfig, AppField } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { uploadFile } from '@/lib/api';
+import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import {
     Button,
     Input,
@@ -118,6 +119,7 @@ export function AppModal({
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const [iconUploadError, setIconUploadError] = useState<string | null>(null);
   const iconFileInputRef = useRef<HTMLInputElement>(null);
+  const iconSrc = getImageAssetUrl(appFormData.icon);
 
   const isIdTaken = !selectedApp && !!appFormData.id?.trim() && existingApps.some(a => a.id === appFormData.id?.trim());
   const [prevInitialData, setPrevInitialData] = useState<Partial<AppConfig> | undefined>(initialData);
@@ -171,9 +173,9 @@ export function AppModal({
               <Modal.Header className="px-8 py-5 border-b border-border bg-surface-secondary/50">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-xl overflow-hidden shrink-0">
-                    {appFormData.icon?.startsWith('http') ? (
+                    {iconSrc ? (
                       <Image
-                        src={appFormData.icon}
+                        src={iconSrc}
                         alt={appFormData.name || 'App Icon'}
                         width={40}
                         height={40}
@@ -364,9 +366,9 @@ export function AppModal({
                         <div className="flex gap-4 items-start">
                           {/* Preview */}
                           <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-border bg-surface-secondary flex items-center justify-center text-3xl shrink-0">
-                            {appFormData.icon?.startsWith('http') ? (
+                            {iconSrc ? (
                               <Image
-                                src={appFormData.icon}
+                                src={iconSrc}
                                 alt="Icon"
                                 width={48}
                                 height={48}
@@ -419,7 +421,7 @@ export function AppModal({
                                 }}
                               >
                                 <Input
-                                  value={iconInput.startsWith('http') ? iconInput : ''}
+                                  value={isImageAssetSource(iconInput) ? iconInput : ''}
                                   placeholder="Bild-URL: https://..."
                                   className="bg-field-background h-8 text-xs"
                                 />
