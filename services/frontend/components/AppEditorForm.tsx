@@ -121,20 +121,24 @@ function getGitLabStatusMeta(status?: string) {
 interface AppEditorFormProps {
   initialApp: AppConfig | null;
   existingApps: AppConfig[];
+  initialFormData?: Partial<AppConfig> | null;
+  copySource?: { id: string; name: string } | null;
 }
 
-export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) {
+export function AppEditorForm({ initialApp, existingApps, initialFormData = null, copySource = null }: AppEditorFormProps) {
   const router = useRouter();
   const { user, profileReady, refreshUser } = useAuth();
   const { settings } = useSettings();
 
   const isNew = !initialApp;
+  const initialEditorValues = initialFormData ?? initialApp;
+  const isCopyFlow = isNew && !!copySource;
   const isAdmin = user?.role === 'admin';
   const backUrl = isAdmin ? '/verwaltung/apps' : '/meine-apps';
 
   // ── Form data ──
   const [formData, setFormData] = useState<Partial<AppConfig>>(() =>
-    initialApp ?? {
+    initialEditorValues ?? {
       categories: [],
       techStack: [],
       liveDemos: [],
@@ -152,7 +156,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
   // ── Icon state ──
   const [iconUrlInput, setIconUrlInput] = useState(
-    isImageAssetSource(initialApp?.icon) ? initialApp?.icon || '' : ''
+    isImageAssetSource(initialEditorValues?.icon) ? initialEditorValues?.icon || '' : ''
   );
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
@@ -220,7 +224,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
       try {
         if (!autoSaveAppIdRef.current) {
-          if (!formData.name?.trim()) return;
+          if (!formData.name?.trim() || !formData.id?.trim()) return;
           const res = await fetchApi('/apps', { method: 'POST', body: JSON.stringify(body) });
           if (res.ok) {
             const created: AppConfig = await res.json();
@@ -1018,10 +1022,10 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
           <div className="relative z-10 flex flex-col gap-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div className="max-w-2xl space-y-1.5 animate-in fade-in slide-in-from-top-4 duration-500">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">Neue App erstellen</p>
-                <h1 className="text-2xl font-bold text-foreground">Schritt für Schritt zum ersten Entwurf.</h1>
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">{isCopyFlow ? 'App kopieren' : 'Neue App erstellen'}</p>
+                <h1 className="text-2xl font-bold text-foreground">{isCopyFlow ? `Kopie von ${copySource.name} vorbereiten.` : 'Schritt für Schritt zum ersten Entwurf.'}</h1>
                 <p className="max-w-xl text-sm leading-relaxed text-muted">
-                  Weniger Felder pro Schritt, gleicher Datenumfang am Ende.
+                  {isCopyFlow ? 'Die Inhalte wurden übernommen. Prüfen Sie Name, vergeben Sie eine neue ID und passen Sie den Entwurf vor dem Speichern an.' : 'Weniger Felder pro Schritt, gleicher Datenumfang am Ende.'}
                 </p>
               </div>
 
@@ -1107,6 +1111,15 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
             </div>
           </div>
         </section>
+
+        {isCopyFlow && (
+          <section className="mt-4 rounded-[1.5rem] border border-accent/20 bg-accent/5 px-5 py-4 shadow-sm md:px-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-accent/80">Kopie vorbereitet</p>
+            <p className="mt-2 text-sm text-foreground">
+              Die Vorlage <span className="font-semibold">{copySource.name}</span> wurde als neuer Entwurf übernommen. Beziehungen, GitLab-Verknüpfungen und Systemmetadaten werden nicht mitkopiert.
+            </p>
+          </section>
+        )}
 
         <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <button

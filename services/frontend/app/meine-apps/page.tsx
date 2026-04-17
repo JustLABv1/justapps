@@ -12,6 +12,7 @@ import {
 } from '@heroui/react';
 import {
     ChevronLeft,
+    Copy,
     ExternalLink,
     Lock,
     Pencil,
@@ -123,6 +124,25 @@ function MyAppsContent() {
       return;
     }
     router.push('/meine-apps/new');
+  };
+
+  const handleCopyApp = async (app: AppConfig) => {
+    if (!profileReady) {
+      const refreshed = await refreshUser();
+      if (!refreshed) {
+        toast.danger('Ihr Benutzerprofil ist noch nicht bereit. Bitte erneut versuchen.');
+        return;
+      }
+    }
+    if (!user?.canSubmitApps && user?.role !== 'admin') {
+      toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
+      return;
+    }
+    if (!settings.allowAppSubmissions && user?.role !== 'admin') {
+      toast.info('App-Einreichungen sind derzeit systemweit deaktiviert.');
+      return;
+    }
+    router.push(`/meine-apps/new?copy=${encodeURIComponent(app.id)}`);
   };
 
   const handleEditApp = (app: AppConfig) => {
@@ -293,6 +313,10 @@ function MyAppsContent() {
                         <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
                           <ExternalLink className="w-4 h-4 text-muted" />
                           Ansehen
+                        </Button>
+                        <Button size="sm" variant="secondary" onPress={() => void handleCopyApp(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
+                          <Copy className="w-4 h-4 text-muted" />
+                          Kopieren
                         </Button>
                         <Button
                           size="sm" variant="secondary"
