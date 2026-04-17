@@ -36,20 +36,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 		}
 
-		// Partially protected or Admin-only routes?
-		// 1. Export, Import -> Clearly Admin
-		adminGroup := appsGroup.Group("")
-		adminGroup.Use(middlewares.Admin(db))
-		{
-			adminGroup.GET("/export", func(c *gin.Context) {
-				apps.ExportApps(c, db)
-			})
-			adminGroup.POST("/import", func(c *gin.Context) {
-				apps.ImportApps(c, db)
-			})
-		}
-
-		// 2. Create, Update, Delete -> Now available for standard Users (with ownership checks inside handlers)
+		// Create, Update, Delete -> available for standard users with ownership checks inside handlers.
 		userGroup := appsGroup.Group("")
 		userGroup.Use(middlewares.Auth(db))
 		{
@@ -90,7 +77,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 		}
 
-		// 3. Favorites — requires auth
+		// Favorites — requires auth
 		favGroup := appsGroup.Group("/:id/favorite")
 		favGroup.Use(middlewares.Auth(db))
 		{
@@ -102,7 +89,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 		}
 
-		// 4. Related apps — read is public, write requires auth
+		// Related apps — read is public, write requires auth
 		appsGroup.GET("/:id/related", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRelatedApps(c, db)
 		})
