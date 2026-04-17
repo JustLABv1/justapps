@@ -58,8 +58,19 @@ Accessible via the **Settings** tab in `/verwaltung`.
 | **Platform name** | Displayed in the navigation and browser tab |
 | **Logo URL** | Custom platform logo |
 | **Top banner** | Optional announcement banner text and color |
+| **Farbbalken oben** | Aktivierbarer oberer Balken mit Presets oder eigenen Farben |
+| **Hero-Titel-Farben** | Presets oder benutzerdefinierte Verlaufsfarben fuer den Titel auf der Startseite |
 | **Footer links** | Custom links shown in the page footer |
 | **GitLab Providers** | Add/manage GitLab integrations |
+
+### Branding Presets
+
+Im Bereich **Startseite** koennen Administratoren den oberen Farbbalken und die Farben des Hero-Titels getrennt konfigurieren.
+
+- **Preset-Modus**: Vorgefertigte Varianten wie `Deutschland` oder `JustApps`
+- **Benutzerdefiniert**: Eigene Farben fuer Deployments mit abweichendem Branding
+
+Solange kein benutzerdefinierter Satz vollstaendig gepflegt ist, faellt die Startseite automatisch auf das ausgewaehlte Preset zurueck.
 
 ---
 

@@ -105,7 +105,7 @@ services:
         <Alert.Content>
           <Alert.Title>Wählen Sie eine Deploy-Methode</Alert.Title>
           <Alert.Description>
-            Für die PLAIN-Umgebung wird die Nutzung von Helm Charts empfohlen.
+            Für Kubernetes Umgebungen wird die Nutzung von Helm Charts empfohlen.
             Alternative Methoden wie Docker oder Compose stehen für Entwicklung und Lokale-Tests zur Verfügung.
           </Alert.Description>
         </Alert.Content>

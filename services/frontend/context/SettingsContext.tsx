@@ -2,6 +2,7 @@
 
 import { fetchApi } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
+import { DEFAULT_HERO_TITLE_PRESET, DEFAULT_TOP_BAR_PRESET, normalizeBrandColorList } from '@/lib/branding';
 import { usePathname } from 'next/navigation';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -33,10 +34,14 @@ export interface StoreSettings {
   accentColor: string;
   heroBadge: string;
   heroTitle: string;
+  heroTitlePreset: string;
+  heroTitleColors: string[];
   heroSubtitle: string;
   footerText: string;
   footerLinks: FooterLink[];
   showFlagBar: boolean;
+  topBarPreset: string;
+  topBarColors: string[];
   // Auth config (runtime, not stored in DB)
   oidcEnabled: boolean;
   disableLocalAuth: boolean;
@@ -79,10 +84,14 @@ export const defaultSettings: StoreSettings = {
   accentColor: '',
   heroBadge: '',
   heroTitle: '',
+  heroTitlePreset: DEFAULT_HERO_TITLE_PRESET,
+  heroTitleColors: [],
   heroSubtitle: '',
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  topBarPreset: DEFAULT_TOP_BAR_PRESET,
+  topBarColors: [],
   oidcEnabled: false,
   disableLocalAuth: false,
   disableRegistration: false,
@@ -108,6 +117,10 @@ function normalizeSettings(data: Partial<StoreSettings>): StoreSettings {
     footerLinks: Array.isArray(data.footerLinks)
       ? data.footerLinks
       : [],
+    heroTitlePreset: data.heroTitlePreset || DEFAULT_HERO_TITLE_PRESET,
+    heroTitleColors: normalizeBrandColorList(data.heroTitleColors),
+    topBarPreset: data.topBarPreset || DEFAULT_TOP_BAR_PRESET,
+    topBarColors: normalizeBrandColorList(data.topBarColors),
     pinnedApps: Array.isArray(data.pinnedApps)
       ? data.pinnedApps
       : [],
