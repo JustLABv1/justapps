@@ -4,6 +4,7 @@ import { AppConfig } from "@/config/apps";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
+import { getImageAssetUrl } from "@/lib/assets";
 import { RecentApp, getRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Input, Pagination, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
@@ -495,22 +496,26 @@ export function AppGrid({ initialApps }: AppGridProps) {
             <span className="text-xs font-bold uppercase tracking-wider text-muted">Zuletzt gesehen</span>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {recentApps.map((app) => (
-              <NextLink
-                key={app.id}
-                href={`/apps/${app.id}`}
-                className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
-              >
-                {app.icon?.startsWith('http') ? (
-                  <div className="relative w-5 h-5 shrink-0">
-                    <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
-                  </div>
-                ) : (
-                  <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
-                )}
-                <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
-              </NextLink>
-            ))}
+            {recentApps.map((app) => {
+              const iconSrc = getImageAssetUrl(app.icon);
+
+              return (
+                <NextLink
+                  key={app.id}
+                  href={`/apps/${app.id}`}
+                  className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
+                >
+                  {iconSrc ? (
+                    <div className="relative w-5 h-5 shrink-0">
+                      <Image src={iconSrc} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
+                    </div>
+                  ) : (
+                    <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
+                  )}
+                  <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
+                </NextLink>
+              );
+            })}
           </div>
         </div>
       )}

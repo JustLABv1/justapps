@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveAssetUrl } from "@/lib/assets";
 import {
     Avatar,
     Button,
@@ -100,6 +101,7 @@ export function Navigation() {
   const logoSrc = isDark
     ? (settings.logoDarkUrl || settings.logoUrl || null)
     : (settings.logoUrl || null);
+  const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
   const isInVerwaltung = pathname.startsWith('/verwaltung');
   const visibleAdminNavLinks = adminNavLinks.filter((link) => link.href !== '/verwaltung/gitlab' || hasGitLabProviders);
@@ -124,9 +126,9 @@ export function Navigation() {
           className="flex items-center gap-2.5 no-underline text-foreground hover:opacity-80 transition-opacity shrink-0"
         >
           <div className="flex flex-cols items-center gap-2 leading-tight">
-            {logoSrc ? (
+            {resolvedLogoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
+              <img src={resolvedLogoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
             ) : (
               <Image
                 src={isDark ? JustLABLogo : JustLABLogo}
@@ -159,20 +161,18 @@ export function Navigation() {
           {/* Verwaltung dropdown (admin only) */}
           {user?.role === 'admin' && (
             <Dropdown>
-              <Dropdown.Trigger>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors h-auto ${
-                    isInVerwaltung
-                      ? 'text-accent bg-accent/8'
-                      : 'text-muted hover:text-foreground hover:bg-default'
-                  }`}
-                >
-                  Verwaltung
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </Button>
-              </Dropdown.Trigger>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors h-auto ${
+                  isInVerwaltung
+                    ? 'text-accent bg-accent/8'
+                    : 'text-muted hover:text-foreground hover:bg-default'
+                }`}
+              >
+                Verwaltung
+                <ChevronDown className="w-3.5 h-3.5" />
+              </Button>
               <Dropdown.Popover>
                 <Dropdown.Menu
                   onAction={(key) => router.push(key as string)}
@@ -237,13 +237,11 @@ export function Navigation() {
             <div className="h-8 w-8 rounded-full bg-default/50 animate-pulse" />
           ) : user ? (
             <Dropdown>
-              <Dropdown.Trigger>
-                <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
-                  <Avatar size="sm">
-                    <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
-                  </Avatar>
-                </Button>
-              </Dropdown.Trigger>
+              <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
+                <Avatar size="sm">
+                  <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+                </Avatar>
+              </Button>
               <Dropdown.Popover>
                 <Dropdown.Menu onAction={(key) => key === 'logout' && handleLogout()}>
                   <Dropdown.Item id="profile" textValue={`Angemeldet als ${user.email}`}>

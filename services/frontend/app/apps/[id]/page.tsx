@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
+import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
@@ -133,6 +134,7 @@ export default function AppPage() {
   const content = app.markdownContent || `# ${app.name}\n\n${app.description}\n\n*Keine detaillierte Dokumentation verfügbar.*`;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const statusInfo = getAppStatusMeta(app.status);
+  const appIconSrc = getImageAssetUrl(app.icon);
   const gitLabStatus = (() => {
     switch (gitLabIntegration?.lastSyncStatus) {
       case 'success':
@@ -234,9 +236,9 @@ export default function AppPage() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-8">
           <div className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-center text-4xl md:text-6xl shrink-0 overflow-hidden">
-            {app.icon?.startsWith('http') ? (
+            {appIconSrc ? (
               <Image 
-                src={app.icon} 
+                src={appIconSrc} 
                 alt={app.name} 
                 fill 
                 className="object-contain p-2"
@@ -326,12 +328,10 @@ export default function AppPage() {
                 } else if (allDemos.length > 1) {
                   return (
                     <Dropdown>
-                      <Dropdown.Trigger>
-                        <Button className="gap-2 px-4 shadow-sm">
-                          <ExternalLink className="w-4 h-4" />
-                          Live-Zugänge ({allDemos.length})
-                        </Button>
-                      </Dropdown.Trigger>
+                      <Button className="gap-2 px-4 shadow-sm">
+                        <ExternalLink className="w-4 h-4" />
+                        Live-Zugänge ({allDemos.length})
+                      </Button>
                       <Dropdown.Popover>
                         <Dropdown.Menu
                           aria-label="Links zu Live-Zugängen"
@@ -567,34 +567,38 @@ export default function AppPage() {
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {app.relatedApps.map(related => (
-                  <NextLink
-                    key={related.id}
-                    href={`/apps/${related.id}`}
-                    className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                      {related.icon?.startsWith('http') ? (
-                        <Image
-                          src={related.icon}
-                          alt={related.name}
-                          width={40}
-                          height={40}
-                          className="object-contain p-1"
-                          unoptimized
-                        />
-                      ) : (
-                        related.icon || "🏛️"
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
-                      <p className="text-xs text-muted flex items-center gap-1">
-                        <Link2 className="w-3 h-3" /> {related.id}
-                      </p>
-                    </div>
-                  </NextLink>
-                ))}
+                {app.relatedApps.map((related) => {
+                  const relatedIconSrc = getImageAssetUrl(related.icon);
+
+                  return (
+                    <NextLink
+                      key={related.id}
+                      href={`/apps/${related.id}`}
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                        {relatedIconSrc ? (
+                          <Image
+                            src={relatedIconSrc}
+                            alt={related.name}
+                            width={40}
+                            height={40}
+                            className="object-contain p-1"
+                            unoptimized
+                          />
+                        ) : (
+                          related.icon || "🏛️"
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
+                        <p className="text-xs text-muted flex items-center gap-1">
+                          <Link2 className="w-3 h-3" /> {related.id}
+                        </p>
+                      </div>
+                    </NextLink>
+                  );
+                })}
               </div>
             </div>
           </Tabs.Panel>

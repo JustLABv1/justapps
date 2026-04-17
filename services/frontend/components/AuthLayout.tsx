@@ -2,9 +2,10 @@
 
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/assets';
+import { LayoutGrid, Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
-import { LayoutGrid, Shield } from 'lucide-react';
 
 const SAMPLE_APPS = [
   { icon: '📊', name: 'Analytics', category: 'Analyse', style: { top: '5%', left: '6%', animationName: 'authFloat1', animationDuration: '6.5s', animationDelay: '0s' } },
@@ -32,6 +33,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const logoSrc = isDark
     ? (settings.logoDarkUrl || settings.logoUrl || null)
     : (settings.logoUrl || null);
+  const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
   const [appCount, setAppCount] = useState<number | null>(null);
   useEffect(() => {
@@ -97,9 +99,9 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
           {/* Center branding */}
           <div className="relative z-10 flex flex-col items-center text-center gap-5 px-14">
-            {logoSrc ? (
+            {resolvedLogoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
+              <img src={resolvedLogoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
             ) : (
               <div className="w-16 h-16 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shadow-xl shadow-accent/10">
                 <LayoutGrid className="w-8 h-8 text-accent" />

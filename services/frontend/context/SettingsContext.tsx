@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchApi } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/assets';
 import { usePathname } from 'next/navigation';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -92,7 +93,7 @@ export const defaultSettings: StoreSettings = {
 };
 
 function buildFaviconHref(faviconUrl: string) {
-  const href = faviconUrl || '/favicon.ico';
+  const href = resolveAssetUrl(faviconUrl) || '/favicon.ico';
   const separator = href.includes('?') ? '&' : '?';
   return `${href}${separator}v=${Date.now()}`;
 }
