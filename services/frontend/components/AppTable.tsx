@@ -15,6 +15,7 @@ import {
     Table
 } from '@heroui/react';
 import {
+  Copy,
     ExternalLink,
     Info,
     Lock,
@@ -37,6 +38,7 @@ interface AppTableProps {
   handleEditApp: (app: AppConfig) => void;
   handleDeleteApp: (id: string) => void;
   handleToggleAppLock: (app: AppConfig) => void;
+  handleCopyApp?: (app: AppConfig) => void;
   handleTransferApp?: (app: AppConfig) => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkToggleLock?: (ids: string[], lock: boolean) => void;
@@ -104,6 +106,7 @@ export function AppTable({
   handleEditApp,
   handleDeleteApp,
   handleToggleAppLock,
+  handleCopyApp,
   handleTransferApp,
   onBulkDelete,
   onBulkToggleLock,
@@ -426,10 +429,18 @@ export function AppTable({
                         </Button>
                         <Dropdown.Popover>
                           <Dropdown.Menu onAction={(key) => {
+                            if (key === 'copy' && handleCopyApp) handleCopyApp(app);
                             if (key === 'lock') handleToggleAppLock(app);
                             if (key === 'transfer' && handleTransferApp) handleTransferApp(app);
                             if (key === 'delete') handleDeleteApp(app.id);
                           }}>
+                            {handleCopyApp && (
+                              <Dropdown.Item id="copy" textValue="Kopieren">
+                                <div className="flex items-center gap-2">
+                                  <Copy className="w-4 h-4" /> Kopieren
+                                </div>
+                              </Dropdown.Item>
+                            )}
                             <Dropdown.Item id="lock" textValue={app.isLocked ? 'Freigeben' : 'Sperren'} className={app.isLocked ? 'text-success' : 'text-warning'}>
                               <div className="flex items-center gap-2">
                                 {app.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
