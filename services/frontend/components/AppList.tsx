@@ -2,6 +2,7 @@
 
 import { AppConfig } from '@/config/apps';
 import { getAppStatusLabel } from '@/lib/appStatus';
+import { getImageAssetUrl } from '@/lib/assets';
 import {
     Button,
     Card,
@@ -37,18 +38,22 @@ export function AppList({ apps, handleEditApp, handleDeleteApp, handleToggleAppL
         <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
           <div className="flex flex-col md:flex-row items-center p-5 gap-6">
             <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
-              {app.icon?.startsWith('http') ? (
-                <Image 
-                  src={app.icon} 
-                  alt={app.name} 
-                  fill
-                  className="object-contain p-2"
-                  sizes="64px"
-                  unoptimized
-                />
-              ) : (
-                app.icon || "🏛️"
-              )}
+              {(() => {
+                const iconSrc = getImageAssetUrl(app.icon);
+
+                return iconSrc ? (
+                  <Image 
+                    src={iconSrc} 
+                    alt={app.name} 
+                    fill
+                    className="object-contain p-2"
+                    sizes="64px"
+                    unoptimized
+                  />
+                ) : (
+                  app.icon || "🏛️"
+                );
+              })()}
             </div>
             <div className="flex-grow text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">

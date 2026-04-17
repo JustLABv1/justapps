@@ -4,6 +4,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { GroupIcon } from '@/components/GroupIcon';
 import { AppConfig } from '@/config/apps';
 import { fetchApi, uploadFile } from '@/lib/api';
+import { getImageAssetUrl } from '@/lib/assets';
 import { Button, Chip, Input, Label, Modal, TextArea, TextField, toast } from '@heroui/react';
 import { Check, ChevronDown, ChevronUp, Layers2, Loader2, Pencil, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
@@ -480,21 +481,25 @@ export default function VerwaltungGruppenPage() {
                       </div>
                     ) : group.members && group.members.length > 0 ? (
                       <div className="flex flex-wrap gap-2 pt-2">
-                        {group.members.map((app) => (
-                          <div
-                            key={app.id}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface shadow-sm"
-                          >
-                            <div className="relative w-5 h-5 shrink-0">
-                              {app.icon?.startsWith('http') ? (
-                                <Image src={app.icon} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
-                              ) : (
-                                <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
-                              )}
+                        {group.members.map((app) => {
+                          const iconSrc = getImageAssetUrl(app.icon);
+
+                          return (
+                            <div
+                              key={app.id}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface shadow-sm"
+                            >
+                              <div className="relative w-5 h-5 shrink-0">
+                                {iconSrc ? (
+                                  <Image src={iconSrc} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
+                                ) : (
+                                  <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
+                                )}
+                              </div>
+                              <span className="text-xs font-medium text-foreground whitespace-nowrap">{app.name}</span>
                             </div>
-                            <span className="text-xs font-medium text-foreground whitespace-nowrap">{app.name}</span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-xs text-muted italic py-3">Keine Apps in dieser Gruppe.</p>
@@ -592,6 +597,7 @@ export default function VerwaltungGruppenPage() {
                     <div className="divide-y divide-border/60">
                       {bulkCandidates.map((app) => {
                         const isSelected = selectedAppIds.has(app.id);
+                        const iconSrc = getImageAssetUrl(app.icon);
 
                         return (
                           <button
@@ -614,9 +620,9 @@ export default function VerwaltungGruppenPage() {
                               </div>
 
                               <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-secondary">
-                                {app.icon?.startsWith('http') ? (
+                                {iconSrc ? (
                                   <Image
-                                    src={app.icon}
+                                    src={iconSrc}
                                     alt={app.name}
                                     fill
                                     className="object-contain"

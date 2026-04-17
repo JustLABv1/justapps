@@ -1,6 +1,7 @@
 'use client';
 
 import { AppConfig } from '@/config/apps';
+import { getImageAssetUrl } from '@/lib/assets';
 import { Button, Chip, Input, Switch } from '@heroui/react';
 import { Grip, Link2, Loader2, Plus, X } from 'lucide-react';
 import Image from 'next/image';
@@ -18,7 +19,7 @@ interface AppGroup {
 }
 
 interface RelatedAppsTabProps {
-  isNew: boolean;
+  showDraftHint?: boolean;
   isAdmin: boolean;
   relatedApps: RelatedApp[];
   groups: AppGroup[];
@@ -37,27 +38,19 @@ interface RelatedAppsTabProps {
 }
 
 export function RelatedAppsTab({
-  isNew, isAdmin, relatedApps, groups, appGroupIds,
+  showDraftHint = false, isAdmin, relatedApps, groups, appGroupIds,
   relatedSearch, setRelatedSearch, filteredRelatable, addingRelated,
   newGroupName, setNewGroupName, creatingGroup,
   onAddRelated, onRemoveRelated, onToggleGroup, onCreateGroup,
 }: RelatedAppsTabProps) {
-  if (isNew) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-surface-secondary border border-border flex items-center justify-center">
-          <Link2 className="w-6 h-6 text-muted" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">App zuerst speichern</p>
-          <p className="text-xs text-muted mt-1">Verknüpfte Apps und Gruppen können nach dem ersten Speichern eingerichtet werden.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-8">
+      {showDraftHint && (
+        <div className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-muted">
+          Beim ersten Verknüpfen wird automatisch ein Entwurf angelegt, damit die Beziehung direkt gespeichert werden kann.
+        </div>
+      )}
+
       {/* Current group memberships */}
       {isAdmin && appGroupIds.size > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -72,36 +65,40 @@ export function RelatedAppsTab({
       {/* Current related apps grid */}
       {relatedApps.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {relatedApps.map(related => (
-            <div
-              key={related.id}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                {related.icon?.startsWith('http') ? (
-                  <Image src={related.icon} alt={related.name} width={40} height={40} className="object-contain p-1" unoptimized />
-                ) : (
-                  related.icon || '🏛️'
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
-                <p className="text-xs text-muted flex items-center gap-1">
-                  <Link2 className="w-3 h-3" /> {related.id}
-                </p>
-              </div>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="danger-soft"
-                onPress={() => onRemoveRelated(related.id)}
-                aria-label={`${related.name} entfernen`}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+          {relatedApps.map((related) => {
+            const iconSrc = getImageAssetUrl(related.icon);
+
+            return (
+              <div
+                key={related.id}
+                className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
               >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                  {iconSrc ? (
+                    <Image src={iconSrc} alt={related.name} width={40} height={40} className="object-contain p-1" unoptimized />
+                  ) : (
+                    related.icon || '🏛️'
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
+                  <p className="text-xs text-muted flex items-center gap-1">
+                    <Link2 className="w-3 h-3" /> {related.id}
+                  </p>
+                </div>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="danger-soft"
+                  onPress={() => onRemoveRelated(related.id)}
+                  aria-label={`${related.name} entfernen`}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -117,26 +114,36 @@ export function RelatedAppsTab({
         />
         {relatedSearch && (
           <div className="border border-border rounded-xl bg-surface overflow-hidden max-h-64 overflow-y-auto">
-            {filteredRelatable.slice(0, 10).map((a) => (
-              <Button
-                key={a.id}
-                fullWidth
-                variant="ghost"
-                onPress={() => onAddRelated(a)}
-                className="h-auto justify-start rounded-none border-b border-border/50 px-3 py-3 text-left last:border-0"
-              >
-                <span className="text-xl shrink-0">{a.icon?.startsWith('http') ? '🏛️' : a.icon || '🏛️'}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                  <p className="text-xs text-muted">{a.categories?.join(', ')}</p>
-                </div>
-                {addingRelated ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />
-                ) : (
-                  <Plus className="w-4 h-4 text-accent shrink-0" />
-                )}
-              </Button>
-            ))}
+            {filteredRelatable.slice(0, 10).map((a) => {
+              const iconSrc = getImageAssetUrl(a.icon);
+
+              return (
+                <Button
+                  key={a.id}
+                  fullWidth
+                  variant="ghost"
+                  onPress={() => onAddRelated(a)}
+                  className="h-auto justify-start rounded-none border-b border-border/50 px-3 py-3 text-left last:border-0"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-secondary text-xl shadow-sm">
+                    {iconSrc ? (
+                      <Image src={iconSrc} alt={a.name} width={40} height={40} className="object-contain p-1" unoptimized />
+                    ) : (
+                      a.icon || '🏛️'
+                    )}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{a.name}</p>
+                    <p className="text-xs text-muted">{a.categories?.join(', ')}</p>
+                  </div>
+                  {addingRelated ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />
+                  ) : (
+                    <Plus className="w-4 h-4 text-accent shrink-0" />
+                  )}
+                </Button>
+              );
+            })}
             {filteredRelatable.length === 0 && (
               <p className="p-4 text-sm text-muted text-center">Keine weiteren Apps gefunden</p>
             )}

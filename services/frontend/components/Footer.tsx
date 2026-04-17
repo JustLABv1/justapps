@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveAssetUrl } from '@/lib/assets';
 import Image from "next/image";
 import { useSettings } from '../context/SettingsContext';
 import JustLABLogo from '../public/justlab_logo_compact.png';
@@ -16,6 +17,7 @@ export function Footer() {
   const storeName = settings.storeName || 'JustApps';
   const footerText = settings.footerText || 'Die Plattform für moderne, souveräne Software-Lösungen für die öffentliche Verwaltung in Deutschland.';
   const logoSrc = settings.logoUrl || null;
+  const resolvedLogoSrc = resolveAssetUrl(logoSrc);
   const links = settings.footerLinks && settings.footerLinks.length > 0
     ? settings.footerLinks
     : defaultFooterLinks;
@@ -26,9 +28,9 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-3">
             <div className="flex flex-cols mb-3 gap-2 items-center">
-              {logoSrc ? (
+              {resolvedLogoSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
+                <img src={resolvedLogoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
               ) : (
                 <Image src={JustLABLogo} alt="Logo" width={24} height={24} className="rounded-sm" />
               )}

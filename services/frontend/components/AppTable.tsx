@@ -2,29 +2,30 @@
 
 import { AppConfig } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
+import { getImageAssetUrl } from '@/lib/assets';
 import {
-  Button,
-  Checkbox,
-  Chip,
-  Dropdown,
-  EmptyState,
-  Input,
-  Pagination,
-  type Selection,
-  Table
+    Button,
+    Checkbox,
+    Chip,
+    Dropdown,
+    EmptyState,
+    Input,
+    Pagination,
+    type Selection,
+    Table
 } from '@heroui/react';
 import {
-  ExternalLink,
-  Info,
-  Lock,
-  MoreVertical,
-  Pencil,
-  Search,
-  Star,
-  Trash2,
-  Unlock,
-  UserRoundCog,
-  X,
+    ExternalLink,
+    Info,
+    Lock,
+    MoreVertical,
+    Pencil,
+    Search,
+    Star,
+    Trash2,
+    Unlock,
+    UserRoundCog,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -308,11 +309,15 @@ export function AppTable({
                   <Table.Cell>
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10 rounded-lg bg-surface-secondary border border-border flex items-center justify-center text-xl overflow-hidden shadow-sm">
-                        {app.icon?.startsWith('http') ? (
-                          <Image src={app.icon} alt={app.name} fill className="object-contain p-1.5" sizes="40px" unoptimized />
-                        ) : (
-                          app.icon || '🏛️'
-                        )}
+                        {(() => {
+                          const iconSrc = getImageAssetUrl(app.icon);
+
+                          return iconSrc ? (
+                            <Image src={iconSrc} alt={app.name} fill className="object-contain p-1.5" sizes="40px" unoptimized />
+                          ) : (
+                            app.icon || '🏛️'
+                          );
+                        })()}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">{app.name}</span>
