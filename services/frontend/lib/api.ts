@@ -38,8 +38,9 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const headers = new Headers(options.headers);
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
-  if (!headers.has('Content-Type')) {
+  if (!isFormDataBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

@@ -6,7 +6,7 @@ import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { isDraftStatus } from '@/lib/appStatus';
 import { Button, Modal, toast } from '@heroui/react';
-import { Check, Download, Loader2, Plus, ShieldCheck, Upload, UserRoundCog } from 'lucide-react';
+import { Check, Loader2, Plus, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
@@ -187,59 +187,6 @@ function AppsContent() {
     }
   };
 
-  const handleExportApps = async () => {
-    try {
-      const res = await fetchApi('/apps/export');
-      if (res.ok) {
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `apps-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        toast.danger('Der Export ist fehlgeschlagen.');
-      }
-    } catch (err) {
-      console.error(err);
-      toast.danger('Der Export ist fehlgeschlagen.');
-    }
-  };
-
-  const handleImportApps = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const appsData = JSON.parse(event.target?.result as string);
-        const res = await fetchApi('/apps/import', { method: 'POST', body: JSON.stringify(appsData) });
-        if (res.ok) {
-          const result = await res.json().catch(() => null);
-          const importedCount = typeof result?.importedCount === 'number' ? result.importedCount : Array.isArray(appsData) ? appsData.length : null;
-          const importedDraftCount = typeof result?.draftCount === 'number' ? result.draftCount : null;
-          const parts = [importedCount !== null ? `${importedCount} Apps importiert` : 'Apps wurden erfolgreich importiert'];
-          if (importedDraftCount !== null) {
-            parts.push(`${importedDraftCount} Entwürfe`);
-          }
-          toast.success(parts.join(' · '));
-          loadApps();
-        } else {
-          toast.danger('Der Import ist fehlgeschlagen.');
-        }
-      } catch (err) {
-        console.error(err);
-        toast.danger('Die Datei konnte nicht importiert werden.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
   // Deep linking: ?edit=<appId> → redirect to full editor page
   useEffect(() => {
     const editId = searchParams?.get('edit');
@@ -256,20 +203,6 @@ function AppsContent() {
           {draftCount > 0 ? `, davon ${draftCount} Entwurf${draftCount !== 1 ? 'e' : ''}` : ''}
         </p>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onPress={handleExportApps} className="gap-2">
-            <Download className="w-4 h-4" /> Export
-          </Button>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportApps}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            />
-            <Button variant="secondary" size="sm" className="gap-2">
-              <Upload className="w-4 h-4" /> Import
-            </Button>
-          </div>
           <Button
             className="bg-accent text-white gap-2 shadow-sm font-medium"
             size="sm"
