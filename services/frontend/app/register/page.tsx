@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const { user, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
+  const showOidcLogin = settings.oidcEnabled;
 
   React.useEffect(() => {
     if (user) {
@@ -99,19 +100,23 @@ export default function RegisterPage() {
         </Button>
       </Form>
 
-      <div className="my-5 flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted font-medium uppercase">Oder</span>
-        <Separator className="flex-1" />
-      </div>
+      {showOidcLogin && (
+        <>
+          <div className="my-5 flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted font-medium uppercase">Oder</span>
+            <Separator className="flex-1" />
+          </div>
 
-      <Button
-        onPress={handleOIDCLogin}
-        variant="outline"
-        className="w-full"
-      >
-        Mit Single Sign-On anmelden
-      </Button>
+          <Button
+            onPress={handleOIDCLogin}
+            variant="outline"
+            className="w-full"
+          >
+            Mit Single Sign-On anmelden
+          </Button>
+        </>
+      )}
 
       <div className="mt-6 text-center text-sm">
         <p className="text-muted">

@@ -3,6 +3,7 @@
 import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/assets';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
     Button,
@@ -99,6 +100,9 @@ export default function EinstellungenPage() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
+  const logoPreviewUrl = resolveAssetUrl(settings.logoUrl);
+  const logoDarkPreviewUrl = resolveAssetUrl(settings.logoDarkUrl);
+  const faviconPreviewUrl = resolveAssetUrl(settings.faviconUrl);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'logoDarkUrl' | 'faviconUrl') => {
     const file = e.target.files?.[0];
@@ -430,9 +434,9 @@ export default function EinstellungenPage() {
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Logo (Hell-Modus)</Label>
                   <div className="flex gap-2 items-center">
-                    {settings.logoUrl && (
+                    {logoPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.logoUrl} alt="Logo Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
+                      <img src={logoPreviewUrl} alt="Logo Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
                     )}
                     <TextField value={settings.logoUrl} onChange={(val) => setSettings({ ...settings, logoUrl: val })} className="flex-1">
                       <Input placeholder="https://example.com/logo.png" className="bg-field-background" />
@@ -447,9 +451,9 @@ export default function EinstellungenPage() {
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Logo (Dunkel-Modus)</Label>
                   <div className="flex gap-2 items-center">
-                    {settings.logoDarkUrl && (
+                    {logoDarkPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.logoDarkUrl} alt="Logo Dark Preview" className="h-8 w-8 rounded object-contain border border-border bg-[#1a1a1a] shrink-0" />
+                      <img src={logoDarkPreviewUrl} alt="Logo Dark Preview" className="h-8 w-8 rounded object-contain border border-border bg-[#1a1a1a] shrink-0" />
                     )}
                     <TextField value={settings.logoDarkUrl} onChange={(val) => setSettings({ ...settings, logoDarkUrl: val })} className="flex-1">
                       <Input placeholder="https://example.com/logo-dark.png" className="bg-field-background" />
@@ -464,9 +468,9 @@ export default function EinstellungenPage() {
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Favicon</Label>
                   <div className="flex gap-2 items-center">
-                    {settings.faviconUrl && (
+                    {faviconPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.faviconUrl} alt="Favicon Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
+                      <img src={faviconPreviewUrl} alt="Favicon Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
                     )}
                     <TextField value={settings.faviconUrl} onChange={(val) => setSettings({ ...settings, faviconUrl: val })} className="flex-1">
                       <Input placeholder="https://example.com/favicon.ico" className="bg-field-background" />

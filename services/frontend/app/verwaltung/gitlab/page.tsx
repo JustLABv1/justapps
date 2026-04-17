@@ -2,19 +2,20 @@
 
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
+import { getImageAssetUrl } from '@/lib/assets';
 import { Button, Chip, EmptyState, Input, Table, TextField } from '@heroui/react';
 import {
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  GitBranch,
-  Link2,
-  Loader2,
-  Pencil,
-  RefreshCw,
-  Search,
-  XCircle,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    ExternalLink,
+    GitBranch,
+    Link2,
+    Loader2,
+    Pencil,
+    RefreshCw,
+    Search,
+    XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -271,14 +272,15 @@ export default function GitLabSyncPage() {
               {(app) => {
                 const sync = app.gitLabSync!;
                 const meta = getSyncMeta(sync.lastSyncStatus);
+                const iconSrc = getImageAssetUrl(app.icon);
                 return (
                   <Table.Row key={app.id}>
                     {/* App */}
                     <Table.Cell>
                       <div className="flex items-center gap-3">
                         <div className="relative w-9 h-9 rounded-lg bg-surface-secondary border border-border flex items-center justify-center text-lg overflow-hidden shrink-0 shadow-sm">
-                          {app.icon?.startsWith('http') ? (
-                            <Image src={app.icon} alt={app.name} fill className="object-contain p-1" sizes="36px" unoptimized />
+                          {iconSrc ? (
+                            <Image src={iconSrc} alt={app.name} fill className="object-contain p-1" sizes="36px" unoptimized />
                           ) : (
                             app.icon || '🏛️'
                           )}

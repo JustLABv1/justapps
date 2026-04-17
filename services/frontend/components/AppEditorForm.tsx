@@ -10,42 +10,43 @@ import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus';
+import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Chip,
-  Input,
-  Label,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField, toast
+    Button,
+    Chip,
+    Input,
+    Label,
+    Switch,
+    Tabs,
+    TextArea,
+    TextField, toast
 } from '@heroui/react';
 import {
-  AlertTriangle,
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CloudDownload,
-  ExternalLink,
-  GitBranch,
-  Github,
-  Layers,
-  Link2,
-  Loader2,
-  Pencil,
-  Plus,
-  Save,
-  Scale,
-  Server,
-  Share2,
-  Star,
-  Tag,
-  Terminal,
-  Upload,
-  X,
+    AlertTriangle,
+    BookOpen,
+    Check,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    CloudDownload,
+    ExternalLink,
+    GitBranch,
+    Github,
+    Layers,
+    Link2,
+    Loader2,
+    Pencil,
+    Plus,
+    Save,
+    Scale,
+    Server,
+    Share2,
+    Star,
+    Tag,
+    Terminal,
+    Upload,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -151,7 +152,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
   // ── Icon state ──
   const [iconUrlInput, setIconUrlInput] = useState(
-    initialApp?.icon?.startsWith('http') ? initialApp.icon : ''
+    isImageAssetSource(initialApp?.icon) ? initialApp?.icon || '' : ''
   );
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
@@ -170,14 +171,14 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const [currentCreateStep, setCurrentCreateStep] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
-  // ── Related apps (editing only) ──
+  // ── Related apps ──
   const [relatedApps, setRelatedApps] = useState<{ id: string; name: string; icon?: string }[]>(
     initialApp?.relatedApps || []
   );
   const [relatedSearch, setRelatedSearch] = useState('');
   const [addingRelated, setAddingRelated] = useState(false);
 
-  // ── Groups (admin + editing only) ──
+  // ── Groups ──
   const [groups, setGroups] = useState<{ id: string; name: string; description?: string }[]>([]);
   const [appGroupIds, setAppGroupIds] = useState<Set<string>>(
     new Set((initialApp?.appGroups || []).map((g) => g.id))
@@ -198,6 +199,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   // ── Auto-save state ──
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
   const autoSaveAppIdRef = useRef<string | null>(initialApp?.id || null);
+  const formIconSrc = getImageAssetUrl(formData.icon);
 
   // ── Auto-save effect (drafts only) ──
   useEffect(() => {
@@ -242,13 +244,13 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
 
   // Load groups
   useEffect(() => {
-    if (!isNew && isAdmin) {
+    if (isAdmin) {
       fetchApi('/app-groups')
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setGroups(Array.isArray(data) ? data : []))
         .catch(() => {});
     }
-  }, [isNew, isAdmin]);
+  }, [isAdmin]);
 
     useEffect(() => {
       if (!isNew || currentCreateStep !== 2) return;
@@ -311,27 +313,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     setSyncingGitLab(true);
     setGitLabError(null);
     try {
-      // Create the draft app first if not yet done
-      let appId = preCreatedAppId;
-      if (!appId) {
-        const body: Partial<AppConfig> = {
-          ...formData,
-          categories: Array.isArray(formData.categories) ? formData.categories : [],
-          techStack: Array.isArray(formData.techStack) ? formData.techStack : [],
-          repositories: [],
-          customLinks: [],
-          liveDemos: [],
-          status: formData.status?.trim() || DRAFT_STATUS,
-        };
-        const createRes = await fetchApi('/apps', { method: 'POST', body: JSON.stringify(body) });
-        if (!createRes.ok) {
-          const err = await createRes.json().catch(() => ({}));
-          throw new Error((err as { message?: string }).message || 'App konnte nicht angelegt werden.');
-        }
-        const newApp = await createRes.json() as AppConfig;
-        appId = newApp.id;
-        setPreCreatedAppId(appId);
-      }
+      const appId = await ensureEditableAppId();
       // Link GitLab
       const linkRes = await fetchApi(`/apps/${appId}/gitlab`, {
         method: 'PUT',
@@ -403,6 +385,48 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   const sanitizeLinks = (links: { label?: string; url?: string }[] | undefined) =>
     (links || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url! }));
 
+  const getEffectiveAppId = () => initialApp?.id || preCreatedAppId || autoSaveAppIdRef.current || null;
+
+  const ensureEditableAppId = async () => {
+    const existingAppId = getEffectiveAppId();
+
+    if (existingAppId) {
+      return existingAppId;
+    }
+
+    if (!formData.name?.trim() || !formData.id?.trim()) {
+      throw new Error('Bitte zuerst Name und ID ausfüllen, damit ein Entwurf für Verknüpfungen angelegt werden kann.');
+    }
+
+    const body: Partial<AppConfig> = {
+      ...formData,
+      categories: Array.isArray(formData.categories) ? formData.categories : [],
+      techStack: Array.isArray(formData.techStack) ? formData.techStack : [],
+      repositories: sanitizeLinks(formData.repositories) as AppConfig['repositories'],
+      customLinks: sanitizeLinks(formData.customLinks) as AppConfig['customLinks'],
+      liveDemos: (formData.liveDemos || []).filter((demo) => demo.url?.trim()),
+      status: formData.status?.trim() || DRAFT_STATUS,
+    };
+
+    const response = await fetchApi('/apps', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error((error as { message?: string }).message || 'Entwurf konnte nicht automatisch angelegt werden.');
+    }
+
+    const createdApp = await response.json() as AppConfig;
+    autoSaveAppIdRef.current = createdApp.id;
+    setPreCreatedAppId(createdApp.id);
+    setFormData((previous) => ({ ...previous, id: createdApp.id }));
+    setLastAutoSave(new Date());
+
+    return createdApp.id;
+  };
+
   const repositories = formData.repositories && formData.repositories.length > 0
     ? formData.repositories
     : [];
@@ -427,9 +451,9 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      const effectiveAppId = preCreatedAppId || initialApp?.id;
-      const method = (isNew && !preCreatedAppId) ? 'POST' : 'PUT';
-      const url = (isNew && !preCreatedAppId) ? '/apps' : `/apps/${effectiveAppId}`;
+      const effectiveAppId = getEffectiveAppId();
+      const method = effectiveAppId ? 'PUT' : 'POST';
+      const url = effectiveAppId ? `/apps/${effectiveAppId}` : '/apps';
       const body: Partial<AppConfig> = {
         ...formData,
         categories: Array.isArray(formData.categories) ? formData.categories : [],
@@ -441,15 +465,21 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
       };
       const res = await fetchApi(url, { method, body: JSON.stringify(body) });
       if (res.ok) {
-        // Auto-link GitLab for new apps that weren't already linked via the creation-step sync
-        if (isNew && !preCreatedAppId && gitLabForm.projectPath?.trim()) {
-          const newApp = await res.json().catch(() => null) as AppConfig | null;
-          if (newApp?.id) {
-            await fetchApi(`/apps/${newApp.id}/gitlab`, {
+        const savedApp = method === 'POST'
+          ? await res.json().catch(() => null) as AppConfig | null
+          : null;
+        const savedAppId = effectiveAppId || savedApp?.id || null;
+
+        if (savedAppId) {
+          autoSaveAppIdRef.current = savedAppId;
+          setPreCreatedAppId(savedAppId);
+        }
+
+        if (isNew && savedAppId && gitLabForm.providerKey?.trim() && gitLabForm.projectPath?.trim()) {
+          await fetchApi(`/apps/${savedAppId}/gitlab`, {
               method: 'PUT',
               body: JSON.stringify(gitLabForm),
-            }).catch(() => null);
-          }
+          }).catch(() => null);
         }
         initialSnapshotRef.current = createSnapshot();
         skipUnsavedWarningRef.current = true;
@@ -474,40 +504,54 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
   };
 
   const handleAddRelated = async (app: AppConfig) => {
-    if (!initialApp) return;
     setAddingRelated(true);
     try {
-      const res = await fetchApi(`/apps/${initialApp.id}/related`, {
+      const appId = await ensureEditableAppId();
+      const res = await fetchApi(`/apps/${appId}/related`, {
         method: 'POST',
         body: JSON.stringify({ relatedAppId: app.id }),
       });
-      if (res.ok) {
-        setRelatedApps((prev) => [...prev, { id: app.id, name: app.name, icon: app.icon }]);
-        setRelatedSearch('');
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error((error as { message?: string }).message || 'Verwandte App konnte nicht verknüpft werden.');
       }
+
+      setRelatedApps((prev) => [...prev, { id: app.id, name: app.name, icon: app.icon }]);
+      setRelatedSearch('');
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : 'Verwandte App konnte nicht verknüpft werden.');
     } finally {
       setAddingRelated(false);
     }
   };
 
   const handleRemoveRelated = async (relatedId: string) => {
-    if (!initialApp) return;
-    await fetchApi(`/apps/${initialApp.id}/related/${relatedId}`, { method: 'DELETE' });
-    setRelatedApps((prev) => prev.filter((a) => a.id !== relatedId));
+    const appId = getEffectiveAppId();
+    if (!appId) return;
+
+    const response = await fetchApi(`/apps/${appId}/related/${relatedId}`, { method: 'DELETE' });
+    if (response.ok) {
+      setRelatedApps((prev) => prev.filter((a) => a.id !== relatedId));
+    }
   };
 
   const handleToggleGroup = async (groupId: string) => {
-    if (!initialApp) return;
-    const inGroup = appGroupIds.has(groupId);
-    if (inGroup) {
-      await fetchApi(`/app-groups/${groupId}/members/${initialApp.id}`, { method: 'DELETE' });
-      setAppGroupIds((prev) => { const s = new Set(prev); s.delete(groupId); return s; });
-    } else {
-      await fetchApi(`/app-groups/${groupId}/members`, {
-        method: 'POST',
-        body: JSON.stringify({ appId: initialApp.id }),
-      });
-      setAppGroupIds((prev) => new Set([...prev, groupId]));
+    try {
+      const appId = await ensureEditableAppId();
+      const inGroup = appGroupIds.has(groupId);
+      if (inGroup) {
+        await fetchApi(`/app-groups/${groupId}/members/${appId}`, { method: 'DELETE' });
+        setAppGroupIds((prev) => { const s = new Set(prev); s.delete(groupId); return s; });
+      } else {
+        await fetchApi(`/app-groups/${groupId}/members`, {
+          method: 'POST',
+          body: JSON.stringify({ appId }),
+        });
+        setAppGroupIds((prev) => new Set([...prev, groupId]));
+      }
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : 'Gruppe konnte nicht aktualisiert werden.');
     }
   };
 
@@ -910,6 +954,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         return [];
     }
   })();
+  const effectiveAppId = getEffectiveAppId();
 
   const buildSnapshot = (nextFormData: Partial<AppConfig>) => JSON.stringify({
     appGroupIds: Array.from(appGroupIds).sort(),
@@ -1118,8 +1163,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                       onClick={() => setShowIconPicker((value) => !value)}
                       className="group relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[1.75rem] border-2 border-dashed border-accent/30 bg-surface text-6xl shadow-sm transition-all hover:border-accent/50"
                     >
-                      {formData.icon?.startsWith('http') ? (
-                        <Image src={formData.icon} alt="Icon" fill className="object-contain p-4" sizes="320px" unoptimized />
+                      {formIconSrc ? (
+                        <Image src={formIconSrc} alt="Icon" fill className="object-contain p-4" sizes="320px" unoptimized />
                       ) : (
                         formData.icon || '🏛️'
                       )}
@@ -1193,7 +1238,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                           value={iconUrlInput}
                           onChange={(event) => {
                             setIconUrlInput(event.target.value);
-                            if (event.target.value.startsWith('http')) {
+                            if (isImageAssetSource(event.target.value)) {
                               setFormData((previous) => ({ ...previous, icon: event.target.value }));
                             }
                           }}
@@ -1916,6 +1961,34 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                     className="min-h-[520px] bg-field-background font-mono text-sm"
                   />
                 </TextField>
+
+                <div className="rounded-3xl border border-border bg-surface p-5">
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-foreground">Verwandte Apps und Gruppen</p>
+                    <p className="mt-1 text-xs text-muted">
+                      Optional: Verknüpfen Sie die App direkt mit bestehenden Einträgen oder ordnen Sie sie einer Gruppe zu.
+                    </p>
+                  </div>
+
+                  <RelatedAppsTab
+                    showDraftHint={!effectiveAppId}
+                    isAdmin={isAdmin}
+                    relatedApps={relatedApps}
+                    groups={groups}
+                    appGroupIds={appGroupIds}
+                    relatedSearch={relatedSearch}
+                    setRelatedSearch={setRelatedSearch}
+                    filteredRelatable={filteredRelatable}
+                    addingRelated={addingRelated}
+                    newGroupName={newGroupName}
+                    setNewGroupName={setNewGroupName}
+                    creatingGroup={creatingGroup}
+                    onAddRelated={handleAddRelated}
+                    onRemoveRelated={handleRemoveRelated}
+                    onToggleGroup={handleToggleGroup}
+                    onCreateGroup={handleCreateGroup}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -1927,8 +2000,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">Live-Vorschau</p>
                 <div className="relative mt-4 flex items-start gap-4">
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface text-3xl shadow-sm">
-                    {formData.icon?.startsWith('http') ? (
-                      <Image src={formData.icon} alt={formData.name || 'App Icon'} width={64} height={64} className="h-full w-full object-contain p-2" unoptimized />
+                    {formIconSrc ? (
+                      <Image src={formIconSrc} alt={formData.name || 'App Icon'} width={64} height={64} className="h-full w-full object-contain p-2" unoptimized />
                     ) : (
                       formData.icon || '🏛️'
                     )}
@@ -2237,8 +2310,8 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               onClick={() => setShowIconPicker((v) => !v)}
               className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border-2 border-dashed border-accent/40 hover:border-accent shadow-sm flex items-center justify-center text-4xl md:text-6xl overflow-hidden group transition-all"
             >
-              {formData.icon?.startsWith('http') ? (
-                <Image src={formData.icon} alt="Icon" fill className="object-contain p-2" sizes="(max-width: 768px) 80px, 112px" unoptimized />
+              {formIconSrc ? (
+                <Image src={formIconSrc} alt="Icon" fill className="object-contain p-2" sizes="(max-width: 768px) 80px, 112px" unoptimized />
               ) : (
                 formData.icon || '🏛️'
               )}
@@ -2535,7 +2608,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
               variant="secondary"
               onChange={(e) => {
                 setIconUrlInput(e.target.value);
-                if (e.target.value.startsWith('http')) setFormData((p) => ({ ...p, icon: e.target.value }));
+                if (isImageAssetSource(e.target.value)) setFormData((p) => ({ ...p, icon: e.target.value }));
               }}
             />
             {iconUploadError && <p className="text-xs text-danger mt-1">{iconUploadError}</p>}
@@ -2956,7 +3029,7 @@ export function AppEditorForm({ initialApp, existingApps }: AppEditorFormProps) 
         {/* Verwandte Apps + Gruppen tab */}
         <Tabs.Panel id="related">
           <RelatedAppsTab
-            isNew={isNew}
+            showDraftHint={false}
             isAdmin={isAdmin}
             relatedApps={relatedApps}
             groups={groups}
