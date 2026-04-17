@@ -12,7 +12,7 @@ import {
 } from '@heroui/react';
 import {
     ChevronLeft,
-  Copy,
+    Copy,
     ExternalLink,
     Lock,
     Pencil,

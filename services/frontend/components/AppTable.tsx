@@ -15,7 +15,7 @@ import {
     Table
 } from '@heroui/react';
 import {
-  Copy,
+    Copy,
     ExternalLink,
     Info,
     Lock,
