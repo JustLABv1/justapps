@@ -176,16 +176,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       { id: 'store-dynamic-shortcut-icon', rel: 'shortcut icon' },
       { id: 'store-dynamic-apple-touch-icon', rel: 'apple-touch-icon' },
     ] as const;
-    const managedIds = new Set<string>(definitions.map((definition) => definition.id));
     const faviconHref = buildFaviconHref(settings.faviconUrl);
-
-    document
-      .querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
-      .forEach((node) => {
-        if (!managedIds.has(node.id)) {
-          node.remove();
-        }
-      });
 
     for (const definition of definitions) {
       let el = document.getElementById(definition.id) as HTMLLinkElement | null;
