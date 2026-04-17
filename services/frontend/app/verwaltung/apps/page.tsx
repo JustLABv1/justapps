@@ -73,6 +73,10 @@ function AppsContent() {
     router.push(`/verwaltung/apps/${app.id}/edit`);
   };
 
+  const handleCopyApp = (app: AppConfig) => {
+    router.push(`/verwaltung/apps/new?copy=${encodeURIComponent(app.id)}`);
+  };
+
   const handleDeleteApp = async (id: string) => {
     const app = apps.find((entry) => entry.id === id) || null;
     setDeleteCandidate(app);
@@ -292,6 +296,7 @@ function AppsContent() {
         handleEditApp={handleEditApp}
         handleDeleteApp={handleDeleteApp}
         handleToggleAppLock={handleToggleAppLock}
+        handleCopyApp={handleCopyApp}
         handleTransferApp={handleOpenTransfer}
         onBulkDelete={handleBulkDelete}
         onBulkToggleLock={handleBulkToggleLock}
