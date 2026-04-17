@@ -113,6 +113,21 @@ Common fields accepted in the request body:
 | `GET` | `/settings` | — | Get platform settings (branding, banner, footer) |
 | `PUT` | `/settings` | Admin | Update platform settings |
 
+### Selected Platform Settings Fields
+
+The `/settings` payload includes branding fields that are intentionally public because the frontend reads them without authentication.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `showFlagBar` | boolean | Shows or hides the thin color bar at the top of the page |
+| `topBarPreset` | string | Selected preset for the top color bar, e.g. `deutschland`, `justapps`, `custom` |
+| `topBarColors` | string[] | Custom top-bar colors used when `topBarPreset` is `custom` |
+| `heroTitle` | string | Main title text on the homepage |
+| `heroTitlePreset` | string | Selected color preset for the hero-title gradient |
+| `heroTitleColors` | string[] | Custom gradient colors used when `heroTitlePreset` is `custom` |
+
+Do not store secrets in platform settings. The `/settings` endpoint is public by design.
+
 ---
 
 ## Admin — Users

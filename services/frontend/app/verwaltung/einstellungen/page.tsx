@@ -4,6 +4,17 @@ import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
+import {
+    CUSTOM_BRANDING_PRESET,
+    DEFAULT_HERO_TITLE_PRESET,
+    DEFAULT_TOP_BAR_PRESET,
+    HERO_TITLE_PRESET_OPTIONS,
+    TOP_BAR_PRESET_OPTIONS,
+    normalizeBrandColorList,
+    resolveHeroTitleColors,
+    resolveTopBarColors,
+    seedCustomBrandColors,
+} from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
     Button,
@@ -34,10 +45,14 @@ type SettingsState = {
   accentColor: string;
   heroBadge: string;
   heroTitle: string;
+  heroTitlePreset: string;
+  heroTitleColors: string[];
   heroSubtitle: string;
   footerText: string;
   footerLinks: FooterLink[];
   showFlagBar: boolean;
+  topBarPreset: string;
+  topBarColors: string[];
   appSortField: string;
   appSortDirection: string;
   pinnedApps: string[];
@@ -58,10 +73,14 @@ const defaultState: SettingsState = {
   accentColor: '',
   heroBadge: '',
   heroTitle: '',
+  heroTitlePreset: DEFAULT_HERO_TITLE_PRESET,
+  heroTitleColors: [],
   heroSubtitle: '',
   footerText: '',
   footerLinks: [],
   showFlagBar: true,
+  topBarPreset: DEFAULT_TOP_BAR_PRESET,
+  topBarColors: [],
   appSortField: 'name',
   appSortDirection: 'asc',
   pinnedApps: [],
@@ -78,12 +97,30 @@ function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
     footerLinks: Array.isArray(data.footerLinks)
       ? data.footerLinks
       : [],
+    heroTitlePreset: data.heroTitlePreset || DEFAULT_HERO_TITLE_PRESET,
+    heroTitleColors: normalizeBrandColorList(data.heroTitleColors),
+    topBarPreset: data.topBarPreset || DEFAULT_TOP_BAR_PRESET,
+    topBarColors: normalizeBrandColorList(data.topBarColors),
     appSortField: data.appSortField || 'name',
     appSortDirection: data.appSortDirection || 'asc',
     pinnedApps: Array.isArray(data.pinnedApps)
       ? data.pinnedApps
       : [],
   };
+}
+
+function PalettePreview({ colors }: { colors: string[] }) {
+  return (
+    <div className="flex h-3 overflow-hidden rounded-full border border-border/70 bg-default">
+      {colors.map((color, index) => (
+        <div
+          key={`${color}-${index}`}
+          className="h-full flex-1"
+          style={{ backgroundColor: color }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function EinstellungenPage() {
@@ -103,6 +140,34 @@ export default function EinstellungenPage() {
   const logoPreviewUrl = resolveAssetUrl(settings.logoUrl);
   const logoDarkPreviewUrl = resolveAssetUrl(settings.logoDarkUrl);
   const faviconPreviewUrl = resolveAssetUrl(settings.faviconUrl);
+  const topBarPreviewColors = resolveTopBarColors(settings.topBarPreset, settings.topBarColors);
+  const heroTitlePreviewColors = resolveHeroTitleColors(settings.heroTitlePreset, settings.heroTitleColors);
+
+  const updateBrandColors = (field: 'topBarColors' | 'heroTitleColors', index: number, value: string) => {
+    const nextColors = seedCustomBrandColors(settings[field], field === 'topBarColors' ? topBarPreviewColors : heroTitlePreviewColors);
+    nextColors[index] = value.trim();
+    setSettings({ ...settings, [field]: nextColors });
+  };
+
+  const handleTopBarPresetChange = (key: string) => {
+    setSettings({
+      ...settings,
+      topBarPreset: key,
+      topBarColors: key === CUSTOM_BRANDING_PRESET
+        ? seedCustomBrandColors(settings.topBarColors, topBarPreviewColors)
+        : settings.topBarColors,
+    });
+  };
+
+  const handleHeroTitlePresetChange = (key: string) => {
+    setSettings({
+      ...settings,
+      heroTitlePreset: key,
+      heroTitleColors: key === CUSTOM_BRANDING_PRESET
+        ? seedCustomBrandColors(settings.heroTitleColors, heroTitlePreviewColors)
+        : settings.heroTitleColors,
+    });
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'logoDarkUrl' | 'faviconUrl') => {
     const file = e.target.files?.[0];
@@ -380,8 +445,8 @@ export default function EinstellungenPage() {
                 </TextField>
                 <div className="md:col-span-2 flex items-center justify-between border-t border-border pt-4 mt-1">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">Deutschlandfahne anzeigen</span>
-                    <p className="text-xs text-muted">Zeigt den schwarzrot-goldenen Balken am oberen Seitenrand.</p>
+                    <span className="text-sm font-semibold">Farbbalken oben anzeigen</span>
+                    <p className="text-xs text-muted">Zeigt einen schmalen Farbbalken am oberen Seitenrand.</p>
                   </div>
                   <Switch
                     isSelected={settings.showFlagBar}
@@ -389,6 +454,109 @@ export default function EinstellungenPage() {
                   >
                     <Switch.Control><Switch.Thumb /></Switch.Control>
                   </Switch>
+                </div>
+                <div className="md:col-span-2 grid gap-4 rounded-2xl border border-border/60 bg-surface-secondary/60 p-4">
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
+                    <Select
+                      selectedKey={settings.topBarPreset}
+                      onSelectionChange={(key) => handleTopBarPresetChange(String(key))}
+                    >
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Preset fuer den oberen Balken</Label>
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {TOP_BAR_PRESET_OPTIONS.map((option) => (
+                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                              <div className="flex flex-col gap-0.5 py-0.5">
+                                <span>{option.label}</span>
+                                <span className="text-xs text-muted">{option.description}</span>
+                              </div>
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Vorschau</span>
+                      <PalettePreview colors={topBarPreviewColors} />
+                    </div>
+                  </div>
+                  {settings.topBarPreset === CUSTOM_BRANDING_PRESET && (
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {topBarPreviewColors.map((color, index) => (
+                        <div key={`top-bar-color-${index}`} className="flex items-end gap-2">
+                          <div className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border" style={{ backgroundColor: color || 'transparent' }} />
+                          <TextField
+                            className="flex-1"
+                            value={settings.topBarColors[index] || ''}
+                            onChange={(val) => updateBrandColors('topBarColors', index, val)}
+                          >
+                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Balkenfarbe {index + 1}</Label>
+                            <Input placeholder="#004B76" className="bg-field-background font-mono text-sm" />
+                          </TextField>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="md:col-span-2 grid gap-4 rounded-2xl border border-border/60 bg-surface-secondary/60 p-4">
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
+                    <Select
+                      selectedKey={settings.heroTitlePreset}
+                      onSelectionChange={(key) => handleHeroTitlePresetChange(String(key))}
+                    >
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Preset fuer die Hero-Titel-Farben</Label>
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {HERO_TITLE_PRESET_OPTIONS.map((option) => (
+                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                              <div className="flex flex-col gap-0.5 py-0.5">
+                                <span>{option.label}</span>
+                                <span className="text-xs text-muted">{option.description}</span>
+                              </div>
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Vorschau</span>
+                      <div className="rounded-xl border border-border/70 bg-surface px-4 py-3">
+                        <p
+                          className="text-lg font-extrabold tracking-tight bg-clip-text text-transparent"
+                          style={{ backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(', ')})` }}
+                        >
+                          {settings.heroTitle || 'Der App Store fuer alle.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {settings.heroTitlePreset === CUSTOM_BRANDING_PRESET && (
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {heroTitlePreviewColors.map((color, index) => (
+                        <div key={`hero-title-color-${index}`} className="flex items-end gap-2">
+                          <div className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border" style={{ backgroundColor: color || 'transparent' }} />
+                          <TextField
+                            className="flex-1"
+                            value={settings.heroTitleColors[index] || ''}
+                            onChange={(val) => updateBrandColors('heroTitleColors', index, val)}
+                          >
+                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Titelfarbe {index + 1}</Label>
+                            <Input placeholder="#004B76" className="bg-field-background font-mono text-sm" />
+                          </TextField>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
@@ -398,9 +566,13 @@ export default function EinstellungenPage() {
                   onPress={() => save({
                     heroBadge: settings.heroBadge,
                     heroTitle: settings.heroTitle,
+                    heroTitlePreset: settings.heroTitlePreset,
+                    heroTitleColors: settings.heroTitleColors,
                     heroSubtitle: settings.heroSubtitle,
                     footerText: settings.footerText,
                     showFlagBar: settings.showFlagBar,
+                    topBarPreset: settings.topBarPreset,
+                    topBarColors: settings.topBarColors,
                   }, 'homepage')}
                 >
                   {savedSection === 'homepage' ? 'Gespeichert ✓' : 'Startseite speichern'}
