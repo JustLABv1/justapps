@@ -102,7 +102,7 @@ monolith:
 backend:
   replicaCount: 1
   image:
-    repository: ghcr.io/justlabv1/justapps/backend
+    repository: ghcr.io/justlabv1/justapps-backend
     pullPolicy: IfNotPresent
     tag: latest
   service:
@@ -120,7 +120,7 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: ghcr.io/justlabv1/justapps/frontend
+    repository: ghcr.io/justlabv1/justapps-frontend
     pullPolicy: IfNotPresent
     tag: latest
   env:
