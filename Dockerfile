@@ -20,7 +20,7 @@ ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN pnpm run build
 
 # Stage 2: Build the backend
-FROM golang:1.25-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 WORKDIR /app/backend
 
 ENV GOCACHE=/tmp/go-cache
