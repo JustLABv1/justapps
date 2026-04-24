@@ -64,7 +64,7 @@ services:
   nginx:
     profiles:
       - edge
-    image: nginx:1.29-alpine
+    image: nginx:1.30-alpine
     container_name: justapps-edge
     restart: unless-stopped
     depends_on:
