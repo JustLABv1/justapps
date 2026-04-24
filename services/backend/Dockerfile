@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 USER 0
 # Define cache locations for Go build
 ENV GOCACHE=/tmp/go-cache
