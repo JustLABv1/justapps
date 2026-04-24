@@ -167,7 +167,7 @@ uploads:
 ## Embedded Postgres (if enabled)
 postgresql:
   enabled: false
-  image: 'postgres:17-alpine3.22'
+  image: 'postgres:18-alpine3.22'
   pullPolicy: IfNotPresent
   mountPath: /bitnami/postgresql/data
   persistence:
