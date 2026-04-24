@@ -31,11 +31,11 @@ jobs:
           - service: backend
             context: services/backend
             file: services/backend/Dockerfile
-            image_suffix: /backend
+            image_suffix: -backend
           - service: frontend
             context: services/frontend
             file: services/frontend/Dockerfile
-            image_suffix: /frontend
+            image_suffix: -frontend
 
     steps:
       - name: Checkout
@@ -188,7 +188,7 @@ jobs:
           REGISTRY="${{ env.REGISTRY }}"
           IMAGE="${{ env.IMAGE_NAME }}"
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          BODY="${BODY}### Docker Images\n\`\`\`\ndocker pull ${REGISTRY}/${IMAGE}:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/backend:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}/frontend:${VERSION}\n\`\`\`\n\n"
+          BODY="${BODY}### Docker Images\n\`\`\`\ndocker pull ${REGISTRY}/${IMAGE}:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}-backend:${VERSION}\ndocker pull ${REGISTRY}/${IMAGE}-frontend:${VERSION}\n\`\`\`\n\n"
           BODY="${BODY}### Helm Chart\n\`\`\`\nhelm registry login ${REGISTRY} -u <github-user>\nhelm install justapps oci://${REGISTRY}/${OWNER}/charts/${{ env.CHART_NAME }} --version ${VERSION}\n\`\`\`"
 
           # Multiline output for GitHub Actions
