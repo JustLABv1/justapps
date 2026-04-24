@@ -17,7 +17,7 @@ COPY . .
 # Build
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 
-FROM alpine:3.22 AS runner
+FROM alpine:3.23 AS runner
 WORKDIR /app
 
 COPY --from=builder /app/justapps-backend /app/
