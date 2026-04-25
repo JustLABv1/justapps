@@ -1,5 +1,5 @@
 # Base image
-FROM node:25-alpine AS base
+FROM node:25.9.0-alpine AS base
 
 # 1. Platform Setup: Install pnpm and configure auth
 FROM base AS platform
