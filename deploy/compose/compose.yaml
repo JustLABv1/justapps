@@ -16,7 +16,7 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/justlabv1/justapps-backend:${JUSTAPPS_IMAGE_TAG:-latest}
+    image: ghcr.io/justlabv1/justapps:${JUSTAPPS_BACKEND_IMAGE_TAG:-backend}
     container_name: justapps-backend
     restart: unless-stopped
     depends_on:
@@ -44,7 +44,7 @@ services:
       - uploads-data:/app/data
 
   frontend:
-    image: ghcr.io/justlabv1/justapps-frontend:${JUSTAPPS_IMAGE_TAG:-latest}
+    image: ghcr.io/justlabv1/justapps:${JUSTAPPS_FRONTEND_IMAGE_TAG:-frontend}
     container_name: justapps-frontend
     restart: unless-stopped
     depends_on:

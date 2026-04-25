@@ -102,9 +102,9 @@ monolith:
 backend:
   replicaCount: 1
   image:
-    repository: ghcr.io/justlabv1/justapps-backend
+    repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: backend
   service:
     type: ClusterIP
     # External port used for service routing; container listens on 8082
@@ -120,9 +120,9 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: ghcr.io/justlabv1/justapps-frontend
+    repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: frontend
   env:
     # URL of the backend API (used by frontend). Change to your public API URL.
     apiUrl: "https://justapps.example.com/api/v1"
