@@ -64,9 +64,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ matrix.latest_tag }},enable=${{ !contains(github.ref_name, '-') }}
-            type=semver,pattern=${{ matrix.tag_prefix }}{{version}}
-            type=semver,pattern=${{ matrix.tag_prefix }}{{major}}.{{minor}}
-            type=semver,pattern=${{ matrix.tag_prefix }}{{major}}
+            type=semver,pattern={{version}},prefix=${{ matrix.tag_prefix }}
+            type=semver,pattern={{major}}.{{minor}},prefix=${{ matrix.tag_prefix }}
+            type=semver,pattern={{major}},prefix=${{ matrix.tag_prefix }}
             type=sha,prefix=${{ matrix.tag_prefix }}sha-
 
       - name: Build and push
