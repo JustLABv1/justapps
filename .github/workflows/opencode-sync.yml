@@ -1,0 +1,60 @@
+name: Sync openCode Mirror
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: opencode-sync-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Push main and tags to openCode
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate openCode mirror configuration
+        env:
+          OPENCODE_GITLAB_PROJECT_PATH: ${{ vars.OPENCODE_GITLAB_PROJECT_PATH }}
+          OPENCODE_SSH_PRIVATE_KEY: ${{ secrets.OPENCODE_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$OPENCODE_GITLAB_PROJECT_PATH" ] || [ -z "$OPENCODE_SSH_PRIVATE_KEY" ]; then
+            echo "Missing openCode mirror configuration."
+            echo "Set vars.OPENCODE_GITLAB_PROJECT_PATH and secrets.OPENCODE_SSH_PRIVATE_KEY."
+            exit 1
+          fi
+
+      - name: Configure SSH for openCode
+        env:
+          OPENCODE_SSH_PRIVATE_KEY: ${{ secrets.OPENCODE_SSH_PRIVATE_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$OPENCODE_SSH_PRIVATE_KEY" > ~/.ssh/opencode_ed25519
+          chmod 600 ~/.ssh/opencode_ed25519
+          ssh-keyscan gitlab.opencode.de >> ~/.ssh/known_hosts
+
+      - name: Push main branch and release tags
+        env:
+          OPENCODE_GITLAB_PROJECT_PATH: ${{ vars.OPENCODE_GITLAB_PROJECT_PATH }}
+        run: |
+          export GIT_SSH_COMMAND='ssh -i ~/.ssh/opencode_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes'
+          git remote add opencode "git@gitlab.opencode.de:${OPENCODE_GITLAB_PROJECT_PATH}.git"
+          git fetch --prune --tags origin
+          git push opencode refs/remotes/origin/main:refs/heads/main
+          git push opencode --tags

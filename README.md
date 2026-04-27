@@ -61,6 +61,30 @@ Full documentation is in the [project wiki](https://github.com/JustLABv1/justapp
 | [Admin Guide](https://github.com/JustLABv1/justapps/wiki/Admin-Guide) | Manage users and platform settings |
 | [Contributing](https://github.com/JustLABv1/justapps/wiki/Contributing) | Branching, commit style, PR workflow |
 
+## openCode Mirror And Releases
+
+The repository can be mirrored automatically to openCode GitLab and publish release artifacts there from the existing GitHub Actions workflows.
+
+- `.github/workflows/opencode-sync.yml` pushes `main` and all release tags to the openCode project on each push, on manual dispatch, and nightly.
+- `.github/workflows/release.yml` continues to publish to GHCR and also publishes container images and release assets to openCode when the required secrets and variables are configured.
+- `.github/workflows/helm-chart-release.yml` uploads manual chart releases to openCode as additional downloadable assets.
+
+Required GitHub Actions repository variables:
+
+- `OPENCODE_GITLAB_PROJECT_PATH` — openCode project path, for example `organisation/justapps`
+- `OPENCODE_GITLAB_PROJECT_ID` — numeric GitLab project ID used for the API
+- `OPENCODE_GITLAB_REGISTRY` — openCode container registry hostname
+- `OPENCODE_GITLAB_REGISTRY_IMAGE` — fully qualified openCode image path, for example `registry.example.tld/organisation/justapps`
+
+Required GitHub Actions repository secrets:
+
+- `OPENCODE_SSH_PRIVATE_KEY` — SSH private key with write access to the openCode project for branch and tag mirroring
+- `OPENCODE_GITLAB_TOKEN` — GitLab project or personal access token with `api` scope for uploads and release creation
+- `OPENCODE_REGISTRY_USERNAME` — registry user or deploy token name for the openCode container registry
+- `OPENCODE_REGISTRY_PASSWORD` — registry password or deploy token secret for the openCode container registry
+
+Keep the openCode project protected from direct commits on `main`, otherwise the mirror workflow will fail on drift instead of silently overwriting local changes.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
