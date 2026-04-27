@@ -233,7 +233,7 @@ export default function EinstellungenPage() {
     }
   };
 
-  const loadRepositoryProviders = async () => {
+  const fetchRepositoryProviders = async (): Promise<GitLabProviderAdminSettings[]> => {
     const res = await fetchApi('/settings/repository-providers');
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
@@ -241,6 +241,11 @@ export default function EinstellungenPage() {
     }
 
     const providersData = await res.json() as GitLabProviderAdminSettings[];
+    return Array.isArray(providersData) ? providersData : [];
+  };
+
+  const loadRepositoryProviders = async () => {
+    const providersData = await fetchRepositoryProviders();
     setGitLabProviders(Array.isArray(providersData) ? providersData : []);
     setGitLabProviderError(null);
   };
@@ -248,10 +253,12 @@ export default function EinstellungenPage() {
   useEffect(() => {
     Promise.all([
       fetchApi('/settings').then(res => res.ok ? res.json() : null),
-      loadRepositoryProviders(),
+      fetchRepositoryProviders(),
     ])
-      .then(([settingsData]) => {
+      .then(([settingsData, providersData]) => {
         if (settingsData) setSettings(normalizeSettingsState(settingsData));
+        setGitLabProviders(providersData);
+        setGitLabProviderError(null);
       })
       .catch((error) => {
         setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnten nicht geladen werden.');
