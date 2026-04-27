@@ -22,20 +22,3 @@ data:
     cors:
       allowed_origins:
         {{- toYaml .Values.config.cors.allowedOrigins | nindent 8 }}
-    {{- if .Values.config.repositoryProviders }}
-    repository_providers:
-      {{- range .Values.config.repositoryProviders }}
-        - key: {{ .key | quote }}
-          type: {{ .type | default "gitlab" | quote }}
-          label: {{ .label | default .key | quote }}
-          base_url: {{ .baseUrl | quote }}
-          enabled: {{ .enabled | default false }}
-          timeout_seconds: {{ .timeoutSeconds | default 15 }}
-          namespace_allowlist:
-            {{- if .namespaceAllowlist }}
-            {{- toYaml .namespaceAllowlist | nindent 12 }}
-            {{- else }}
-            []
-            {{- end }}
-        {{- end }}
-    {{- end }}

@@ -108,65 +108,46 @@ persistence:
   size: 1Gi
 ```
 
-> **Secret management:** Store `jwt.secret`, database passwords, Keycloak secrets, and repository provider tokens in Kubernetes Secrets or a Vault-injected secret, not plaintext in `values.yaml`.
+> **Secret management:** Store `jwt.secret`, database passwords, Keycloak secrets, and the repository provider encryption secret in Kubernetes Secrets or a Vault-injected secret, not plaintext in `values.yaml`.
 
 ---
 
-## Repository Providers
+## Repository Provider Encryption
 
-Repository providers are configured under `config.repositoryProviders`. Each provider's token is treated as a secret and **never placed in the ConfigMap** — it is always injected as an environment variable.
+Repository providers are created in the admin UI and stored in the database. Helm only needs to provide the encryption secret used to protect provider tokens at rest.
 
-### Option A — Inline token (chart creates the Secret)
+### Option A — Chart-managed Secret
 
 ```yaml
 secrets:
   create: true
 
 config:
-  repositoryProviders:
-    - key: my-gitlab          # unique identifier, used to derive the env var name
-      type: gitlab
-      label: My GitLab
-      baseUrl: https://gitlab.example.com
-      enabled: true
-      namespaceAllowlist:
-        - my-group
-      timeoutSeconds: 15
-      token: "glpat-xxxxxxxxxxxxxxxxxxxx"
+  repositoryProviderEncryption:
+    secret: "replace-with-secure-random-string"
 ```
 
-    The chart stores the token in the chart-managed Secret under `repository-token-<key>` and injects it into the container as `BACKEND_REPOSITORY_TOKEN_MY_GITLAB`.
+The chart stores the secret in the chart-managed Secret under `repository-provider-encryption-secret` and injects it into the backend as `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`.
 
 ### Option B — External Kubernetes Secret
 
 Create the secret independently:
 
 ```bash
-kubectl create secret generic my-gitlab-token \
-  --from-literal=token=glpat-xxxxxxxxxxxxxxxxxxxx
+kubectl create secret generic justapps-secrets \
+  --from-literal=repository-provider-encryption-secret=replace-with-secure-random-string
 ```
 
 Reference it in values:
 
 ```yaml
-config:
-  repositoryProviders:
-    - key: my-gitlab
-      type: gitlab
-      label: My GitLab
-      baseUrl: https://gitlab.example.com
-      enabled: true
-      namespaceAllowlist:
-        - my-group
-      timeoutSeconds: 15
-      tokenSecretRef:
-        name: my-gitlab-token   # name of the Kubernetes Secret
-        key: token              # key within the Secret
+secrets:
+  existingSecret: justapps-secrets
 ```
 
-The chart will read the token from that secret and inject it as `BACKEND_REPOSITORY_TOKEN_MY_GITLAB`. No token is stored in `values.yaml` or the ConfigMap.
+The referenced Secret must include the key `repository-provider-encryption-secret`. No provider definitions or tokens are stored in `values.yaml` or the ConfigMap.
 
-> **Multiple providers:** Repeat the entry in the `repositoryProviders` list. Each provider's token env var is derived from its `key` (uppercased, hyphens replaced with underscores): `BACKEND_REPOSITORY_TOKEN_<KEY>`.
+> **Runtime behavior:** Once the encryption secret is available, admins can add, rotate, or delete repository providers directly in the UI without redeploying the chart.
 
 ---
 

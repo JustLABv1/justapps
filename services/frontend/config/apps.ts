@@ -47,6 +47,7 @@ export interface GitLabProviderAdminSettings {
   providerType?: string;
   label: string;
   baseUrl: string;
+  linkedAppsCount?: number;
   namespaceAllowlist: string[];
   enabled: boolean;
   autoSyncEnabled: boolean;

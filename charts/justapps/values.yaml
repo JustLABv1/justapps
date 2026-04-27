@@ -56,21 +56,10 @@ config:
     clientSecret: ""
     adminGroup: justapps-admin
     insecure: false
-  repositoryProviders: []
-  # Example:
-  # repositoryProviders:
-  #   - key: github-com          # unique identifier (used to derive env var name)
-  #     type: github             # supported: gitlab, github
-  #     label: GitHub.com        # display label
-  #     baseUrl: https://github.com
-  #     enabled: true
-  #     namespaceAllowlist: []   # empty = all namespaces allowed
-  #     timeoutSeconds: 15
-  #     token: ""                # inline token — stored in chart secret when secrets.create=true
-  #     # OR reference an existing Kubernetes secret:
-  #     # tokenSecretRef:
-  #     #   name: github-com-token-secret
-  #     #   key: token
+  repositoryProviderEncryption:
+    # Secret used to encrypt repository provider tokens stored in the database.
+    # Keep empty here; provide it via Kubernetes Secret or Vault.
+    secret: ""
   cors:
     # Origins allowed to access the API (list)
     allowedOrigins: []

@@ -52,6 +52,11 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: jwt-secret
+            - name: BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: repository-provider-encryption-secret
             - name: BACKEND_OIDC_ENABLED
               value: {{ .Values.config.oidc.enabled | quote }}
             - name: BACKEND_OIDC_ISSUER
@@ -65,18 +70,6 @@ spec:
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
-            {{- end }}
-            {{- range .Values.config.repositoryProviders }}
-            - name: BACKEND_REPOSITORY_TOKEN_{{ .key | upper | replace "-" "_" }}
-              valueFrom:
-                secretKeyRef:
-                  {{- if .tokenSecretRef }}
-                  name: {{ .tokenSecretRef.name }}
-                  key: {{ .tokenSecretRef.key }}
-                  {{- else }}
-                  name: {{ $secretName }}
-                  key: repository-token-{{ .key }}
-                  {{- end }}
             {{- end }}
             - name: AUTH_OIDC_ID
               value: {{ .Values.config.oidc.clientId | quote }}
@@ -222,6 +215,11 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: jwt-secret
+            - name: BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: repository-provider-encryption-secret
             - name: BACKEND_OIDC_ENABLED
               value: {{ .Values.config.oidc.enabled | quote }}
             - name: BACKEND_OIDC_ISSUER
@@ -235,18 +233,6 @@ spec:
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
-            {{- end }}
-            {{- range .Values.config.repositoryProviders }}
-            - name: BACKEND_REPOSITORY_TOKEN_{{ .key | upper | replace "-" "_" }}
-              valueFrom:
-                secretKeyRef:
-                  {{- if .tokenSecretRef }}
-                  name: {{ .tokenSecretRef.name }}
-                  key: {{ .tokenSecretRef.key }}
-                  {{- else }}
-                  name: {{ $secretName }}
-                  key: repository-token-{{ .key }}
-                  {{- end }}
             {{- end }}
           livenessProbe:
             httpGet:

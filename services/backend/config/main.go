@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -25,14 +24,14 @@ type ConfigurationManager struct {
 }
 
 type RestfulConf struct {
-	LogLevel            string                   `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
-	Port                int                      `mapstructure:"port" validate:"required"`
-	DataPath            string                   `mapstructure:"data_path"`
-	Database            DatabaseConf             `mapstructure:"database" validate:"required"`
-	JWT                 JWTConf                  `mapstructure:"jwt" validate:"required"`
-	OIDC                OIDCConf                 `mapstructure:"oidc"`
-	RepositoryProviders []RepositoryProviderConf `mapstructure:"repository_providers"`
-	CORS                CORSConf                 `mapstructure:"cors"`
+	LogLevel                     string                           `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
+	Port                         int                              `mapstructure:"port" validate:"required"`
+	DataPath                     string                           `mapstructure:"data_path"`
+	Database                     DatabaseConf                     `mapstructure:"database" validate:"required"`
+	JWT                          JWTConf                          `mapstructure:"jwt" validate:"required"`
+	OIDC                         OIDCConf                         `mapstructure:"oidc"`
+	RepositoryProviderEncryption RepositoryProviderEncryptionConf `mapstructure:"repository_provider_encryption"`
+	CORS                         CORSConf                         `mapstructure:"cors"`
 }
 
 type CORSConf struct {
@@ -60,6 +59,10 @@ type OIDCConf struct {
 	Insecure            bool   `mapstructure:"insecure"`
 	DisableLocalAuth    bool   `mapstructure:"disable_local_auth"`
 	DisableRegistration bool   `mapstructure:"disable_registration"`
+}
+
+type RepositoryProviderEncryptionConf struct {
+	Secret string `mapstructure:"secret"`
 }
 
 type RepositoryProviderConf struct {
@@ -100,27 +103,27 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 
 	// Bind specific environment variables
 	envBindings := map[string]string{
-		"log_level":                   "BACKEND_LOG_LEVEL",
-		"port":                        "BACKEND_PORT",
-		"database.server":             "BACKEND_DATABASE_SERVER",
-		"database.port":               "BACKEND_DATABASE_PORT",
-		"database.name":               "BACKEND_DATABASE_NAME",
-		"database.user":               "BACKEND_DATABASE_USER",
-		"database.password":           "BACKEND_DATABASE_PASSWORD",
-		"data_path":                   "BACKEND_DATA_PATH",
-		"encryption.key":              "BACKEND_ENCRYPTION_KEY",
-		"encryption.master_secret":    "BACKEND_ENCRYPTION_MASTER_SECRET",
-		"jwt.secret":                  "BACKEND_JWT_SECRET",
-		"runner.shared_runner_secret": "BACKEND_RUNNER_SHARED_RUNNER_SECRET",
-		"oidc.enabled":                "BACKEND_OIDC_ENABLED",
-		"oidc.issuer":                 "BACKEND_OIDC_ISSUER",
-		"oidc.client_id":              "BACKEND_OIDC_CLIENT_ID",
-		"oidc.admin_group":            "BACKEND_OIDC_ADMIN_GROUP",
-		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
-		"oidc.disable_local_auth":     "BACKEND_OIDC_DISABLE_LOCAL_AUTH",
-		"oidc.disable_registration":   "BACKEND_OIDC_DISABLE_REGISTRATION",
-		"repository_providers":        "BACKEND_REPOSITORY_PROVIDERS",
-		"cors.allowed_origins":        "BACKEND_CORS_ALLOWED_ORIGINS",
+		"log_level":                             "BACKEND_LOG_LEVEL",
+		"port":                                  "BACKEND_PORT",
+		"database.server":                       "BACKEND_DATABASE_SERVER",
+		"database.port":                         "BACKEND_DATABASE_PORT",
+		"database.name":                         "BACKEND_DATABASE_NAME",
+		"database.user":                         "BACKEND_DATABASE_USER",
+		"database.password":                     "BACKEND_DATABASE_PASSWORD",
+		"data_path":                             "BACKEND_DATA_PATH",
+		"encryption.key":                        "BACKEND_ENCRYPTION_KEY",
+		"encryption.master_secret":              "BACKEND_ENCRYPTION_MASTER_SECRET",
+		"jwt.secret":                            "BACKEND_JWT_SECRET",
+		"runner.shared_runner_secret":           "BACKEND_RUNNER_SHARED_RUNNER_SECRET",
+		"oidc.enabled":                          "BACKEND_OIDC_ENABLED",
+		"oidc.issuer":                           "BACKEND_OIDC_ISSUER",
+		"oidc.client_id":                        "BACKEND_OIDC_CLIENT_ID",
+		"oidc.admin_group":                      "BACKEND_OIDC_ADMIN_GROUP",
+		"oidc.insecure":                         "BACKEND_OIDC_INSECURE",
+		"oidc.disable_local_auth":               "BACKEND_OIDC_DISABLE_LOCAL_AUTH",
+		"oidc.disable_registration":             "BACKEND_OIDC_DISABLE_REGISTRATION",
+		"repository_provider_encryption.secret": "BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET",
+		"cors.allowed_origins":                  "BACKEND_CORS_ALLOWED_ORIGINS",
 	}
 
 	for configKey, envVar := range envBindings {
@@ -145,16 +148,8 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cm.normalizeRepositoryProviders(&config)
-
-	// Override per-provider tokens from env vars: BACKEND_REPOSITORY_TOKEN_<KEY>
-	// (KEY is uppercased with hyphens replaced by underscores)
-	for i := range config.RepositoryProviders {
-		key := strings.ToUpper(strings.ReplaceAll(config.RepositoryProviders[i].Key, "-", "_"))
-		token := os.Getenv("BACKEND_REPOSITORY_TOKEN_" + key)
-		if token != "" {
-			config.RepositoryProviders[i].Token = token
-		}
+	if strings.TrimSpace(config.RepositoryProviderEncryption.Secret) == "" {
+		return fmt.Errorf("repository_provider_encryption.secret or BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET is required")
 	}
 
 	// Store the config
@@ -198,30 +193,6 @@ func (cm *ConfigurationManager) setDefaults(config *RestfulConf) {
 	}
 	if config.Database.Password == "" {
 		config.Database.Password = "postgres"
-	}
-}
-
-func (cm *ConfigurationManager) normalizeRepositoryProviders(config *RestfulConf) {
-	for index := range config.RepositoryProviders {
-		providerType := strings.ToLower(strings.TrimSpace(config.RepositoryProviders[index].Type))
-		if providerType == "" {
-			providerType = "gitlab"
-		}
-		config.RepositoryProviders[index].Type = providerType
-		if config.RepositoryProviders[index].BaseURL == "" {
-			switch providerType {
-			case "github":
-				config.RepositoryProviders[index].BaseURL = "https://github.com"
-			default:
-				config.RepositoryProviders[index].BaseURL = "https://gitlab.com"
-			}
-		}
-		if config.RepositoryProviders[index].TimeoutSeconds <= 0 {
-			config.RepositoryProviders[index].TimeoutSeconds = 15
-		}
-		if config.RepositoryProviders[index].Label == "" {
-			config.RepositoryProviders[index].Label = config.RepositoryProviders[index].Key
-		}
 	}
 }
 

@@ -1,32 +1,34 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-    CUSTOM_BRANDING_PRESET,
-    DEFAULT_HERO_TITLE_PRESET,
-    DEFAULT_TOP_BAR_PRESET,
-    HERO_TITLE_PRESET_OPTIONS,
-    TOP_BAR_PRESET_OPTIONS,
-    normalizeBrandColorList,
-    resolveHeroTitleColors,
-    resolveTopBarColors,
-    seedCustomBrandColors,
+  CUSTOM_BRANDING_PRESET,
+  DEFAULT_HERO_TITLE_PRESET,
+  DEFAULT_TOP_BAR_PRESET,
+  HERO_TITLE_PRESET_OPTIONS,
+  TOP_BAR_PRESET_OPTIONS,
+  normalizeBrandColorList,
+  resolveHeroTitleColors,
+  resolveTopBarColors,
+  seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Select,
-    Surface,
-    Switch,
-    Tabs,
-    TextField,
-    Tooltip
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  Surface,
+  Switch,
+  Tabs,
+  TextField,
+  Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -87,6 +89,47 @@ const defaultState: SettingsState = {
   enableLinkProbing: true,
 };
 
+type ProviderDraftState = {
+  providerKey: string;
+  providerType: 'gitlab' | 'github';
+  label: string;
+  baseUrl: string;
+  token: string;
+  namespaceAllowlist: string;
+  enabled: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  defaultReadmePath: string;
+  defaultHelmValuesPath: string;
+  defaultComposeFilePath: string;
+};
+
+const defaultProviderDraft = (): ProviderDraftState => ({
+  providerKey: '',
+  providerType: 'gitlab',
+  label: '',
+  baseUrl: 'https://gitlab.com',
+  token: '',
+  namespaceAllowlist: '',
+  enabled: true,
+  autoSyncEnabled: true,
+  syncIntervalMinutes: 15,
+  defaultReadmePath: '',
+  defaultHelmValuesPath: '',
+  defaultComposeFilePath: '',
+});
+
+function defaultBaseUrlForProviderType(providerType: 'gitlab' | 'github'): string {
+  return providerType === 'github' ? 'https://github.com' : 'https://gitlab.com';
+}
+
+function parseProviderAllowlist(value: string): string[] {
+  return value
+    .split(/\n|,/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
   return {
     ...defaultState,
@@ -127,6 +170,10 @@ export default function EinstellungenPage() {
   const { refreshSettings } = useSettings();
   const [settings, setSettings] = useState<SettingsState>(defaultState);
   const [gitLabProviders, setGitLabProviders] = useState<GitLabProviderAdminSettings[]>([]);
+  const [createProviderModalOpen, setCreateProviderModalOpen] = useState(false);
+  const [newProvider, setNewProvider] = useState<ProviderDraftState>(defaultProviderDraft);
+  const [providerTokenDrafts, setProviderTokenDrafts] = useState<Record<string, string>>({});
+  const [providerToDelete, setProviderToDelete] = useState<GitLabProviderAdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSection, setSavedSection] = useState<string | null>(null);
@@ -186,21 +233,25 @@ export default function EinstellungenPage() {
     }
   };
 
+  const loadRepositoryProviders = async () => {
+    const res = await fetchApi('/settings/repository-providers');
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error((error as { message?: string }).message || 'Repository-Provider konnten nicht geladen werden.');
+    }
+
+    const providersData = await res.json() as GitLabProviderAdminSettings[];
+    setGitLabProviders(Array.isArray(providersData) ? providersData : []);
+    setGitLabProviderError(null);
+  };
+
   useEffect(() => {
     Promise.all([
       fetchApi('/settings').then(res => res.ok ? res.json() : null),
-      fetchApi('/settings/repository-providers').then(async (res) => {
-        if (!res.ok) {
-          const error = await res.json().catch(() => ({}));
-          throw new Error((error as { message?: string }).message || 'Repository-Provider konnten nicht geladen werden.');
-        }
-        return res.json() as Promise<GitLabProviderAdminSettings[]>;
-      }),
+      loadRepositoryProviders(),
     ])
-      .then(([settingsData, providersData]) => {
+      .then(([settingsData]) => {
         if (settingsData) setSettings(normalizeSettingsState(settingsData));
-        setGitLabProviders(Array.isArray(providersData) ? providersData : []);
-        setGitLabProviderError(null);
       })
       .catch((error) => {
         setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnten nicht geladen werden.');
@@ -235,15 +286,65 @@ export default function EinstellungenPage() {
     )));
   };
 
-  const saveGitLabProvider = async (provider: GitLabProviderAdminSettings) => {
+  const updateProviderTokenDraft = (providerKey: string, value: string) => {
+    setProviderTokenDrafts((prev) => ({ ...prev, [providerKey]: value }));
+  };
+
+  const closeCreateProviderModal = () => {
+    setCreateProviderModalOpen(false);
+    setNewProvider(defaultProviderDraft());
+  };
+
+  const createGitLabProvider = async () => {
     setSaving(true);
     setGitLabProviderError(null);
     try {
+      const res = await fetchApi('/settings/repository-providers', {
+        method: 'POST',
+        body: JSON.stringify({
+          providerKey: newProvider.providerKey.trim(),
+          providerType: newProvider.providerType,
+          label: newProvider.label,
+          baseUrl: newProvider.baseUrl.trim(),
+          token: newProvider.token,
+          namespaceAllowlist: parseProviderAllowlist(newProvider.namespaceAllowlist),
+          enabled: newProvider.enabled,
+          autoSyncEnabled: newProvider.autoSyncEnabled,
+          syncIntervalMinutes: newProvider.syncIntervalMinutes,
+          defaultReadmePath: newProvider.defaultReadmePath,
+          defaultHelmValuesPath: newProvider.defaultHelmValuesPath,
+          defaultComposeFilePath: newProvider.defaultComposeFilePath,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht erstellt werden.');
+      }
+
+      await loadRepositoryProviders();
+      closeCreateProviderModal();
+      setSavedSection('gitlab-create');
+      setTimeout(() => setSavedSection(null), 2000);
+    } catch (error) {
+      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht erstellt werden.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveGitLabProvider = async (provider: GitLabProviderAdminSettings, options?: { clearToken?: boolean }) => {
+    setSaving(true);
+    setGitLabProviderError(null);
+    try {
+      const tokenDraft = providerTokenDrafts[provider.providerKey]?.trim() || '';
       const res = await fetchApi(`/settings/repository-providers/${provider.providerKey}`, {
         method: 'PUT',
         body: JSON.stringify({
           label: provider.label,
           baseUrl: provider.baseUrl,
+          token: options?.clearToken ? '' : tokenDraft,
+          clearToken: options?.clearToken ?? false,
           namespaceAllowlist: provider.namespaceAllowlist,
           enabled: provider.enabled,
           autoSyncEnabled: provider.autoSyncEnabled,
@@ -259,14 +360,42 @@ export default function EinstellungenPage() {
         throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht gespeichert werden.');
       }
 
-      const updatedProvider = data as GitLabProviderAdminSettings;
-      setGitLabProviders((prev) => prev.map((item) => (
-        item.providerKey === updatedProvider.providerKey ? updatedProvider : item
-      )));
+      await loadRepositoryProviders();
+      setProviderTokenDrafts((prev) => {
+        const next = { ...prev };
+        delete next[provider.providerKey];
+        return next;
+      });
       setSavedSection(`gitlab-${provider.providerKey}`);
       setTimeout(() => setSavedSection(null), 2000);
     } catch (error) {
       setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht gespeichert werden.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteGitLabProvider = async () => {
+    if (!providerToDelete) return;
+
+    setSaving(true);
+    setGitLabProviderError(null);
+    try {
+      const res = await fetchApi(`/settings/repository-providers/${providerToDelete.providerKey}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht gelöscht werden.');
+      }
+
+      await loadRepositoryProviders();
+      setProviderToDelete(null);
+      setSavedSection('gitlab-delete');
+      setTimeout(() => setSavedSection(null), 2000);
+    } catch (error) {
+      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht gelöscht werden.');
     } finally {
       setSaving(false);
     }
@@ -1078,7 +1207,7 @@ export default function EinstellungenPage() {
                 <GitBranch className="w-4 h-4 text-accent" /> Repository-Provider
               </h3>
               <p className="text-xs text-muted mb-5">
-                Verwalten Sie hier die nicht-geheimen Repository-Einstellungen. Tokens verbleiben ausschließlich in der Backend-Konfiguration oder in Umgebungsvariablen.
+                Verwalten Sie hier Repository-Provider vollständig in der Datenbank. Tokens werden verschlüsselt gespeichert und nach dem Speichern nicht mehr angezeigt.
               </p>
 
               {gitLabProviderError && (
@@ -1087,9 +1216,25 @@ export default function EinstellungenPage() {
                 </div>
               )}
 
+              <div className="mb-5 rounded-2xl border border-dashed border-border bg-surface-secondary/35 p-5">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Neuen Repository-Provider anlegen</p>
+                    <p className="mt-1 text-xs text-muted">Der Formular-Dialog hält die Integrationsseite kompakt. Schlüssel, Typ und Token werden dort beim Erstellen festgelegt.</p>
+                  </div>
+                  <Button
+                    className="bg-accent text-white"
+                    onPress={() => setCreateProviderModalOpen(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {savedSection === 'gitlab-create' ? 'Provider erstellt ✓' : 'Neuen Provider anlegen'}
+                  </Button>
+                </div>
+              </div>
+
               {gitLabProviders.length === 0 ? (
                 <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-                  Es sind aktuell keine Repository-Provider im Backend konfiguriert.
+                  Es sind aktuell keine Repository-Provider in der Datenbank konfiguriert.
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
@@ -1104,10 +1249,15 @@ export default function EinstellungenPage() {
                                 {provider.providerType === 'github' ? 'GitHub' : provider.providerType === 'gitlab' ? 'GitLab' : provider.providerType}
                               </span>
                             )}
+                            {(provider.linkedAppsCount || 0) > 0 && (
+                              <span className="inline-flex rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
+                                {provider.linkedAppsCount} App-Verknüpfungen
+                              </span>
+                            )}
                           </div>
                           <p className="mt-1 text-xs text-muted">
-                            {provider.tokenConfigured ? 'Token im Backend vorhanden' : 'Kein Token im Backend konfiguriert'}
-                            {provider.configured ? ' · Provider aktiv konfiguriert' : ' · Provider im Backend derzeit nicht aktiv'}
+                            {provider.tokenConfigured ? 'Token verschlüsselt in der Datenbank gespeichert' : 'Kein Token gespeichert'}
+                            {provider.configured ? ' · Provider aktiv konfiguriert' : ' · Provider derzeit nicht vollständig nutzbar'}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
@@ -1117,6 +1267,26 @@ export default function EinstellungenPage() {
                           <span className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? 'border-accent/20 bg-accent/10 text-accent' : 'border-border bg-surface-secondary text-muted'}`}>
                             {provider.autoSyncEnabled ? 'Auto-Sync an' : 'Auto-Sync aus'}
                           </span>
+                          <Tooltip delay={0}>
+                            <Tooltip.Trigger>
+                              <div>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-8 w-8 p-0 text-danger"
+                                  isDisabled={saving || (provider.linkedAppsCount || 0) > 0}
+                                  onPress={() => setProviderToDelete(provider)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </Tooltip.Trigger>
+                            <Tooltip.Content>
+                              {(provider.linkedAppsCount || 0) > 0
+                                ? 'Verknüpfte Apps zuerst lösen, bevor der Provider gelöscht werden kann.'
+                                : 'Provider löschen'}
+                            </Tooltip.Content>
+                          </Tooltip>
                         </div>
                       </div>
 
@@ -1146,10 +1316,37 @@ export default function EinstellungenPage() {
                           <Input placeholder="docker-compose.yml" className="bg-field-background font-mono text-sm" />
                         </TextField>
 
+                        <TextField value={providerTokenDrafts[provider.providerKey] || ''} onChange={(val) => updateProviderTokenDraft(provider.providerKey, val)}>
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Token ersetzen</Label>
+                          <Input placeholder={provider.tokenConfigured ? 'Neuen Token eingeben, um den bestehenden zu ersetzen' : 'Token eingeben'} className="bg-field-background font-mono text-sm" type="password" />
+                        </TextField>
+
                         <TextField value={String(provider.syncIntervalMinutes)} onChange={(val) => updateGitLabProvider(provider.providerKey, { syncIntervalMinutes: Number.parseInt(val || '15', 10) || 15 })}>
                           <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Sync-Intervall (Minuten)</Label>
                           <Input placeholder="15" className="bg-field-background font-mono text-sm" />
                         </TextField>
+
+                        <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
+                          <div className="flex h-full flex-col justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Token-Status</p>
+                              <p className="mt-1 text-xs text-muted">
+                                {provider.tokenConfigured ? 'Ein Token ist gespeichert. Beim Ersetzen wird der alte Token überschrieben.' : 'Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für Sync nutzbar.'}
+                              </p>
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="text-danger"
+                                isDisabled={saving || !provider.tokenConfigured}
+                                onPress={() => saveGitLabProvider(provider, { clearToken: true })}
+                              >
+                                Token löschen
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
 
                         <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
                           <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Namespace-Allowlist</Label>
@@ -1201,7 +1398,7 @@ export default function EinstellungenPage() {
                       <div className="mt-5 flex justify-end border-t border-border pt-4">
                         <Button
                           className="bg-accent text-white"
-                          isDisabled={saving || !provider.tokenConfigured}
+                          isDisabled={saving}
                           onPress={() => saveGitLabProvider(provider)}
                         >
                           {savedSection === `gitlab-${provider.providerKey}` ? 'Gespeichert ✓' : 'Provider speichern'}
@@ -1215,6 +1412,172 @@ export default function EinstellungenPage() {
           </div>
         </Tabs.Panel>
       </Tabs>
+
+      <Modal.Backdrop isOpen={createProviderModalOpen} onOpenChange={(open) => { if (!open) closeCreateProviderModal(); }}>
+        <Modal.Container>
+          <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Icon className="bg-accent/10 text-accent">
+                <GitBranch className="w-5 h-5" />
+              </Modal.Icon>
+              <Modal.Heading>Neuen Repository-Provider anlegen</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body>
+              <p className="text-sm text-muted">
+                Schlüssel und Typ werden beim Erstellen festgelegt und anschließend nicht mehr geändert. Tokens werden verschlüsselt gespeichert.
+              </p>
+
+              {gitLabProviderError && (
+                <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
+                  {gitLabProviderError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <TextField value={newProvider.providerKey} onChange={(val) => setNewProvider((prev) => ({ ...prev, providerKey: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Provider-Schlüssel</Label>
+                  <Input placeholder="z. B. github-com" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <Select
+                  selectedKey={newProvider.providerType}
+                  onSelectionChange={(key) => {
+                    const providerType = String(key) as ProviderDraftState['providerType'];
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      providerType,
+                      baseUrl: prev.baseUrl.trim() === '' || prev.baseUrl === defaultBaseUrlForProviderType(prev.providerType)
+                        ? defaultBaseUrlForProviderType(providerType)
+                        : prev.baseUrl,
+                    }));
+                  }}
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Provider-Typ</Label>
+                  <Select.Trigger className="bg-field-background">
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
+                      <ListBox.Item id="gitlab" textValue="GitLab">
+                        GitLab
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                      <ListBox.Item id="github" textValue="GitHub">
+                        GitHub
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
+
+                <TextField value={newProvider.label} onChange={(val) => setNewProvider((prev) => ({ ...prev, label: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Bezeichnung</Label>
+                  <Input placeholder="z. B. GitHub.com" className="bg-field-background" />
+                </TextField>
+
+                <TextField value={newProvider.baseUrl} onChange={(val) => setNewProvider((prev) => ({ ...prev, baseUrl: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Base URL</Label>
+                  <Input placeholder="https://github.com" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <TextField value={newProvider.token} onChange={(val) => setNewProvider((prev) => ({ ...prev, token: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Token</Label>
+                  <Input placeholder="Personal Access Token" className="bg-field-background font-mono text-sm" type="password" />
+                </TextField>
+
+                <TextField value={String(newProvider.syncIntervalMinutes)} onChange={(val) => setNewProvider((prev) => ({ ...prev, syncIntervalMinutes: Number.parseInt(val || '15', 10) || 15 }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Sync-Intervall (Minuten)</Label>
+                  <Input placeholder="15" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <TextField value={newProvider.defaultReadmePath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultReadmePath: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard README-Pfad</Label>
+                  <Input placeholder="optional, z. B. docs/README.md" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <TextField value={newProvider.defaultHelmValuesPath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultHelmValuesPath: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Helm Values</Label>
+                  <Input placeholder="chart/values.yaml" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <TextField value={newProvider.defaultComposeFilePath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultComposeFilePath: val }))}>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Compose-Datei</Label>
+                  <Input placeholder="docker-compose.yml" className="bg-field-background font-mono text-sm" />
+                </TextField>
+
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Provider aktiv</p>
+                      <p className="text-xs text-muted">Steuert, ob Apps diesen Provider auswählen dürfen.</p>
+                    </div>
+                    <Switch
+                      isSelected={newProvider.enabled}
+                      onChange={(val) => setNewProvider((prev) => ({ ...prev, enabled: val }))}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Automatische Synchronisation</p>
+                      <p className="text-xs text-muted">Aktiviert den geplanten Hintergrund-Sync für verknüpfte Apps dieses Providers.</p>
+                    </div>
+                    <Switch
+                      isSelected={newProvider.autoSyncEnabled}
+                      onChange={(val) => setNewProvider((prev) => ({ ...prev, autoSyncEnabled: val }))}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 rounded-xl border border-border bg-surface p-4">
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Namespace-Allowlist</Label>
+                  <textarea
+                    value={newProvider.namespaceAllowlist}
+                    onChange={(event) => setNewProvider((prev) => ({ ...prev, namespaceAllowlist: event.target.value }))}
+                    className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    placeholder={'gruppe\norganisation/team'}
+                  />
+                  <p className="mt-2 text-xs text-muted">Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro Zeile oder komma-getrennt.</p>
+                </div>
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onPress={closeCreateProviderModal}>
+                Abbrechen
+              </Button>
+              <Button
+                className="bg-accent text-white"
+                isDisabled={saving || !newProvider.providerKey.trim() || !newProvider.baseUrl.trim() || !newProvider.token.trim()}
+                onPress={createGitLabProvider}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Provider anlegen
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      <ConfirmDialog
+        confirmLabel="Provider löschen"
+        description={providerToDelete ? `Der Provider ${providerToDelete.providerKey} wird dauerhaft entfernt. Verknüpfte Apps verhindern das Löschen automatisch.` : ''}
+        isDanger
+        isLoading={saving}
+        isOpen={providerToDelete !== null}
+        onConfirm={deleteGitLabProvider}
+        onOpenChange={(open) => {
+          if (!open) setProviderToDelete(null);
+        }}
+        title="Repository-Provider löschen"
+      />
     </div>
   );
 }

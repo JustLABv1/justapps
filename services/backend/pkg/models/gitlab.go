@@ -58,6 +58,10 @@ type GitLabProviderSettings struct {
 	ProviderType           string    `bun:"provider_type,notnull,default:'gitlab'" json:"providerType"`
 	Label                  string    `bun:"label" json:"label"`
 	BaseURL                string    `bun:"base_url" json:"baseUrl"`
+	EncryptedToken         string    `bun:"encrypted_token,notnull,default:''" json:"encryptedToken,omitempty"`
+	TokenNonce             string    `bun:"token_nonce,notnull,default:''" json:"tokenNonce,omitempty"`
+	TokenKeyVersion        string    `bun:"token_key_version,notnull,default:'v1'" json:"tokenKeyVersion,omitempty"`
+	TokenConfigured        bool      `bun:"token_configured,notnull,default:false" json:"tokenConfigured"`
 	NamespaceAllowlist     []string  `bun:"namespace_allowlist,type:jsonb,notnull,default:'[]'" json:"namespaceAllowlist"`
 	Enabled                bool      `bun:"enabled,notnull,default:true" json:"enabled"`
 	AutoSyncEnabled        bool      `bun:"auto_sync_enabled,notnull,default:true" json:"autoSyncEnabled"`
@@ -74,6 +78,7 @@ type GitLabProviderAdminResponse struct {
 	ProviderType           string   `json:"providerType"`
 	Label                  string   `json:"label"`
 	BaseURL                string   `json:"baseUrl"`
+	LinkedAppsCount        int      `json:"linkedAppsCount"`
 	NamespaceAllowlist     []string `json:"namespaceAllowlist"`
 	Enabled                bool     `json:"enabled"`
 	AutoSyncEnabled        bool     `json:"autoSyncEnabled"`
