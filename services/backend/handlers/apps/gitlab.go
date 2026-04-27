@@ -90,7 +90,7 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Bitte geben Sie ein GitLab-Projekt an", errors.New("missing project path"))
 		return
 	}
-	if !gitlabsync.IsProjectAllowed(config.GitLabProviderConf{NamespaceAllowlist: provider.NamespaceAllowlist}, projectPath) {
+	if !gitlabsync.IsProjectAllowed(config.RepositoryProviderConf{NamespaceAllowlist: provider.NamespaceAllowlist}, projectPath) {
 		httperror.Forbidden(c, "Das GitLab-Projekt liegt außerhalb des erlaubten Namespace", errors.New("project outside allowlist"))
 		return
 	}
@@ -101,11 +101,12 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	resetSnapshot := errors.Is(err, sql.ErrNoRows) || link.ProviderKey != provider.Key || link.ProjectPath != projectPath || link.Branch != strings.TrimSpace(req.Branch) || link.ReadmePath != strings.TrimSpace(req.ReadmePath) || link.HelmValuesPath != strings.TrimSpace(req.HelmValuesPath) || link.ComposeFilePath != strings.TrimSpace(req.ComposeFilePath)
+	resetSnapshot := errors.Is(err, sql.ErrNoRows) || link.ProviderKey != provider.Key || link.ProviderType != provider.Type || link.ProjectPath != projectPath || link.Branch != strings.TrimSpace(req.Branch) || link.ReadmePath != strings.TrimSpace(req.ReadmePath) || link.HelmValuesPath != strings.TrimSpace(req.HelmValuesPath) || link.ComposeFilePath != strings.TrimSpace(req.ComposeFilePath)
 
 	now := time.Now().UTC()
 	link.AppID = app.ID
 	link.ProviderKey = provider.Key
+	link.ProviderType = provider.Type
 	link.ProjectPath = projectPath
 	link.Branch = strings.TrimSpace(req.Branch)
 	link.ReadmePath = strings.TrimSpace(req.ReadmePath)
@@ -135,7 +136,7 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 			Model(&link).
 			Where("app_id = ?", app.ID).
 			Column(
-				"provider_key", "project_path", "branch", "readme_path",
+				"provider_key", "provider_type", "project_path", "branch", "readme_path",
 				"helm_values_path", "compose_file_path", "project_id", "project_web_url",
 				"last_sync_status", "last_sync_error", "last_synced_at", "snapshot",
 				"pending_snapshot", "approval_required", "last_applied_at", "last_manual_change_at", "updated_at",
@@ -324,6 +325,7 @@ func buildGitLabIntegrationResponse(link models.GitLabAppLink, providers []model
 		Linked:             true,
 		AvailableProviders: providers,
 		ProviderKey:        link.ProviderKey,
+		ProviderType:       link.ProviderType,
 		ProjectPath:        link.ProjectPath,
 		ProjectWebURL:      link.ProjectWebURL,
 		Branch:             link.Branch,
@@ -349,6 +351,9 @@ func buildGitLabIntegrationResponse(link models.GitLabAppLink, providers []model
 		if provider.Key == link.ProviderKey {
 			response.ProviderLabel = provider.Label
 			response.BaseURL = provider.BaseURL
+			if response.ProviderType == "" {
+				response.ProviderType = provider.Type
+			}
 			break
 		}
 	}

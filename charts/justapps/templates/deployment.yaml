@@ -66,8 +66,8 @@ spec:
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
             {{- end }}
-            {{- range .Values.config.gitlab.providers }}
-            - name: BACKEND_GITLAB_TOKEN_{{ .key | upper | replace "-" "_" }}
+            {{- range .Values.config.repositoryProviders }}
+            - name: BACKEND_REPOSITORY_TOKEN_{{ .key | upper | replace "-" "_" }}
               valueFrom:
                 secretKeyRef:
                   {{- if .tokenSecretRef }}
@@ -75,7 +75,7 @@ spec:
                   key: {{ .tokenSecretRef.key }}
                   {{- else }}
                   name: {{ $secretName }}
-                  key: gitlab-token-{{ .key }}
+                  key: repository-token-{{ .key }}
                   {{- end }}
             {{- end }}
             - name: AUTH_OIDC_ID
@@ -236,8 +236,8 @@ spec:
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
             {{- end }}
-            {{- range .Values.config.gitlab.providers }}
-            - name: BACKEND_GITLAB_TOKEN_{{ .key | upper | replace "-" "_" }}
+            {{- range .Values.config.repositoryProviders }}
+            - name: BACKEND_REPOSITORY_TOKEN_{{ .key | upper | replace "-" "_" }}
               valueFrom:
                 secretKeyRef:
                   {{- if .tokenSecretRef }}
@@ -245,7 +245,7 @@ spec:
                   key: {{ .tokenSecretRef.key }}
                   {{- else }}
                   name: {{ $secretName }}
-                  key: gitlab-token-{{ .key }}
+                  key: repository-token-{{ .key }}
                   {{- end }}
             {{- end }}
           livenessProbe:

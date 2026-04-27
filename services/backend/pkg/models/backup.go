@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,18 +59,64 @@ type BackupToken struct {
 }
 
 type BackupData struct {
-	Apps            []Apps                   `json:"apps,omitempty"`
-	AppGroups       []AppGroup               `json:"appGroups,omitempty"`
-	AppRelations    []AppRelation            `json:"appRelations,omitempty"`
-	Users           []BackupUser             `json:"users,omitempty"`
-	Settings        *PlatformSettings        `json:"settings,omitempty"`
-	GitLabProviders []GitLabProviderSettings `json:"gitLabProviders,omitempty"`
-	GitLabAppLinks  []GitLabAppLink          `json:"gitLabAppLinks,omitempty"`
-	Tokens          []BackupToken            `json:"tokens,omitempty"`
-	Favorites       []UserFavorite           `json:"favorites,omitempty"`
-	Ratings         []Rating                 `json:"ratings,omitempty"`
-	Audit           []Audit                  `json:"audit,omitempty"`
-	Assets          []BackupAsset            `json:"assets,omitempty"`
+	Apps                []Apps                   `json:"apps,omitempty"`
+	AppGroups           []AppGroup               `json:"appGroups,omitempty"`
+	AppRelations        []AppRelation            `json:"appRelations,omitempty"`
+	Users               []BackupUser             `json:"users,omitempty"`
+	Settings            *PlatformSettings        `json:"settings,omitempty"`
+	RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
+	RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
+	Tokens              []BackupToken            `json:"tokens,omitempty"`
+	Favorites           []UserFavorite           `json:"favorites,omitempty"`
+	Ratings             []Rating                 `json:"ratings,omitempty"`
+	Audit               []Audit                  `json:"audit,omitempty"`
+	Assets              []BackupAsset            `json:"assets,omitempty"`
+}
+
+// UnmarshalJSON keeps backwards compatibility with backups produced by older
+// versions that still used the GitLab-specific section names.
+func (data *BackupData) UnmarshalJSON(payload []byte) error {
+	type rawBackupData struct {
+		Apps                []Apps                   `json:"apps,omitempty"`
+		AppGroups           []AppGroup               `json:"appGroups,omitempty"`
+		AppRelations        []AppRelation            `json:"appRelations,omitempty"`
+		Users               []BackupUser             `json:"users,omitempty"`
+		Settings            *PlatformSettings        `json:"settings,omitempty"`
+		RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
+		RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
+		LegacyProviders     []GitLabProviderSettings `json:"gitLabProviders,omitempty"`
+		LegacyAppLinks      []GitLabAppLink          `json:"gitLabAppLinks,omitempty"`
+		Tokens              []BackupToken            `json:"tokens,omitempty"`
+		Favorites           []UserFavorite           `json:"favorites,omitempty"`
+		Ratings             []Rating                 `json:"ratings,omitempty"`
+		Audit               []Audit                  `json:"audit,omitempty"`
+		Assets              []BackupAsset            `json:"assets,omitempty"`
+	}
+	var raw rawBackupData
+	if err := json.Unmarshal(payload, &raw); err != nil {
+		return err
+	}
+	*data = BackupData{
+		Apps:                raw.Apps,
+		AppGroups:           raw.AppGroups,
+		AppRelations:        raw.AppRelations,
+		Users:               raw.Users,
+		Settings:            raw.Settings,
+		RepositoryProviders: raw.RepositoryProviders,
+		RepositoryAppLinks:  raw.RepositoryAppLinks,
+		Tokens:              raw.Tokens,
+		Favorites:           raw.Favorites,
+		Ratings:             raw.Ratings,
+		Audit:               raw.Audit,
+		Assets:              raw.Assets,
+	}
+	if len(data.RepositoryProviders) == 0 && len(raw.LegacyProviders) > 0 {
+		data.RepositoryProviders = raw.LegacyProviders
+	}
+	if len(data.RepositoryAppLinks) == 0 && len(raw.LegacyAppLinks) > 0 {
+		data.RepositoryAppLinks = raw.LegacyAppLinks
+	}
+	return nil
 }
 
 type BackupManifest struct {

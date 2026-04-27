@@ -189,10 +189,10 @@ export default function EinstellungenPage() {
   useEffect(() => {
     Promise.all([
       fetchApi('/settings').then(res => res.ok ? res.json() : null),
-      fetchApi('/settings/gitlab/providers').then(async (res) => {
+      fetchApi('/settings/repository-providers').then(async (res) => {
         if (!res.ok) {
           const error = await res.json().catch(() => ({}));
-          throw new Error((error as { message?: string }).message || 'GitLab-Provider konnten nicht geladen werden.');
+          throw new Error((error as { message?: string }).message || 'Repository-Provider konnten nicht geladen werden.');
         }
         return res.json() as Promise<GitLabProviderAdminSettings[]>;
       }),
@@ -203,7 +203,7 @@ export default function EinstellungenPage() {
         setGitLabProviderError(null);
       })
       .catch((error) => {
-        setGitLabProviderError(error instanceof Error ? error.message : 'GitLab-Provider konnten nicht geladen werden.');
+        setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnten nicht geladen werden.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -239,7 +239,7 @@ export default function EinstellungenPage() {
     setSaving(true);
     setGitLabProviderError(null);
     try {
-      const res = await fetchApi(`/settings/gitlab/providers/${provider.providerKey}`, {
+      const res = await fetchApi(`/settings/repository-providers/${provider.providerKey}`, {
         method: 'PUT',
         body: JSON.stringify({
           label: provider.label,
@@ -256,7 +256,7 @@ export default function EinstellungenPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { message?: string }).message || 'GitLab-Provider konnte nicht gespeichert werden.');
+        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht gespeichert werden.');
       }
 
       const updatedProvider = data as GitLabProviderAdminSettings;
@@ -266,7 +266,7 @@ export default function EinstellungenPage() {
       setSavedSection(`gitlab-${provider.providerKey}`);
       setTimeout(() => setSavedSection(null), 2000);
     } catch (error) {
-      setGitLabProviderError(error instanceof Error ? error.message : 'GitLab-Provider konnte nicht gespeichert werden.');
+      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht gespeichert werden.');
     } finally {
       setSaving(false);
     }
@@ -1075,10 +1075,10 @@ export default function EinstellungenPage() {
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-accent" /> GitLab-Provider
+                <GitBranch className="w-4 h-4 text-accent" /> Repository-Provider
               </h3>
               <p className="text-xs text-muted mb-5">
-                Verwalten Sie hier die nicht-geheimen GitLab-Einstellungen. Tokens verbleiben ausschließlich in der Backend-Konfiguration oder in Umgebungsvariablen.
+                Verwalten Sie hier die nicht-geheimen Repository-Einstellungen. Tokens verbleiben ausschließlich in der Backend-Konfiguration oder in Umgebungsvariablen.
               </p>
 
               {gitLabProviderError && (
@@ -1089,7 +1089,7 @@ export default function EinstellungenPage() {
 
               {gitLabProviders.length === 0 ? (
                 <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-                  Es sind aktuell keine GitLab-Provider im Backend konfiguriert.
+                  Es sind aktuell keine Repository-Provider im Backend konfiguriert.
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
@@ -1097,7 +1097,14 @@ export default function EinstellungenPage() {
                     <div key={provider.providerKey} className="rounded-2xl border border-border bg-surface p-5">
                       <div className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-foreground">{provider.providerKey}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-foreground">{provider.providerKey}</p>
+                            {provider.providerType && (
+                              <span className="inline-flex rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                                {provider.providerType === 'github' ? 'GitHub' : provider.providerType === 'gitlab' ? 'GitLab' : provider.providerType}
+                              </span>
+                            )}
+                          </div>
                           <p className="mt-1 text-xs text-muted">
                             {provider.tokenConfigured ? 'Token im Backend vorhanden' : 'Kein Token im Backend konfiguriert'}
                             {provider.configured ? ' · Provider aktiv konfiguriert' : ' · Provider im Backend derzeit nicht aktiv'}
@@ -1116,12 +1123,12 @@ export default function EinstellungenPage() {
                       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                         <TextField value={provider.label} onChange={(val) => updateGitLabProvider(provider.providerKey, { label: val })}>
                           <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Bezeichnung</Label>
-                          <Input placeholder="GitLab Bund" className="bg-field-background" />
+                          <Input placeholder="z. B. interne Forge oder GitHub.com" className="bg-field-background" />
                         </TextField>
 
                         <TextField value={provider.baseUrl} onChange={(val) => updateGitLabProvider(provider.providerKey, { baseUrl: val })}>
                           <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Base URL</Label>
-                          <Input placeholder="https://gitlab.example.org" className="bg-field-background font-mono text-sm" />
+                          <Input placeholder="https://gitlab.example.org oder https://github.com" className="bg-field-background font-mono text-sm" />
                         </TextField>
 
                         <TextField value={provider.defaultReadmePath || ''} onChange={(val) => updateGitLabProvider(provider.providerKey, { defaultReadmePath: val })}>

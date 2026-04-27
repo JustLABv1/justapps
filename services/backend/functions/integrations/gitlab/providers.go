@@ -12,6 +12,7 @@ import (
 
 type ProviderRuntime struct {
 	Key                    string
+	Type                   string
 	Label                  string
 	BaseURL                string
 	Token                  string
@@ -31,8 +32,8 @@ func ListProviderRuntimes(ctx context.Context, db *bun.DB, conf *config.RestfulC
 		return nil, err
 	}
 
-	providers := make([]ProviderRuntime, 0, len(conf.GitLab.Providers))
-	for _, configuredProvider := range conf.GitLab.Providers {
+	providers := make([]ProviderRuntime, 0, len(conf.RepositoryProviders))
+	for _, configuredProvider := range conf.RepositoryProviders {
 		key := strings.TrimSpace(configuredProvider.Key)
 		if key == "" || strings.TrimSpace(configuredProvider.Token) == "" {
 			continue
@@ -40,8 +41,9 @@ func ListProviderRuntimes(ctx context.Context, db *bun.DB, conf *config.RestfulC
 
 		provider := ProviderRuntime{
 			Key:                 key,
+			Type:                NormalizeProviderType(configuredProvider.Type),
 			Label:               providerLabel(configuredProvider),
-			BaseURL:             normalizeBaseURL(configuredProvider.BaseURL),
+			BaseURL:             normalizeProviderBaseURL(configuredProvider.Type, configuredProvider.BaseURL),
 			Token:               configuredProvider.Token,
 			Enabled:             configuredProvider.Enabled,
 			AutoSyncEnabled:     true,
@@ -58,7 +60,7 @@ func ListProviderRuntimes(ctx context.Context, db *bun.DB, conf *config.RestfulC
 				provider.Label = strings.TrimSpace(settings.Label)
 			}
 			if strings.TrimSpace(settings.BaseURL) != "" {
-				provider.BaseURL = normalizeBaseURL(settings.BaseURL)
+				provider.BaseURL = normalizeProviderBaseURL(provider.Type, settings.BaseURL)
 			}
 			if len(settings.NamespaceAllowlist) > 0 {
 				provider.NamespaceAllowlist = append([]string{}, settings.NamespaceAllowlist...)
@@ -92,6 +94,7 @@ func ListProviderSummaries(ctx context.Context, db *bun.DB, conf *config.Restful
 		}
 		summaries = append(summaries, models.GitLabProviderSummary{
 			Key:                    provider.Key,
+			Type:                   provider.Type,
 			Label:                  provider.Label,
 			BaseURL:                provider.BaseURL,
 			AutoSyncEnabled:        provider.AutoSyncEnabled,
@@ -127,8 +130,8 @@ func ListAdminProviders(ctx context.Context, db *bun.DB, conf *config.RestfulCon
 		return nil, err
 	}
 
-	providers := make([]models.GitLabProviderAdminResponse, 0, len(conf.GitLab.Providers))
-	for _, configuredProvider := range conf.GitLab.Providers {
+	providers := make([]models.GitLabProviderAdminResponse, 0, len(conf.RepositoryProviders))
+	for _, configuredProvider := range conf.RepositoryProviders {
 		key := strings.TrimSpace(configuredProvider.Key)
 		if key == "" {
 			continue
@@ -136,8 +139,9 @@ func ListAdminProviders(ctx context.Context, db *bun.DB, conf *config.RestfulCon
 
 		response := models.GitLabProviderAdminResponse{
 			ProviderKey:         key,
+			ProviderType:        NormalizeProviderType(configuredProvider.Type),
 			Label:               providerLabel(configuredProvider),
-			BaseURL:             normalizeBaseURL(configuredProvider.BaseURL),
+			BaseURL:             normalizeProviderBaseURL(configuredProvider.Type, configuredProvider.BaseURL),
 			NamespaceAllowlist:  append([]string{}, configuredProvider.NamespaceAllowlist...),
 			Enabled:             configuredProvider.Enabled,
 			AutoSyncEnabled:     true,
@@ -155,7 +159,7 @@ func ListAdminProviders(ctx context.Context, db *bun.DB, conf *config.RestfulCon
 				response.Label = strings.TrimSpace(settings.Label)
 			}
 			if strings.TrimSpace(settings.BaseURL) != "" {
-				response.BaseURL = normalizeBaseURL(settings.BaseURL)
+				response.BaseURL = normalizeProviderBaseURL(response.ProviderType, settings.BaseURL)
 			}
 			if len(settings.NamespaceAllowlist) > 0 {
 				response.NamespaceAllowlist = append([]string{}, settings.NamespaceAllowlist...)

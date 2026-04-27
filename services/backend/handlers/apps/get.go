@@ -207,6 +207,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 				summary := &models.GitLabSyncSummary{
 					Linked:           true,
 					ProviderKey:      link.ProviderKey,
+					ProviderType:     link.ProviderType,
 					ProjectPath:      link.ProjectPath,
 					LastSyncStatus:   link.LastSyncStatus,
 					LastSyncError:    link.LastSyncError,

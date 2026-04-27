@@ -25,14 +25,14 @@ type ConfigurationManager struct {
 }
 
 type RestfulConf struct {
-	LogLevel string       `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
-	Port     int          `mapstructure:"port" validate:"required"`
-	DataPath string       `mapstructure:"data_path"`
-	Database DatabaseConf `mapstructure:"database" validate:"required"`
-	JWT      JWTConf      `mapstructure:"jwt" validate:"required"`
-	OIDC     OIDCConf     `mapstructure:"oidc"`
-	GitLab   GitLabConf   `mapstructure:"gitlab"`
-	CORS     CORSConf     `mapstructure:"cors"`
+	LogLevel            string                   `mapstructure:"log_level" validate:"required,oneof=debug info warn error"`
+	Port                int                      `mapstructure:"port" validate:"required"`
+	DataPath            string                   `mapstructure:"data_path"`
+	Database            DatabaseConf             `mapstructure:"database" validate:"required"`
+	JWT                 JWTConf                  `mapstructure:"jwt" validate:"required"`
+	OIDC                OIDCConf                 `mapstructure:"oidc"`
+	RepositoryProviders []RepositoryProviderConf `mapstructure:"repository_providers"`
+	CORS                CORSConf                 `mapstructure:"cors"`
 }
 
 type CORSConf struct {
@@ -62,13 +62,14 @@ type OIDCConf struct {
 	DisableRegistration bool   `mapstructure:"disable_registration"`
 }
 
-type GitLabConf struct {
-	Providers []GitLabProviderConf `mapstructure:"providers"`
-}
-
-type GitLabProviderConf struct {
-	Key                string   `mapstructure:"key"`
-	Label              string   `mapstructure:"label"`
+type RepositoryProviderConf struct {
+	Key   string `mapstructure:"key"`
+	Label string `mapstructure:"label"`
+	// Type identifies the repository provider implementation. Supported values:
+	//   "gitlab" (default), "github"
+	// GitHub Enterprise is configured by setting Type="github" together with
+	// the corresponding self-hosted base URL (e.g. https://github.example.com).
+	Type               string   `mapstructure:"type"`
 	BaseURL            string   `mapstructure:"base_url"`
 	Token              string   `mapstructure:"token"`
 	Enabled            bool     `mapstructure:"enabled"`
@@ -118,7 +119,7 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		"oidc.insecure":               "BACKEND_OIDC_INSECURE",
 		"oidc.disable_local_auth":     "BACKEND_OIDC_DISABLE_LOCAL_AUTH",
 		"oidc.disable_registration":   "BACKEND_OIDC_DISABLE_REGISTRATION",
-		"gitlab.providers":            "BACKEND_GITLAB_PROVIDERS",
+		"repository_providers":        "BACKEND_REPOSITORY_PROVIDERS",
 		"cors.allowed_origins":        "BACKEND_CORS_ALLOWED_ORIGINS",
 	}
 
@@ -144,12 +145,15 @@ func (cm *ConfigurationManager) LoadConfig(configFile string) error {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Override per-provider tokens from env vars: BACKEND_GITLAB_TOKEN_<KEY>
+	cm.normalizeRepositoryProviders(&config)
+
+	// Override per-provider tokens from env vars: BACKEND_REPOSITORY_TOKEN_<KEY>
 	// (KEY is uppercased with hyphens replaced by underscores)
-	for i := range config.GitLab.Providers {
-		key := strings.ToUpper(strings.ReplaceAll(config.GitLab.Providers[i].Key, "-", "_"))
-		if token := os.Getenv("BACKEND_GITLAB_TOKEN_" + key); token != "" {
-			config.GitLab.Providers[i].Token = token
+	for i := range config.RepositoryProviders {
+		key := strings.ToUpper(strings.ReplaceAll(config.RepositoryProviders[i].Key, "-", "_"))
+		token := os.Getenv("BACKEND_REPOSITORY_TOKEN_" + key)
+		if token != "" {
+			config.RepositoryProviders[i].Token = token
 		}
 	}
 
@@ -195,15 +199,28 @@ func (cm *ConfigurationManager) setDefaults(config *RestfulConf) {
 	if config.Database.Password == "" {
 		config.Database.Password = "postgres"
 	}
-	for index := range config.GitLab.Providers {
-		if config.GitLab.Providers[index].BaseURL == "" {
-			config.GitLab.Providers[index].BaseURL = "https://gitlab.com"
+}
+
+func (cm *ConfigurationManager) normalizeRepositoryProviders(config *RestfulConf) {
+	for index := range config.RepositoryProviders {
+		providerType := strings.ToLower(strings.TrimSpace(config.RepositoryProviders[index].Type))
+		if providerType == "" {
+			providerType = "gitlab"
 		}
-		if config.GitLab.Providers[index].TimeoutSeconds <= 0 {
-			config.GitLab.Providers[index].TimeoutSeconds = 15
+		config.RepositoryProviders[index].Type = providerType
+		if config.RepositoryProviders[index].BaseURL == "" {
+			switch providerType {
+			case "github":
+				config.RepositoryProviders[index].BaseURL = "https://github.com"
+			default:
+				config.RepositoryProviders[index].BaseURL = "https://gitlab.com"
+			}
 		}
-		if config.GitLab.Providers[index].Label == "" {
-			config.GitLab.Providers[index].Label = config.GitLab.Providers[index].Key
+		if config.RepositoryProviders[index].TimeoutSeconds <= 0 {
+			config.RepositoryProviders[index].TimeoutSeconds = 15
+		}
+		if config.RepositoryProviders[index].Label == "" {
+			config.RepositoryProviders[index].Label = config.RepositoryProviders[index].Key
 		}
 	}
 }

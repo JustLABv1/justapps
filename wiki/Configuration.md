@@ -65,40 +65,41 @@ All `config.yaml` values can be overridden with environment variables using the 
 
 ---
 
-## GitLab Integration (`config.yaml`)
+## Repository Providers (`config.yaml`)
 
 ```yaml
-gitlab:
-  providers:
-    - key: my-gitlab             # Unique identifier (used internally)
-      label: My GitLab           # Display name (defaults to key if omitted)
-      base_url: https://gitlab.example.com   # Defaults to https://gitlab.com
-      token: glpat-xxxx          # Personal / group / project access token (read_api scope)
-      enabled: true
-      namespace_allowlist:       # Optional — restrict sync to these namespaces/groups
-        - my-org
-        - another-group
-      timeout_seconds: 15        # HTTP timeout for GitLab API calls (default: 15)
+repository_providers:
+  - key: my-gitlab               # Unique identifier (used internally)
+    type: gitlab                 # Supported: gitlab (default), github
+    label: My GitLab             # Display name (defaults to key if omitted)
+    base_url: https://gitlab.example.com   # Defaults to https://gitlab.com
+    token: glpat-xxxx            # Personal / group / project access token (read_api scope)
+    enabled: true
+    namespace_allowlist:         # Optional — restrict sync to these namespaces/groups
+      - my-org
+      - another-group
+    timeout_seconds: 15          # HTTP timeout for provider API calls (default: 15)
 ```
 
 Multiple providers are supported:
 
 ```yaml
-gitlab:
-  providers:
-    - key: internal
-      label: Internal GitLab
-      base_url: https://gitlab.internal.example.com
-      token: glpat-internal-token
-      enabled: true
-    - key: public
-      label: GitLab.com
-      base_url: https://gitlab.com
-      token: glpat-public-token
-      enabled: false
+repository_providers:
+  - key: internal
+    type: gitlab
+    label: Internal GitLab
+    base_url: https://gitlab.internal.example.com
+    token: glpat-internal-token
+    enabled: true
+  - key: public
+    type: github
+    label: GitHub.com
+    base_url: https://github.com
+    token: ghp-public-token
+    enabled: false
 ```
 
-> **Secret handling:** Avoid committing tokens to source control. Use the `BACKEND_GITLAB_PROVIDERS` environment variable or inject via Kubernetes Secrets / Vault.
+> **Secret handling:** Avoid committing tokens to source control. Use `BACKEND_REPOSITORY_TOKEN_<KEY>` or inject tokens via Kubernetes Secrets / Vault.
 
 ---
 

@@ -22,11 +22,11 @@ data:
     cors:
       allowed_origins:
         {{- toYaml .Values.config.cors.allowedOrigins | nindent 8 }}
-    {{- if .Values.config.gitlab.providers }}
-    gitlab:
-      providers:
-        {{- range .Values.config.gitlab.providers }}
+    {{- if .Values.config.repositoryProviders }}
+    repository_providers:
+      {{- range .Values.config.repositoryProviders }}
         - key: {{ .key | quote }}
+          type: {{ .type | default "gitlab" | quote }}
           label: {{ .label | default .key | quote }}
           base_url: {{ .baseUrl | quote }}
           enabled: {{ .enabled | default false }}

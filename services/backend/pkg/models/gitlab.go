@@ -30,6 +30,7 @@ type GitLabAppLink struct {
 	bun.BaseModel `bun:"table:gitlab_app_links,alias:gal"`
 
 	AppID              string             `bun:"app_id,pk" json:"appId"`
+	ProviderType       string             `bun:"provider_type,notnull,default:'gitlab'" json:"providerType"`
 	ProviderKey        string             `bun:"provider_key,notnull" json:"providerKey"`
 	ProjectID          int64              `bun:"project_id,notnull,default:0" json:"projectId"`
 	ProjectPath        string             `bun:"project_path,notnull" json:"projectPath"`
@@ -54,6 +55,7 @@ type GitLabProviderSettings struct {
 	bun.BaseModel `bun:"table:gitlab_provider_settings,alias:gps"`
 
 	ProviderKey            string    `bun:"provider_key,pk" json:"providerKey"`
+	ProviderType           string    `bun:"provider_type,notnull,default:'gitlab'" json:"providerType"`
 	Label                  string    `bun:"label" json:"label"`
 	BaseURL                string    `bun:"base_url" json:"baseUrl"`
 	NamespaceAllowlist     []string  `bun:"namespace_allowlist,type:jsonb,notnull,default:'[]'" json:"namespaceAllowlist"`
@@ -69,6 +71,7 @@ type GitLabProviderSettings struct {
 
 type GitLabProviderAdminResponse struct {
 	ProviderKey            string   `json:"providerKey"`
+	ProviderType           string   `json:"providerType"`
 	Label                  string   `json:"label"`
 	BaseURL                string   `json:"baseUrl"`
 	NamespaceAllowlist     []string `json:"namespaceAllowlist"`
@@ -84,6 +87,7 @@ type GitLabProviderAdminResponse struct {
 
 type GitLabProviderSummary struct {
 	Key                    string   `json:"key"`
+	Type                   string   `json:"type"`
 	Label                  string   `json:"label"`
 	BaseURL                string   `json:"baseUrl"`
 	AutoSyncEnabled        bool     `json:"autoSyncEnabled"`
@@ -98,6 +102,7 @@ type GitLabIntegrationResponse struct {
 	Linked             bool                    `json:"linked"`
 	AvailableProviders []GitLabProviderSummary `json:"availableProviders"`
 	ProviderKey        string                  `json:"providerKey,omitempty"`
+	ProviderType       string                  `json:"providerType,omitempty"`
 	ProviderLabel      string                  `json:"providerLabel,omitempty"`
 	BaseURL            string                  `json:"baseUrl,omitempty"`
 	ProjectPath        string                  `json:"projectPath,omitempty"`
@@ -119,6 +124,7 @@ type GitLabIntegrationResponse struct {
 type GitLabSyncSummary struct {
 	Linked           bool       `json:"linked"`
 	ProviderKey      string     `json:"providerKey,omitempty"`
+	ProviderType     string     `json:"providerType,omitempty"`
 	ProjectPath      string     `json:"projectPath,omitempty"`
 	LastSyncStatus   string     `json:"lastSyncStatus,omitempty"`
 	LastSyncError    string     `json:"lastSyncError,omitempty"`

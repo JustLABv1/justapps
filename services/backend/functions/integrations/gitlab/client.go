@@ -32,7 +32,7 @@ func (e *APIError) Error() string {
 }
 
 type Client struct {
-	provider config.GitLabProviderConf
+	provider config.RepositoryProviderConf
 	http     *http.Client
 }
 
@@ -68,31 +68,33 @@ func BuildProviderSummaries(conf *config.RestfulConf) []models.GitLabProviderSum
 	if conf == nil {
 		return []models.GitLabProviderSummary{}
 	}
-	providers := make([]models.GitLabProviderSummary, 0, len(conf.GitLab.Providers))
-	for _, provider := range conf.GitLab.Providers {
+	providers := make([]models.GitLabProviderSummary, 0, len(conf.RepositoryProviders))
+	for _, provider := range conf.RepositoryProviders {
 		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
 			continue
 		}
 		providers = append(providers, models.GitLabProviderSummary{
 			Key:     provider.Key,
+			Type:    NormalizeProviderType(provider.Type),
 			Label:   providerLabel(provider),
-			BaseURL: normalizeBaseURL(provider.BaseURL),
+			BaseURL: normalizeProviderBaseURL(provider.Type, provider.BaseURL),
 		})
 	}
 	return providers
 }
 
-func FindProvider(conf *config.RestfulConf, key string) (config.GitLabProviderConf, bool) {
+func FindProvider(conf *config.RestfulConf, key string) (config.RepositoryProviderConf, bool) {
 	if conf == nil {
-		return config.GitLabProviderConf{}, false
+		return config.RepositoryProviderConf{}, false
 	}
 	trimmedKey := strings.TrimSpace(key)
-	for _, provider := range conf.GitLab.Providers {
+	for _, provider := range conf.RepositoryProviders {
 		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
 			continue
 		}
 		if strings.EqualFold(strings.TrimSpace(provider.Key), trimmedKey) {
-			provider.BaseURL = normalizeBaseURL(provider.BaseURL)
+			provider.Type = NormalizeProviderType(provider.Type)
+			provider.BaseURL = normalizeProviderBaseURL(provider.Type, provider.BaseURL)
 			if provider.TimeoutSeconds <= 0 {
 				provider.TimeoutSeconds = 15
 			}
@@ -102,10 +104,10 @@ func FindProvider(conf *config.RestfulConf, key string) (config.GitLabProviderCo
 			return provider, true
 		}
 	}
-	return config.GitLabProviderConf{}, false
+	return config.RepositoryProviderConf{}, false
 }
 
-func IsProjectAllowed(provider config.GitLabProviderConf, projectPath string) bool {
+func IsProjectAllowed(provider config.RepositoryProviderConf, projectPath string) bool {
 	if len(provider.NamespaceAllowlist) == 0 {
 		return true
 	}
@@ -126,7 +128,7 @@ func NormalizeProjectPath(projectPath string) string {
 	return strings.Trim(strings.TrimSpace(projectPath), "/")
 }
 
-func providerLabel(provider config.GitLabProviderConf) string {
+func providerLabel(provider config.RepositoryProviderConf) string {
 	if strings.TrimSpace(provider.Label) != "" {
 		return provider.Label
 	}
@@ -141,7 +143,7 @@ func normalizeBaseURL(baseURL string) string {
 	return strings.TrimRight(trimmed, "/")
 }
 
-func NewClient(provider config.GitLabProviderConf) *Client {
+func NewClient(provider config.RepositoryProviderConf) *Client {
 	provider.BaseURL = normalizeBaseURL(provider.BaseURL)
 	if provider.TimeoutSeconds <= 0 {
 		provider.TimeoutSeconds = 15

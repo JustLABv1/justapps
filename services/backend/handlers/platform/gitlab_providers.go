@@ -87,6 +87,7 @@ func UpdateGitLabProvider(c *gin.Context, db *bun.DB) {
 
 	settings := models.GitLabProviderSettings{
 		ProviderKey:            providerKey,
+		ProviderType:           provider.Type,
 		Label:                  strings.TrimSpace(req.Label),
 		BaseURL:                baseURL,
 		NamespaceAllowlist:     normalizeProviderAllowlist(req.NamespaceAllowlist),
@@ -115,7 +116,7 @@ func UpdateGitLabProvider(c *gin.Context, db *bun.DB) {
 			Model(&settings).
 			Where("provider_key = ?", providerKey).
 			Column(
-				"label", "base_url", "namespace_allowlist", "enabled", "auto_sync_enabled",
+				"provider_type", "label", "base_url", "namespace_allowlist", "enabled", "auto_sync_enabled",
 				"sync_interval_minutes", "default_readme_path", "default_helm_values_path", "default_compose_file_path", "updated_at",
 			).
 			Exec(c)

@@ -20,8 +20,12 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			platform.UpdateSettings(c, db)
 		})
 
-		// Auth-only: available providers for app editors (non-sensitive summaries)
+		// Auth-only: available providers for app editors (non-sensitive summaries).
+		// /gitlab/* paths are kept as legacy aliases; new clients should use /repository-providers/*.
 		settings.GET("/gitlab/providers/available", middlewares.Auth(db), func(c *gin.Context) {
+			platform.ListAvailableGitLabProviders(c, db)
+		})
+		settings.GET("/repository-providers/available", middlewares.Auth(db), func(c *gin.Context) {
 			platform.ListAvailableGitLabProviders(c, db)
 		})
 
@@ -32,6 +36,17 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 				platform.ListGitLabProviders(c, db)
 			})
 			gitlabProviders.PUT("/:key", func(c *gin.Context) {
+				platform.UpdateGitLabProvider(c, db)
+			})
+		}
+
+		repositoryProviders := settings.Group("/repository-providers")
+		repositoryProviders.Use(middlewares.Admin(db))
+		{
+			repositoryProviders.GET("", func(c *gin.Context) {
+				platform.ListGitLabProviders(c, db)
+			})
+			repositoryProviders.PUT("/:key", func(c *gin.Context) {
 				platform.UpdateGitLabProvider(c, db)
 			})
 		}

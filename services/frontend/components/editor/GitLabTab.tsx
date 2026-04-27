@@ -79,7 +79,7 @@ function mergeRepositories(repositories: AppLink[] | undefined, projectWebUrl?: 
     return nextRepositories;
   }
 
-  const nextLabel = normalizeValue(providerLabel) || 'GitLab';
+  const nextLabel = normalizeValue(providerLabel) || 'Repository';
   const existingRepository = nextRepositories.find((repository) => normalizeValue(repository.url) === normalizedProjectWebUrl);
   if (existingRepository) {
     existingRepository.label = nextLabel;
@@ -202,12 +202,15 @@ export function GitLabTab({
     ? buildApprovalDiffItems(currentApp, gitLabIntegration.pendingSnapshot, gitLabIntegration.providerLabel || gitLabIntegration.providerKey)
     : [];
 
+  const providerHeadingLabel = gitLabIntegration?.providerLabel
+    || (gitLabIntegration?.providerType === 'github' ? 'GitHub' : gitLabIntegration?.providerType === 'gitlab' ? 'GitLab' : '');
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 rounded-2xl border border-border bg-surface-secondary/40 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-foreground">Repository-Import via GitLab</p>
+            <p className="text-sm font-semibold text-foreground">Repository-Import{providerHeadingLabel ? ` via ${providerHeadingLabel}` : ''}</p>
             <p className="text-xs text-muted mt-1">
               README, Metadaten und ausgewählte Repository-Dateien werden als Import-Snapshot geladen und bei Bedarf in den Editor übernommen.
             </p>
@@ -228,7 +231,7 @@ export function GitLabTab({
         )}
         {gitLabIntegration?.approvalRequired && (
           <p className="text-xs text-warning">
-            Für diese App gibt es manuelle Änderungen. Neue GitLab-Syncs werden als freizugebende Änderung vorgemerkt, bis ein Owner oder Admin sie bestätigt.
+            Für diese App gibt es manuelle Änderungen. Neue Repository-Syncs werden als freizugebende Änderung vorgemerkt, bis ein Owner oder Admin sie bestätigt.
           </p>
         )}
       </div>
@@ -236,17 +239,17 @@ export function GitLabTab({
       {loadingGitLab ? (
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
           <Loader2 className="h-4 w-4 animate-spin text-accent" />
-          GitLab-Daten werden geladen...
+          Repository-Daten werden geladen...
         </div>
       ) : !hasGitLabProviders && !gitLabIntegration?.linked ? (
         <div className="rounded-2xl border border-warning/20 bg-warning/5 p-5 text-sm text-warning">
-          Es ist noch kein nutzbarer GitLab-Provider im Backend konfiguriert.
+          Es ist noch kein nutzbarer Repository-Provider im Backend konfiguriert.
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">GitLab-Provider</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Provider</label>
               <select
                 value={gitLabForm.providerKey}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
@@ -371,12 +374,12 @@ export function GitLabTab({
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    {gitLabIntegration?.approvalRequired ? 'Freizugebender GitLab-Snapshot' : 'Letzter Import-Snapshot'}
+                    {gitLabIntegration?.approvalRequired ? 'Freizugebender Import-Snapshot' : 'Letzter Import-Snapshot'}
                   </p>
                   <p className="text-xs text-muted mt-1">
                     {gitLabIntegration?.approvalRequired
                       ? 'Dieser Snapshot wird erst nach Freigabe automatisch auf die App angewendet.'
-                      : 'Der zuletzt angewendete Snapshot aus GitLab.'}
+                      : 'Der zuletzt angewendete Snapshot aus dem verknüpften Repository.'}
                   </p>
                 </div>
                 {gitLabSnapshot.syncedAt && (
@@ -391,7 +394,7 @@ export function GitLabTab({
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">Freigabe-Vergleich</p>
                     <p className="text-xs text-muted">
-                      Links steht der aktuelle App-Stand, rechts der Stand nach dieser GitLab-Freigabe.
+                      Links steht der aktuelle App-Stand, rechts der Stand nach dieser Freigabe.
                     </p>
                   </div>
 

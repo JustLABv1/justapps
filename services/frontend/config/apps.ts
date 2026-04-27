@@ -31,6 +31,7 @@ export interface DeploymentVariant {
 
 export interface GitLabProviderSummary {
   key: string;
+  type?: string;
   label: string;
   baseUrl: string;
   autoSyncEnabled?: boolean;
@@ -43,6 +44,7 @@ export interface GitLabProviderSummary {
 
 export interface GitLabProviderAdminSettings {
   providerKey: string;
+  providerType?: string;
   label: string;
   baseUrl: string;
   namespaceAllowlist: string[];
@@ -80,6 +82,7 @@ export interface GitLabIntegrationState {
   linked: boolean;
   availableProviders: GitLabProviderSummary[];
   providerKey?: string;
+  providerType?: string;
   providerLabel?: string;
   baseUrl?: string;
   projectPath?: string;
@@ -101,6 +104,7 @@ export interface GitLabIntegrationState {
 export interface GitLabSyncSummary {
   linked: boolean;
   providerKey?: string;
+  providerType?: string;
   projectPath?: string;
   lastSyncStatus?: string;
   lastSyncError?: string;

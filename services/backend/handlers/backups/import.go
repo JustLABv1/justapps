@@ -131,9 +131,9 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}) {
 				return
 			}
-		case "gitLabProviders":
-			if !applySection(section, func() (importSectionStats, []string, error) {
-				return importGitLabProviders(ctx, tx, manifest.Data.GitLabProviders)
+		case "repositoryProviders", "gitLabProviders":
+			if !applySection("repositoryProviders", func() (importSectionStats, []string, error) {
+				return importGitLabProviders(ctx, tx, manifest.Data.RepositoryProviders)
 			}) {
 				return
 			}
@@ -155,9 +155,9 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}) {
 				return
 			}
-		case "gitLabAppLinks":
-			if !applySection(section, func() (importSectionStats, []string, error) {
-				return importGitLabAppLinks(ctx, tx, manifest.Data.GitLabAppLinks)
+		case "repositoryAppLinks", "gitLabAppLinks":
+			if !applySection("repositoryAppLinks", func() (importSectionStats, []string, error) {
+				return importGitLabAppLinks(ctx, tx, manifest.Data.RepositoryAppLinks)
 			}) {
 				return
 			}
@@ -294,11 +294,11 @@ func inferManifestSections(manifest models.BackupManifest) []string {
 	if manifest.Data.Settings != nil {
 		sections = append(sections, "settings")
 	}
-	if len(manifest.Data.GitLabProviders) > 0 {
-		sections = append(sections, "gitLabProviders")
+	if len(manifest.Data.RepositoryProviders) > 0 {
+		sections = append(sections, "repositoryProviders")
 	}
-	if len(manifest.Data.GitLabAppLinks) > 0 {
-		sections = append(sections, "gitLabAppLinks")
+	if len(manifest.Data.RepositoryAppLinks) > 0 {
+		sections = append(sections, "repositoryAppLinks")
 	}
 	if len(manifest.Data.Tokens) > 0 {
 		sections = append(sections, "tokens")
