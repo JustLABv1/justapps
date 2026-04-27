@@ -6,7 +6,7 @@ import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { AlertTriangle, BookOpen, Clock, ExternalLink, Landmark, MoreHorizontal, Star } from "lucide-react";
+import { BookOpen, Clock, ExternalLink, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -56,27 +56,6 @@ export function AppCard({ app }: { app: AppConfig }) {
       {isFeatured && (
         <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center rounded-full bg-gov-gold p-2 shadow-lg shadow-gov-gold/20">
           <Star className="w-3.5 h-3.5 text-white fill-white" />
-        </div>
-      )}
-      {app.knownIssue && (
-        <div className={`absolute z-20 ${isFeatured ? '-top-3 right-8' : '-top-2 -right-2'}`}>
-          <Tooltip delay={0}>
-            <Tooltip.Trigger aria-label="Bekanntes Problem anzeigen">
-              <Button
-                isIconOnly
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 min-w-0 rounded-full bg-warning shadow-md shadow-warning/30"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 text-white" />
-              </Button>
-            </Tooltip.Trigger>
-            <Tooltip.Content className="max-w-64" placement="bottom" showArrow>
-              <Tooltip.Arrow />
-              <p className="text-xs font-bold mb-1">Bekanntes Problem</p>
-              <p className="text-xs">{app.knownIssue}</p>
-            </Tooltip.Content>
-          </Tooltip>
         </div>
       )}
       {/* ── Header: icon, name, metadata ── */}

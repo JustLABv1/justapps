@@ -81,7 +81,11 @@ type Apps struct {
 	IsLocked               bool                 `bun:"is_locked,notnull,default:false" json:"isLocked"`
 	SkipLinkProbe          bool                 `bun:"skip_link_probe,notnull,default:false" json:"skipLinkProbe"`
 	LinkProbeStatus        string               `bun:"link_probe_status,notnull,default:'unknown'" json:"linkProbeStatus"`
-	KnownIssue             string               `bun:"known_issue" json:"knownIssue"`
+	BannerText             string               `bun:"banner_text,notnull,default:''" json:"bannerText"`
+	BannerType             string               `bun:"banner_type,notnull,default:''" json:"bannerType"`
+	BannerColor            string               `bun:"banner_color,notnull,default:''" json:"bannerColor"`
+	BannerTitle            string               `bun:"banner_title,notnull,default:''" json:"bannerTitle"`
+	KnownIssue             string               `bun:"-" json:"knownIssue,omitempty"` // legacy input alias only
 	IsReuse                bool                 `bun:"is_reuse,notnull,default:false" json:"isReuse"`
 	ReuseRequirements      string               `bun:"reuse_requirements" json:"reuseRequirements"`
 	DeploymentVariants     []DeploymentVariant  `bun:"deployment_variants,type:jsonb" json:"deploymentVariants"`

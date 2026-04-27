@@ -8,13 +8,13 @@ import { AppConfig, GitLabIntegrationState } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
+import { getAppBannerMeta } from "@/lib/appBanner";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  AlertTriangle,
   BookOpen,
   Check,
   ChevronLeft,
@@ -224,19 +224,9 @@ export default function AppPage() {
         </div>
       </div>
 
-      {/* ── Known issue banner ── */}
-      {app.knownIssue && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-warning">Bekanntes Problem</p>
-            <p className="text-sm text-warning/80 mt-0.5">{app.knownIssue}</p>
-          </div>
-        </div>
-      )}
 
       {/* ── Hero ── */}
-      <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-8">
+      <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-4">
         {/* Decorative background elements */}
         <div className="absolute top-0 right-0 w-full h-full max-w-2xl pointer-events-none opacity-30 dark:opacity-20">
           <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] rounded-full bg-accent/20 blur-3xl" />
@@ -432,6 +422,40 @@ export default function AppPage() {
           </div>
         </div>
       </header>
+
+      {/* ── App banner ── */}
+      {app.bannerText && (() => {
+        const bannerMeta = getAppBannerMeta(
+          (app.bannerType as 'info' | 'warning' | 'danger' | 'custom') || 'info',
+          app.bannerColor,
+        );
+        const BannerIcon = bannerMeta.Icon;
+        return (
+          <div
+            className={`mb-4 px-4 py-3 rounded-xl border flex items-start gap-3 ${bannerMeta.bg} ${bannerMeta.border}`}
+            style={bannerMeta.customStyle}
+          >
+            <BannerIcon
+              className="w-5 h-5 shrink-0 mt-0.5"
+              style={bannerMeta.customStyle ? { color: bannerMeta.customStyle.color as string } : undefined}
+            />
+            <div>
+              <p
+                className={`text-sm font-semibold ${bannerMeta.text}`}
+                style={bannerMeta.customStyle ? { color: bannerMeta.customStyle.color as string } : undefined}
+              >
+                {app.bannerTitle || bannerMeta.label}
+              </p>
+              <p
+                className={`text-sm mt-0.5 ${bannerMeta.text ? `${bannerMeta.text}/80` : ''}`}
+                style={bannerMeta.customStyle ? { color: bannerMeta.customStyle.color as string } : undefined}
+              >
+                {app.bannerText}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Technik-Streifen (if available) ── */}
       {app.techStack && app.techStack.length > 0 && (
