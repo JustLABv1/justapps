@@ -32,7 +32,6 @@ import {
   CloudDownload,
   ExternalLink,
   GitBranch,
-  Github,
   Layers,
   Link2,
   Loader2,
@@ -51,6 +50,7 @@ import {
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { GitHubIcon } from './GitHubIcon';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1779,7 +1779,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                   />
                   <LinkListEditor
                     title="Quellcode"
-                    icon={<Github className="w-4 h-4 text-muted" />}
+                    icon={<GitHubIcon className="w-4 h-4 text-muted" />}
                     items={formData.repositories || []}
                     onChange={(repositoriesValue) => setFormData((previous) => ({ ...previous, repositories: repositoriesValue }))}
                     addLabel="Hinzufügen"
@@ -2542,7 +2542,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
               ))}
               {repositories.map((repo, idx) => (
                 <span key={`repo-${idx}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm">
-                  <Github className="w-4 h-4" />
+                  <GitHubIcon className="w-4 h-4" />
                   {repo.label || 'Quellcode'}
                 </span>
               ))}
@@ -2702,7 +2702,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
             />
             <LinkListEditor
               title="Quellcode"
-              icon={<Github className="w-4 h-4 text-muted" />}
+              icon={<GitHubIcon className="w-4 h-4 text-muted" />}
               items={formData.repositories || []}
               onChange={(repos) => setFormData((p) => ({ ...p, repositories: repos }))}
               addLabel="Hinzufügen"

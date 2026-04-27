@@ -6,40 +6,40 @@ import { useSettings } from '@/context/SettingsContext';
 import { uploadFile } from '@/lib/api';
 import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    Surface,
-    Switch,
-    TextArea,
-    TextField
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  Surface,
+  Switch,
+  TextArea,
+  TextField
 } from '@heroui/react';
 import {
-    BookOpen,
-    Check,
-    ChevronLeft,
-    ChevronRight,
-    ExternalLink,
-    FileText,
-    Github,
-    Globe,
-    Info,
-    Layers,
-    Loader2,
-    Plus,
-    Server,
-    Share2,
-    ShieldCheck,
-    Terminal,
-    Trash2,
-    Upload,
-    X
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  Globe,
+  Info,
+  Layers,
+  Loader2,
+  Plus,
+  Server,
+  Share2,
+  ShieldCheck,
+  Terminal,
+  Trash2,
+  Upload,
+  X
 } from 'lucide-react';
 import Image from 'next/image';
 import React, { useRef, useState } from 'react';
+import { GitHubIcon } from './GitHubIcon';
 
 interface AppModalProps {
   isOpen: boolean;
@@ -763,7 +763,7 @@ export function AppModal({
                       <div className="space-y-4">
                         <div className="flex items-center justify-between border-b border-border pb-2">
                           <div className="flex items-center gap-2">
-                            <Github className="w-4 h-4 text-muted" />
+                            <GitHubIcon className="w-4 h-4 text-muted" />
                             <Label className="text-sm font-bold text-foreground">Repositories</Label>
                           </div>
                           <Button size="sm" variant="secondary" className="h-7 text-[10px] uppercase font-bold" onPress={() => {
