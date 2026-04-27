@@ -6,11 +6,12 @@ import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
-import { AlertTriangle, BookOpen, Clock, ExternalLink, Github, Landmark, MoreHorizontal, Star } from "lucide-react";
+import { AlertTriangle, BookOpen, Clock, ExternalLink, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FavoriteButton } from "./FavoriteButton";
+import { GitHubIcon } from "./GitHubIcon";
 import { LinkStatusDot } from "./LinkStatusDot";
 
 export function AppCard({ app }: { app: AppConfig }) {
@@ -35,7 +36,7 @@ export function AppCard({ app }: { app: AppConfig }) {
   const customLinks = app.customLinks || [];
   const resourceItems = [
     ...allDemos.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'demo' })),
-    ...repositories.map((link) => ({ ...link, icon: <Github className="w-3 h-3" />, kind: 'repository' })),
+    ...repositories.map((link) => ({ ...link, icon: <GitHubIcon className="w-3 h-3" />, kind: 'repository' })),
     ...customLinks.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'link' })),
     ...(app.docsUrl ? [{ label: 'Dokumentation', url: app.docsUrl, icon: <BookOpen className="w-3 h-3" />, kind: 'docs' }] : []),
   ];

@@ -1,6 +1,7 @@
 'use client';
 
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
+import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { RatingSection } from "@/components/RatingSection";
 import { AppConfig, GitLabIntegrationState } from "@/config/apps";
@@ -19,7 +20,6 @@ import {
   ChevronLeft,
   ExternalLink,
   GitBranch,
-  Github,
   History,
   Layers,
   LayoutDashboard,
@@ -375,7 +375,7 @@ export default function AppPage() {
                   target="_blank"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
-                  <Github className="w-4 h-4" />
+                  <GitHubIcon className="w-4 h-4" />
                   {repo.label || 'Quellcode'}
                 </Link>
               ))}
