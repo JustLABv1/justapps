@@ -1,10 +1,10 @@
 'use client';
 
+import { JustAppsLogo } from '@/components/JustAppsLogo';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
-import { JustAppsLogo } from '@/components/JustAppsLogo';
-import { LayoutGrid, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
