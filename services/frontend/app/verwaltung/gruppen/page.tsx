@@ -67,7 +67,15 @@ export default function VerwaltungGruppenPage() {
     }
   };
 
-  useEffect(() => { loadGroups(); }, []);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadGroups();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const bulkTargetGroup = useMemo(
     () => bulkTargetId ? groups.find((group) => group.id === bulkTargetId) ?? null : null,
