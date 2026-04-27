@@ -2,7 +2,6 @@
 
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
-import { getAppBannerMeta } from "@/lib/appBanner";
 import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
@@ -59,42 +58,6 @@ export function AppCard({ app }: { app: AppConfig }) {
           <Star className="w-3.5 h-3.5 text-white fill-white" />
         </div>
       )}
-      {app.bannerText && (() => {
-        const bannerMeta = getAppBannerMeta(
-          (app.bannerType as 'info' | 'warning' | 'danger' | 'custom') || 'info',
-          app.bannerColor,
-        );
-        const BannerIcon = bannerMeta.Icon;
-        const badgeBg = app.bannerType === 'warning' ? 'bg-warning shadow-warning/30'
-          : app.bannerType === 'danger' ? 'bg-danger shadow-danger/30'
-          : app.bannerType === 'custom' ? ''
-          : 'bg-primary shadow-primary/30';
-        const badgeStyle = app.bannerType === 'custom' && app.bannerColor
-          ? { backgroundColor: app.bannerColor }
-          : undefined;
-        return (
-          <div className={`absolute z-20 ${isFeatured ? '-top-3 right-8' : '-top-2 -right-2'}`}>
-            <Tooltip delay={0}>
-              <Tooltip.Trigger aria-label="Banner anzeigen">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="ghost"
-                  className={`h-7 w-7 min-w-0 rounded-full shadow-md ${badgeBg}`}
-                  style={badgeStyle}
-                >
-                  <BannerIcon className="w-3.5 h-3.5 text-white" />
-                </Button>
-              </Tooltip.Trigger>
-              <Tooltip.Content className="max-w-64" placement="bottom" showArrow>
-                <Tooltip.Arrow />
-                <p className="text-xs font-bold mb-1">{app.bannerTitle || bannerMeta.label}</p>
-                <p className="text-xs">{app.bannerText}</p>
-              </Tooltip.Content>
-            </Tooltip>
-          </div>
-        );
-      })()}
       {/* ── Header: icon, name, metadata ── */}
       <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
         <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0 transition-all duration-300 group-hover:scale-110
