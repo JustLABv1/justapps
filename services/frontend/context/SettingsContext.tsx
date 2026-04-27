@@ -159,7 +159,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchSettings();
+    const timeoutId = window.setTimeout(() => {
+      void fetchSettings();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [fetchSettings]);
 
   // Inject accent color CSS override

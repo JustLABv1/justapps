@@ -48,7 +48,13 @@ export function RatingSection({ appId }: { appId: string }) {
   }, [appId, user, isEditing]);
 
   useEffect(() => {
-    fetchRatings();
+    const timeoutId = window.setTimeout(() => {
+      void fetchRatings();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [fetchRatings]);
 
   const handleSubmit = async () => {
@@ -72,7 +78,7 @@ export function RatingSection({ appId }: { appId: string }) {
           setUserRating(0);
         }
         setIsEditing(false);
-        fetchRatings();
+        void fetchRatings();
       }
     } catch (err) {
       console.error(err);
@@ -87,7 +93,7 @@ export function RatingSection({ appId }: { appId: string }) {
         method: 'DELETE'
       });
       if (res.ok) {
-        fetchRatings();
+        void fetchRatings();
         // Clear form if we deleted our own rating
         const deletedRating = ratings.find(r => r.id === ratingId);
         if (deletedRating?.userId === user?.id) {

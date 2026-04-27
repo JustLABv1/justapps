@@ -56,7 +56,15 @@ export default function TokensPage() {
     }
   };
 
-  useEffect(() => { loadTokens(); }, []);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadTokens();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const handleDelete = async () => {
     if (!deleteId) return;

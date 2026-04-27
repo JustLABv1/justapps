@@ -5,13 +5,13 @@ import { useFavorites } from "@/context/FavoritesContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
-import { RecentApp, getRecentlyViewed } from "@/lib/recentlyViewed";
+import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Input, Pagination, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
 import { AppCardSkeleton } from "./AppCardSkeleton";
 
@@ -30,38 +30,38 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const selectedStatus = searchParams.get('status');
   const selectedType = searchParams.get('type');
   const selectedGroup = searchParams.get('group');
+  const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedGroup);
+  const paginationKey = [
+    searchQuery,
+    selectedCategory ?? '',
+    selectedStatus ?? '',
+    selectedType ?? '',
+    selectedGroup ?? '',
+  ].join('|');
 
-  const [inputValue, setInputValue] = useState(searchQuery);
   const [showFilters, setShowFilters] = useState(false);
-  const [serverResults, setServerResults] = useState<AppConfig[] | null>(null);
-  const [serverLoading, setServerLoading] = useState(false);
+  const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[] } | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [recentApps, setRecentApps] = useState<RecentApp[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ key: paginationKey, page: 1 });
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
-
-  // Load recently viewed on mount (client-only)
-  useEffect(() => {
-    setRecentApps(getRecentlyViewed());
-  }, []);
-
-  // Keep input in sync if URL changes externally (e.g. global search, back button)
-  // Idempotent check prevents looping when we ourselves triggered the URL update.
-  useEffect(() => {
-    const urlQ = searchParams.get('q') ?? '';
-    setInputValue((prev) => (prev !== urlQ ? urlQ : prev));
-  }, [searchParams]);
+  const recentApps = useSyncExternalStore(subscribeToRecentlyViewed, getRecentlyViewed, () => emptyRecentlyViewed);
+  const currentPage = pagination.key === paginationKey ? pagination.page : 1;
+  const serverFilterKey = useMemo(() => JSON.stringify({
+    q: searchQuery,
+    category: selectedCategory,
+    status: selectedStatus,
+    group: selectedGroup,
+  }), [searchQuery, selectedCategory, selectedStatus, selectedGroup]);
+  const serverResults = hasServerFilter && serverResponse?.key === serverFilterKey
+    ? serverResponse.apps
+    : null;
+  const serverLoading = hasServerFilter && serverResponse?.key !== serverFilterKey;
 
   // Server-side filtering: debounce 300ms, fire when any server-filterable param changes
   useEffect(() => {
-    const hasServerFilter = searchQuery || selectedCategory || selectedStatus || selectedGroup;
-    if (!hasServerFilter) {
-      setServerResults(null);
-      setServerLoading(false);
-      return;
-    }
-    setServerLoading(true);
+    if (!hasServerFilter) return;
+
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams();
@@ -72,14 +72,15 @@ export function AppGrid({ initialApps }: AppGridProps) {
         const res = await fetchApi(`/apps?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
-          setServerResults(Array.isArray(data) ? data : []);
+          setServerResponse({
+            key: serverFilterKey,
+            apps: Array.isArray(data) ? data : [],
+          });
         }
-      } catch { /* silent */ } finally {
-        setServerLoading(false);
-      }
+      } catch { /* silent */ }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedCategory, selectedStatus, selectedGroup]);
+  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedGroup, serverFilterKey]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -91,6 +92,19 @@ export function AppGrid({ initialApps }: AppGridProps) {
     const qs = params.toString();
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   }, [router, searchParams]);
+  const setCurrentPage = useCallback((nextPage: number | ((page: number) => number)) => {
+    setPagination((previous) => {
+      const previousPage = previous.key === paginationKey ? previous.page : 1;
+      const resolvedPage = typeof nextPage === 'function'
+        ? nextPage(previousPage)
+        : nextPage;
+
+      return {
+        key: paginationKey,
+        page: resolvedPage,
+      };
+    });
+  }, [paginationKey]);
 
   const setSelectedCategory = useCallback((v: string | null) => updateParam('category', v), [updateParam]);
   const setSelectedStatus = useCallback((v: string | null) => updateParam('status', v), [updateParam]);
@@ -117,7 +131,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   }, [initialApps]);
 
   // Source: server results when searching, otherwise all apps
-  const sourceApps = serverResults ?? initialApps;
+  const sourceApps = hasServerFilter ? (serverResults ?? initialApps) : initialApps;
 
   const filteredApps = useMemo(() => {
     const query = searchQuery.toLowerCase();
@@ -145,11 +159,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
-  // Reset to first page whenever filters/search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly]);
-
   const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || showFavoritesOnly;
 
   const hasReuseApps = useMemo(() => initialApps.some(app => app.isReuse), [initialApps]);
@@ -170,7 +179,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const quickStatuses = statuses.slice(0, 4);
 
   const clearAllFilters = () => {
-    setInputValue('');
     setShowFavoritesOnly(false);
     router.replace('/', { scroll: false });
   };
@@ -182,7 +190,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       filters.push({
         key: 'search',
         label: `Suche: ${searchQuery}`,
-        clear: () => { setInputValue(''); commitSearch(''); },
+        clear: () => commitSearch(''),
       });
     }
 
@@ -255,7 +263,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-2xl">
-            <TextField value={inputValue} onChange={(v) => { setInputValue(v); commitSearch(v); }} className="w-full">
+            <TextField value={searchQuery} onChange={commitSearch} className="w-full">
               <Input
                 placeholder="Apps suchen..."
                 className="w-full bg-field-background h-11 rounded-xl pl-10"
