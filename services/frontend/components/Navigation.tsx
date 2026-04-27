@@ -11,14 +11,14 @@ import {
 } from "@heroui/react";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
-import Image from "next/image";
+
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { adminNavLinks } from "../lib/admin-navigation";
 import { fetchApi } from "../lib/api";
-import JustLABLogo from '../public/justlab_logo_compact.png';
+import { JustAppsLogo } from "./JustAppsLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
@@ -130,13 +130,7 @@ export function Navigation() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={resolvedLogoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
             ) : (
-              <Image
-                src={isDark ? JustLABLogo : JustLABLogo}
-                alt="Logo"
-                width={24}
-                height={24}
-                className="rounded-sm"
-              />
+              <JustAppsLogo className="w-6 h-6" />
             )}
             <span className="text-[9px] font-bold tracking-[0.2em]">{storeName}</span>
           </div>
