@@ -63,7 +63,16 @@ function AppsContent() {
     }
   };
 
-  useEffect(() => { loadApps(); loadUsers(); }, []);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadApps();
+      void loadUsers();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const handleCreateApp = () => {
     router.push('/verwaltung/apps/new');

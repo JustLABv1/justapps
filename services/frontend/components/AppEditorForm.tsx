@@ -13,40 +13,40 @@ import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus'
 import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField, toast
+  Button,
+  Chip,
+  Input,
+  Label,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField, toast
 } from '@heroui/react';
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    CloudDownload,
-    ExternalLink,
-    GitBranch,
-    Github,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Tag,
-    Terminal,
-    Upload,
-    X,
+  AlertTriangle,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CloudDownload,
+  ExternalLink,
+  GitBranch,
+  Github,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Tag,
+  Terminal,
+  Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -89,14 +89,16 @@ const defaultGitLabFormState: GitLabFormState = {
 
 function normalizeGitLabFormState(integration: GitLabIntegrationState | null): GitLabFormState {
   const fallbackProviderKey = integration?.availableProviders?.[0]?.key || '';
+  const providerKey = integration?.providerKey || fallbackProviderKey;
+  const selectedProvider = integration?.availableProviders?.find((provider) => provider.key === providerKey);
 
   return {
-    providerKey: integration?.providerKey || fallbackProviderKey,
+    providerKey,
     projectPath: integration?.projectPath || '',
     branch: integration?.branch || '',
-    readmePath: integration?.readmePath || '',
-    helmValuesPath: integration?.helmValuesPath || '',
-    composeFilePath: integration?.composeFilePath || '',
+    readmePath: integration?.readmePath || selectedProvider?.defaultReadmePath || '',
+    helmValuesPath: integration?.helmValuesPath || selectedProvider?.defaultHelmValuesPath || '',
+    composeFilePath: integration?.composeFilePath || selectedProvider?.defaultComposeFilePath || '',
   };
 }
 
@@ -197,7 +199,6 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
   const [gitLabError, setGitLabError] = useState<string | null>(null);
   const [creationProviders, setCreationProviders] = useState<GitLabProviderSummary[]>([]);
   const [preCreatedAppId, setPreCreatedAppId] = useState<string | null>(null);
-  const initialSnapshotRef = useRef('');
   const skipUnsavedWarningRef = useRef(false);
 
   // ── Auto-save state ──
@@ -265,13 +266,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     }, [isNew, currentCreateStep]);
 
     useEffect(() => {
-      if (isNew || !initialApp) {
-        setLoadingGitLab(false);
-        return;
-      }
+      if (isNew || !initialApp) return;
 
       let active = true;
-      setLoadingGitLab(true);
 
       fetchApi(`/apps/${initialApp.id}/gitlab`, { cache: 'no-store' })
         .then(async (response) => {
@@ -298,18 +295,6 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         active = false;
       };
     }, [initialApp, isNew]);
-
-    useEffect(() => {
-      const selectedProvider = gitLabIntegration?.availableProviders?.find((provider) => provider.key === gitLabForm.providerKey);
-      if (!selectedProvider) return;
-
-      setGitLabForm((prev) => ({
-        ...prev,
-        readmePath: prev.readmePath || selectedProvider.defaultReadmePath || '',
-        helmValuesPath: prev.helmValuesPath || selectedProvider.defaultHelmValuesPath || '',
-        composeFilePath: prev.composeFilePath || selectedProvider.defaultComposeFilePath || '',
-      }));
-    }, [gitLabForm.providerKey, gitLabIntegration?.availableProviders]);
 
   // ── Creation-wizard GitLab sync ──
   const handleCreationGitLabSync = async () => {
@@ -390,6 +375,20 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     (links || []).filter((l) => l.url?.trim()).map((l) => ({ label: l.label || 'Link', url: l.url! }));
 
   const getEffectiveAppId = () => initialApp?.id || preCreatedAppId || autoSaveAppIdRef.current || null;
+  const applyGitLabProviderSelection = (providerKey: string) => {
+    const availableProviders = gitLabIntegration?.availableProviders?.length
+      ? gitLabIntegration.availableProviders
+      : creationProviders;
+    const selectedProvider = availableProviders.find((provider) => provider.key === providerKey);
+
+    setGitLabForm((previous) => ({
+      ...previous,
+      providerKey,
+      readmePath: previous.readmePath || selectedProvider?.defaultReadmePath || '',
+      helmValuesPath: previous.helmValuesPath || selectedProvider?.defaultHelmValuesPath || '',
+      composeFilePath: previous.composeFilePath || selectedProvider?.defaultComposeFilePath || '',
+    }));
+  };
 
   const ensureEditableAppId = async () => {
     const existingAppId = getEffectiveAppId();
@@ -485,7 +484,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
               body: JSON.stringify(gitLabForm),
           }).catch(() => null);
         }
-        initialSnapshotRef.current = createSnapshot();
+        setInitialSnapshot(createSnapshot());
         skipUnsavedWarningRef.current = true;
         setSaveSuccess(true);
         toast.success(
@@ -583,7 +582,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     if (!response.ok) return;
     const data = await response.json() as AppConfig;
     setFormData(data);
-    initialSnapshotRef.current = buildSnapshot(data);
+    setInitialSnapshot(buildSnapshot(data));
   };
 
   const handleSaveGitLabLink = async () => {
@@ -958,7 +957,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         return [];
     }
   })();
-  const effectiveAppId = getEffectiveAppId();
+  const effectiveAppId = initialApp?.id || preCreatedAppId || null;
 
   const buildSnapshot = (nextFormData: Partial<AppConfig>) => JSON.stringify({
     appGroupIds: Array.from(appGroupIds).sort(),
@@ -976,13 +975,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
   });
 
   const createSnapshot = () => buildSnapshot(formData);
+  const [initialSnapshot, setInitialSnapshot] = useState(() => buildSnapshot(formData));
 
-  const hasUnsavedChanges = createSnapshot() !== initialSnapshotRef.current;
-
-  useEffect(() => {
-    initialSnapshotRef.current = createSnapshot();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const hasUnsavedChanges = createSnapshot() !== initialSnapshot;
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -1504,7 +1499,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                     {creationProviders.length > 0 ? (
                       <select
                         value={gitLabForm.providerKey}
-                        onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
+                        onChange={(e) => applyGitLabProviderSelection(e.target.value)}
                         className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
                       >
                         <option value="">— Provider wählen —</option>
@@ -1517,7 +1512,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                     ) : (
                       <input
                         value={gitLabForm.providerKey}
-                        onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
+                        onChange={(e) => applyGitLabProviderSelection(e.target.value)}
                         placeholder="Provider-Schlüssel, z. B. gitlab"
                         className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
                       />
