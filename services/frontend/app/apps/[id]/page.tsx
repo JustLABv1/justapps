@@ -15,21 +15,21 @@ import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  ExternalLink,
-  GitBranch,
-  History,
-  Layers,
-  LayoutDashboard,
-  Link2,
-  Loader2,
-  Pencil,
-  Scale,
-  Server,
-  Share2,
-  Star
+    BookOpen,
+    Check,
+    ChevronLeft,
+    ExternalLink,
+    GitBranch,
+    History,
+    Layers,
+    LayoutDashboard,
+    Link2,
+    Loader2,
+    Pencil,
+    Scale,
+    Server,
+    Share2,
+    Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -96,7 +96,7 @@ export default function AppPage() {
       try {
         const [appResponse, gitLabResponse] = await Promise.all([
           fetchApi(`/apps/${id}`, { cache: 'no-store' }),
-          fetchApi(`/apps/${id}/gitlab`, { cache: 'no-store' }),
+          fetchApi(`/apps/${id}/repository`, { cache: 'no-store' }),
         ]);
 
         if (appResponse.ok) {
@@ -143,18 +143,20 @@ export default function AppPage() {
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
   const statusInfo = getAppStatusMeta(app.status);
   const appIconSrc = getImageAssetUrl(app.icon);
+  const providerStatusLabel = gitLabIntegration?.providerLabel
+    || (gitLabIntegration?.providerType === 'github' ? 'GitHub' : gitLabIntegration?.providerType === 'gitlab' ? 'GitLab' : 'Repository');
   const gitLabStatus = (() => {
     switch (gitLabIntegration?.lastSyncStatus) {
       case 'success':
-        return { label: 'GitLab synchronisiert', color: 'accent' as const };
+        return { label: `${providerStatusLabel} synchronisiert`, color: 'accent' as const };
       case 'warning':
-        return { label: 'GitLab mit Hinweisen', color: 'warning' as const };
+        return { label: `${providerStatusLabel} mit Hinweisen`, color: 'warning' as const };
       case 'pending_approval':
-        return { label: 'GitLab wartet auf Freigabe', color: 'warning' as const };
+        return { label: `${providerStatusLabel} wartet auf Freigabe`, color: 'warning' as const };
       case 'error':
-        return { label: 'GitLab Fehler', color: 'danger' as const };
+        return { label: `${providerStatusLabel} Fehler`, color: 'danger' as const };
       default:
-        return gitLabIntegration?.linked ? { label: 'GitLab verknüpft', color: 'accent' as const } : null;
+        return gitLabIntegration?.linked ? { label: `${providerStatusLabel} verknüpft`, color: 'accent' as const } : null;
     }
   })();
   const repositories = app.repositories && app.repositories.length > 0
@@ -376,7 +378,7 @@ export default function AppPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
                   <GitBranch className="w-4 h-4" />
-                  {gitLabIntegration?.providerLabel || 'GitLab'}
+                  {gitLabIntegration?.providerLabel || providerStatusLabel}
                 </Link>
               )}
               {customLinks.map((customLink, idx) => (

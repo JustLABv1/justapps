@@ -25,17 +25,22 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		effectiveLink.ComposeFilePath = provider.DefaultComposeFilePath
 	}
 
-	result, err := NewClient(config.GitLabProviderConf{
+	syncer := NewSyncer(config.RepositoryProviderConf{
 		Key:                provider.Key,
+		Type:               provider.Type,
 		Label:              provider.Label,
 		BaseURL:            provider.BaseURL,
 		Token:              provider.Token,
 		Enabled:            provider.Enabled,
 		NamespaceAllowlist: provider.NamespaceAllowlist,
 		TimeoutSeconds:     provider.TimeoutSeconds,
-	}).Sync(effectiveLink)
+	})
+	result, err := syncer.Sync(effectiveLink)
 
 	now := time.Now().UTC()
+	if provider.Type != "" {
+		link.ProviderType = provider.Type
+	}
 	link.ProjectID = result.ProjectID
 	link.ProjectWebURL = result.ProjectWebURL
 	link.LastSyncedAt = now
@@ -47,7 +52,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		_, updateErr := db.NewUpdate().
 			Model(link).
 			Where("app_id = ?", link.AppID).
-			Column("project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "updated_at").
+			Column("provider_type", "project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "updated_at").
 			Exec(ctx)
 		if updateErr != nil {
 			return updateErr
@@ -62,7 +67,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		_, err = db.NewUpdate().
 			Model(link).
 			Where("app_id = ?", link.AppID).
-			Column("project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "pending_snapshot", "updated_at").
+			Column("provider_type", "project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "pending_snapshot", "updated_at").
 			Exec(ctx)
 		return err
 	}
@@ -94,7 +99,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		_, err := tx.NewUpdate().
 			Model(link).
 			Where("app_id = ?", link.AppID).
-			Column("project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "snapshot", "pending_snapshot", "approval_required", "last_applied_at", "last_manual_change_at", "updated_at").
+			Column("provider_type", "project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "snapshot", "pending_snapshot", "approval_required", "last_applied_at", "last_manual_change_at", "updated_at").
 			Exec(ctx)
 		return err
 	})

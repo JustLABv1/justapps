@@ -13,39 +13,39 @@ import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus'
 import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Chip,
-  Input,
-  Label,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField, toast
+    Button,
+    Chip,
+    Input,
+    Label,
+    Switch,
+    Tabs,
+    TextArea,
+    TextField, toast
 } from '@heroui/react';
 import {
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  CloudDownload,
-  ExternalLink,
-  GitBranch,
-  Info,
-  Layers,
-  Link2,
-  Loader2,
-  Pencil,
-  Plus,
-  Save,
-  Scale,
-  Server,
-  Share2,
-  Star,
-  Tag,
-  Terminal,
-  Upload,
-  X,
+    BookOpen,
+    Check,
+    CheckCircle2,
+    ChevronLeft,
+    ChevronRight,
+    CloudDownload,
+    ExternalLink,
+    GitBranch,
+    Info,
+    Layers,
+    Link2,
+    Loader2,
+    Pencil,
+    Plus,
+    Save,
+    Scale,
+    Server,
+    Share2,
+    Star,
+    Tag,
+    Terminal,
+    Upload,
+    X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -259,7 +259,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
     useEffect(() => {
       if (!isNew || currentCreateStep !== 2) return;
-      fetchApi('/settings/gitlab/providers/available')
+      fetchApi('/settings/repository-providers/available')
         .then((res) => res.ok ? res.json() : [])
         .then((data) => setCreationProviders(Array.isArray(data) ? data : []))
         .catch(() => {});
@@ -275,7 +275,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
           if (!active) return;
           if (!response.ok) {
             const error = await response.json().catch(() => ({}));
-            throw new Error((error as { message?: string }).message || 'GitLab-Daten konnten nicht geladen werden.');
+            throw new Error((error as { message?: string }).message || 'Repository-Daten konnten nicht geladen werden.');
           }
 
           const data = await response.json() as GitLabIntegrationState;
@@ -285,7 +285,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         })
         .catch((error) => {
           if (!active) return;
-          setGitLabError(error instanceof Error ? error.message : 'GitLab-Daten konnten nicht geladen werden.');
+          setGitLabError(error instanceof Error ? error.message : 'Repository-Daten konnten nicht geladen werden.');
         })
         .finally(() => {
           if (active) setLoadingGitLab(false);
@@ -304,19 +304,19 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     try {
       const appId = await ensureEditableAppId();
       // Link GitLab
-      const linkRes = await fetchApi(`/apps/${appId}/gitlab`, {
+      const linkRes = await fetchApi(`/apps/${appId}/repository`, {
         method: 'PUT',
         body: JSON.stringify(gitLabForm),
       });
       if (!linkRes.ok) {
         const err = await linkRes.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht gespeichert werden.');
+        throw new Error((err as { message?: string }).message || 'Repository-Verknüpfung konnte nicht gespeichert werden.');
       }
       // Sync
-      const syncRes = await fetchApi(`/apps/${appId}/gitlab/sync`, { method: 'POST' });
+      const syncRes = await fetchApi(`/apps/${appId}/repository/sync`, { method: 'POST' });
       if (!syncRes.ok) {
         const err = await syncRes.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message || 'GitLab-Synchronisation fehlgeschlagen.');
+        throw new Error((err as { message?: string }).message || 'Repository-Synchronisation fehlgeschlagen.');
       }
       const integration = await syncRes.json() as GitLabIntegrationState;
       setGitLabIntegration(integration);
@@ -343,7 +343,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
           const repos = [...(prev.repositories || [])];
           if (snapshot.projectWebUrl && !repos.some((r) => r.url === snapshot.projectWebUrl)) {
-            repos.push({ label: 'GitLab', url: snapshot.projectWebUrl });
+            repos.push({ label: 'Repository', url: snapshot.projectWebUrl });
           }
           next.repositories = repos;
 
@@ -360,9 +360,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         });
       }
 
-      toast.success('GitLab synchronisiert – Daten wurden übernommen.');
+      toast.success('Repository synchronisiert – Daten wurden übernommen.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitLab-Synchronisation fehlgeschlagen.';
+      const message = error instanceof Error ? error.message : 'Repository-Synchronisation fehlgeschlagen.';
       setGitLabError(message);
       toast.danger(message);
     } finally {
@@ -479,7 +479,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         }
 
         if (isNew && savedAppId && gitLabForm.providerKey?.trim() && gitLabForm.projectPath?.trim()) {
-          await fetchApi(`/apps/${savedAppId}/gitlab`, {
+          await fetchApi(`/apps/${savedAppId}/repository`, {
               method: 'PUT',
               body: JSON.stringify(gitLabForm),
           }).catch(() => null);
@@ -597,15 +597,15 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error((data as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht gespeichert werden.');
+        throw new Error((data as { message?: string }).message || 'Repository-Verknüpfung konnte nicht gespeichert werden.');
       }
 
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
-      toast.success('GitLab-Verknüpfung gespeichert.');
+      toast.success('Repository-Verknüpfung gespeichert.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitLab-Verknüpfung konnte nicht gespeichert werden.';
+      const message = error instanceof Error ? error.message : 'Repository-Verknüpfung konnte nicht gespeichert werden.';
       setGitLabError(message);
       toast.danger(message);
     } finally {
@@ -624,20 +624,20 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error((data as { message?: string }).message || 'GitLab-Synchronisation fehlgeschlagen.');
+        throw new Error((data as { message?: string }).message || 'Repository-Synchronisation fehlgeschlagen.');
       }
 
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
       if (integration.approvalRequired) {
-        toast.success('GitLab-Sync erzeugt eine freizugebende Änderung.');
+        toast.success('Repository-Sync erzeugt eine freizugebende Änderung.');
       } else {
         await reloadCurrentApp();
-        toast.success(integration.lastSyncStatus === 'warning' ? 'GitLab synchronisiert, aber mit Hinweisen.' : 'GitLab erfolgreich synchronisiert.');
+        toast.success(integration.lastSyncStatus === 'warning' ? 'Repository synchronisiert, aber mit Hinweisen.' : 'Repository erfolgreich synchronisiert.');
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitLab-Synchronisation fehlgeschlagen.';
+      const message = error instanceof Error ? error.message : 'Repository-Synchronisation fehlgeschlagen.';
       setGitLabError(message);
       toast.danger(message);
     } finally {
@@ -656,15 +656,15 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error((data as { message?: string }).message || 'GitLab-Verknüpfung konnte nicht entfernt werden.');
+        throw new Error((data as { message?: string }).message || 'Repository-Verknüpfung konnte nicht entfernt werden.');
       }
 
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
-      toast.success('GitLab-Verknüpfung entfernt.');
+      toast.success('Repository-Verknüpfung entfernt.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitLab-Verknüpfung konnte nicht entfernt werden.';
+      const message = error instanceof Error ? error.message : 'Repository-Verknüpfung konnte nicht entfernt werden.';
       setGitLabError(message);
       toast.danger(message);
     } finally {
@@ -683,16 +683,16 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error((data as { message?: string }).message || 'GitLab-Änderung konnte nicht freigegeben werden.');
+        throw new Error((data as { message?: string }).message || 'Repository-Änderung konnte nicht freigegeben werden.');
       }
 
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
       await reloadCurrentApp();
-      toast.success('GitLab-Änderung wurde freigegeben und übernommen.');
+      toast.success('Repository-Änderung wurde freigegeben und übernommen.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitLab-Änderung konnte nicht freigegeben werden.';
+      const message = error instanceof Error ? error.message : 'Repository-Änderung konnte nicht freigegeben werden.';
       setGitLabError(message);
       toast.danger(message);
     } finally {
@@ -715,7 +715,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     setFormData((prev) => {
       const nextRepositories = [...(prev.repositories || [])];
       if (snapshot.projectWebUrl && !nextRepositories.some((link) => link.url === snapshot.projectWebUrl)) {
-        nextRepositories.push({ label: 'GitLab', url: snapshot.projectWebUrl });
+        nextRepositories.push({ label: 'Repository', url: snapshot.projectWebUrl });
       }
 
       const topicSet = new Set([...(prev.tags || [])]);
@@ -732,7 +732,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
       };
     });
 
-    toast.success('GitLab-Metadaten in den Editor übernommen.');
+    toast.success('Repository-Metadaten in den Editor übernommen.');
   };
 
   const handleApplyGitLabDeployment = () => {
@@ -747,7 +747,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
       customComposeCommand: snapshot.composeFileContent?.trim() || prev.customComposeCommand,
     }));
 
-    toast.success('GitLab-Deploymentdaten in den Editor übernommen.');
+    toast.success('Repository-Deploymentdaten in den Editor übernommen.');
   };
 
   const filteredRelatable = existingApps.filter(
@@ -795,7 +795,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     {
       id: 'gitlab',
       phase: 'Erweiterte Angaben',
-      label: 'GitLab-Import',
+      label: 'Repository-Import',
       hint: 'Repository verknüpfen und Daten importieren',
       icon: <GitBranch className="w-4 h-4" />,
     },
@@ -925,7 +925,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         ];
       case 2:
         return [
-          { label: 'GitLab-Provider gewählt (optional)', done: !!gitLabForm.providerKey?.trim() },
+          { label: 'Provider gewählt (optional)', done: !!gitLabForm.providerKey?.trim() },
           { label: 'Projektpfad eingetragen (optional)', done: !!gitLabForm.projectPath?.trim() },
           { label: 'Wird nach Speichern verknüpft', done: !!gitLabForm.projectPath?.trim() },
         ];
@@ -1111,7 +1111,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
           <section className="mt-4 rounded-[1.5rem] border border-accent/20 bg-accent/5 px-5 py-4 shadow-sm md:px-6">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-accent/80">Kopie vorbereitet</p>
             <p className="mt-2 text-sm text-foreground">
-              Die Vorlage <span className="font-semibold">{copySource.name}</span> wurde als neuer Entwurf übernommen. Beziehungen, GitLab-Verknüpfungen und Systemmetadaten werden nicht mitkopiert.
+              Die Vorlage <span className="font-semibold">{copySource.name}</span> wurde als neuer Entwurf übernommen. Beziehungen, Repository-Verknüpfungen und Systemmetadaten werden nicht mitkopiert.
             </p>
           </section>
         )}
@@ -1487,15 +1487,15 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
             {currentCreateStep === 2 && (
               <div className="space-y-6">
                 <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
-                  <p className="text-sm font-semibold text-foreground">GitLab-Repository verknüpfen</p>
+                  <p className="text-sm font-semibold text-foreground">Repository verknüpfen</p>
                   <p className="mt-1 text-xs text-muted">
-                    Optional: Verknüpfen Sie die App mit einem GitLab-Repository. README, Metadaten und Deployment-Dateien können direkt hier importiert werden, bevor Sie die nächsten Schritte ausfüllen.
+                    Optional: Verknüpfen Sie die App mit einem Repository. README, Metadaten und Deployment-Dateien können direkt hier importiert werden, bevor Sie die nächsten Schritte ausfüllen.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">GitLab-Provider</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Provider</label>
                     {creationProviders.length > 0 ? (
                       <select
                         value={gitLabForm.providerKey}
@@ -1513,7 +1513,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                       <input
                         value={gitLabForm.providerKey}
                         onChange={(e) => applyGitLabProviderSelection(e.target.value)}
-                        placeholder="Provider-Schlüssel, z. B. gitlab"
+                        placeholder="Provider-Schlüssel, z. B. github-com"
                         className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
                       />
                     )}
@@ -1523,7 +1523,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                     <input
                       value={gitLabForm.projectPath}
                       onChange={(e) => setGitLabForm((p) => ({ ...p, projectPath: e.target.value }))}
-                      placeholder="gruppe/projekt"
+                      placeholder="gruppe/projekt oder owner/repo"
                       className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
                     />
                   </div>
@@ -1686,7 +1686,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                           <Server className="w-4 h-4 text-accent" /> Helm
                           {gitLabSnapshot?.helmValuesContent?.trim() && (
                             <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                              <GitBranch className="h-3 w-3" /> via GitLab
+                              <GitBranch className="h-3 w-3" /> via Repository
                             </span>
                           )}
                         </div>
@@ -1719,7 +1719,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                           <Terminal className="w-4 h-4 text-accent" /> Docker Compose
                           {gitLabSnapshot?.composeFileContent?.trim() && (
                             <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                              <GitBranch className="h-3 w-3" /> via GitLab
+                              <GitBranch className="h-3 w-3" /> via Repository
                             </span>
                           )}
                         </div>
@@ -2015,7 +2015,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                     <p className="text-sm font-semibold text-foreground">Markdown für die Detailansicht</p>
                     {gitLabSnapshot?.readmeContent?.trim() && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                        <GitBranch className="h-3 w-3" /> via GitLab
+                        <GitBranch className="h-3 w-3" /> via Repository
                       </span>
                     )}
                   </div>
@@ -2991,7 +2991,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
             </Tabs.Tab>
             <Tabs.Tab id="gitlab" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
               <GitBranch className="w-4 h-4" />
-              GitLab
+              Repository
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">

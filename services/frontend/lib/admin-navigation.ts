@@ -13,7 +13,7 @@ export const adminNavLinks: AdminNavLink[] = [
   { href: '/verwaltung', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/verwaltung/backups', label: 'Backups', icon: Archive, exact: false },
   { href: '/verwaltung/apps', label: 'Apps', icon: Layers, exact: false },
-  { href: '/verwaltung/gitlab', label: 'GitLab Sync', icon: GitBranch, exact: false },
+  { href: '/verwaltung/repository-sync', label: 'Repository Sync', icon: GitBranch, exact: false },
   { href: '/verwaltung/gruppen', label: 'Gruppen', icon: Layers2, exact: false },
   { href: '/verwaltung/benutzer', label: 'Benutzer', icon: Users, exact: false },
   { href: '/verwaltung/audit', label: 'Audit', icon: Activity, exact: false },

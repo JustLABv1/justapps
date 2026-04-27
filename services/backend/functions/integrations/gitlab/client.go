@@ -32,7 +32,7 @@ func (e *APIError) Error() string {
 }
 
 type Client struct {
-	provider config.GitLabProviderConf
+	provider config.RepositoryProviderConf
 	http     *http.Client
 }
 
@@ -64,48 +64,7 @@ type treeEntry struct {
 	Type string `json:"type"`
 }
 
-func BuildProviderSummaries(conf *config.RestfulConf) []models.GitLabProviderSummary {
-	if conf == nil {
-		return []models.GitLabProviderSummary{}
-	}
-	providers := make([]models.GitLabProviderSummary, 0, len(conf.GitLab.Providers))
-	for _, provider := range conf.GitLab.Providers {
-		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
-			continue
-		}
-		providers = append(providers, models.GitLabProviderSummary{
-			Key:     provider.Key,
-			Label:   providerLabel(provider),
-			BaseURL: normalizeBaseURL(provider.BaseURL),
-		})
-	}
-	return providers
-}
-
-func FindProvider(conf *config.RestfulConf, key string) (config.GitLabProviderConf, bool) {
-	if conf == nil {
-		return config.GitLabProviderConf{}, false
-	}
-	trimmedKey := strings.TrimSpace(key)
-	for _, provider := range conf.GitLab.Providers {
-		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(provider.Key), trimmedKey) {
-			provider.BaseURL = normalizeBaseURL(provider.BaseURL)
-			if provider.TimeoutSeconds <= 0 {
-				provider.TimeoutSeconds = 15
-			}
-			if provider.Label == "" {
-				provider.Label = provider.Key
-			}
-			return provider, true
-		}
-	}
-	return config.GitLabProviderConf{}, false
-}
-
-func IsProjectAllowed(provider config.GitLabProviderConf, projectPath string) bool {
+func IsProjectAllowed(provider config.RepositoryProviderConf, projectPath string) bool {
 	if len(provider.NamespaceAllowlist) == 0 {
 		return true
 	}
@@ -126,7 +85,7 @@ func NormalizeProjectPath(projectPath string) string {
 	return strings.Trim(strings.TrimSpace(projectPath), "/")
 }
 
-func providerLabel(provider config.GitLabProviderConf) string {
+func providerLabel(provider config.RepositoryProviderConf) string {
 	if strings.TrimSpace(provider.Label) != "" {
 		return provider.Label
 	}
@@ -141,7 +100,7 @@ func normalizeBaseURL(baseURL string) string {
 	return strings.TrimRight(trimmed, "/")
 }
 
-func NewClient(provider config.GitLabProviderConf) *Client {
+func NewClient(provider config.RepositoryProviderConf) *Client {
 	provider.BaseURL = normalizeBaseURL(provider.BaseURL)
 	if provider.TimeoutSeconds <= 0 {
 		provider.TimeoutSeconds = 15

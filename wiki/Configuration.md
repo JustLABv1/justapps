@@ -21,6 +21,9 @@ oidc:
   issuer: https://your-keycloak/realms/your-realm
   client_id: justapps
   admin_group: admin
+
+repository_provider_encryption:
+  secret: replace-with-secure-random-string   # openssl rand -base64 32
 ```
 
 Point to a custom config file path with:
@@ -58,6 +61,7 @@ All `config.yaml` values can be overridden with environment variables using the 
 | `database.server` | `BACKEND_DATABASE_SERVER` |
 | `database.password` | `BACKEND_DATABASE_PASSWORD` |
 | `jwt.secret` | `BACKEND_JWT_SECRET` |
+| `repository_provider_encryption.secret` | `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` |
 | `oidc.enabled` | `BACKEND_OIDC_ENABLED` |
 | `oidc.issuer` | `BACKEND_OIDC_ISSUER` |
 | `oidc.client_id` | `BACKEND_OIDC_CLIENT_ID` |
@@ -65,40 +69,18 @@ All `config.yaml` values can be overridden with environment variables using the 
 
 ---
 
-## GitLab Integration (`config.yaml`)
+## Repository Provider Encryption (`config.yaml`)
 
 ```yaml
-gitlab:
-  providers:
-    - key: my-gitlab             # Unique identifier (used internally)
-      label: My GitLab           # Display name (defaults to key if omitted)
-      base_url: https://gitlab.example.com   # Defaults to https://gitlab.com
-      token: glpat-xxxx          # Personal / group / project access token (read_api scope)
-      enabled: true
-      namespace_allowlist:       # Optional — restrict sync to these namespaces/groups
-        - my-org
-        - another-group
-      timeout_seconds: 15        # HTTP timeout for GitLab API calls (default: 15)
+repository_provider_encryption:
+  secret: replace-with-secure-random-string
 ```
 
-Multiple providers are supported:
+This secret is required at startup and is used to encrypt repository provider tokens stored in the database.
 
-```yaml
-gitlab:
-  providers:
-    - key: internal
-      label: Internal GitLab
-      base_url: https://gitlab.internal.example.com
-      token: glpat-internal-token
-      enabled: true
-    - key: public
-      label: GitLab.com
-      base_url: https://gitlab.com
-      token: glpat-public-token
-      enabled: false
-```
+Repository providers themselves are created and maintained in the admin UI under **Verwaltung → Einstellungen → Repository-Provider**.
 
-> **Secret handling:** Avoid committing tokens to source control. Use the `BACKEND_GITLAB_PROVIDERS` environment variable or inject via Kubernetes Secrets / Vault.
+> **Secret handling:** Avoid committing the encryption secret or provider tokens to source control. Keep the secret in your runtime environment or a secret manager.
 
 ---
 

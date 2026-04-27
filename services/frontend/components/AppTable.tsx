@@ -285,7 +285,7 @@ export function AppTable({
               <Table.Column isRowHeader>App</Table.Column>
               <Table.Column>Kategorien</Table.Column>
               <Table.Column>Status</Table.Column>
-              <Table.Column>GitLab Sync</Table.Column>
+              <Table.Column>Repository Sync</Table.Column>
               <Table.Column>Lösung</Table.Column>
               <Table.Column>Besitzer</Table.Column>
               <Table.Column className="text-right">Aktionen</Table.Column>
@@ -365,7 +365,7 @@ export function AppTable({
                     </div>
                   </Table.Cell>
 
-                  {/* GitLab Sync */}
+                  {/* Repository Sync */}
                   <Table.Cell>
                     {app.gitLabSync?.linked ? (
                       <div className="flex flex-col gap-2">

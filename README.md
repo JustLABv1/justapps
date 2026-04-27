@@ -13,7 +13,7 @@ A self-hosted application store for teams and organizations. Centrally manage, d
 - **Deployment-ready** — built-in Docker, Docker Compose, and Helm chart deployment instructions per app
 - **Admin interface** — manage users, apps, platform branding, and settings
 - **OIDC authentication** — Keycloak integration with local username/password fallback
-- **GitLab integration** — sync app metadata from GitLab projects automatically
+- **Repository sync** — sync app metadata from GitLab and GitHub (including self-hosted/GitHub Enterprise) projects automatically
 
 ## Tech Stack
 
@@ -57,7 +57,7 @@ Full documentation is in the [project wiki](https://github.com/JustLABv1/justapp
 | [Kubernetes / Helm](https://github.com/JustLABv1/justapps/wiki/Kubernetes) | Helm chart deployment |
 | [API Reference](https://github.com/JustLABv1/justapps/wiki/API-Reference) | REST API endpoints |
 | [Architecture](https://github.com/JustLABv1/justapps/wiki/Architecture) | System overview and data flow |
-| [GitLab Integration](https://github.com/JustLABv1/justapps/wiki/GitLab-Integration) | Sync apps from GitLab |
+| [Repository Sync](https://github.com/JustLABv1/justapps/wiki/Repository-Sync) | Sync apps from GitLab and GitHub |
 | [Admin Guide](https://github.com/JustLABv1/justapps/wiki/Admin-Guide) | Manage users and platform settings |
 | [Contributing](https://github.com/JustLABv1/justapps/wiki/Contributing) | Branching, commit style, PR workflow |
 

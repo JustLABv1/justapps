@@ -18,5 +18,5 @@ oidc:
   disable_local_auth: false
   disable_registration: false
 
-gitlab:
-  providers: []
+repository_provider_encryption:
+  secret: replace-with-secure-random-string

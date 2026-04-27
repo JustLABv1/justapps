@@ -30,6 +30,7 @@ type GitLabAppLink struct {
 	bun.BaseModel `bun:"table:gitlab_app_links,alias:gal"`
 
 	AppID              string             `bun:"app_id,pk" json:"appId"`
+	ProviderType       string             `bun:"provider_type,notnull,default:'gitlab'" json:"providerType"`
 	ProviderKey        string             `bun:"provider_key,notnull" json:"providerKey"`
 	ProjectID          int64              `bun:"project_id,notnull,default:0" json:"projectId"`
 	ProjectPath        string             `bun:"project_path,notnull" json:"projectPath"`
@@ -54,8 +55,13 @@ type GitLabProviderSettings struct {
 	bun.BaseModel `bun:"table:gitlab_provider_settings,alias:gps"`
 
 	ProviderKey            string    `bun:"provider_key,pk" json:"providerKey"`
+	ProviderType           string    `bun:"provider_type,notnull,default:'gitlab'" json:"providerType"`
 	Label                  string    `bun:"label" json:"label"`
 	BaseURL                string    `bun:"base_url" json:"baseUrl"`
+	EncryptedToken         string    `bun:"encrypted_token,notnull,default:''" json:"encryptedToken,omitempty"`
+	TokenNonce             string    `bun:"token_nonce,notnull,default:''" json:"tokenNonce,omitempty"`
+	TokenKeyVersion        string    `bun:"token_key_version,notnull,default:'v1'" json:"tokenKeyVersion,omitempty"`
+	TokenConfigured        bool      `bun:"token_configured,notnull,default:false" json:"tokenConfigured"`
 	NamespaceAllowlist     []string  `bun:"namespace_allowlist,type:jsonb,notnull,default:'[]'" json:"namespaceAllowlist"`
 	Enabled                bool      `bun:"enabled,notnull,default:true" json:"enabled"`
 	AutoSyncEnabled        bool      `bun:"auto_sync_enabled,notnull,default:true" json:"autoSyncEnabled"`
@@ -69,8 +75,10 @@ type GitLabProviderSettings struct {
 
 type GitLabProviderAdminResponse struct {
 	ProviderKey            string   `json:"providerKey"`
+	ProviderType           string   `json:"providerType"`
 	Label                  string   `json:"label"`
 	BaseURL                string   `json:"baseUrl"`
+	LinkedAppsCount        int      `json:"linkedAppsCount"`
 	NamespaceAllowlist     []string `json:"namespaceAllowlist"`
 	Enabled                bool     `json:"enabled"`
 	AutoSyncEnabled        bool     `json:"autoSyncEnabled"`
@@ -84,6 +92,7 @@ type GitLabProviderAdminResponse struct {
 
 type GitLabProviderSummary struct {
 	Key                    string   `json:"key"`
+	Type                   string   `json:"type"`
 	Label                  string   `json:"label"`
 	BaseURL                string   `json:"baseUrl"`
 	AutoSyncEnabled        bool     `json:"autoSyncEnabled"`
@@ -98,6 +107,7 @@ type GitLabIntegrationResponse struct {
 	Linked             bool                    `json:"linked"`
 	AvailableProviders []GitLabProviderSummary `json:"availableProviders"`
 	ProviderKey        string                  `json:"providerKey,omitempty"`
+	ProviderType       string                  `json:"providerType,omitempty"`
 	ProviderLabel      string                  `json:"providerLabel,omitempty"`
 	BaseURL            string                  `json:"baseUrl,omitempty"`
 	ProjectPath        string                  `json:"projectPath,omitempty"`
@@ -119,6 +129,7 @@ type GitLabIntegrationResponse struct {
 type GitLabSyncSummary struct {
 	Linked           bool       `json:"linked"`
 	ProviderKey      string     `json:"providerKey,omitempty"`
+	ProviderType     string     `json:"providerType,omitempty"`
 	ProjectPath      string     `json:"projectPath,omitempty"`
 	LastSyncStatus   string     `json:"lastSyncStatus,omitempty"`
 	LastSyncError    string     `json:"lastSyncError,omitempty"`

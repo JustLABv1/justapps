@@ -1,5 +1,7 @@
 # GitLab Integration
 
+> **Note:** Repository sync now supports both GitLab and GitHub (including GitHub Enterprise). See [Repository-Sync](Repository-Sync.md) for the up-to-date, provider-neutral documentation. This page is kept for historical reference.
+
 JustApps can connect to one or more GitLab instances and automatically sync project metadata into the app catalog. This keeps app listings up-to-date without manual editing.
 
 ---

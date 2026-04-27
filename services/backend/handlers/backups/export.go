@@ -35,8 +35,8 @@ var allSections = []string{
 	"appRelations",
 	"users",
 	"settings",
-	"gitLabProviders",
-	"gitLabAppLinks",
+	"repositoryProviders",
+	"repositoryAppLinks",
 	"tokens",
 	"favorites",
 	"ratings",
@@ -126,21 +126,21 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 				count = 1
 			}
 			appendSummary(&manifest, section, count)
-		case "gitLabProviders":
+		case "repositoryProviders":
 			providers, sectionErr := exportGitLabProviders(c, db)
 			if sectionErr != nil {
 				respondSectionError(c, section, sectionErr)
 				return
 			}
-			manifest.Data.GitLabProviders = providers
+			manifest.Data.RepositoryProviders = providers
 			appendSummary(&manifest, section, len(providers))
-		case "gitLabAppLinks":
+		case "repositoryAppLinks":
 			links, sectionErr := exportGitLabAppLinks(c, db)
 			if sectionErr != nil {
 				respondSectionError(c, section, sectionErr)
 				return
 			}
-			manifest.Data.GitLabAppLinks = links
+			manifest.Data.RepositoryAppLinks = links
 			appendSummary(&manifest, section, len(links))
 		case "tokens":
 			tokens, redacted, sectionErr := exportTokens(c, db, mode)

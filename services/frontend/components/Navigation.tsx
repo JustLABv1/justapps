@@ -64,7 +64,7 @@ export function Navigation() {
 
     let active = true;
 
-    fetchApi('/settings/gitlab/providers/available', { cache: 'no-store' })
+    fetchApi('/settings/repository-providers/available', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) {
           return [];
@@ -104,7 +104,7 @@ export function Navigation() {
   const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
   const isInVerwaltung = pathname.startsWith('/verwaltung');
-  const visibleAdminNavLinks = adminNavLinks.filter((link) => link.href !== '/verwaltung/gitlab' || hasGitLabProviders);
+  const visibleAdminNavLinks = adminNavLinks.filter((link) => link.href !== '/verwaltung/repository-sync' || hasGitLabProviders);
 
   const handleLogout = () => {
     logout();

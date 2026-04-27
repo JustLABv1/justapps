@@ -7,11 +7,13 @@ import (
 	"justapps-backend/config"
 	"justapps-backend/pkg/models"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 )
 
 type ProviderRuntime struct {
 	Key                    string
+	Type                   string
 	Label                  string
 	BaseURL                string
 	Token                  string
@@ -26,53 +28,17 @@ type ProviderRuntime struct {
 }
 
 func ListProviderRuntimes(ctx context.Context, db *bun.DB, conf *config.RestfulConf) ([]ProviderRuntime, error) {
-	providerSettings, err := loadProviderSettings(ctx, db)
+	providerRecords, err := loadProviderSettings(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	providers := make([]ProviderRuntime, 0, len(conf.GitLab.Providers))
-	for _, configuredProvider := range conf.GitLab.Providers {
-		key := strings.TrimSpace(configuredProvider.Key)
-		if key == "" || strings.TrimSpace(configuredProvider.Token) == "" {
+	providers := make([]ProviderRuntime, 0, len(providerRecords))
+	for _, providerRecord := range providerRecords {
+		provider, ok := buildProviderRuntime(conf, providerRecord)
+		if !ok {
 			continue
 		}
-
-		provider := ProviderRuntime{
-			Key:                 key,
-			Label:               providerLabel(configuredProvider),
-			BaseURL:             normalizeBaseURL(configuredProvider.BaseURL),
-			Token:               configuredProvider.Token,
-			Enabled:             configuredProvider.Enabled,
-			AutoSyncEnabled:     true,
-			SyncIntervalMinutes: 15,
-			NamespaceAllowlist:  append([]string{}, configuredProvider.NamespaceAllowlist...),
-			TimeoutSeconds:      configuredProvider.TimeoutSeconds,
-		}
-		if provider.TimeoutSeconds <= 0 {
-			provider.TimeoutSeconds = 15
-		}
-
-		if settings, ok := providerSettings[key]; ok {
-			if strings.TrimSpace(settings.Label) != "" {
-				provider.Label = strings.TrimSpace(settings.Label)
-			}
-			if strings.TrimSpace(settings.BaseURL) != "" {
-				provider.BaseURL = normalizeBaseURL(settings.BaseURL)
-			}
-			if len(settings.NamespaceAllowlist) > 0 {
-				provider.NamespaceAllowlist = append([]string{}, settings.NamespaceAllowlist...)
-			}
-			provider.Enabled = provider.Enabled && settings.Enabled
-			provider.AutoSyncEnabled = settings.AutoSyncEnabled
-			if settings.SyncIntervalMinutes > 0 {
-				provider.SyncIntervalMinutes = settings.SyncIntervalMinutes
-			}
-			provider.DefaultReadmePath = strings.TrimSpace(settings.DefaultReadmePath)
-			provider.DefaultHelmValuesPath = strings.TrimSpace(settings.DefaultHelmValuesPath)
-			provider.DefaultComposeFilePath = strings.TrimSpace(settings.DefaultComposeFilePath)
-		}
-
 		providers = append(providers, provider)
 	}
 
@@ -92,6 +58,7 @@ func ListProviderSummaries(ctx context.Context, db *bun.DB, conf *config.Restful
 		}
 		summaries = append(summaries, models.GitLabProviderSummary{
 			Key:                    provider.Key,
+			Type:                   provider.Type,
 			Label:                  provider.Label,
 			BaseURL:                provider.BaseURL,
 			AutoSyncEnabled:        provider.AutoSyncEnabled,
@@ -122,52 +89,37 @@ func ResolveProvider(ctx context.Context, db *bun.DB, conf *config.RestfulConf, 
 }
 
 func ListAdminProviders(ctx context.Context, db *bun.DB, conf *config.RestfulConf) ([]models.GitLabProviderAdminResponse, error) {
-	providerSettings, err := loadProviderSettings(ctx, db)
+	providerRecords, err := loadProviderSettings(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	linkedCounts, err := loadLinkedAppCounts(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	providers := make([]models.GitLabProviderAdminResponse, 0, len(conf.GitLab.Providers))
-	for _, configuredProvider := range conf.GitLab.Providers {
-		key := strings.TrimSpace(configuredProvider.Key)
+	providers := make([]models.GitLabProviderAdminResponse, 0, len(providerRecords))
+	for _, providerRecord := range providerRecords {
+		key := strings.TrimSpace(providerRecord.ProviderKey)
 		if key == "" {
 			continue
 		}
 
 		response := models.GitLabProviderAdminResponse{
-			ProviderKey:         key,
-			Label:               providerLabel(configuredProvider),
-			BaseURL:             normalizeBaseURL(configuredProvider.BaseURL),
-			NamespaceAllowlist:  append([]string{}, configuredProvider.NamespaceAllowlist...),
-			Enabled:             configuredProvider.Enabled,
-			AutoSyncEnabled:     true,
-			SyncIntervalMinutes: 15,
-			Configured:          configuredProvider.Enabled && strings.TrimSpace(configuredProvider.Token) != "",
-			TokenConfigured:     strings.TrimSpace(configuredProvider.Token) != "",
-		}
-
-		if configuredProvider.TimeoutSeconds <= 0 {
-			configuredProvider.TimeoutSeconds = 15
-		}
-
-		if settings, ok := providerSettings[key]; ok {
-			if strings.TrimSpace(settings.Label) != "" {
-				response.Label = strings.TrimSpace(settings.Label)
-			}
-			if strings.TrimSpace(settings.BaseURL) != "" {
-				response.BaseURL = normalizeBaseURL(settings.BaseURL)
-			}
-			if len(settings.NamespaceAllowlist) > 0 {
-				response.NamespaceAllowlist = append([]string{}, settings.NamespaceAllowlist...)
-			}
-			response.Enabled = configuredProvider.Enabled && settings.Enabled
-			response.AutoSyncEnabled = settings.AutoSyncEnabled
-			if settings.SyncIntervalMinutes > 0 {
-				response.SyncIntervalMinutes = settings.SyncIntervalMinutes
-			}
-			response.DefaultReadmePath = strings.TrimSpace(settings.DefaultReadmePath)
-			response.DefaultHelmValuesPath = strings.TrimSpace(settings.DefaultHelmValuesPath)
-			response.DefaultComposeFilePath = strings.TrimSpace(settings.DefaultComposeFilePath)
+			ProviderKey:            key,
+			ProviderType:           NormalizeProviderType(providerRecord.ProviderType),
+			Label:                  providerLabel(config.RepositoryProviderConf{Key: providerRecord.ProviderKey, Label: providerRecord.Label}),
+			BaseURL:                normalizeProviderBaseURL(providerRecord.ProviderType, providerRecord.BaseURL),
+			LinkedAppsCount:        linkedCounts[key],
+			NamespaceAllowlist:     append([]string{}, providerRecord.NamespaceAllowlist...),
+			Enabled:                providerRecord.Enabled,
+			AutoSyncEnabled:        providerRecord.AutoSyncEnabled,
+			SyncIntervalMinutes:    providerSyncInterval(providerRecord.SyncIntervalMinutes),
+			DefaultReadmePath:      strings.TrimSpace(providerRecord.DefaultReadmePath),
+			DefaultHelmValuesPath:  strings.TrimSpace(providerRecord.DefaultHelmValuesPath),
+			DefaultComposeFilePath: strings.TrimSpace(providerRecord.DefaultComposeFilePath),
+			Configured:             providerRecord.Enabled && providerHasToken(providerRecord),
+			TokenConfigured:        providerHasToken(providerRecord),
 		}
 
 		providers = append(providers, response)
@@ -176,20 +128,87 @@ func ListAdminProviders(ctx context.Context, db *bun.DB, conf *config.RestfulCon
 	return providers, nil
 }
 
-func loadProviderSettings(ctx context.Context, db *bun.DB) (map[string]models.GitLabProviderSettings, error) {
-	settingsMap := make(map[string]models.GitLabProviderSettings)
+func loadProviderSettings(ctx context.Context, db *bun.DB) ([]models.GitLabProviderSettings, error) {
+	settings := make([]models.GitLabProviderSettings, 0)
 	if db == nil {
-		return settingsMap, nil
+		return settings, nil
 	}
 
-	settings := make([]models.GitLabProviderSettings, 0)
-	if err := db.NewSelect().Model(&settings).Scan(ctx); err != nil {
+	if err := db.NewSelect().Model(&settings).Order("provider_key ASC").Scan(ctx); err != nil {
 		return nil, err
 	}
+	return settings, nil
+}
 
-	for _, setting := range settings {
-		settingsMap[strings.TrimSpace(setting.ProviderKey)] = setting
+func buildProviderRuntime(conf *config.RestfulConf, providerRecord models.GitLabProviderSettings) (ProviderRuntime, bool) {
+	key := strings.TrimSpace(providerRecord.ProviderKey)
+	if key == "" || !providerHasToken(providerRecord) {
+		return ProviderRuntime{}, false
 	}
 
-	return settingsMap, nil
+	token, err := DecryptProviderToken(conf, providerRecord.EncryptedToken, providerRecord.TokenNonce, providerRecord.TokenKeyVersion)
+	if err != nil {
+		log.WithError(err).WithField("providerKey", key).Error("Repository provider token decryption failed")
+		return ProviderRuntime{}, false
+	}
+	if strings.TrimSpace(token) == "" {
+		return ProviderRuntime{}, false
+	}
+
+	providerType := NormalizeProviderType(providerRecord.ProviderType)
+	provider := ProviderRuntime{
+		Key:                    key,
+		Type:                   providerType,
+		Label:                  providerLabel(config.RepositoryProviderConf{Key: providerRecord.ProviderKey, Label: providerRecord.Label}),
+		BaseURL:                normalizeProviderBaseURL(providerType, providerRecord.BaseURL),
+		Token:                  token,
+		Enabled:                providerRecord.Enabled,
+		AutoSyncEnabled:        providerRecord.AutoSyncEnabled,
+		SyncIntervalMinutes:    providerSyncInterval(providerRecord.SyncIntervalMinutes),
+		NamespaceAllowlist:     append([]string{}, providerRecord.NamespaceAllowlist...),
+		DefaultReadmePath:      strings.TrimSpace(providerRecord.DefaultReadmePath),
+		DefaultHelmValuesPath:  strings.TrimSpace(providerRecord.DefaultHelmValuesPath),
+		DefaultComposeFilePath: strings.TrimSpace(providerRecord.DefaultComposeFilePath),
+		TimeoutSeconds:         15,
+	}
+	return provider, true
+}
+
+func providerHasToken(providerRecord models.GitLabProviderSettings) bool {
+	if providerRecord.TokenConfigured {
+		return true
+	}
+	return strings.TrimSpace(providerRecord.EncryptedToken) != "" && strings.TrimSpace(providerRecord.TokenNonce) != ""
+}
+
+func providerSyncInterval(value int) int {
+	if value <= 0 {
+		return 15
+	}
+	return value
+}
+
+func loadLinkedAppCounts(ctx context.Context, db *bun.DB) (map[string]int, error) {
+	counts := make(map[string]int)
+	if db == nil {
+		return counts, nil
+	}
+
+	type linkedAppCountRow struct {
+		ProviderKey string `bun:"provider_key"`
+		Count       int    `bun:"count"`
+	}
+	rows := make([]linkedAppCountRow, 0)
+	if err := db.NewSelect().
+		Model((*models.GitLabAppLink)(nil)).
+		Column("provider_key").
+		ColumnExpr("COUNT(*) AS count").
+		Group("provider_key").
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[strings.TrimSpace(row.ProviderKey)] = row.Count
+	}
+	return counts, nil
 }
