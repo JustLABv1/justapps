@@ -103,7 +103,15 @@ function MyAppsContent() {
   };
 
   useEffect(() => {
-    if (profileReady) loadData();
+    if (!profileReady) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profileReady]);
 

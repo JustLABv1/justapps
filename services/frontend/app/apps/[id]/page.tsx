@@ -67,7 +67,15 @@ export default function AppPage() {
   useEffect(() => {
     const hash = window.location.hash.slice(1);
     const validTabs = ['docs', 'details', 'deployment', 'ratings', 'changelog', 'related'];
-    if (hash && validTabs.includes(hash)) setActiveTab(hash);
+    if (!hash || !validTabs.includes(hash)) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setActiveTab(hash);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleTabChange = (key: React.Key) => {
