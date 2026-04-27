@@ -746,10 +746,10 @@ func restoreAssets(dataPath string, assets []models.BackupAsset, replace bool) (
 	}
 
 	for _, asset := range assets {
-		filename := filepath.Base(asset.Filename)
-		if filename == "." || filename == "" {
+		relativePath, _, ok := normalizeBackupAssetPath(asset.RelativePath, asset.Filename)
+		if !ok {
 			stats.Skipped++
-			warnings = append(warnings, "Skipped an uploaded asset because its filename was invalid.")
+			warnings = append(warnings, "Skipped an uploaded asset because its path was invalid.")
 			continue
 		}
 		if strings.TrimSpace(asset.ContentBase64) == "" {
@@ -765,13 +765,31 @@ func restoreAssets(dataPath string, assets []models.BackupAsset, replace bool) (
 			continue
 		}
 
-		targetPath := filepath.Join(uploadDir, filename)
+		targetPath := filepath.Join(dataPath, filepath.FromSlash(relativePath))
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			stats.Skipped++
+			warnings = append(warnings, "Skipped one or more uploaded assets because their directory could not be created.")
+			continue
+		}
+
+		_, statErr := os.Stat(targetPath)
+		exists := statErr == nil
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			stats.Skipped++
+			warnings = append(warnings, "Skipped one or more uploaded assets because their existing file state could not be checked.")
+			continue
+		}
+
 		if writeErr := os.WriteFile(targetPath, content, 0644); writeErr != nil {
 			stats.Skipped++
 			warnings = append(warnings, "Skipped one or more uploaded assets because they could not be written to disk.")
 			continue
 		}
-		stats.Created++
+		if exists {
+			stats.Updated++
+		} else {
+			stats.Created++
+		}
 	}
 
 	return stats, dedupeWarnings(warnings), nil

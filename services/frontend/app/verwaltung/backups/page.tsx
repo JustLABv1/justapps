@@ -47,7 +47,7 @@ const sectionOptions: SectionOption[] = [
 	{ id: 'favorites', label: 'Favoriten', description: 'Benutzerfavoriten.' },
 	{ id: 'ratings', label: 'Ratings', description: 'Bewertungen und Kommentare.' },
 	{ id: 'audit', label: 'Audit', description: 'Audit-Log und Operationen.', sensitive: true },
-	{ id: 'assets', label: 'Uploads', description: 'Hochgeladene Logos, Favicons und Gruppen-Icons.' },
+	{ id: 'assets', label: 'Uploads', description: 'Hochgeladene App-Icons, Logos, Favicons und Gruppen-Icons.' },
 ];
 
 const sectionPresets = [
@@ -65,15 +65,28 @@ const sectionPresets = [
   },
   {
     id: 'apps-only',
-    title: 'Nur Apps exportieren',
-		description: 'Kompatibler, verschlüsselter Abschnittsexport für Apps ohne Benutzer- oder Systemeinstellungen.',
+		title: 'Apps inklusive Uploads exportieren',
+		description: 'Kompatibler, verschlüsselter Abschnittsexport für Apps inklusive referenzierter Uploads, ohne Benutzer- oder Systemeinstellungen.',
     mode: 'safe' as const,
-		sections: ['apps'],
+		sections: ['apps', 'assets'],
   },
 ];
 
 const backupPassphraseMinLength = 12;
 const allSectionIds = sectionOptions.map((section) => section.id);
+const assetDependentSectionIds = ['apps', 'appGroups', 'settings'];
+
+function normalizeSectionSelection(sections: string[]) {
+	const uniqueSections = Array.from(new Set(sections));
+	const requiresAssets = assetDependentSectionIds.some((sectionId) => uniqueSections.includes(sectionId));
+	if (!requiresAssets) {
+		return uniqueSections;
+	}
+	if (uniqueSections.includes('assets')) {
+		return uniqueSections;
+	}
+	return [...uniqueSections, 'assets'];
+}
 
 function parseDownloadFilename(headerValue: string | null, fallback: string) {
 	if (!headerValue) {
@@ -174,9 +187,11 @@ export default function BackupsPage() {
 	};
 
 	const toggleSection = (sectionId: string) => {
-		setSelectedSections((current) => current.includes(sectionId)
-			? current.filter((section) => section !== sectionId)
-			: [...current, sectionId]);
+		setSelectedSections((current) => normalizeSectionSelection(
+			current.includes(sectionId)
+				? current.filter((section) => section !== sectionId)
+				: [...current, sectionId],
+		));
 	};
 
 	const selectAllSections = () => {

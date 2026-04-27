@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -178,7 +179,7 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			manifest.Data.Audit = auditEntries
 			appendSummary(&manifest, section, len(auditEntries))
 		case "assets":
-			assets, assetWarnings, sectionErr := exportAssets(dataPath)
+			assets, assetWarnings, sectionErr := exportAssets(c, db, dataPath)
 			if sectionErr != nil {
 				respondSectionError(c, section, sectionErr)
 				return
@@ -391,44 +392,86 @@ func exportAudit(c *gin.Context, db *bun.DB) ([]models.Audit, error) {
 	return auditEntries, err
 }
 
-func exportAssets(dataPath string) ([]models.BackupAsset, []string, error) {
-	uploadDir := filepath.Join(dataPath, "uploads")
-	entries, err := os.ReadDir(uploadDir)
+func exportAssets(c *gin.Context, db *bun.DB, dataPath string) ([]models.BackupAsset, []string, error) {
+	references, err := collectReferencedUploadPaths(c, db)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return []models.BackupAsset{}, nil, nil
-		}
 		return nil, nil, err
 	}
+	return exportAssetsFromReferences(dataPath, references)
+}
 
-	assets := make([]models.BackupAsset, 0, len(entries))
+func collectReferencedUploadPaths(c *gin.Context, db *bun.DB) ([]string, error) {
+	references := make([]string, 0, 16)
+	ctx := c.Request.Context()
+
+	settings, err := exportSettings(c, db)
+	if err != nil {
+		return nil, err
+	}
+	if settings != nil {
+		references = append(references, settings.LogoUrl, settings.LogoDarkUrl, settings.FaviconUrl)
+	}
+
+	var apps []models.Apps
+	if err := db.NewSelect().Model(&apps).Column("icon").Scan(ctx); err != nil {
+		return nil, err
+	}
+	for _, app := range apps {
+		references = append(references, app.Icon)
+	}
+
+	var groups []models.AppGroup
+	if err := db.NewSelect().Model(&groups).Column("icon").Scan(ctx); err != nil {
+		return nil, err
+	}
+	for _, group := range groups {
+		references = append(references, group.Icon)
+	}
+
+	return references, nil
+}
+
+func exportAssetsFromReferences(dataPath string, references []string) ([]models.BackupAsset, []string, error) {
+	assets := make([]models.BackupAsset, 0, len(references))
 	warnings := make([]string, 0)
+	seen := make(map[string]struct{}, len(references))
 
-	for _, entry := range entries {
-		if entry.IsDir() {
+	for _, reference := range references {
+		relativePath, publicURL, ok := normalizeUploadReference(reference)
+		if !ok {
 			continue
 		}
+		if _, exists := seen[relativePath]; exists {
+			continue
+		}
+		seen[relativePath] = struct{}{}
 
-		filename := entry.Name()
-		path := filepath.Join(uploadDir, filename)
-		info, statErr := entry.Info()
+		assetPath := filepath.Join(dataPath, filepath.FromSlash(relativePath))
+		info, statErr := os.Stat(assetPath)
 		if statErr != nil {
-			warnings = append(warnings, "Failed to stat uploaded asset: "+filename)
+			if errors.Is(statErr, os.ErrNotExist) {
+				warnings = append(warnings, "Referenced uploaded asset is missing: "+publicURL)
+				continue
+			}
+			return nil, nil, statErr
+		}
+		if info.IsDir() {
+			warnings = append(warnings, "Referenced uploaded asset is a directory and was skipped: "+publicURL)
 			continue
 		}
 
-		content, readErr := os.ReadFile(path)
+		content, readErr := os.ReadFile(assetPath)
 		if readErr != nil {
-			warnings = append(warnings, "Failed to read uploaded asset: "+filename)
+			warnings = append(warnings, "Failed to read referenced uploaded asset: "+publicURL)
 			continue
 		}
 
 		hash := sha256.Sum256(content)
 		contentType := http.DetectContentType(content)
 		assets = append(assets, models.BackupAsset{
-			Filename:      filename,
-			RelativePath:  filepath.ToSlash(filepath.Join("uploads", filename)),
-			PublicURL:     "/uploads/" + filename,
+			Filename:      path.Base(relativePath),
+			RelativePath:  relativePath,
+			PublicURL:     publicURL,
 			Size:          info.Size(),
 			ModifiedAt:    info.ModTime().UTC(),
 			ContentType:   contentType,
@@ -438,8 +481,8 @@ func exportAssets(dataPath string) ([]models.BackupAsset, []string, error) {
 	}
 
 	sort.Slice(assets, func(i, j int) bool {
-		return assets[i].Filename < assets[j].Filename
+		return assets[i].RelativePath < assets[j].RelativePath
 	})
 
-	return assets, warnings, nil
+	return assets, dedupeWarnings(warnings), nil
 }
