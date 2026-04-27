@@ -1,9 +1,8 @@
 'use client';
 
 import { resolveAssetUrl } from '@/lib/assets';
-import Image from "next/image";
 import { useSettings } from '../context/SettingsContext';
-import JustLABLogo from '../public/justlab_logo_compact.png';
+import { JustAppsLogo } from './JustAppsLogo';
 
 const defaultFooterLinks = [
   { label: 'Impressum',       url: '#' },
@@ -32,7 +31,7 @@ export function Footer() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={resolvedLogoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
               ) : (
-                <Image src={JustLABLogo} alt="Logo" width={24} height={24} className="rounded-sm" />
+                <JustAppsLogo className="w-6 h-6" />
               )}
               <span className="text-[9px] font-bold tracking-[0.2em]">{storeName}</span>
             </div>

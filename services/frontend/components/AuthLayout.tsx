@@ -3,6 +3,7 @@
 import { useSettings } from '@/context/SettingsContext';
 import { fetchApi } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
+import { JustAppsLogo } from '@/components/JustAppsLogo';
 import { LayoutGrid, Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
@@ -103,8 +104,8 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={resolvedLogoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-accent/15 border border-accent/25 flex items-center justify-center shadow-xl shadow-accent/10">
-                <LayoutGrid className="w-8 h-8 text-accent" />
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-accent/10">
+                <JustAppsLogo className="w-16 h-16" />
               </div>
             )}
             <div>
