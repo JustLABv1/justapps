@@ -1,6 +1,7 @@
 'use client';
 
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
+import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { RatingSection } from "@/components/RatingSection";
 import { AppConfig, GitLabIntegrationState } from "@/config/apps";
@@ -13,23 +14,22 @@ import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    ChevronLeft,
-    ExternalLink,
-    GitBranch,
-    Github,
-    History,
-    Layers,
-    LayoutDashboard,
-    Link2,
-    Loader2,
-    Pencil,
-    Scale,
-    Server,
-    Share2,
-    Star
+  AlertTriangle,
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ExternalLink,
+  GitBranch,
+  History,
+  Layers,
+  LayoutDashboard,
+  Link2,
+  Loader2,
+  Pencil,
+  Scale,
+  Server,
+  Share2,
+  Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -367,7 +367,7 @@ export default function AppPage() {
                   target="_blank"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground hover:bg-surface-secondary transition-colors shadow-sm"
                 >
-                  <Github className="w-4 h-4" />
+                  <GitHubIcon className="w-4 h-4" />
                   {repo.label || 'Quellcode'}
                 </Link>
               ))}

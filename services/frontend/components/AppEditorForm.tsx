@@ -13,44 +13,44 @@ import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from '@/lib/appStatus'
 import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import { resolveIcon } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField, toast
+  Button,
+  Chip,
+  Input,
+  Label,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField, toast
 } from '@heroui/react';
 import {
-    AlertTriangle,
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    CloudDownload,
-    ExternalLink,
-    GitBranch,
-    Github,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Tag,
-    Terminal,
-    Upload,
-    X,
+  AlertTriangle,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CloudDownload,
+  ExternalLink,
+  GitBranch,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Tag,
+  Terminal,
+  Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { GitHubIcon } from './GitHubIcon';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1784,7 +1784,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                   />
                   <LinkListEditor
                     title="Quellcode"
-                    icon={<Github className="w-4 h-4 text-muted" />}
+                    icon={<GitHubIcon className="w-4 h-4 text-muted" />}
                     items={formData.repositories || []}
                     onChange={(repositoriesValue) => setFormData((previous) => ({ ...previous, repositories: repositoriesValue }))}
                     addLabel="Hinzufügen"
@@ -2547,7 +2547,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
               ))}
               {repositories.map((repo, idx) => (
                 <span key={`repo-${idx}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm">
-                  <Github className="w-4 h-4" />
+                  <GitHubIcon className="w-4 h-4" />
                   {repo.label || 'Quellcode'}
                 </span>
               ))}
@@ -2707,7 +2707,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
             />
             <LinkListEditor
               title="Quellcode"
-              icon={<Github className="w-4 h-4 text-muted" />}
+              icon={<GitHubIcon className="w-4 h-4 text-muted" />}
               items={formData.repositories || []}
               onChange={(repos) => setFormData((p) => ({ ...p, repositories: repos }))}
               addLabel="Hinzufügen"
