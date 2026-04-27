@@ -497,7 +497,7 @@ func importGitLabProviders(ctx context.Context, tx bun.Tx, providers []models.Gi
 		if exists {
 			_, err = tx.NewUpdate().Model(&provider).
 				Where("provider_key = ?", provider.ProviderKey).
-				Column("label", "base_url", "namespace_allowlist", "enabled", "auto_sync_enabled", "sync_interval_minutes", "default_readme_path", "default_helm_values_path", "default_compose_file_path", "created_at", "updated_at").
+				Column("provider_type", "label", "base_url", "encrypted_token", "token_nonce", "token_key_version", "token_configured", "namespace_allowlist", "enabled", "auto_sync_enabled", "sync_interval_minutes", "default_readme_path", "default_helm_values_path", "default_compose_file_path", "created_at", "updated_at").
 				Exec(ctx)
 			if err != nil {
 				return stats, nil, err

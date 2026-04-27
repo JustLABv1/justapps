@@ -64,49 +64,6 @@ type treeEntry struct {
 	Type string `json:"type"`
 }
 
-func BuildProviderSummaries(conf *config.RestfulConf) []models.GitLabProviderSummary {
-	if conf == nil {
-		return []models.GitLabProviderSummary{}
-	}
-	providers := make([]models.GitLabProviderSummary, 0, len(conf.RepositoryProviders))
-	for _, provider := range conf.RepositoryProviders {
-		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
-			continue
-		}
-		providers = append(providers, models.GitLabProviderSummary{
-			Key:     provider.Key,
-			Type:    NormalizeProviderType(provider.Type),
-			Label:   providerLabel(provider),
-			BaseURL: normalizeProviderBaseURL(provider.Type, provider.BaseURL),
-		})
-	}
-	return providers
-}
-
-func FindProvider(conf *config.RestfulConf, key string) (config.RepositoryProviderConf, bool) {
-	if conf == nil {
-		return config.RepositoryProviderConf{}, false
-	}
-	trimmedKey := strings.TrimSpace(key)
-	for _, provider := range conf.RepositoryProviders {
-		if !provider.Enabled || strings.TrimSpace(provider.Token) == "" {
-			continue
-		}
-		if strings.EqualFold(strings.TrimSpace(provider.Key), trimmedKey) {
-			provider.Type = NormalizeProviderType(provider.Type)
-			provider.BaseURL = normalizeProviderBaseURL(provider.Type, provider.BaseURL)
-			if provider.TimeoutSeconds <= 0 {
-				provider.TimeoutSeconds = 15
-			}
-			if provider.Label == "" {
-				provider.Label = provider.Key
-			}
-			return provider, true
-		}
-	}
-	return config.RepositoryProviderConf{}, false
-}
-
 func IsProjectAllowed(provider config.RepositoryProviderConf, projectPath string) bool {
 	if len(provider.NamespaceAllowlist) == 0 {
 		return true

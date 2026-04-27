@@ -6,15 +6,15 @@ The same sync engine supports both **GitLab** (gitlab.com or self-hosted) and **
 
 ## How It Works
 
-1. An admin configures one or more **repository providers** (instance URL + access token + provider type) in the backend `config.yaml` under `repository_providers` or via `BACKEND_REPOSITORY_*` env vars.
-2. Operators tweak per-provider runtime settings (label, allowlist, default file paths, auto-sync interval, enabled flag) under **Verwaltung → Einstellungen → Repository Provider**.
+1. Operators provide a backend encryption secret via `repository_provider_encryption.secret` or `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`.
+2. An admin creates one or more **repository providers** (instance URL + access token + provider type) under **Verwaltung → Einstellungen → Repository-Provider**.
 3. App owners link an app to a project under the **Repository** tab in the app editor.
 4. The backend runs a periodic **scheduler** plus on-demand sync, calling the provider API and persisting a snapshot.
 5. If the snapshot conflicts with manual edits, the change waits for explicit approval before being applied.
 
 ## Configuring a Provider
 
-Provider definitions live in the backend configuration; only operators can add or remove providers. Each provider has:
+Provider definitions live in the database and are managed in the admin UI. Each provider has:
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -25,21 +25,18 @@ Provider definitions live in the backend configuration; only operators can add o
 | `token` | Access token for the provider | (PAT or fine-grained token) |
 | `enabled` | Whether the provider is active | `true` |
 | `namespaceAllowlist` | Optional list of namespaces or `owner/repo` prefixes that may be linked | `["my-team", "infra/platform"]` |
-| `timeoutSeconds` | API request timeout | `15` |
+| `syncIntervalMinutes` | Automatic sync cadence for linked apps | `15` |
+
+`key` and `type` are immutable after creation. Tokens are encrypted before they are stored and can be rotated or cleared from the same settings page.
 
 ### GitHub Enterprise Server
 
-Set `type: github` and point `baseUrl` at the GHE host:
+Create a provider with `type: github` and point `baseUrl` at the GHE host. Example values:
 
-```yaml
-repository_providers:
-  - key: ghe-internal
-    type: github
-    label: GHE
-    baseUrl: https://ghe.example.org
-    token: ${GHE_TOKEN}
-    enabled: true
-```
+- `key`: `ghe-internal`
+- `type`: `github`
+- `baseUrl`: `https://ghe.example.org`
+- `label`: `GHE`
 
 The adapter automatically rewrites the API base to `<baseUrl>/api/v3` for GHE and uses `https://api.github.com` for `github.com`.
 
@@ -64,7 +61,9 @@ The provider-neutral routes are stable; the legacy `/gitlab` aliases stay for ba
 |-----------|----------|
 | Available providers (auth users) | `GET /v1/settings/repository-providers/available` |
 | List providers (admin) | `GET /v1/settings/repository-providers` |
+| Create provider (admin) | `POST /v1/settings/repository-providers` |
 | Update provider settings (admin) | `PUT /v1/settings/repository-providers/:key` |
+| Delete provider (admin) | `DELETE /v1/settings/repository-providers/:key` |
 | Get app integration | `GET /v1/apps/:id/repository` |
 | Upsert app link | `PUT /v1/apps/:id/repository` |
 | Trigger sync | `POST /v1/apps/:id/repository/sync` |
@@ -77,7 +76,7 @@ Legacy aliases: every `/repository*` route also responds at the equivalent `/git
 
 | Table | Purpose |
 |-------|---------|
-| `gitlab_provider_settings` | Per-provider runtime overrides (label, allowlist, intervals). `provider_type` records which adapter to use. |
+| `gitlab_provider_settings` | Canonical provider registry. Stores type, label, base URL, encrypted token metadata, allowlists and sync settings. |
 | `gitlab_app_links` | Maps JustApps apps to a single repository project. `provider_type` records the adapter used. |
 
 > Table names will become provider-neutral in a future migration; for now they keep their historical `gitlab_` prefix to preserve existing data.

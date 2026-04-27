@@ -46,8 +46,14 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			repositoryProviders.GET("", func(c *gin.Context) {
 				platform.ListGitLabProviders(c, db)
 			})
+			repositoryProviders.POST("", func(c *gin.Context) {
+				platform.CreateGitLabProvider(c, db)
+			})
 			repositoryProviders.PUT("/:key", func(c *gin.Context) {
 				platform.UpdateGitLabProvider(c, db)
+			})
+			repositoryProviders.DELETE("/:key", func(c *gin.Context) {
+				platform.DeleteGitLabProvider(c, db)
 			})
 		}
 	}
