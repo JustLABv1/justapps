@@ -957,11 +957,73 @@ export function AppModal({
                         </div>
                       )}
 
-                      {/* Known Issue (always present) */}
-                      <div className="space-y-4">
-                        <TextField onChange={(val) => setAppFormData({ ...appFormData, knownIssue: val })}>
-                          <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Bekanntes Problem</Label>
-                          <TextArea value={appFormData.knownIssue || ''} placeholder="z.B. Login derzeit nicht möglich. Fix wird vorbereitet..." className="bg-field-background" />
+                      {/* Banner */}
+                      <div className="space-y-3">
+                        <span className="text-xs font-bold text-muted uppercase tracking-wider">Banner (optional)</span>
+                        <div className="flex gap-2 flex-wrap">
+                          {(['info', 'warning', 'danger', 'custom'] as const).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setAppFormData({
+                                ...appFormData,
+                                bannerType: appFormData.bannerType === t ? undefined : t,
+                                bannerText: appFormData.bannerType === t ? '' : (appFormData.bannerText || ''),
+                                ...(t !== 'custom' ? { bannerColor: '' } : {}),
+                              })}
+                              className={`flex-1 rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
+                                appFormData.bannerType === t
+                                  ? t === 'info'    ? 'bg-primary/15 border-primary/40 text-primary'
+                                    : t === 'warning' ? 'bg-warning/15 border-warning/40 text-warning'
+                                    : t === 'danger'  ? 'bg-danger/15 border-danger/40 text-danger'
+                                    : 'bg-surface-secondary border-border text-foreground'
+                                  : 'border-border text-muted hover:border-border/80'
+                              }`}
+                            >
+                              {t === 'info' ? 'Info' : t === 'warning' ? 'Warnung' : t === 'danger' ? 'Kritisch' : 'Custom'}
+                            </button>
+                          ))}
+                        </div>
+                        {appFormData.bannerType === 'custom' && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={appFormData.bannerColor || '#6366f1'}
+                              onChange={(e) => setAppFormData({ ...appFormData, bannerColor: e.target.value })}
+                              className="h-8 w-8 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0.5"
+                            />
+                            <input
+                              type="text"
+                              value={appFormData.bannerColor || ''}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (/^#?[0-9A-Fa-f]{0,6}$/.test(v)) {
+                                  setAppFormData({ ...appFormData, bannerColor: v.startsWith('#') ? v : `#${v}` });
+                                }
+                              }}
+                              placeholder="#RRGGBB"
+                              maxLength={7}
+                              className="flex-1 rounded-xl border border-border bg-field-background px-3 py-1.5 text-sm font-mono text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                            />
+                          </div>
+                        )}
+                        <TextField onChange={(val) => setAppFormData({ ...appFormData, bannerTitle: val })}>
+                          <TextArea
+                            value={appFormData.bannerTitle || ''}
+                            placeholder="Überschrift (optional)"
+                            className="bg-field-background"
+                          />
+                        </TextField>
+                        <TextField onChange={(val) => setAppFormData({
+                          ...appFormData,
+                          bannerText: val,
+                          bannerType: val.trim() ? (appFormData.bannerType || 'info') : undefined,
+                        })}>
+                          <TextArea
+                            value={appFormData.bannerText || ''}
+                            placeholder="Banner-Text eingeben (optional)..."
+                            className="bg-field-background"
+                          />
                         </TextField>
                       </div>
                     </div>

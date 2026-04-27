@@ -781,6 +781,11 @@ func normalizeImportedApp(app *models.Apps) {
 	if app == nil {
 		return
 	}
+	// Legacy backup compatibility: promote knownIssue to a warning banner
+	if strings.TrimSpace(app.KnownIssue) != "" && strings.TrimSpace(app.BannerText) == "" {
+		app.BannerText = strings.TrimSpace(app.KnownIssue)
+		app.BannerType = "warning"
+	}
 	app.Status = normalizeStatus(app.Status)
 	normalizeDetailFields(app)
 	if app.CreatedAt.IsZero() {

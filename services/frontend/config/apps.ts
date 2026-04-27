@@ -151,6 +151,13 @@ export interface AppConfig {
   tags?: string[];
   collections?: string[];
   isFeatured?: boolean;
+  bannerText?: string;
+  bannerType?: 'info' | 'warning' | 'danger' | 'custom';
+  /** Only used when bannerType is 'custom'. Expected format: #RRGGBB. */
+  bannerColor?: string;
+  /** Optional override for the banner heading. Defaults to the type label (Info/Warnung/Kritisch). */
+  bannerTitle?: string;
+  /** @deprecated Use bannerText + bannerType instead. Accepted as legacy input only. */
   knownIssue?: string;
   authority?: string;
   ratingAvg?: number;

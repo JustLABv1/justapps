@@ -67,6 +67,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 	}
 	normalizeAppModelStatus(&app)
 	normalizeAppDetailFields(&app)
+	normalizeAppBanner(&app)
 	if user.Role != "admin" {
 		app.IsFeatured = false
 	}
@@ -158,6 +159,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	}
 	normalizeAppModelStatus(&app)
 	normalizeAppDetailFields(&app)
+	normalizeAppBanner(&app)
 	if !isAdmin {
 		app.IsFeatured = existingApp.IsFeatured
 	}
@@ -178,7 +180,8 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"custom_docker_note", "custom_compose_note", "custom_helm_note", "custom_helm_values",
 			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
 			"tags", "collections", "live_demos", "updated_at",
-			"is_reuse", "reuse_requirements", "known_issue",
+			"is_reuse", "reuse_requirements",
+			"banner_text", "banner_type", "banner_color", "banner_title",
 			"deployment_variants", "version", "changelog",
 			"skip_link_probe",
 		)

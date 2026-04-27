@@ -27,7 +27,7 @@ type exportBackupRequest struct {
 	Passphrase string   `json:"passphrase"`
 }
 
-const schemaVersion = "2026-04-17"
+const schemaVersion = "2026-04-27"
 
 var allSections = []string{
 	"apps",

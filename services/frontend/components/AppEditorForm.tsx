@@ -23,7 +23,6 @@ import {
   TextField, toast
 } from '@heroui/react';
 import {
-  AlertTriangle,
   BookOpen,
   Check,
   CheckCircle2,
@@ -32,6 +31,7 @@ import {
   CloudDownload,
   ExternalLink,
   GitBranch,
+  Info,
   Layers,
   Link2,
   Loader2,
@@ -892,7 +892,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         return !!formData.authority?.trim()
           || (formData.techStack?.length ?? 0) > 0
           || (formData.customFields?.length ?? 0) > 0
-          || !!formData.knownIssue?.trim()
+          || !!formData.bannerText?.trim()
           || !!formData.isFeatured;
       case 6:
         return !!formData.markdownContent?.trim();
@@ -945,7 +945,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         return [
           { label: 'Herausgeber (optional)', done: !!formData.authority?.trim() },
           { label: 'Fachliche Details gepflegt', done: (formData.customFields?.length ?? 0) > 0 },
-          { label: 'Bekanntes Problem bei Bedarf', done: !formData.knownIssue || !!formData.knownIssue.trim() },
+          { label: 'Banner bei Bedarf', done: !formData.bannerText || !!formData.bannerText.trim() },
         ];
       case 6:
         return [
@@ -1885,13 +1885,72 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
                   <div className="space-y-6">
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Bekanntes Problem</Label>
-                      <textarea
-                        className="min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
-                        placeholder="Optional: bekannte Einschränkungen oder Risiken"
-                        value={formData.knownIssue || ''}
-                        onChange={(event) => setFormData((previous) => ({ ...previous, knownIssue: event.target.value }))}
-                      />
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">Banner (optional)</Label>
+                      <div className="space-y-3">
+                        <div className="flex gap-2 flex-wrap">
+                          {(['info', 'warning', 'danger', 'custom'] as const).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setFormData((prev) => ({
+                                ...prev,
+                                bannerType: prev.bannerType === t ? undefined : t,
+                                bannerText: prev.bannerType === t ? '' : (prev.bannerText || ''),
+                                ...(t !== 'custom' ? { bannerColor: '' } : {}),
+                              }))}
+                              className={`flex-1 rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
+                                formData.bannerType === t
+                                  ? t === 'info'    ? 'bg-primary/15 border-primary/40 text-primary'
+                                    : t === 'warning' ? 'bg-warning/15 border-warning/40 text-warning'
+                                    : t === 'danger'  ? 'bg-danger/15 border-danger/40 text-danger'
+                                    : 'bg-surface-secondary border-border text-foreground'
+                                  : 'border-border text-muted hover:border-border/80'
+                              }`}
+                            >
+                              {t === 'info' ? 'Info' : t === 'warning' ? 'Warnung' : t === 'danger' ? 'Kritisch' : 'Custom'}
+                            </button>
+                          ))}
+                        </div>
+                        {formData.bannerType === 'custom' && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={formData.bannerColor || '#6366f1'}
+                              onChange={(e) => setFormData((p) => ({ ...p, bannerColor: e.target.value }))}
+                              className="h-8 w-8 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0.5"
+                            />
+                            <input
+                              type="text"
+                              value={formData.bannerColor || ''}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (/^#?[0-9A-Fa-f]{0,6}$/.test(v)) {
+                                  setFormData((p) => ({ ...p, bannerColor: v.startsWith('#') ? v : `#${v}` }));
+                                }
+                              }}
+                              placeholder="#RRGGBB"
+                              maxLength={7}
+                              className="flex-1 rounded-2xl border border-border bg-field-background px-4 py-2 text-sm font-mono text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                            />
+                          </div>
+                        )}
+                        <input
+                          className="w-full rounded-2xl border border-border bg-field-background px-4 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                          placeholder="Überschrift (optional)"
+                          value={formData.bannerTitle || ''}
+                          onChange={(event) => setFormData((previous) => ({ ...previous, bannerTitle: event.target.value }))}
+                        />
+                        <textarea
+                          className="min-h-[100px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                          placeholder="Optional: Banner-Text für diese App"
+                          value={formData.bannerText || ''}
+                          onChange={(event) => setFormData((previous) => ({
+                            ...previous,
+                            bannerText: event.target.value,
+                            bannerType: event.target.value.trim() ? (previous.bannerType || 'info') : undefined,
+                          }))}
+                        />
+                      </div>
                     </div>
 
                     {isAdmin && (
@@ -2270,24 +2329,89 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
         </div>
       </div>
 
-      {/* ── Known issue banner (editable, matches detail page position) ── */}
-      {formData.knownIssue ? (
-        <div className="mb-4 px-4 py-3 rounded-xl border bg-warning/10 border-warning/30 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-warning" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold mb-2 text-warning">Bekanntes Problem</p>
+      {/* ── App banner (editable, matches detail page position) ── */}
+      {formData.bannerText ? (
+        <div
+          className={`mb-4 px-4 py-3 rounded-xl border flex items-start gap-3 ${
+            formData.bannerType === 'warning' ? 'bg-warning/10 border-warning/30' :
+            formData.bannerType === 'danger'  ? 'bg-danger/10 border-danger/30' :
+            formData.bannerType === 'custom'  ? '' :
+            'bg-primary/10 border-primary/30'
+          }`}
+          style={formData.bannerType === 'custom' && formData.bannerColor ? {
+            backgroundColor: `${formData.bannerColor}1a`,
+            borderColor: `${formData.bannerColor}4d`,
+          } : undefined}
+        >
+          <div className="flex-1 space-y-2">
+            {/* Type selector */}
+            <div className="flex gap-1.5 flex-wrap">
+              {(['info', 'warning', 'danger', 'custom'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setFormData((p) => ({ ...p, bannerType: t, ...(t !== 'custom' ? { bannerColor: '' } : {}) }))}
+                  className={`rounded-lg border px-2.5 py-0.5 text-xs font-semibold transition-colors ${
+                    formData.bannerType === t
+                      ? t === 'info'    ? 'bg-primary/15 border-primary/40 text-primary'
+                        : t === 'warning' ? 'bg-warning/15 border-warning/40 text-warning'
+                        : t === 'danger'  ? 'bg-danger/15 border-danger/40 text-danger'
+                        : 'bg-surface-secondary border-border text-foreground'
+                      : 'border-border text-muted hover:border-border/80'
+                  }`}
+                >
+                  {t === 'info' ? 'Info' : t === 'warning' ? 'Warnung' : t === 'danger' ? 'Kritisch' : 'Custom'}
+                </button>
+              ))}
+            </div>
+            {/* Custom color picker */}
+            {formData.bannerType === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={formData.bannerColor || '#6366f1'}
+                  onChange={(e) => setFormData((p) => ({ ...p, bannerColor: e.target.value }))}
+                  className="h-8 w-8 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0.5"
+                />
+                <input
+                  type="text"
+                  value={formData.bannerColor || ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (/^#?[0-9A-Fa-f]{0,6}$/.test(v)) {
+                      setFormData((p) => ({ ...p, bannerColor: v.startsWith('#') ? v : `#${v}` }));
+                    }
+                  }}
+                  placeholder="#RRGGBB"
+                  maxLength={7}
+                  className="flex-1 bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm font-mono text-foreground placeholder:text-muted/50 outline-none focus:border-accent transition-colors"
+                />
+              </div>
+            )}
+            {/* Custom title */}
             <input
-              className="w-full bg-white/40 dark:bg-white/5 border border-warning/40 rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none focus:border-warning transition-colors"
-              placeholder="Beschreibung eingeben..."
-              value={formData.knownIssue}
-              onChange={(e) => setFormData((p) => ({ ...p, knownIssue: e.target.value }))}
+              className="w-full bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none focus:border-accent transition-colors"
+              placeholder="Überschrift (optional)"
+              value={formData.bannerTitle || ''}
+              onChange={(e) => setFormData((p) => ({ ...p, bannerTitle: e.target.value }))}
+            />
+            {/* Banner text */}
+            <input
+              className={`w-full bg-white/40 dark:bg-white/5 border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none transition-colors ${
+                formData.bannerType === 'warning' ? 'border-warning/40 focus:border-warning' :
+                formData.bannerType === 'danger'  ? 'border-danger/40 focus:border-danger' :
+                'border-primary/40 focus:border-primary'
+              }`}
+              placeholder="Banner-Text eingeben..."
+              value={formData.bannerText}
+              onChange={(e) => setFormData((p) => ({ ...p, bannerText: e.target.value }))}
             />
           </div>
           <button
             type="button"
-            onClick={() => setFormData((p) => ({ ...p, knownIssue: '' }))}
-            className="shrink-0 text-warning/60 hover:text-warning transition-colors"
-            title="Bekanntes Problem entfernen"
+            onClick={() => setFormData((p) => ({ ...p, bannerText: '', bannerType: undefined, bannerColor: '', bannerTitle: '' }))}
+            className="shrink-0 text-muted/60 hover:text-foreground transition-colors"
+            title="Banner entfernen"
           >
             <X className="w-4 h-4" />
           </button>
@@ -2295,11 +2419,11 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
       ) : (
         <button
           type="button"
-          onClick={() => setFormData((p) => ({ ...p, knownIssue: ' ' }))}
+          onClick={() => setFormData((p) => ({ ...p, bannerText: ' ', bannerType: 'info' }))}
           className="mb-4 w-full px-4 py-2.5 rounded-xl border border-dashed border-border/60 text-left flex items-center gap-2 text-xs text-muted/60 hover:text-muted hover:border-border transition-colors"
         >
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          Bekanntes Problem hinzufügen (optional)
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          Banner hinzufügen (optional)
         </button>
       )}
 
