@@ -15,7 +15,7 @@ func RegisterUploads(v1 *gin.RouterGroup, db *bun.DB, dataPath string) {
 	})
 
 	// Public static file serving for uploaded assets
-	v1.GET("/uploads/:filename", func(c *gin.Context) {
+	v1.GET("/uploads/*filepath", func(c *gin.Context) {
 		upload.ServeUpload(c, dataPath)
 	})
 }

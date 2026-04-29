@@ -17,7 +17,7 @@ func normalizeUploadReference(value string) (string, string, bool) {
 		reference = parsed.Path
 	}
 
-	slashPath := strings.ReplaceAll(reference, `\\`, "/")
+	slashPath := strings.ReplaceAll(reference, "\\", "/")
 	index := strings.Index(slashPath, "/uploads/")
 	if index == -1 {
 		if strings.HasPrefix(slashPath, "uploads/") {
@@ -55,4 +55,12 @@ func normalizeBackupAssetPath(relativePath string, filename string) (string, str
 	}
 
 	return cleaned, "/" + cleaned, true
+}
+
+func canonicalUploadReference(value string) string {
+	_, publicURL, ok := normalizeUploadReference(value)
+	if !ok {
+		return value
+	}
+	return publicURL
 }
