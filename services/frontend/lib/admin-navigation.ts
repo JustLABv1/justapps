@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-import { GitBranch, LayoutDashboard, Layers, Paintbrush, ShieldCheck } from 'lucide-react';
+import { GitBranch, Layers, LayoutDashboard, Paintbrush, ShieldCheck } from 'lucide-react';
 
 export type AdminNavLink = {
   href: string;

@@ -15,21 +15,21 @@ import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-  BookOpen,
-  Check,
-  ChevronLeft,
-  ExternalLink,
-  GitBranch,
-  History,
-  Layers,
-  LayoutDashboard,
-  Link2,
-  Loader2,
-  Pencil,
-  Scale,
-  Server,
-  Share2,
-  Star
+    BookOpen,
+    Check,
+    ChevronLeft,
+    ExternalLink,
+    GitBranch,
+    History,
+    Layers,
+    LayoutDashboard,
+    Link2,
+    Loader2,
+    Pencil,
+    Scale,
+    Server,
+    Share2,
+    Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
