@@ -83,6 +83,36 @@ export interface AISendMessagePayload {
   providerKey?: string;
 }
 
+export interface PublicAIHistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface PublicAISendMessagePayload {
+  message: string;
+  appId?: string;
+  providerKey?: string;
+  history?: PublicAIHistoryMessage[];
+}
+
+export interface PublicAIAssistantMessage {
+  role: 'assistant';
+  content: string;
+  providerKey?: string;
+  providerType?: string;
+  model?: string;
+  promptTokens?: number;
+  responseTokens?: number;
+  sources?: AIMessageSource[];
+  error?: string;
+  createdAt: string;
+}
+
+export interface PublicAISendMessageResponse {
+  assistantMessage: PublicAIAssistantMessage;
+  sources: AIMessageSource[];
+}
+
 async function parseError(response: Response, fallback: string): Promise<Error> {
   const data = await response.json().catch(() => ({})) as { message?: string; error?: string };
   const message = data.message?.trim();
@@ -96,6 +126,13 @@ export async function listAIProviders(): Promise<AIProviderSummary[]> {
   if (!response.ok) throw await parseError(response, 'AI-Provider konnten nicht geladen werden.');
   const data = await response.json();
   return Array.isArray(data) ? data : [];
+}
+
+export async function listPublicAIProviders(): Promise<AIProviderSummary[]> {
+	const response = await fetchApi('/ai/public/providers', { cache: 'no-store' });
+	if (!response.ok) throw await parseError(response, 'AI-Provider konnten nicht geladen werden.');
+	const data = await response.json();
+	return Array.isArray(data) ? data : [];
 }
 
 export async function listAIConversations(): Promise<AIConversation[]> {
@@ -121,6 +158,15 @@ export async function sendAIMessage(payload: AISendMessagePayload): Promise<AISe
     ? `/ai/conversations/${payload.conversationId}/messages`
     : '/ai/chat';
   const response = await fetchApi(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
+  return response.json();
+}
+
+export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {
+  const response = await fetchApi('/ai/public/chat', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

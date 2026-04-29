@@ -115,7 +115,7 @@ export function Navigation() {
     { href: "/", label: "Apps", active: pathname === '/' },
     { href: "/gruppen", label: "Gruppen", active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
-    ...(user ? [{ href: "/chat", label: "AI Chat", active: pathname === '/chat' }] : []),
+    ...(user || settings.allowAnonymousAI ? [{ href: "/chat", label: "AI Chat", active: pathname === '/chat' }] : []),
   ];
 
   return (

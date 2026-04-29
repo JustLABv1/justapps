@@ -29,7 +29,56 @@ type sendMessageRequest struct {
 	ProviderKey    string `json:"providerKey"`
 }
 
+type publicHistoryMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type publicSendMessageRequest struct {
+	Message     string                 `json:"message"`
+	AppID       string                 `json:"appId"`
+	ProviderKey string                 `json:"providerKey"`
+	History     []publicHistoryMessage `json:"history"`
+}
+
+type publicAssistantMessage struct {
+	Role           string                   `json:"role"`
+	Content        string                   `json:"content"`
+	ProviderKey    string                   `json:"providerKey"`
+	ProviderType   string                   `json:"providerType"`
+	Model          string                   `json:"model"`
+	PromptTokens   int                      `json:"promptTokens"`
+	ResponseTokens int                      `json:"responseTokens"`
+	Sources        []models.AIMessageSource `json:"sources"`
+	Error          string                   `json:"error"`
+	CreatedAt      time.Time                `json:"createdAt"`
+}
+
+type publicSendMessageResponse struct {
+	AssistantMessage publicAssistantMessage   `json:"assistantMessage"`
+	Sources          []models.AIMessageSource `json:"sources"`
+}
+
 func ListProviders(c *gin.Context, db *bun.DB) {
+	providers, err := aifunc.ListProviderSummaries(c.Request.Context(), db, config.Config)
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Provider konnten nicht geladen werden", err)
+		return
+	}
+	c.JSON(200, providers)
+}
+
+func ListPublicProviders(c *gin.Context, db *bun.DB) {
+	allowed, err := anonymousAIAllowed(c, db)
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Provider konnten nicht geladen werden", err)
+		return
+	}
+	if !allowed {
+		httperror.Forbidden(c, "Anonymer AI-Zugriff ist deaktiviert", errors.New("anonymous ai disabled"))
+		return
+	}
+
 	providers, err := aifunc.ListProviderSummaries(c.Request.Context(), db, config.Config)
 	if err != nil {
 		httperror.InternalServerError(c, "AI-Provider konnten nicht geladen werden", err)
@@ -245,6 +294,94 @@ func SendMessage(c *gin.Context, db *bun.DB) {
 	})
 }
 
+func SendPublicMessage(c *gin.Context, db *bun.DB) {
+	allowed, err := anonymousAIAllowed(c, db)
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Chat konnte nicht geladen werden", err)
+		return
+	}
+	if !allowed {
+		httperror.Forbidden(c, "Anonymer AI-Zugriff ist deaktiviert", errors.New("anonymous ai disabled"))
+		return
+	}
+
+	var req publicSendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httperror.StatusBadRequest(c, "Ungültige Chat-Nachricht", err)
+		return
+	}
+	req.Message = strings.TrimSpace(req.Message)
+	if req.Message == "" {
+		httperror.StatusBadRequest(c, "Nachricht darf nicht leer sein", errors.New("empty message"))
+		return
+	}
+	if utf8.RuneCountInString(req.Message) > 8000 {
+		httperror.StatusBadRequest(c, "Nachricht ist zu lang", errors.New("message too long"))
+		return
+	}
+
+	provider, found, err := aifunc.ResolveProvider(c.Request.Context(), db, config.Config, req.ProviderKey)
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Provider konnte nicht geladen werden", err)
+		return
+	}
+	if !found {
+		httperror.StatusBadRequest(c, "Kein aktiver AI-Provider ist konfiguriert", errors.New("provider not configured"))
+		return
+	}
+
+	viewer := aifunc.Viewer{}
+	if strings.TrimSpace(req.AppID) != "" {
+		viewable, err := aifunc.AppIsViewable(c.Request.Context(), db, req.AppID, viewer)
+		if err != nil {
+			httperror.InternalServerError(c, "App-Kontext konnte nicht geprüft werden", err)
+			return
+		}
+		if !viewable {
+			httperror.StatusNotFound(c, "App nicht gefunden", errors.New("app not found"))
+			return
+		}
+	}
+
+	history := buildPublicHistory(req.History)
+	retrieved, err := aifunc.RetrieveContext(c.Request.Context(), db, viewer, aifunc.RetrievalQuery{Text: req.Message, AppID: strings.TrimSpace(req.AppID), Limit: 8})
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Kontext konnte nicht geladen werden", err)
+		return
+	}
+
+	messages := aifunc.BuildPromptMessages(req.Message, history, retrieved.Chunks, provider.MaxContextTokens)
+	client := aifunc.NewChatProvider(provider)
+	response, err := client.Chat(c.Request.Context(), aifunc.ChatRequest{
+		Model:           provider.ChatModel,
+		Messages:        messages,
+		Temperature:     provider.Temperature,
+		MaxOutputTokens: provider.MaxOutputTokens,
+	})
+	if err != nil {
+		httperror.InternalServerError(c, "Die AI-Antwort konnte nicht erzeugt werden", err)
+		return
+	}
+
+	assistantMessage := publicAssistantMessage{
+		Role:           "assistant",
+		Content:        response.Content,
+		ProviderKey:    provider.Key,
+		ProviderType:   provider.Type,
+		Model:          firstNonEmpty(response.Model, provider.ChatModel),
+		PromptTokens:   response.Usage.PromptTokens,
+		ResponseTokens: response.Usage.ResponseTokens,
+		Sources:        retrieved.Sources,
+		Error:          "",
+		CreatedAt:      time.Now().UTC(),
+	}
+
+	c.JSON(200, publicSendMessageResponse{
+		AssistantMessage: assistantMessage,
+		Sources:          retrieved.Sources,
+	})
+}
+
 func ReindexKnowledge(c *gin.Context, db *bun.DB) {
 	count, err := aifunc.ReindexAll(c.Request.Context(), db)
 	if err != nil {
@@ -338,6 +475,41 @@ func getUserContext(c *gin.Context) (uuid.UUID, string, bool) {
 		}
 	}
 	return uuid.Nil, role, false
+}
+
+func anonymousAIAllowed(c *gin.Context, db *bun.DB) (bool, error) {
+	var settings models.PlatformSettings
+	err := db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c.Request.Context())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return settings.AllowAnonymousAI, nil
+}
+
+func buildPublicHistory(history []publicHistoryMessage) []models.AIMessage {
+	if len(history) == 0 {
+		return []models.AIMessage{}
+	}
+	start := 0
+	if len(history) > 24 {
+		start = len(history) - 24
+	}
+	messages := make([]models.AIMessage, 0, len(history)-start)
+	for _, message := range history[start:] {
+		role := strings.TrimSpace(message.Role)
+		if role != "user" && role != "assistant" {
+			continue
+		}
+		content := strings.TrimSpace(message.Content)
+		if content == "" {
+			continue
+		}
+		messages = append(messages, models.AIMessage{Role: role, Content: content})
+	}
+	return messages
 }
 
 func conversationTitle(value string) string {

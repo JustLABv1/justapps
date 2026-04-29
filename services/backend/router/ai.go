@@ -35,6 +35,16 @@ func RegisterAI(group *gin.RouterGroup, db *bun.DB) {
 		})
 	}
 
+	publicAIGroup := group.Group("/ai/public")
+	{
+		publicAIGroup.GET("/providers", func(c *gin.Context) {
+			aihandlers.ListPublicProviders(c, db)
+		})
+		publicAIGroup.POST("/chat", middlewares.AnonymousAIChatRateLimit(), func(c *gin.Context) {
+			aihandlers.SendPublicMessage(c, db)
+		})
+	}
+
 	aiAdminGroup := group.Group("/ai")
 	aiAdminGroup.Use(middlewares.Admin(db))
 	{

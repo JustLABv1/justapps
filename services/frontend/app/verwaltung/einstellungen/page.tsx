@@ -36,6 +36,7 @@ import { useEffect, useRef, useState } from 'react';
 
 type SettingsState = {
   allowAppSubmissions: boolean;
+  allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
   topBannerType: string;
@@ -64,6 +65,7 @@ type SettingsState = {
 
 const defaultState: SettingsState = {
   allowAppSubmissions: true,
+  allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',
   topBannerType: 'info',
@@ -1427,7 +1429,29 @@ export default function EinstellungenPage() {
         </Tabs.Panel>
 
         <Tabs.Panel id="ai" className="pt-6">
-          <AIProviderSettingsPanel />
+          <div className="flex flex-col gap-6">
+            <Surface className="p-6 border border-border/50 shadow-sm">
+              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Bot className="w-4 h-4 text-accent" /> AI-Zugriff
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">Anonymen AI-Zugriff erlauben</span>
+                  <p className="text-xs text-muted max-w-xl">
+                    Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert.
+                  </p>
+                </div>
+                <Switch
+                  isSelected={settings.allowAnonymousAI}
+                  onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
+                >
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
+            </Surface>
+
+            <AIProviderSettingsPanel />
+          </div>
         </Tabs.Panel>
       </Tabs>
 

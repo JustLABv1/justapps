@@ -1,7 +1,23 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { AIMessage, AIProviderSummary, listAIProviders, sendAIMessage } from '@/lib/ai';
+import { useSettings } from '@/context/SettingsContext';
+import {
+  AIMessage,
+  AIProviderSummary,
+  listAIProviders,
+  listPublicAIProviders,
+  sendAIMessage,
+  sendPublicAIMessage,
+} from '@/lib/ai';
+import {
+  createGuestConversationId,
+  createGuestUserMessage,
+  getPreferredGuestAIConversation,
+  normalizePublicAssistantMessage,
+  toPublicAIHistory,
+  upsertGuestAIConversation,
+} from '@/lib/guest-ai';
 import { Button, ListBox, Modal, Select, Surface, TextArea, Tooltip } from '@heroui/react';
 import { Bot, ExternalLink, Loader2, MessageCircle, Send, Sparkles } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -15,6 +31,7 @@ function appIdFromPath(pathname: string): string | undefined {
 
 export function AIChatWidget() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -27,16 +44,20 @@ export function AIChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scopedAppId = useMemo(() => appIdFromPath(pathname), [pathname]);
+  const guestMode = !user && settings.allowAnonymousAI;
+  const aiAccessible = !!user || guestMode;
 
   useEffect(() => {
-    if (!isOpen || !user) return;
+    if (!isOpen || !aiAccessible || pathname === '/chat') return;
     let active = true;
-    listAIProviders()
+    const loadProviders = guestMode ? listPublicAIProviders : listAIProviders;
+
+    loadProviders()
       .then((items) => {
         if (!active) return;
         setProviders(items);
         const defaultProvider = items.find((provider) => provider.default) || items[0];
-        setProviderKey((current) => current || defaultProvider?.key || '');
+        setProviderKey((current) => items.some((provider) => provider.key === current) ? current : (defaultProvider?.key || ''));
       })
       .catch((err) => {
         if (active) setError(err instanceof Error ? err.message : 'AI-Provider konnten nicht geladen werden.');
@@ -44,17 +65,28 @@ export function AIChatWidget() {
     return () => {
       active = false;
     };
-  }, [isOpen, user]);
+  }, [aiAccessible, guestMode, isOpen, pathname]);
+
+  useEffect(() => {
+	if (!isOpen || !guestMode) return;
+	const guestConversation = getPreferredGuestAIConversation(scopedAppId, conversationId);
+	setConversationId(guestConversation?.id);
+	setMessages(guestConversation?.messages || []);
+	setError(null);
+  }, [conversationId, guestMode, isOpen, scopedAppId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, loading]);
 
-  if (!user || pathname === '/chat') return null;
+  if (!aiAccessible || pathname === '/chat') return null;
 
   const openFullChat = () => {
     setIsOpen(false);
-    router.push(scopedAppId ? `/chat?appId=${encodeURIComponent(scopedAppId)}` : '/chat');
+	const params = new URLSearchParams();
+	if (scopedAppId) params.set('appId', scopedAppId);
+	if (guestMode && conversationId) params.set('guestConversationId', conversationId);
+	router.push(params.size > 0 ? `/chat?${params.toString()}` : '/chat');
   };
 
   const handleSend = async () => {
@@ -73,6 +105,29 @@ export function AIChatWidget() {
     }]);
 
     try {
+    if (guestMode) {
+      const previousMessages = messages;
+      const nextConversationId = conversationId || createGuestConversationId();
+      const userMessage = createGuestUserMessage(nextConversationId, message);
+      setMessages([...previousMessages, userMessage]);
+
+      const response = await sendPublicAIMessage({
+        message,
+        appId: scopedAppId,
+        providerKey,
+        history: toPublicAIHistory(previousMessages),
+      });
+      const assistantMessage = normalizePublicAssistantMessage(nextConversationId, response.assistantMessage);
+      const { conversation } = upsertGuestAIConversation({
+        conversationId: nextConversationId,
+        appId: scopedAppId,
+        messages: [...previousMessages, userMessage, assistantMessage],
+      });
+      setConversationId(conversation.id);
+      setMessages(conversation.messages || []);
+      return;
+    }
+
       const response = await sendAIMessage({
         conversationId,
         message,
@@ -82,6 +137,10 @@ export function AIChatWidget() {
       setConversationId(response.conversation.id);
       setMessages((current) => [...current, response.assistantMessage]);
     } catch (err) {
+		if (guestMode) {
+			const guestConversation = getPreferredGuestAIConversation(scopedAppId, conversationId);
+			setMessages(guestConversation?.messages || []);
+		}
       setError(err instanceof Error ? err.message : 'Die AI-Antwort konnte nicht erzeugt werden.');
     } finally {
       setLoading(false);
@@ -117,7 +176,9 @@ export function AIChatWidget() {
                 </Modal.Icon>
                 <div className="min-w-0">
                   <Modal.Heading>JustApps AI</Modal.Heading>
-                  {scopedAppId && <p className="text-xs text-muted">App-Kontext aktiv</p>}
+                  <p className="text-xs text-muted">
+                    {scopedAppId ? 'App-Kontext aktiv' : guestMode ? 'Gastmodus mit lokalem Verlauf' : 'Persönlicher Verlauf'}
+                  </p>
                 </div>
               </Modal.Header>
 
@@ -160,6 +221,7 @@ export function AIChatWidget() {
                         <MessageCircle className="h-6 w-6" />
                       </div>
                       <p className="text-lg font-semibold text-foreground">Wobei kann ich helfen?</p>
+                      {guestMode && <p className="text-xs text-muted">Verlauf bleibt nur in diesem Browser gespeichert.</p>}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4">

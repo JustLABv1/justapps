@@ -2,6 +2,8 @@
 
 import { ChatMarkdown } from '@/components/ChatMarkdown';
 import { Footer } from '@/components/Footer';
+import { useAuth } from '@/context/AuthContext';
+import { useSettings } from '@/context/SettingsContext';
 import {
   AIConversation,
   AIMessage,
@@ -10,8 +12,21 @@ import {
   getAIConversation,
   listAIConversations,
   listAIProviders,
+  listPublicAIProviders,
   sendAIMessage,
+  sendPublicAIMessage,
 } from '@/lib/ai';
+import {
+	createGuestConversationId,
+	createGuestUserMessage,
+	deleteGuestAIConversation,
+	getGuestAIConversation,
+	getPreferredGuestAIConversation,
+	listGuestAIConversations,
+	normalizePublicAssistantMessage,
+	toPublicAIHistory,
+	upsertGuestAIConversation,
+} from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,9 +38,13 @@ const QUICK_PROMPTS = [
   'Welche App passt zu meinem Anwendungsfall?',
 ];
 
-function initialAppId(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return new URLSearchParams(window.location.search).get('appId') || undefined;
+function initialChatParams(): { appId?: string; guestConversationId?: string } {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    appId: params.get('appId') || undefined,
+    guestConversationId: params.get('guestConversationId') || undefined,
+  };
 }
 
 function TypingIndicator() {
@@ -76,6 +95,8 @@ function ProviderSelector({
 }
 
 export default function ChatPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { settings, loaded: settingsLoaded } = useSettings();
   const [providers, setProviders] = useState<AIProviderSummary[]>([]);
   const [providerKey, setProviderKey] = useState('');
   const [conversations, setConversations] = useState<AIConversation[]>([]);
@@ -88,25 +109,64 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const appId = useMemo(() => initialAppId(), []);
+  const chatParams = useMemo(() => initialChatParams(), []);
+  const appId = chatParams?.appId;
+  const preferredGuestConversationId = chatParams?.guestConversationId;
+  const guestMode = !user && settings.allowAnonymousAI;
+  const accessDenied = !authLoading && settingsLoaded && !user && !settings.allowAnonymousAI;
 
   useEffect(() => {
-    let active = true;
-    Promise.all([listAIProviders(), listAIConversations()])
-      .then(([providerData, conversationData]) => {
+    if (authLoading || !settingsLoaded) return;
+
+  if (!user && !settings.allowAnonymousAI) {
+    setProviders([]);
+    setProviderKey('');
+    setConversations([]);
+    setActiveConversation(null);
+    setMessages([]);
+    setError(null);
+    setLoading(false);
+    return;
+  }
+
+  let active = true;
+  setLoading(true);
+  setError(null);
+
+  void (async () => {
+    try {
+      const providerData = guestMode ? await listPublicAIProviders() : await listAIProviders();
+      if (!active) return;
+      const defaultProvider = providerData.find((provider) => provider.default) || providerData[0];
+      setProviders(providerData);
+      setProviderKey((current) => providerData.some((provider) => provider.key === current) ? current : (defaultProvider?.key || ''));
+
+      if (guestMode) {
+        const guestConversations = listGuestAIConversations();
+        const selectedConversation = getPreferredGuestAIConversation(appId, preferredGuestConversationId);
         if (!active) return;
-        setProviders(providerData);
-        setProviderKey((providerData.find((p) => p.default) || providerData[0])?.key || '');
-        setConversations(conversationData);
-      })
-      .catch((err) => {
-        if (active) setError(err instanceof Error ? err.message : 'AI Chat konnte nicht geladen werden.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
+        setConversations(guestConversations);
+        setActiveConversation(selectedConversation);
+        setMessages(selectedConversation?.messages || []);
+        return;
+      }
+
+      const conversationData = await listAIConversations();
+      if (!active) return;
+      setConversations(conversationData);
+      setActiveConversation(null);
+      setMessages([]);
+    } catch (err) {
+      if (active) setError(err instanceof Error ? err.message : 'AI Chat konnte nicht geladen werden.');
+    } finally {
+      if (active) setLoading(false);
+    }
+  })();
+
+  return () => {
+    active = false;
+  };
+  }, [appId, authLoading, guestMode, preferredGuestConversationId, settings.allowAnonymousAI, settingsLoaded, user]);
 
   useEffect(() => {
     messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' });
@@ -144,6 +204,12 @@ export default function ChatPage() {
 
   const loadConversation = async (conversation: AIConversation) => {
     setError(null);
+	if (guestMode) {
+		const guestConversation = getGuestAIConversation(conversation.id) || conversation;
+		setActiveConversation(guestConversation);
+		setMessages(guestConversation.messages || []);
+		return;
+	}
     setLoading(true);
     try {
       const data = await getAIConversation(conversation.id);
@@ -158,6 +224,13 @@ export default function ChatPage() {
 
   const removeConversation = async (conversation: AIConversation) => {
     try {
+		if (guestMode) {
+			const nextConversations = deleteGuestAIConversation(conversation.id);
+			setConversations(nextConversations);
+			if (activeConversation?.id === conversation.id) startNewChat();
+			return;
+		}
+
       await deleteAIConversation(conversation.id);
       setConversations((c) => c.filter((item) => item.id !== conversation.id));
       if (activeConversation?.id === conversation.id) startNewChat();
@@ -168,11 +241,43 @@ export default function ChatPage() {
 
   const handleSend = async () => {
     const message = draft.trim();
-    if (!message || sending) return;
+    if (!message || sending || accessDenied) return;
     setDraft('');
     setError(null);
     setSending(true);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+  if (guestMode) {
+    const previousMessages = messages;
+    const nextConversationId = activeConversation?.id || createGuestConversationId();
+    const userMessage = createGuestUserMessage(nextConversationId, message);
+    setMessages([...previousMessages, userMessage]);
+    try {
+      const response = await sendPublicAIMessage({
+        message,
+        appId: activeConversation?.appId || appId,
+        providerKey,
+        history: toPublicAIHistory(previousMessages),
+      });
+      const assistantMessage = normalizePublicAssistantMessage(nextConversationId, response.assistantMessage);
+      const { conversation, conversations: nextConversations } = upsertGuestAIConversation({
+        conversationId: nextConversationId,
+        appId: activeConversation?.appId || appId,
+        createdAt: activeConversation?.createdAt,
+        messages: [...previousMessages, userMessage, assistantMessage],
+      });
+      setActiveConversation(conversation);
+      setMessages(conversation.messages || []);
+      setConversations(nextConversations);
+    } catch (err) {
+      setMessages(previousMessages);
+      setError(err instanceof Error ? err.message : 'Die AI-Antwort konnte nicht erzeugt werden.');
+    } finally {
+      setSending(false);
+    }
+    return;
+  }
+
     setMessages((current) => [...current, {
       id: `local-${Date.now()}`,
       conversationId: activeConversation?.id || '',
@@ -331,7 +436,19 @@ export default function ChatPage() {
         {/* Messages */}
         <div ref={messagesRef} className="flex-1 overflow-y-auto">
           <div className={`w-full px-6 pb-44 lg:px-10 ${sidebarOpen ? 'pt-8' : 'pt-24'}`}>
-            {loading ? (
+            {accessDenied ? (
+				<div className="mx-auto flex max-w-2xl flex-col items-center gap-5 pt-[14vh] text-center">
+				  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+					<Sparkles className="h-8 w-8" />
+				  </div>
+				  <div>
+					<p className="text-xl font-semibold text-foreground">AI Chat nur nach Anmeldung verfügbar</p>
+					<p className="mt-3 max-w-xl text-sm leading-6 text-muted">
+					  Diese Instanz erlaubt derzeit keinen anonymen AI-Zugriff. Melden Sie sich an oder aktivieren Sie die Funktion in den Plattform-Einstellungen.
+					</p>
+				  </div>
+				</div>
+            ) : loading ? (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
               </div>
@@ -345,6 +462,9 @@ export default function ChatPage() {
                   {activeProvider && (
                     <p className="mt-1 text-sm text-muted">{activeProvider.label} · {activeProvider.chatModel}</p>
                   )}
+                  {guestMode && (
+					<p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Gastmodus mit lokalem Verlauf</p>
+				  )}
                   <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
                     Fragen Sie nach Apps, Versionen, Dokumentation oder lassen Sie sich bei Auswahl und Einrichtung unterstützen.
                   </p>
