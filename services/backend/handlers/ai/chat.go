@@ -60,6 +60,10 @@ type publicSendMessageResponse struct {
 }
 
 func ListProviders(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	providers, err := aifunc.ListProviderSummaries(c.Request.Context(), db, config.Config)
 	if err != nil {
 		httperror.InternalServerError(c, "AI-Provider konnten nicht geladen werden", err)
@@ -69,6 +73,10 @@ func ListProviders(c *gin.Context, db *bun.DB) {
 }
 
 func ListPublicProviders(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	allowed, err := anonymousAIAllowed(c, db)
 	if err != nil {
 		httperror.InternalServerError(c, "AI-Provider konnten nicht geladen werden", err)
@@ -88,6 +96,10 @@ func ListPublicProviders(c *gin.Context, db *bun.DB) {
 }
 
 func ListConversations(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	userID, _, ok := getUserContext(c)
 	if !ok {
 		httperror.Unauthorized(c, "Benutzer nicht gefunden", errors.New("user not found"))
@@ -103,6 +115,10 @@ func ListConversations(c *gin.Context, db *bun.DB) {
 }
 
 func CreateConversation(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	userID, role, ok := getUserContext(c)
 	if !ok {
 		httperror.Unauthorized(c, "Benutzer nicht gefunden", errors.New("user not found"))
@@ -144,6 +160,10 @@ func CreateConversation(c *gin.Context, db *bun.DB) {
 }
 
 func GetConversation(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	conversation, ok := loadOwnedConversation(c, db)
 	if !ok {
 		return
@@ -158,6 +178,10 @@ func GetConversation(c *gin.Context, db *bun.DB) {
 }
 
 func DeleteConversation(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	conversation, ok := loadOwnedConversation(c, db)
 	if !ok {
 		return
@@ -170,6 +194,10 @@ func DeleteConversation(c *gin.Context, db *bun.DB) {
 }
 
 func SendMessage(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	userID, role, ok := getUserContext(c)
 	if !ok {
 		httperror.Unauthorized(c, "Benutzer nicht gefunden", errors.New("user not found"))
@@ -295,6 +323,10 @@ func SendMessage(c *gin.Context, db *bun.DB) {
 }
 
 func SendPublicMessage(c *gin.Context, db *bun.DB) {
+	if !requireAIEnabled(c, db) {
+		return
+	}
+
 	allowed, err := anonymousAIAllowed(c, db)
 	if err != nil {
 		httperror.InternalServerError(c, "AI-Chat konnte nicht geladen werden", err)
@@ -477,14 +509,49 @@ func getUserContext(c *gin.Context) (uuid.UUID, string, bool) {
 	return uuid.Nil, role, false
 }
 
-func anonymousAIAllowed(c *gin.Context, db *bun.DB) (bool, error) {
+func requireAIEnabled(c *gin.Context, db *bun.DB) bool {
+	enabled, err := aiFeatureEnabled(c, db)
+	if err != nil {
+		httperror.InternalServerError(c, "AI-Funktion konnte nicht geprüft werden", err)
+		return false
+	}
+	if !enabled {
+		httperror.Forbidden(c, "AI-Funktion ist deaktiviert", errors.New("ai disabled"))
+		return false
+	}
+	return true
+}
+
+func aiFeatureEnabled(c *gin.Context, db *bun.DB) (bool, error) {
+	settings, found, err := loadPlatformSettings(c, db)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+	return settings.AIEnabled, nil
+}
+
+func loadPlatformSettings(c *gin.Context, db *bun.DB) (models.PlatformSettings, bool, error) {
 	var settings models.PlatformSettings
 	err := db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c.Request.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
+			return models.PlatformSettings{}, false, nil
 		}
+		return models.PlatformSettings{}, false, err
+	}
+	return settings, true, nil
+}
+
+func anonymousAIAllowed(c *gin.Context, db *bun.DB) (bool, error) {
+	settings, found, err := loadPlatformSettings(c, db)
+	if err != nil {
 		return false, err
+	}
+	if !found {
+		return false, nil
 	}
 	return settings.AllowAnonymousAI, nil
 }

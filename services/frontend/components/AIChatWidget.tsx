@@ -44,8 +44,8 @@ export function AIChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scopedAppId = useMemo(() => appIdFromPath(pathname), [pathname]);
-  const guestMode = !user && settings.allowAnonymousAI;
-  const aiAccessible = !!user || guestMode;
+  const guestMode = settings.aiEnabled && !user && settings.allowAnonymousAI;
+  const aiAccessible = settings.aiEnabled && (!!user || guestMode);
 
   useEffect(() => {
     if (!isOpen || !aiAccessible || pathname === '/chat') return;

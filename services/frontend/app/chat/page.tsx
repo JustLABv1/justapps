@@ -113,8 +113,9 @@ export default function ChatPage() {
   const chatParams = useMemo(() => initialChatParams(), []);
   const appId = chatParams?.appId;
   const preferredGuestConversationId = chatParams?.guestConversationId;
-  const guestMode = !user && settings.allowAnonymousAI;
-  const accessDenied = !authLoading && settingsLoaded && !user && !settings.allowAnonymousAI;
+  const aiDisabled = settingsLoaded && !settings.aiEnabled;
+  const guestMode = settings.aiEnabled && !user && settings.allowAnonymousAI;
+  const accessDenied = !authLoading && settingsLoaded && (aiDisabled || (!user && !settings.allowAnonymousAI));
   const dataScopeKey = !authLoading && settingsLoaded && !accessDenied
     ? [user?.id || 'guest', guestMode ? 'guest' : 'auth', appId || '', preferredGuestConversationId || ''].join(':')
     : null;
@@ -125,6 +126,12 @@ export default function ChatPage() {
     || (dataScopeKey !== null && loadedScopeKey !== dataScopeKey)
   );
   const visibleError = accessDenied || loading ? null : error;
+  const accessDeniedTitle = aiDisabled
+    ? 'AI Chat ist derzeit deaktiviert'
+    : 'AI Chat nur nach Anmeldung verfügbar';
+  const accessDeniedDescription = aiDisabled
+    ? 'Diese Instanz hat die AI-Funktion in den Plattform-Einstellungen deaktiviert. Ein Administrator kann sie in der Verwaltung wieder aktivieren.'
+    : 'Diese Instanz erlaubt derzeit keinen anonymen AI-Zugriff. Melden Sie sich an oder aktivieren Sie die Funktion in den Plattform-Einstellungen.';
 
   useEffect(() => {
     if (!dataScopeKey) return;
@@ -442,9 +449,9 @@ export default function ChatPage() {
 					<Sparkles className="h-8 w-8" />
 				  </div>
 				  <div>
-					<p className="text-xl font-semibold text-foreground">AI Chat nur nach Anmeldung verfügbar</p>
+          <p className="text-xl font-semibold text-foreground">{accessDeniedTitle}</p>
 					<p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-					  Diese Instanz erlaubt derzeit keinen anonymen AI-Zugriff. Melden Sie sich an oder aktivieren Sie die Funktion in den Plattform-Einstellungen.
+            {accessDeniedDescription}
 					</p>
 				  </div>
 				</div>

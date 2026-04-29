@@ -115,7 +115,7 @@ export function Navigation() {
     { href: "/", label: "Apps", icon: Layers, active: pathname === '/' },
     { href: "/gruppen", label: "Gruppen", icon: Layers2, active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", icon: Package, active: pathname === '/meine-apps' }] : []),
-    ...(user || settings.allowAnonymousAI ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
+    ...(settings.aiEnabled && (user || settings.allowAnonymousAI) ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
   ];
 
   return (
