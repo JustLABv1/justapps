@@ -103,7 +103,8 @@ export default function ChatPage() {
   const [activeConversation, setActiveConversation] = useState<AIConversation | null>(null);
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [conversationLoading, setConversationLoading] = useState(false);
+  const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -114,50 +115,58 @@ export default function ChatPage() {
   const preferredGuestConversationId = chatParams?.guestConversationId;
   const guestMode = !user && settings.allowAnonymousAI;
   const accessDenied = !authLoading && settingsLoaded && !user && !settings.allowAnonymousAI;
+  const dataScopeKey = !authLoading && settingsLoaded && !accessDenied
+    ? [user?.id || 'guest', guestMode ? 'guest' : 'auth', appId || '', preferredGuestConversationId || ''].join(':')
+    : null;
+  const loading = !accessDenied && (
+    authLoading
+    || !settingsLoaded
+    || conversationLoading
+    || (dataScopeKey !== null && loadedScopeKey !== dataScopeKey)
+  );
+  const visibleError = accessDenied || loading ? null : error;
 
   useEffect(() => {
-    if (authLoading || !settingsLoaded) return;
+    if (!dataScopeKey) return;
 
-  if (!user && !settings.allowAnonymousAI) return;
+    let active = true;
 
-  let active = true;
-  setLoading(true);
-  setError(null);
-
-  void (async () => {
-    try {
-      const providerData = guestMode ? await listPublicAIProviders() : await listAIProviders();
-      if (!active) return;
-      const defaultProvider = providerData.find((provider) => provider.default) || providerData[0];
-      setProviders(providerData);
-      setProviderKey((current) => providerData.some((provider) => provider.key === current) ? current : (defaultProvider?.key || ''));
-
-      if (guestMode) {
-        const guestConversations = listGuestAIConversations();
-        const selectedConversation = getPreferredGuestAIConversation(appId, preferredGuestConversationId);
+    void (async () => {
+      try {
+        const providerData = guestMode ? await listPublicAIProviders() : await listAIProviders();
         if (!active) return;
-        setConversations(guestConversations);
-        setActiveConversation(selectedConversation);
-        setMessages(selectedConversation?.messages || []);
-        return;
+        const defaultProvider = providerData.find((provider) => provider.default) || providerData[0];
+        setProviders(providerData);
+        setProviderKey((current) => providerData.some((provider) => provider.key === current) ? current : (defaultProvider?.key || ''));
+
+        if (guestMode) {
+          const guestConversations = listGuestAIConversations();
+          const selectedConversation = getPreferredGuestAIConversation(appId, preferredGuestConversationId);
+          if (!active) return;
+          setConversations(guestConversations);
+          setActiveConversation(selectedConversation);
+          setMessages(selectedConversation?.messages || []);
+          setError(null);
+          return;
+        }
+
+        const conversationData = await listAIConversations();
+        if (!active) return;
+        setConversations(conversationData);
+        setActiveConversation(null);
+        setMessages([]);
+        setError(null);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : 'AI Chat konnte nicht geladen werden.');
+      } finally {
+        if (active) setLoadedScopeKey(dataScopeKey);
       }
+    })();
 
-      const conversationData = await listAIConversations();
-      if (!active) return;
-      setConversations(conversationData);
-      setActiveConversation(null);
-      setMessages([]);
-    } catch (err) {
-      if (active) setError(err instanceof Error ? err.message : 'AI Chat konnte nicht geladen werden.');
-    } finally {
-      if (active) setLoading(false);
-    }
-  })();
-
-  return () => {
-    active = false;
-  };
-  }, [appId, authLoading, guestMode, preferredGuestConversationId, settings.allowAnonymousAI, settingsLoaded, user]);
+    return () => {
+      active = false;
+    };
+  }, [appId, dataScopeKey, guestMode, preferredGuestConversationId]);
 
   useEffect(() => {
     messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' });
@@ -201,7 +210,7 @@ export default function ChatPage() {
 		setMessages(guestConversation.messages || []);
 		return;
 	}
-    setLoading(true);
+    setConversationLoading(true);
     try {
       const data = await getAIConversation(conversation.id);
       setActiveConversation(data);
@@ -209,7 +218,7 @@ export default function ChatPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Konversation konnte nicht geladen werden.');
     } finally {
-      setLoading(false);
+      setConversationLoading(false);
     }
   };
 
@@ -528,10 +537,10 @@ export default function ChatPage() {
         </div>
 
         {/* Error */}
-        {error && (
+        {visibleError && (
           <div className="pointer-events-none absolute inset-x-0 bottom-28 z-10 px-6 lg:px-10">
             <div className="pointer-events-auto w-full rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger shadow-sm">
-              {error}
+              {visibleError}
             </div>
           </div>
         )}
