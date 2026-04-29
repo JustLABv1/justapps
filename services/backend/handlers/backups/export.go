@@ -89,6 +89,7 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 				respondSectionError(c, section, sectionErr)
 				return
 			}
+			canonicalizeAppUploadReferences(apps)
 			manifest.Data.Apps = apps
 			appendSummary(&manifest, section, len(apps))
 		case "appGroups":
@@ -97,6 +98,7 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 				respondSectionError(c, section, sectionErr)
 				return
 			}
+			canonicalizeAppGroupUploadReferences(groups)
 			manifest.Data.AppGroups = groups
 			appendSummary(&manifest, section, len(groups))
 		case "appRelations":
@@ -124,6 +126,7 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 				respondSectionError(c, section, sectionErr)
 				return
 			}
+			canonicalizePlatformSettingsUploadReferences(settings)
 			manifest.Data.Settings = settings
 			count := 0
 			if settings != nil {
@@ -241,14 +244,8 @@ func parseSections(value string) ([]string, error) {
 			continue
 		}
 
-		matched := ""
-		for _, candidate := range allSections {
-			if strings.EqualFold(section, candidate) {
-				matched = candidate
-				break
-			}
-		}
-		if matched == "" {
+		matched, ok := canonicalBackupSection(section)
+		if !ok {
 			return nil, errors.New("unknown backup section: " + section)
 		}
 		if _, exists := seen[matched]; exists {

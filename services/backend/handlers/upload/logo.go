@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -18,11 +19,11 @@ import (
 const maxUploadSize = 2 * 1024 * 1024 // 2 MB
 
 var allowedMIME = map[string]string{
-	"image/png":  ".png",
-	"image/jpeg": ".jpg",
-	"image/svg+xml": ".svg",
-	"image/webp": ".webp",
-	"image/x-icon":  ".ico",
+	"image/png":                ".png",
+	"image/jpeg":               ".jpg",
+	"image/svg+xml":            ".svg",
+	"image/webp":               ".webp",
+	"image/x-icon":             ".ico",
 	"image/vnd.microsoft.icon": ".ico",
 }
 
@@ -108,13 +109,17 @@ func UploadLogo(c *gin.Context, dataPath string) {
 
 // ServeUpload serves a previously uploaded file from <dataPath>/uploads/.
 func ServeUpload(c *gin.Context, dataPath string) {
-	filename := filepath.Base(c.Param("filename"))
-	if filename == "." || filename == "/" {
+	requestedPath := c.Param("filepath")
+	if requestedPath == "" {
+		requestedPath = c.Param("filename")
+	}
+	cleaned := path.Clean(strings.TrimLeft(strings.ReplaceAll(requestedPath, "\\", "/"), "/"))
+	if cleaned == "." || path.IsAbs(cleaned) || strings.HasPrefix(cleaned, "../") {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	filePath := filepath.Join(dataPath, "uploads", filename)
+	filePath := filepath.Join(dataPath, "uploads", filepath.FromSlash(cleaned))
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		c.Status(http.StatusNotFound)
 		return

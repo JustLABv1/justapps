@@ -98,3 +98,20 @@ func TestRestoreAssetsUsesRelativePathAndLegacyFilenameFallback(t *testing.T) {
 		t.Fatalf("legacy content = %q", string(legacyContent))
 	}
 }
+
+func TestCanonicalUploadReferenceUsesPortablePublicPath(t *testing.T) {
+	cases := map[string]string{
+		"https://source.example/api/v1/uploads/app-icon.png": "/uploads/app-icon.png",
+		"/api/v1/uploads/logo.svg":                           "/uploads/logo.svg",
+		"uploads/favicon.ico":                                "/uploads/favicon.ico",
+		`uploads\windows.png`:                                "/uploads/windows.png",
+		"https://cdn.example/assets/icon.png":                "https://cdn.example/assets/icon.png",
+		"Layers":                                             "Layers",
+	}
+
+	for input, expected := range cases {
+		if actual := canonicalUploadReference(input); actual != expected {
+			t.Fatalf("canonicalUploadReference(%q) = %q, want %q", input, actual, expected)
+		}
+	}
+}

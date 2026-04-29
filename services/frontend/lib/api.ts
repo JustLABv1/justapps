@@ -3,7 +3,7 @@ import { getApiUrl } from './apiUrl';
 const API_URL = getApiUrl();
 
 /**
- * Upload a file to the backend. Returns the full URL of the uploaded asset.
+ * Upload a file to the backend. Returns the public path of the uploaded asset.
  * Use for multipart/form-data uploads (e.g. logos).
  */
 export async function uploadFile(endpoint: string, file: File): Promise<string> {
@@ -26,9 +26,7 @@ export async function uploadFile(endpoint: string, file: File): Promise<string> 
   }
 
   const data = await res.json();
-  // data.url is a path like "/uploads/<filename>"
-  // Construct the full public URL using the same API base
-  return `${API_URL}${data.url}`;
+  return data.url;
 }
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {

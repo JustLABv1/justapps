@@ -75,6 +75,12 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		return
 	}
 
+	availableSections, err := manifestAvailableSections(manifest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if mode == restoreModeReplace && !isFullScope(requestedSections) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":  "Replace restore currently requires the full backup scope",
@@ -82,9 +88,26 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		})
 		return
 	}
+	if mode == restoreModeReplace && !isFullScope(availableSections) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Replace restore requires a backup file that contains the full backup scope",
+			"detail": "Use merge for selective backups or import a backup that was exported with all sections.",
+		})
+		return
+	}
+
+	filteredSections, skippedSections := filterUnavailableSections(requestedSections, availableSections)
+	if len(filteredSections) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Selected sections are not present in the backup file"})
+		return
+	}
+	requestedSections = filteredSections
 
 	stats := make(map[string]importSectionStats, len(requestedSections))
 	warnings := append(make([]string, 0, 8), importWarnings...)
+	if len(skippedSections) > 0 {
+		warnings = append(warnings, "Skipped sections that are not present in the backup file: "+strings.Join(skippedSections, ", "))
+	}
 
 	tx, err := db.BeginTx(c.Request.Context(), nil)
 	if err != nil {
@@ -277,9 +300,8 @@ func parseImportSections(query string, manifest models.BackupManifest) ([]string
 		return parseSections(query)
 	}
 
-	if len(manifest.Sections) > 0 {
-		joined := strings.Join(manifest.Sections, ",")
-		return parseSections(joined)
+	if sections, err := manifestAvailableSections(manifest); err != nil || len(sections) > 0 {
+		return sections, err
 	}
 
 	inferred := inferManifestSections(manifest)
@@ -473,6 +495,7 @@ func importSettings(ctx context.Context, tx bun.Tx, settings *models.PlatformSet
 		return stats, nil, nil
 	}
 
+	canonicalizePlatformSettingsUploadReferences(settings)
 	settings.ID = "default"
 	var existing models.PlatformSettings
 	err := tx.NewSelect().Model(&existing).Where("id = ?", "default").Scan(ctx)
@@ -570,6 +593,7 @@ func importApps(ctx context.Context, tx bun.Tx, apps []models.Apps) (importSecti
 func importAppGroups(ctx context.Context, tx bun.Tx, groups []models.AppGroup) (importSectionStats, []string, error) {
 	stats := importSectionStats{}
 	for _, group := range groups {
+		group.Icon = canonicalUploadReference(group.Icon)
 		members := append([]models.AppGroupMember(nil), group.Members...)
 		group.Members = nil
 		exists, err := tx.NewSelect().Model((*models.AppGroup)(nil)).Where("id = ?", group.ID).Exists(ctx)
@@ -965,6 +989,7 @@ func normalizeImportedApp(app *models.Apps) {
 	if app == nil {
 		return
 	}
+	app.Icon = canonicalUploadReference(app.Icon)
 	// Legacy backup compatibility: promote knownIssue to a warning banner
 	if strings.TrimSpace(app.KnownIssue) != "" && strings.TrimSpace(app.BannerText) == "" {
 		app.BannerText = strings.TrimSpace(app.KnownIssue)
