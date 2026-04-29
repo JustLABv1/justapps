@@ -5,27 +5,27 @@ import { Footer } from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-  AIConversation,
-  AIMessage,
-  AIProviderSummary,
-  deleteAIConversation,
-  getAIConversation,
-  listAIConversations,
-  listAIProviders,
-  listPublicAIProviders,
-  sendAIMessage,
-  sendPublicAIMessage,
+    AIConversation,
+    AIMessage,
+    AIProviderSummary,
+    deleteAIConversation,
+    getAIConversation,
+    listAIConversations,
+    listAIProviders,
+    listPublicAIProviders,
+    sendAIMessage,
+    sendPublicAIMessage,
 } from '@/lib/ai';
 import {
-  createGuestConversationId,
-  createGuestUserMessage,
-  deleteGuestAIConversation,
-  getGuestAIConversation,
-  getPreferredGuestAIConversation,
-  listGuestAIConversations,
-  normalizePublicAssistantMessage,
-  toPublicAIHistory,
-  upsertGuestAIConversation,
+    createGuestConversationId,
+    createGuestUserMessage,
+    deleteGuestAIConversation,
+    getGuestAIConversation,
+    getPreferredGuestAIConversation,
+    listGuestAIConversations,
+    normalizePublicAssistantMessage,
+    toPublicAIHistory,
+    upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';

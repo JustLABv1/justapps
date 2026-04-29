@@ -1,9 +1,9 @@
 package migrations
 
 import (
-	"justapps-backend/pkg/models"
 	"context"
 	"fmt"
+	"justapps-backend/pkg/models"
 
 	"github.com/uptrace/bun"
 )

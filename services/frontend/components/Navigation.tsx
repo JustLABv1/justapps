@@ -2,12 +2,12 @@
 
 import { resolveAssetUrl } from "@/lib/assets";
 import {
-  Avatar,
-  Button,
-  Dropdown,
-  Label,
-  Link,
-  Separator
+    Avatar,
+    Button,
+    Dropdown,
+    Label,
+    Link,
+    Separator
 } from "@heroui/react";
 import { Bot, ChevronDown, Layers, Layers2, LayoutDashboard, Menu, Package, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
