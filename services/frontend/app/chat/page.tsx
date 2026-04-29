@@ -118,16 +118,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (authLoading || !settingsLoaded) return;
 
-  if (!user && !settings.allowAnonymousAI) {
-    setProviders([]);
-    setProviderKey('');
-    setConversations([]);
-    setActiveConversation(null);
-    setMessages([]);
-    setError(null);
-    setLoading(false);
-    return;
-  }
+  if (!user && !settings.allowAnonymousAI) return;
 
   let active = true;
   setLoading(true);

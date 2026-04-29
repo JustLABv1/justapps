@@ -73,13 +73,11 @@ export function AIProviderSettingsPanel() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProviders = async () => {
-    const data = await listAIProviderSettings();
-    setProviders(data);
-  };
+  const loadProviders = async () => listAIProviderSettings();
 
   useEffect(() => {
     loadProviders()
+      .then((data) => setProviders(data))
       .catch((err) => setError(err instanceof Error ? err.message : 'AI-Provider konnten nicht geladen werden.'))
       .finally(() => setLoading(false));
   }, []);
@@ -97,7 +95,7 @@ export function AIProviderSettingsPanel() {
         body: JSON.stringify(newProvider),
       });
       if (!response.ok) throw await parseApiError(response, 'AI-Provider konnte nicht erstellt werden.');
-      await loadProviders();
+      setProviders(await loadProviders());
       setCreateOpen(false);
       setNewProvider(defaultDraft());
       setStatus('AI-Provider erstellt.');
@@ -121,7 +119,7 @@ export function AIProviderSettingsPanel() {
         }),
       });
       if (!response.ok) throw await parseApiError(response, 'AI-Provider konnte nicht gespeichert werden.');
-      await loadProviders();
+      setProviders(await loadProviders());
       setTokenDrafts((current) => {
         const next = { ...current };
         delete next[provider.providerKey];

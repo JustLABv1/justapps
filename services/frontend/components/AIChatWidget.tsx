@@ -58,6 +58,12 @@ export function AIChatWidget() {
         setProviders(items);
         const defaultProvider = items.find((provider) => provider.default) || items[0];
         setProviderKey((current) => items.some((provider) => provider.key === current) ? current : (defaultProvider?.key || ''));
+		if (guestMode) {
+			const guestConversation = getPreferredGuestAIConversation(scopedAppId, conversationId);
+			setConversationId(guestConversation?.id);
+			setMessages(guestConversation?.messages || []);
+			setError(null);
+		}
       })
       .catch((err) => {
         if (active) setError(err instanceof Error ? err.message : 'AI-Provider konnten nicht geladen werden.');
@@ -65,15 +71,7 @@ export function AIChatWidget() {
     return () => {
       active = false;
     };
-  }, [aiAccessible, guestMode, isOpen, pathname]);
-
-  useEffect(() => {
-	if (!isOpen || !guestMode) return;
-	const guestConversation = getPreferredGuestAIConversation(scopedAppId, conversationId);
-	setConversationId(guestConversation?.id);
-	setMessages(guestConversation?.messages || []);
-	setError(null);
-  }, [conversationId, guestMode, isOpen, scopedAppId]);
+  }, [aiAccessible, conversationId, guestMode, isOpen, pathname, scopedAppId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
