@@ -28,6 +28,9 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 		settings.GET("/repository-providers/available", middlewares.Auth(db), func(c *gin.Context) {
 			platform.ListAvailableGitLabProviders(c, db)
 		})
+		settings.GET("/ai-providers/available", middlewares.Auth(db), func(c *gin.Context) {
+			platform.ListAvailableAIProviders(c, db)
+		})
 
 		gitlabProviders := settings.Group("/gitlab/providers")
 		gitlabProviders.Use(middlewares.Admin(db))
@@ -54,6 +57,26 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			})
 			repositoryProviders.DELETE("/:key", func(c *gin.Context) {
 				platform.DeleteGitLabProvider(c, db)
+			})
+		}
+
+		aiProviders := settings.Group("/ai-providers")
+		aiProviders.Use(middlewares.Admin(db))
+		{
+			aiProviders.GET("", func(c *gin.Context) {
+				platform.ListAIProviders(c, db)
+			})
+			aiProviders.POST("", func(c *gin.Context) {
+				platform.CreateAIProvider(c, db)
+			})
+			aiProviders.PUT("/:key", func(c *gin.Context) {
+				platform.UpdateAIProvider(c, db)
+			})
+			aiProviders.DELETE("/:key", func(c *gin.Context) {
+				platform.DeleteAIProvider(c, db)
+			})
+			aiProviders.POST("/:key/test", func(c *gin.Context) {
+				platform.TestAIProvider(c, db)
 			})
 		}
 	}

@@ -161,6 +161,18 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}) {
 				return
 			}
+		case "aiProviders":
+			if !applySection(section, func() (importSectionStats, []string, error) {
+				return importAIProviders(ctx, tx, manifest.Data.AIProviders)
+			}) {
+				return
+			}
+		case "aiConversations":
+			if !applySection(section, func() (importSectionStats, []string, error) {
+				return importAIConversations(ctx, tx, manifest.Data.AIConversations, manifest.Data.AIMessages)
+			}) {
+				return
+			}
 		case "tokens":
 			if !applySection(section, func() (importSectionStats, []string, error) {
 				return importTokens(ctx, tx, manifest.Data.Tokens)
@@ -300,6 +312,12 @@ func inferManifestSections(manifest models.BackupManifest) []string {
 	if len(manifest.Data.RepositoryAppLinks) > 0 {
 		sections = append(sections, "repositoryAppLinks")
 	}
+	if len(manifest.Data.AIProviders) > 0 {
+		sections = append(sections, "aiProviders")
+	}
+	if len(manifest.Data.AIConversations) > 0 || len(manifest.Data.AIMessages) > 0 {
+		sections = append(sections, "aiConversations")
+	}
 	if len(manifest.Data.Tokens) > 0 {
 		sections = append(sections, "tokens")
 	}
@@ -350,11 +368,15 @@ func clearDatabaseForReplace(ctx context.Context, tx bun.Tx) error {
 		(*models.Rating)(nil),
 		(*models.UserFavorite)(nil),
 		(*models.Tokens)(nil),
+		(*models.AIMessage)(nil),
+		(*models.AIConversation)(nil),
+		(*models.AIKnowledgeChunk)(nil),
 		(*models.GitLabAppLink)(nil),
 		(*models.AppRelation)(nil),
 		(*models.AppGroupMember)(nil),
 		(*models.AppGroup)(nil),
 		(*models.Apps)(nil),
+		(*models.AIProviderSettings)(nil),
 		(*models.GitLabProviderSettings)(nil),
 		(*models.PlatformSettings)(nil),
 		(*models.Users)(nil),
@@ -614,6 +636,144 @@ func importGitLabAppLinks(ctx context.Context, tx bun.Tx, links []models.GitLabA
 		stats.Created++
 	}
 	return stats, nil, nil
+}
+
+func importAIProviders(ctx context.Context, tx bun.Tx, providers []models.AIProviderSettings) (importSectionStats, []string, error) {
+	stats := importSectionStats{}
+	now := time.Now().UTC()
+	for _, provider := range providers {
+		provider.ProviderKey = strings.TrimSpace(provider.ProviderKey)
+		if provider.ProviderKey == "" {
+			stats.Skipped++
+			continue
+		}
+		if strings.TrimSpace(provider.ProviderType) == "" {
+			provider.ProviderType = "openai-compatible"
+		}
+		if provider.CreatedAt.IsZero() {
+			provider.CreatedAt = now
+		}
+		if provider.UpdatedAt.IsZero() {
+			provider.UpdatedAt = now
+		}
+
+		var existing models.AIProviderSettings
+		err := tx.NewSelect().Model(&existing).Where("provider_key = ?", provider.ProviderKey).Scan(ctx)
+		exists := err == nil
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return stats, nil, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&provider).
+				Where("provider_key = ?", provider.ProviderKey).
+				Column("provider_type", "label", "base_url", "api_path", "api_version", "region", "organization", "chat_model", "embedding_model", "encrypted_token", "token_nonce", "token_key_version", "token_configured", "enabled", "is_default", "timeout_seconds", "max_context_tokens", "max_output_tokens", "temperature", "created_at", "updated_at").
+				Exec(ctx)
+			if err != nil {
+				return stats, nil, err
+			}
+			stats.Updated++
+			continue
+		}
+		_, err = tx.NewInsert().Model(&provider).Exec(ctx)
+		if err != nil {
+			return stats, nil, err
+		}
+		stats.Created++
+	}
+	return stats, nil, nil
+}
+
+func importAIConversations(ctx context.Context, tx bun.Tx, conversations []models.AIConversation, messages []models.AIMessage) (importSectionStats, []string, error) {
+	stats := importSectionStats{}
+	warnings := make([]string, 0)
+	now := time.Now().UTC()
+
+	for _, conversation := range conversations {
+		if conversation.ID == uuid.Nil || conversation.UserID == uuid.Nil {
+			stats.Skipped++
+			warnings = append(warnings, "Skipped one or more AI conversations because required identifiers were missing.")
+			continue
+		}
+		conversation.AppID = strings.TrimSpace(conversation.AppID)
+		if strings.TrimSpace(conversation.Title) == "" {
+			conversation.Title = "Neuer Chat"
+		}
+		if strings.TrimSpace(conversation.ScopeType) == "" {
+			if conversation.AppID != "" {
+				conversation.ScopeType = "app"
+			} else {
+				conversation.ScopeType = "global"
+			}
+		}
+		if conversation.CreatedAt.IsZero() {
+			conversation.CreatedAt = now
+		}
+		if conversation.UpdatedAt.IsZero() {
+			conversation.UpdatedAt = conversation.CreatedAt
+		}
+
+		exists, err := tx.NewSelect().Model((*models.AIConversation)(nil)).Where("id = ?", conversation.ID).Exists(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&conversation).
+				Where("id = ?", conversation.ID).
+				Column("user_id", "title", "scope_type", "app_id", "created_at", "updated_at").
+				Exec(ctx)
+			if err != nil {
+				return stats, warnings, err
+			}
+			stats.Updated++
+			continue
+		}
+		_, err = tx.NewInsert().Model(&conversation).Exec(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		stats.Created++
+	}
+
+	for _, message := range messages {
+		if message.ID == uuid.Nil || message.ConversationID == uuid.Nil {
+			stats.Skipped++
+			warnings = append(warnings, "Skipped one or more AI messages because required identifiers were missing.")
+			continue
+		}
+		message.Role = strings.TrimSpace(message.Role)
+		if message.Role == "" {
+			message.Role = "assistant"
+		}
+		if message.Sources == nil {
+			message.Sources = []models.AIMessageSource{}
+		}
+		if message.CreatedAt.IsZero() {
+			message.CreatedAt = now
+		}
+
+		exists, err := tx.NewSelect().Model((*models.AIMessage)(nil)).Where("id = ?", message.ID).Exists(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&message).
+				Where("id = ?", message.ID).
+				Column("conversation_id", "role", "content", "provider_key", "provider_type", "model", "prompt_tokens", "response_tokens", "sources", "error", "created_at").
+				Exec(ctx)
+			if err != nil {
+				return stats, warnings, err
+			}
+			stats.Updated++
+			continue
+		}
+		_, err = tx.NewInsert().Model(&message).Exec(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		stats.Created++
+	}
+
+	return stats, dedupeWarnings(warnings), nil
 }
 
 func importTokens(ctx context.Context, tx bun.Tx, tokens []models.BackupToken) (importSectionStats, []string, error) {

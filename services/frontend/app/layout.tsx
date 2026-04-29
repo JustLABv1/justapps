@@ -1,9 +1,4 @@
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { FlagBar } from "@/components/FlagBar";
-import { Footer } from "@/components/Footer";
-import { Navigation } from "@/components/Navigation";
-import { PageTransition } from "@/components/PageTransition";
-import { TopBanner } from "@/components/TopBanner";
+import { AppShell } from '@/components/AppShell';
 import { Providers } from "@/components/providers";
 import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google";
@@ -38,23 +33,7 @@ export default function RootLayout({
         className={`antialiased min-h-screen flex flex-col`}
       >
         <Providers>
-          <div className="relative flex flex-col min-h-screen">
-            <FlagBar />
-
-            <Navigation />
-
-            <TopBanner />
-
-            <main className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <ErrorBoundary>
-                <PageTransition>
-                  {children}
-                </PageTransition>
-              </ErrorBoundary>
-            </main>
-
-            <Footer />
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

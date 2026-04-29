@@ -9,7 +9,7 @@ import {
     Link,
     Separator
 } from "@heroui/react";
-import { ChevronDown, Menu, Search, X } from "lucide-react";
+import { Bot, ChevronDown, Menu, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -115,6 +115,7 @@ export function Navigation() {
     { href: "/", label: "Apps", active: pathname === '/' },
     { href: "/gruppen", label: "Gruppen", active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
+    ...(user || settings.allowAnonymousAI ? [{ href: "/chat", label: "AI Chat", active: pathname === '/chat' }] : []),
   ];
 
   return (
@@ -148,6 +149,7 @@ export function Navigation() {
                   : 'text-muted hover:text-foreground hover:bg-default'
               }`}
             >
+              {link.href === '/chat' && <Bot className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />}
               {link.label}
             </Link>
           ))}

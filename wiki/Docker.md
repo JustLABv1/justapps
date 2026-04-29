@@ -131,3 +131,5 @@ Available tags:
 ## Configuration
 
 Frontend variables (`NEXT_PUBLIC_*`, `AUTH_*`) can be set in the Compose env file or passed directly to `docker run`. Backend configuration is read from `/etc/justapps/config.yaml` and can be overridden with `BACKEND_*` environment variables. See [Configuration](Configuration) for the full reference.
+
+AI providers are configured in the admin UI and stored in PostgreSQL. When using local model servers such as vLLM, Ollama or LM Studio, make sure the backend container can reach the model server URL. `localhost` inside the backend container refers to the container itself, not the Docker host.

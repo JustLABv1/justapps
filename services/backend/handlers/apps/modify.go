@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
 	gitlabsync "justapps-backend/functions/integrations/gitlab"
 	"justapps-backend/pkg/audit"
@@ -95,6 +96,9 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.create", fmt.Sprintf("created app %s (%s)", app.Name, app.ID))
+	if err := aifunc.ReindexApp(c.Request.Context(), db, app.ID); err != nil {
+		log.WithError(err).WithField("appID", app.ID).Warn("Failed to refresh AI knowledge index after app create")
+	}
 	c.JSON(201, app)
 }
 
@@ -208,6 +212,9 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	if err := gitlabsync.MarkManualChangePendingApprovalForApp(c.Request.Context(), db, app); err != nil {
 		log.WithError(err).WithField("appID", id).Warn("Failed to mark GitLab sync as requiring approval after manual app update")
 	}
+	if err := aifunc.ReindexApp(c.Request.Context(), db, app.ID); err != nil {
+		log.WithError(err).WithField("appID", id).Warn("Failed to refresh AI knowledge index after app update")
+	}
 	c.JSON(200, app)
 }
 
@@ -270,6 +277,9 @@ func DeleteApp(c *gin.Context, db *bun.DB) {
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.delete", fmt.Sprintf("deleted app %s", id))
+	if err := aifunc.DeleteAppChunks(c.Request.Context(), db, id); err != nil {
+		log.WithError(err).WithField("appID", id).Warn("Failed to delete AI knowledge chunks after app delete")
+	}
 	c.Status(204)
 }
 

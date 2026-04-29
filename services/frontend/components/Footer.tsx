@@ -10,7 +10,7 @@ const defaultFooterLinks = [
   { label: 'Barrierefreiheit',url: '#' },
 ];
 
-export function Footer() {
+export function Footer({ className = '', contentClassName = '' }: { className?: string; contentClassName?: string }) {
   const { settings } = useSettings();
 
   const storeName = settings.storeName || 'JustApps';
@@ -22,8 +22,8 @@ export function Footer() {
     : defaultFooterLinks;
 
   return (
-    <footer className="border-t border-border bg-surface mt-auto">
-      <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <footer className={`border-t border-border bg-surface mt-auto ${className}`.trim()}>
+      <div className={`max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 ${contentClassName}`.trim()}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-3">
             <div className="flex flex-cols mb-3 gap-2 items-center">

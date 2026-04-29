@@ -1,40 +1,42 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { AIProviderSettingsPanel } from '@/components/admin/AIProviderSettingsPanel';
 import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-  CUSTOM_BRANDING_PRESET,
-  DEFAULT_HERO_TITLE_PRESET,
-  DEFAULT_TOP_BAR_PRESET,
-  HERO_TITLE_PRESET_OPTIONS,
-  TOP_BAR_PRESET_OPTIONS,
-  normalizeBrandColorList,
-  resolveHeroTitleColors,
-  resolveTopBarColors,
-  seedCustomBrandColors,
+    CUSTOM_BRANDING_PRESET,
+    DEFAULT_HERO_TITLE_PRESET,
+    DEFAULT_TOP_BAR_PRESET,
+    HERO_TITLE_PRESET_OPTIONS,
+    TOP_BAR_PRESET_OPTIONS,
+    normalizeBrandColorList,
+    resolveHeroTitleColors,
+    resolveTopBarColors,
+    seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  Tabs,
-  TextField,
-  Tooltip
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Surface,
+    Switch,
+    Tabs,
+    TextField,
+    Tooltip
 } from '@heroui/react';
-import { ArrowDown, ArrowUp, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type SettingsState = {
   allowAppSubmissions: boolean;
+  allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
   topBannerType: string;
@@ -63,6 +65,7 @@ type SettingsState = {
 
 const defaultState: SettingsState = {
   allowAppSubmissions: true,
+  allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',
   topBannerType: 'info',
@@ -459,6 +462,12 @@ export default function EinstellungenPage() {
             <Tabs.Tab id="integrationen" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
               <div className="flex items-center gap-2">
                 <GitBranch className="w-4 h-4" /> Integrationen
+              </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="ai" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4" /> AI
               </div>
               <Tabs.Indicator />
             </Tabs.Tab>
@@ -1416,6 +1425,32 @@ export default function EinstellungenPage() {
                 </div>
               )}
             </Surface>
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel id="ai" className="pt-6">
+          <div className="flex flex-col gap-6">
+            <Surface className="p-6 border border-border/50 shadow-sm">
+              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Bot className="w-4 h-4 text-accent" /> AI-Zugriff
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">Anonymen AI-Zugriff erlauben</span>
+                  <p className="text-xs text-muted max-w-xl">
+                    Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert.
+                  </p>
+                </div>
+                <Switch
+                  isSelected={settings.allowAnonymousAI}
+                  onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
+                >
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
+            </Surface>
+
+            <AIProviderSettingsPanel />
           </div>
         </Tabs.Panel>
       </Tabs>

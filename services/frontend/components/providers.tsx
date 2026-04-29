@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { AuthProvider } from '../context/AuthContext';
 import { FavoritesProvider } from '../context/FavoritesContext';
 import { SettingsProvider } from '../context/SettingsContext';
+import { AIChatWidget } from './AIChatWidget';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <RouterProvider navigate={router.push}>
               <Toast.Provider placement="bottom end" />
               {children}
+              <AIChatWidget />
             </RouterProvider>
           </NextThemesProvider>
         </SettingsProvider>

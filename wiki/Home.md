@@ -14,6 +14,7 @@ A self-hosted application store for teams and organizations — centrally manage
 | [API Reference](API-Reference) | Full REST API endpoint listing |
 | [Architecture](Architecture) | System overview, services, and data flow |
 | [GitLab Integration](GitLab-Integration) | Sync app metadata from GitLab projects |
+| [AI Chat](AI-Chat) | Configure AI providers and app knowledge retrieval |
 | [Admin Guide](Admin-Guide) | Manage users, apps, and platform settings |
 | [Contributing](Contributing) | Branching, commit style, and PR workflow |
 

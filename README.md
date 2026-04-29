@@ -14,6 +14,7 @@ A self-hosted application store for teams and organizations. Centrally manage, d
 - **Admin interface** — manage users, apps, platform branding, and settings
 - **OIDC authentication** — Keycloak integration with local username/password fallback
 - **Repository sync** — sync app metadata from GitLab and GitHub (including self-hosted/GitHub Enterprise) projects automatically
+- **AI Chat** — answer catalog and deployment questions using app metadata plus repository-synced README, Helm and Compose sources with cloud or local providers
 
 ## Tech Stack
 
@@ -58,6 +59,7 @@ Full documentation is in the [project wiki](https://github.com/JustLABv1/justapp
 | [API Reference](https://github.com/JustLABv1/justapps/wiki/API-Reference) | REST API endpoints |
 | [Architecture](https://github.com/JustLABv1/justapps/wiki/Architecture) | System overview and data flow |
 | [Repository Sync](https://github.com/JustLABv1/justapps/wiki/Repository-Sync) | Sync apps from GitLab and GitHub |
+| [AI Chat](https://github.com/JustLABv1/justapps/wiki/AI-Chat) | Configure AI providers and app knowledge retrieval |
 | [Admin Guide](https://github.com/JustLABv1/justapps/wiki/Admin-Guide) | Manage users and platform settings |
 | [Contributing](https://github.com/JustLABv1/justapps/wiki/Contributing) | Branching, commit style, PR workflow |
 

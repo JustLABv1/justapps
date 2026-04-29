@@ -62,6 +62,7 @@ Accessible via the **Settings** tab in `/verwaltung`.
 | **Hero-Titel-Farben** | Presets oder benutzerdefinierte Verlaufsfarben fuer den Titel auf der Startseite |
 | **Footer links** | Custom links shown in the page footer |
 | **GitLab Providers** | Add/manage GitLab integrations |
+| **AI Providers** | Add/manage AI chat providers and rebuild the app knowledge index |
 
 ### Branding Presets
 
@@ -77,6 +78,14 @@ Solange kein benutzerdefinierter Satz vollstaendig gepflegt ist, faellt die Star
 ## GitLab Approval Queue
 
 When GitLab sync is enabled, synced projects appear in the **GitLab** tab for review before being published. See [GitLab Integration](GitLab-Integration) for details.
+
+---
+
+## AI Chat
+
+Admins configure AI providers under **Settings -> AI**. Provider keys are stored server-side, encrypted at rest, and never returned to the frontend after saving. The same panel can rebuild the AI knowledge index after a restore or a large catalog import.
+
+The chat uses app metadata and repository-synced content such as README, Helm values and Compose files. See [AI Chat](AI-Chat) for provider examples, including vLLM and Ollama.
 
 ---
 
