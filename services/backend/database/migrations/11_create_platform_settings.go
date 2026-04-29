@@ -1,9 +1,9 @@
 package migrations
 
 import (
-	"justapps-backend/pkg/models"
 	"context"
 	"fmt"
+	"justapps-backend/pkg/models"
 
 	"github.com/uptrace/bun"
 )
@@ -20,6 +20,7 @@ func init() {
 		// Insert default settings if not exists
 		settings := &models.PlatformSettings{
 			ID:                  "default",
+			AIEnabled:           true,
 			AllowAppSubmissions: true,
 		}
 		_, err = db.NewInsert().Model(settings).On("CONFLICT (id) DO NOTHING").Exec(ctx)

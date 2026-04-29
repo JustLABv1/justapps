@@ -19,6 +19,7 @@ export interface FooterLink {
 
 export interface StoreSettings {
   id: string;
+  aiEnabled: boolean;
   allowAppSubmissions: boolean;
   allowAnonymousAI: boolean;
   showTopBanner: boolean;
@@ -72,6 +73,7 @@ export const defaultDetailFields: DetailFieldDef[] = [
 
 export const defaultSettings: StoreSettings = {
   id: 'default',
+  aiEnabled: true,
   allowAppSubmissions: true,
   allowAnonymousAI: false,
   showTopBanner: false,

@@ -47,6 +47,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 	if count == 0 {
 		settings = models.PlatformSettings{
 			ID:                  "default",
+			AIEnabled:           true,
 			AllowAppSubmissions: true,
 			AllowAnonymousAI:    false,
 			ShowFlagBar:         true,
@@ -115,7 +116,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	_, err := db.NewUpdate().
 		Model(&req).
 		Column(
-			"allow_app_submissions", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
+			"ai_enabled", "allow_app_submissions", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_title_preset", "hero_title_colors", "hero_subtitle",

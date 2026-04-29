@@ -35,6 +35,7 @@ import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader
 import { useEffect, useRef, useState } from 'react';
 
 type SettingsState = {
+  aiEnabled: boolean;
   allowAppSubmissions: boolean;
   allowAnonymousAI: boolean;
   showTopBanner: boolean;
@@ -64,6 +65,7 @@ type SettingsState = {
 };
 
 const defaultState: SettingsState = {
+  aiEnabled: true,
   allowAppSubmissions: true,
   allowAnonymousAI: false,
   showTopBanner: false,
@@ -1434,19 +1436,43 @@ export default function EinstellungenPage() {
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
                 <Bot className="w-4 h-4 text-accent" /> AI-Zugriff
               </h3>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">Anonymen AI-Zugriff erlauben</span>
-                  <p className="text-xs text-muted max-w-xl">
-                    Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert.
-                  </p>
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold">AI-Funktion aktivieren</span>
+                    <p className="text-xs text-muted max-w-xl">
+                      Schaltet den AI-Chat, das Floating-Widget und die zugehörigen API-Endpunkte global ein oder aus.
+                    </p>
+                  </div>
+                  <Switch
+                    isSelected={settings.aiEnabled}
+                    onChange={(val) => save({ aiEnabled: val }, 'aiEnabled')}
+                  >
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch>
                 </div>
-                <Switch
-                  isSelected={settings.allowAnonymousAI}
-                  onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
-                >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
-                </Switch>
+
+                <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold">Anonymen AI-Zugriff erlauben</span>
+                    <p className="text-xs text-muted max-w-xl">
+                      Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert.
+                    </p>
+                  </div>
+                  <Switch
+                    isDisabled={!settings.aiEnabled}
+                    isSelected={settings.allowAnonymousAI}
+                    onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
+                  >
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch>
+                </div>
+
+                {!settings.aiEnabled && (
+                  <p className="text-xs text-muted">
+                    Die AI-Provider-Konfiguration bleibt erhalten und wird wieder verwendet, sobald die Funktion erneut aktiviert wird.
+                  </p>
+                )}
               </div>
             </Surface>
 
