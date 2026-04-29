@@ -19,7 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const version string = "1.2.0-beta.1"
+const version string = "1.2.0-beta.2"
 
 var (
 	configFile = kingpin.Flag("config", "Config file").Short('c').Default("/etc/justapps/config.yaml").String()
