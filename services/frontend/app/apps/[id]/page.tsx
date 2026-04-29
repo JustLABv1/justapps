@@ -15,22 +15,21 @@ import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-    BookOpen,
-    Bot,
-    Check,
-    ChevronLeft,
-    ExternalLink,
-    GitBranch,
-    History,
-    Layers,
-    LayoutDashboard,
-    Link2,
-    Loader2,
-    Pencil,
-    Scale,
-    Server,
-    Share2,
-    Star
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ExternalLink,
+  GitBranch,
+  History,
+  Layers,
+  LayoutDashboard,
+  Link2,
+  Loader2,
+  Pencil,
+  Scale,
+  Server,
+  Share2,
+  Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -179,62 +178,57 @@ export default function AppPage() {
   if (app.authority) {
     metaFields.push({ label: "Herausgeber", value: app.authority, icon: resolveIcon('Building2') });
   }
+  const headerActionClassName = "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0";
 
   return (
     <div className="max-w-5xl mx-auto pb-20">
 
       {/* ── Nav row ── */}
       <div className="flex justify-between items-center mb-6 gap-3">
-        <NextLink href="/" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0">
+        <NextLink href="/" className={headerActionClassName}>
           <ChevronLeft className="w-4 h-4" />
           Zurück zur Übersicht
         </NextLink>
 
-        <div className="flex items-center gap-2">
-          {/* Share / copy-link button */}
-          <Button
+        {isAdmin ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              className={headerActionClassName}
+            >
+              {linkCopied
+                ? <><Check className="w-4 h-4 text-success" /> Kopiert!</>
+                : <><Share2 className="w-4 h-4" /> Teilen</>
+              }
+            </button>
+            <NextLink
+              href={`/verwaltung/apps/${app.id}/edit`}
+              className={headerActionClassName}
+            >
+              <Pencil className="w-4 h-4" />
+              Bearbeiten
+            </NextLink>
+            <NextLink
+              href="/verwaltung"
+              className={headerActionClassName}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Verwaltung
+            </NextLink>
+          </div>
+        ) : (
+          <button
             type="button"
-            variant="secondary"
-            size="sm"
-            onPress={handleShare}
-            className="gap-1.5 shadow-sm"
+            onClick={handleShare}
+            className={headerActionClassName}
           >
             {linkCopied
               ? <><Check className="w-4 h-4 text-success" /> Kopiert!</>
               : <><Share2 className="w-4 h-4" /> Teilen</>
             }
-          </Button>
-
-          {user && (
-            <NextLink
-              href={`/chat?appId=${encodeURIComponent(app.id)}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-muted shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
-            >
-              <Bot className="w-4 h-4" />
-              AI Chat
-            </NextLink>
-          )}
-
-          {isAdmin && (
-            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
-              <NextLink
-                href={`/verwaltung/apps/${app.id}/edit`}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Bearbeiten
-              </NextLink>
-              <div className="w-px h-4 bg-border mx-1" />
-              <NextLink
-                href="/verwaltung"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                Verwaltung
-              </NextLink>
-            </div>
-          )}
-        </div>
+          </button>
+        )}
       </div>
 
 

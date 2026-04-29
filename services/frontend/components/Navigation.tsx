@@ -2,14 +2,14 @@
 
 import { resolveAssetUrl } from "@/lib/assets";
 import {
-    Avatar,
-    Button,
-    Dropdown,
-    Label,
-    Link,
-    Separator
+  Avatar,
+  Button,
+  Dropdown,
+  Label,
+  Link,
+  Separator
 } from "@heroui/react";
-import { Bot, ChevronDown, Menu, Search, X } from "lucide-react";
+import { Bot, ChevronDown, Layers, Layers2, LayoutDashboard, Menu, Package, Search, X } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -112,10 +112,10 @@ export function Navigation() {
   };
 
   const regularNavLinks = [
-    { href: "/", label: "Apps", active: pathname === '/' },
-    { href: "/gruppen", label: "Gruppen", active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
-    ...(user ? [{ href: "/meine-apps", label: "Meine Apps", active: pathname === '/meine-apps' }] : []),
-    ...(user || settings.allowAnonymousAI ? [{ href: "/chat", label: "AI Chat", active: pathname === '/chat' }] : []),
+    { href: "/", label: "Apps", icon: Layers, active: pathname === '/' },
+    { href: "/gruppen", label: "Gruppen", icon: Layers2, active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
+    ...(user ? [{ href: "/meine-apps", label: "Meine Apps", icon: Package, active: pathname === '/meine-apps' }] : []),
+    ...(user || settings.allowAnonymousAI ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
   ];
 
   return (
@@ -139,20 +139,24 @@ export function Navigation() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 ml-8">
-          {regularNavLinks.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors no-underline ${
-                link.active
-                  ? 'text-accent bg-accent/8'
-                  : 'text-muted hover:text-foreground hover:bg-default'
-              }`}
-            >
-              {link.href === '/chat' && <Bot className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />}
-              {link.label}
-            </Link>
-          ))}
+          {regularNavLinks.map((link) => {
+            const Icon = link.icon;
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors no-underline ${
+                  link.active
+                    ? 'text-accent bg-accent/8'
+                    : 'text-muted hover:text-foreground hover:bg-default'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
 
           {/* Verwaltung dropdown (admin only) */}
           {user?.role === 'admin' && (
@@ -166,6 +170,7 @@ export function Navigation() {
                     : 'text-muted hover:text-foreground hover:bg-default'
                 }`}
               >
+                <LayoutDashboard className="w-3.5 h-3.5" />
                 Verwaltung
                 <ChevronDown className="w-3.5 h-3.5" />
               </Button>
@@ -299,16 +304,21 @@ export function Navigation() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           </form>
 
-          {regularNavLinks.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="block px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-default no-underline"
-              onPress={() => setMobileOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {regularNavLinks.map((link) => {
+            const Icon = link.icon;
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-default no-underline"
+                onPress={() => setMobileOpen(false)}
+              >
+                <Icon className="h-4 w-4 shrink-0 text-muted" />
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
 
           {/* Admin links inline in mobile menu */}
           {user?.role === 'admin' && (
