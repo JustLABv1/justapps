@@ -43,6 +43,8 @@ const sectionOptions: SectionOption[] = [
 	{ id: 'settings', label: 'Einstellungen', description: 'Branding, Detailfelder und Store-Konfiguration.' },
 	{ id: 'repositoryProviders', label: 'Repository-Provider', description: 'Persistierte Provider-Einstellungen.' },
 	{ id: 'repositoryAppLinks', label: 'Repository-Linkstatus', description: 'App-Verknüpfungen, Snapshots und Sync-Status.' },
+	{ id: 'aiProviders', label: 'AI-Provider', description: 'AI-Provider-Einstellungen und verschlüsselte API-Keys.' },
+	{ id: 'aiConversations', label: 'AI-Chats', description: 'Chat-Verläufe und zitierte Quellen.', sensitive: true },
 	{ id: 'tokens', label: 'Tokens', description: 'API- und Zugriffstoken.', sensitive: true },
 	{ id: 'favorites', label: 'Favoriten', description: 'Benutzerfavoriten.' },
 	{ id: 'ratings', label: 'Ratings', description: 'Bewertungen und Kommentare.' },

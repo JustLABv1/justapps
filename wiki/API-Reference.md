@@ -130,6 +130,34 @@ Do not store secrets in platform settings. The `/settings` endpoint is public by
 
 ---
 
+## AI Chat
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/ai/providers` | User | List enabled AI providers available for chat |
+| `GET` | `/ai/conversations` | User | List own AI chat conversations |
+| `POST` | `/ai/conversations` | User | Create a chat conversation |
+| `GET` | `/ai/conversations/:id` | User | Get one own conversation with messages |
+| `DELETE` | `/ai/conversations/:id` | User | Delete one own conversation |
+| `POST` | `/ai/chat` | User | Send a message and create a conversation if needed |
+| `POST` | `/ai/conversations/:conversationId/messages` | User | Send a message in an existing conversation |
+| `POST` | `/ai/knowledge/reindex` | Admin | Rebuild the app knowledge index |
+
+### AI Provider Settings
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/settings/ai-providers/available` | User | List enabled AI providers for authenticated settings consumers |
+| `GET` | `/settings/ai-providers` | Admin | List AI provider settings without secrets |
+| `POST` | `/settings/ai-providers` | Admin | Create an AI provider |
+| `PUT` | `/settings/ai-providers/:key` | Admin | Update an AI provider or rotate its token |
+| `DELETE` | `/settings/ai-providers/:key` | Admin | Delete an AI provider |
+| `POST` | `/settings/ai-providers/:key/test` | Admin | Test an AI provider connection |
+
+Supported provider types include `openai`, `azure-openai`, `anthropic`, `gemini`, `mistral`, `cohere`, `openrouter`, `together`, `openai-compatible`, `vllm`, `ollama` and `lmstudio`.
+
+---
+
 ## Admin — Users
 
 | Method | Path | Auth | Description |

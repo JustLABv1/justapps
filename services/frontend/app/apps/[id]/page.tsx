@@ -16,6 +16,7 @@ import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
     BookOpen,
+    Bot,
     Check,
     ChevronLeft,
     ExternalLink,
@@ -203,6 +204,16 @@ export default function AppPage() {
               : <><Share2 className="w-4 h-4" /> Teilen</>
             }
           </Button>
+
+          {user && (
+            <NextLink
+              href={`/chat?appId=${encodeURIComponent(app.id)}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-muted shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
+            >
+              <Bot className="w-4 h-4" />
+              AI Chat
+            </NextLink>
+          )}
 
           {isAdmin && (
             <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">

@@ -76,9 +76,11 @@ repository_provider_encryption:
   secret: replace-with-secure-random-string
 ```
 
-This secret is required at startup and is used to encrypt repository provider tokens stored in the database.
+This secret is required at startup and is used to encrypt repository provider tokens and AI provider tokens stored in the database.
 
 Repository providers themselves are created and maintained in the admin UI under **Verwaltung → Einstellungen → Repository-Provider**.
+
+AI providers are created and maintained in the admin UI under **Verwaltung → Einstellungen → AI**. Local providers such as vLLM, Ollama and LM Studio need to be reachable from the backend process or container.
 
 > **Secret handling:** Avoid committing the encryption secret or provider tokens to source control. Keep the secret in your runtime environment or a secret manager.
 

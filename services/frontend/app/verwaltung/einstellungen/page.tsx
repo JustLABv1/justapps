@@ -1,36 +1,37 @@
 'use client';
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { AIProviderSettingsPanel } from '@/components/admin/AIProviderSettingsPanel';
 import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-  CUSTOM_BRANDING_PRESET,
-  DEFAULT_HERO_TITLE_PRESET,
-  DEFAULT_TOP_BAR_PRESET,
-  HERO_TITLE_PRESET_OPTIONS,
-  TOP_BAR_PRESET_OPTIONS,
-  normalizeBrandColorList,
-  resolveHeroTitleColors,
-  resolveTopBarColors,
-  seedCustomBrandColors,
+    CUSTOM_BRANDING_PRESET,
+    DEFAULT_HERO_TITLE_PRESET,
+    DEFAULT_TOP_BAR_PRESET,
+    HERO_TITLE_PRESET_OPTIONS,
+    TOP_BAR_PRESET_OPTIONS,
+    normalizeBrandColorList,
+    resolveHeroTitleColors,
+    resolveTopBarColors,
+    seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  Tabs,
-  TextField,
-  Tooltip
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Surface,
+    Switch,
+    Tabs,
+    TextField,
+    Tooltip
 } from '@heroui/react';
-import { ArrowDown, ArrowUp, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type SettingsState = {
@@ -459,6 +460,12 @@ export default function EinstellungenPage() {
             <Tabs.Tab id="integrationen" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
               <div className="flex items-center gap-2">
                 <GitBranch className="w-4 h-4" /> Integrationen
+              </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="ai" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4" /> AI
               </div>
               <Tabs.Indicator />
             </Tabs.Tab>
@@ -1417,6 +1424,10 @@ export default function EinstellungenPage() {
               )}
             </Surface>
           </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel id="ai" className="pt-6">
+          <AIProviderSettingsPanel />
         </Tabs.Panel>
       </Tabs>
 

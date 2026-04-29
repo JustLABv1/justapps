@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"justapps-backend/config"
+	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/pkg/models"
 
 	"github.com/uptrace/bun"
@@ -79,7 +80,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 	link.LastManualChangeAt = time.Time{}
 	link.LastSyncStatus = result.Status
 
-	return db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+	err = db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
 		if err := tx.NewSelect().Model(&app).Where("id = ?", link.AppID).Scan(ctx); err != nil {
 			return err
@@ -103,6 +104,10 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 			Exec(ctx)
 		return err
 	})
+	if err != nil {
+		return err
+	}
+	return aifunc.ReindexApp(ctx, db, link.AppID)
 }
 
 func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntime, link *models.GitLabAppLink) error {
@@ -120,7 +125,7 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 	link.LastSyncError = ""
 	link.UpdatedAt = now
 
-	return db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+	err := db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
 		if err := tx.NewSelect().Model(&app).Where("id = ?", link.AppID).Scan(ctx); err != nil {
 			return err
@@ -144,6 +149,10 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 			Exec(ctx)
 		return err
 	})
+	if err != nil {
+		return err
+	}
+	return aifunc.ReindexApp(ctx, db, link.AppID)
 }
 
 func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID string) error {
