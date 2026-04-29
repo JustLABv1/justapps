@@ -9,13 +9,13 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 const SAMPLE_APPS = [
-  { icon: '📊', name: 'Analytics', category: 'Analyse', style: { top: '5%', left: '6%', animationName: 'authFloat1', animationDuration: '6.5s', animationDelay: '0s' } },
-  { icon: '🗺️', name: 'GeoPortal', category: 'Geodaten', style: { top: '10%', right: '8%', animationName: 'authFloat2', animationDuration: '8s', animationDelay: '-2.5s' } },
-  { icon: '🔒', name: 'IAM Service', category: 'Sicherheit', style: { top: '36%', left: '2%', animationName: 'authFloat3', animationDuration: '7s', animationDelay: '-1s' } },
-  { icon: '📋', name: 'Formular-Manager', category: 'Formulare', style: { top: '50%', right: '5%', animationName: 'authFloat1', animationDuration: '9s', animationDelay: '-4s' } },
-  { icon: '📨', name: 'Bescheid-Versand', category: 'Kommunikation', style: { bottom: '18%', left: '8%', animationName: 'authFloat2', animationDuration: '7.5s', animationDelay: '-3s' } },
-  { icon: '🏛️', name: 'Bürger-Portal', category: 'E-Government', style: { bottom: '6%', right: '7%', animationName: 'authFloat3', animationDuration: '8.5s', animationDelay: '-1.5s' } },
-  { icon: '🚀', name: 'Deploy Assistant', category: 'DevOps', style: { bottom: '30%', right: '3%', animationName: 'authFloat1', animationDuration: '10s', animationDelay: '-5s' } },
+  { icon: '📊', name: 'Analytics', category: 'Analyse', style: { top: '5%', left: '6%', animationName: 'float1', animationDuration: '6.5s', animationDelay: '0s' } },
+  { icon: '🗺️', name: 'GeoPortal', category: 'Geodaten', style: { top: '10%', right: '8%', animationName: 'float2', animationDuration: '8s', animationDelay: '-2.5s' } },
+  { icon: '🔒', name: 'IAM Service', category: 'Sicherheit', style: { top: '36%', left: '2%', animationName: 'float3', animationDuration: '7s', animationDelay: '-1s' } },
+  { icon: '📋', name: 'Formular-Manager', category: 'Formulare', style: { top: '50%', right: '5%', animationName: 'float1', animationDuration: '9s', animationDelay: '-4s' } },
+  { icon: '📨', name: 'Bescheid-Versand', category: 'Kommunikation', style: { bottom: '18%', left: '8%', animationName: 'float2', animationDuration: '7.5s', animationDelay: '-3s' } },
+  { icon: '🏛️', name: 'Bürger-Portal', category: 'E-Government', style: { bottom: '6%', right: '7%', animationName: 'float3', animationDuration: '8.5s', animationDelay: '-1.5s' } },
+  { icon: '🚀', name: 'Deploy Assistant', category: 'DevOps', style: { bottom: '30%', right: '3%', animationName: 'float1', animationDuration: '10s', animationDelay: '-5s' } },
 ];
 
 interface AuthLayoutProps {
@@ -46,21 +46,6 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
   return (
     <>
-      <style>{`
-        @keyframes authFloat1 {
-          0%, 100% { transform: translateY(0px) rotate(-1.5deg); }
-          50% { transform: translateY(-18px) rotate(2deg); }
-        }
-        @keyframes authFloat2 {
-          0%, 100% { transform: translateY(0px) rotate(1deg); }
-          50% { transform: translateY(-13px) rotate(-2.5deg); }
-        }
-        @keyframes authFloat3 {
-          0%, 100% { transform: translateY(0px) rotate(-2deg); }
-          50% { transform: translateY(-22px) rotate(1.5deg); }
-        }
-      `}</style>
-
       <div className="flex min-h-[calc(100vh-9rem)] rounded-3xl overflow-hidden border border-border shadow-2xl shadow-black/5">
 
         {/* ── Left decorative panel ── */}

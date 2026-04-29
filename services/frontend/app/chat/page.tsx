@@ -1,31 +1,32 @@
 'use client';
 
 import { ChatMarkdown } from '@/components/ChatMarkdown';
-import { Footer } from '@/components/Footer';
+import { GroupIcon } from '@/components/GroupIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-    AIConversation,
-    AIMessage,
-    AIProviderSummary,
-    deleteAIConversation,
-    getAIConversation,
-    listAIConversations,
-    listAIProviders,
-    listPublicAIProviders,
-    sendAIMessage,
-    sendPublicAIMessage,
+  AIConversation,
+  AIMessage,
+  AIProviderSummary,
+  deleteAIConversation,
+  getAIConversation,
+  listAIConversations,
+  listAIProviders,
+  listPublicAIProviders,
+  sendAIMessage,
+  sendPublicAIMessage,
 } from '@/lib/ai';
+import { fetchApi } from '@/lib/api';
 import {
-    createGuestConversationId,
-    createGuestUserMessage,
-    deleteGuestAIConversation,
-    getGuestAIConversation,
-    getPreferredGuestAIConversation,
-    listGuestAIConversations,
-    normalizePublicAssistantMessage,
-    toPublicAIHistory,
-    upsertGuestAIConversation,
+  createGuestConversationId,
+  createGuestUserMessage,
+  deleteGuestAIConversation,
+  getGuestAIConversation,
+  getPreferredGuestAIConversation,
+  listGuestAIConversations,
+  normalizePublicAssistantMessage,
+  toPublicAIHistory,
+  upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
@@ -108,6 +109,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [backgroundApps, setBackgroundApps] = useState<{ icon: string; name: string; category: string; style: React.CSSProperties }[]>([]);
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatParams = useMemo(() => initialChatParams(), []);
@@ -174,6 +176,37 @@ export default function ChatPage() {
       active = false;
     };
   }, [appId, dataScopeKey, guestMode, preferredGuestConversationId]);
+
+  useEffect(() => {
+    let active = true;
+    fetchApi('/apps')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!active) return;
+        if (Array.isArray(data) && data.length > 0) {
+          const positions = [
+            { top: '15%', left: '15%', animationName: 'float1', animationDuration: '6.5s', animationDelay: '0s' },
+            { top: '22%', right: '15%', animationName: 'float2', animationDuration: '8s', animationDelay: '-2.5s' },
+            { top: '45%', left: '8%', animationName: 'float3', animationDuration: '7s', animationDelay: '-1s' },
+            { top: '55%', right: '8%', animationName: 'float1', animationDuration: '9s', animationDelay: '-4s' },
+            { bottom: '25%', left: '20%', animationName: 'float2', animationDuration: '7.5s', animationDelay: '-3s' },
+            { bottom: '20%', right: '20%', animationName: 'float3', animationDuration: '8.5s', animationDelay: '-1.5s' },
+          ];
+          const shuffled = [...data].sort(() => 0.5 - Math.random()).slice(0, positions.length);
+          const mapped = shuffled.map((app: { name: string; icon?: string; categories?: string[] }, index: number) => ({
+            icon: app.icon || '🚀',
+            name: app.name,
+            category: Array.isArray(app.categories) && app.categories.length > 0 ? app.categories[0] : 'App',
+            style: positions[index % positions.length],
+          }));
+          setBackgroundApps(mapped);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' });
@@ -460,11 +493,33 @@ export default function ChatPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 pt-[10vh] text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+              <div className="relative mx-auto flex w-full flex-col items-center gap-5 pt-[10vh] text-center">
+                {/* Floating Background Apps */}
+                <div className="absolute inset-0 z-0 pointer-events-none hidden xl:block opacity-30 mix-blend-luminosity">
+                  {backgroundApps.map((app) => (
+                    <div
+                      key={app.name}
+                      className="absolute flex w-44 items-center gap-2.5 overflow-hidden rounded-xl border border-border/40 bg-surface/50 px-3.5 py-2.5 shadow-sm backdrop-blur-sm select-none transition-transform"
+                      style={{
+                        ...(app.style as React.CSSProperties),
+                        animationIterationCount: 'infinite',
+                        animationTimingFunction: 'ease-in-out',
+                        animationFillMode: 'both',
+                      }}
+                    >
+                      <GroupIcon icon={app.icon} name={app.name} className="h-9 w-9 shrink-0 rounded-lg bg-accent/10 text-accent" />
+                      <div className="flex flex-col min-w-0 text-left">
+                        <span className="text-xs font-bold text-foreground truncate">{app.name}</span>
+                        <span className="text-[10px] text-muted truncate">{app.category}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-accent animate-fade-slide-up" style={{ animationDelay: '0s' }}>
                   <MessageCircle className="h-8 w-8" />
                 </div>
-                <div>
+                <div className="relative z-10 animate-fade-slide-up" style={{ animationDelay: '0.05s' }}>
                   <p className="text-xl font-semibold text-foreground">Womit kann ich helfen?</p>
                   {activeProvider && (
                     <p className="mt-1 text-sm text-muted">{activeProvider.label} · {activeProvider.chatModel}</p>
@@ -472,17 +527,18 @@ export default function ChatPage() {
                   {guestMode && (
 					<p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Gastmodus mit lokalem Verlauf</p>
 				  )}
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-muted animate-fade-slide-up" style={{ animationDelay: '0.1s' }}>
                     Fragen Sie nach Apps, Versionen, Dokumentation oder lassen Sie sich bei Auswahl und Einrichtung unterstützen.
                   </p>
                 </div>
-                <div className="flex max-w-2xl flex-wrap items-center justify-center gap-2">
-                  {QUICK_PROMPTS.map((prompt) => (
+                <div className="relative z-10 flex max-w-2xl flex-wrap items-center justify-center gap-2">
+                  {QUICK_PROMPTS.map((prompt, index) => (
                     <Button
                       key={prompt}
                       size="sm"
                       variant="secondary"
-                      className="rounded-full px-3"
+                      className="rounded-full px-3 animate-fade-slide-up"
+                      style={{ animationDelay: `${0.2 + index * 0.05}s` }}
                       onPress={() => applyQuickPrompt(prompt)}
                     >
                       {prompt}
@@ -491,7 +547,7 @@ export default function ChatPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex w-full flex-col gap-8">
+              <div className="flex w-full flex-col gap-8 mx-auto max-w-3xl">
                 {messages.map((message) =>
                   message.role === 'user' ? (
                     /* User: right-aligned rounded pill, no avatar */
@@ -555,15 +611,15 @@ export default function ChatPage() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-surface via-surface/80 to-transparent" />
 
         {/* Floating composer */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 lg:px-10">
-          <div className="pointer-events-auto w-full">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-6 pb-6 lg:px-10 flex justify-center">
+          <div className="pointer-events-auto w-full max-w-3xl">
             <div
-              className={`flex items-end overflow-hidden rounded-[1.75rem] border bg-overlay/95 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-all duration-150 ${canSend ? 'border-accent/40' : 'border-border/80'}`}
+              className={`flex items-end overflow-hidden rounded-[1.75rem] border bg-overlay/95 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-colors duration-200 ${canSend ? 'border-accent/40' : 'border-border/80'}`}
             >
               <textarea
                 ref={textareaRef}
                 aria-label="Nachricht schreiben"
-                className="max-h-[200px] min-h-[54px] flex-1 resize-none bg-transparent px-4 py-4 text-sm leading-6 text-foreground outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
+                className="max-h-[200px] min-h-[54px] flex-1 resize-none bg-transparent px-4 py-4 text-sm leading-6 text-foreground outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 transition-[height] duration-200 ease-in-out"
                 disabled={sending}
                 placeholder="Nachricht schreiben… (Shift+Enter für Zeilenumbruch)"
                 rows={1}
@@ -598,7 +654,6 @@ export default function ChatPage() {
       </div>
       </div>
 
-      <Footer className="mt-auto shrink-0 bg-surface" contentClassName="py-8" />
     </div>
   );
 }
