@@ -89,7 +89,33 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		app.IsLocked = false // Or true if approval is needed? Currently false.
 	}
 
-	_, err = db.NewInsert().Model(&app).Exec(c)
+	insertQuery := db.NewInsert().
+		Model(&app).
+		Column(
+			"id", "name", "description", "categories", "live_url", "repo_url",
+			"repositories", "custom_links",
+			"helm_repo", "docker_repo", "docs_url", "icon", "tech_stack",
+			"license", "markdown_content", "custom_fields", "status",
+			"custom_docker_command", "custom_compose_command", "custom_helm_command",
+			"custom_docker_note", "custom_compose_note", "custom_helm_note", "custom_helm_values",
+			"has_deployment_assistant", "show_docker", "show_compose", "show_helm",
+			"tags", "collections", "live_demos",
+			"is_reuse", "reuse_requirements",
+			"banner_text", "banner_type", "banner_color", "banner_title",
+			"deployment_variants", "version", "changelog",
+			"skip_link_probe",
+			"owner_id", "created_at", "updated_at",
+		).
+		Value("has_deployment_assistant", "?", app.HasDeploymentAssistant).
+		Value("show_docker", "?", app.ShowDocker).
+		Value("show_compose", "?", app.ShowCompose).
+		Value("show_helm", "?", app.ShowHelm)
+
+	if user.Role == "admin" {
+		insertQuery.Column("is_locked", "is_featured")
+	}
+
+	_, err = insertQuery.Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error creating app", err)
 		return

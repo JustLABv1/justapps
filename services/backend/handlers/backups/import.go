@@ -552,7 +552,13 @@ func importApps(ctx context.Context, tx bun.Tx, apps []models.Apps) (importSecti
 			stats.Updated++
 			continue
 		}
-		_, err = tx.NewInsert().Model(&app).Exec(ctx)
+		_, err = tx.NewInsert().
+			Model(&app).
+			Value("has_deployment_assistant", "?", app.HasDeploymentAssistant).
+			Value("show_docker", "?", app.ShowDocker).
+			Value("show_compose", "?", app.ShowCompose).
+			Value("show_helm", "?", app.ShowHelm).
+			Exec(ctx)
 		if err != nil {
 			return stats, nil, err
 		}

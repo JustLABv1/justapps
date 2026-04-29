@@ -1644,38 +1644,44 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                     </Switch>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {[
-                      { key: 'showHelm', label: 'Helm', description: 'Chart und Values für Kubernetes-basierte Installationen.', icon: <Server className="w-4 h-4" /> },
-                      { key: 'showCompose', label: 'Compose', description: 'Mehrere Container mit gemeinsamem Setup.', icon: <Terminal className="w-4 h-4" /> },
-                      { key: 'showDocker', label: 'Docker', description: 'Direkter Container-Start für einfache Deployments.', icon: <Terminal className="w-4 h-4" /> },
-                    ].map(({ key, label, description, icon }) => {
-                      const active = formData[key as keyof AppConfig] !== false;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setFormData((previous) => ({ ...previous, [key]: !previous[key as keyof AppConfig] }))}
-                          className={`flex min-h-36 flex-col rounded-[1.75rem] border-2 p-5 text-left transition-all ${
-                            active ? 'border-accent bg-accent/6 text-accent shadow-sm shadow-accent/10' : 'border-border bg-surface-secondary/55 text-muted hover:border-border/80'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
-                              {icon}
-                            </span>
-                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
-                              {active ? 'Aktiv' : 'Ausgeblendet'}
-                            </span>
-                          </div>
-                          <div className="mt-5 space-y-2">
-                            <p className={`text-xl font-semibold leading-tight ${active ? 'text-accent' : 'text-foreground'}`}>{label}</p>
-                            <p className={`text-sm leading-relaxed ${active ? 'text-accent/75' : 'text-muted'}`}>{description}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {formData.hasDeploymentAssistant !== false && (
+                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {[
+                        { key: 'showHelm', label: 'Helm', description: 'Chart und Values für Kubernetes-basierte Installationen.', icon: <Server className="w-4 h-4" /> },
+                        { key: 'showCompose', label: 'Compose', description: 'Mehrere Container mit gemeinsamem Setup.', icon: <Terminal className="w-4 h-4" /> },
+                        { key: 'showDocker', label: 'Docker', description: 'Direkter Container-Start für einfache Deployments.', icon: <Terminal className="w-4 h-4" /> },
+                      ].map(({ key, label, description, icon }) => {
+                        const active = formData[key as keyof AppConfig] !== false;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setFormData((previous) => {
+                              const currentlyActive = previous[key as keyof AppConfig] !== false;
+
+                              return { ...previous, [key]: !currentlyActive };
+                            })}
+                            className={`flex min-h-36 flex-col rounded-[1.75rem] border-2 p-5 text-left transition-all ${
+                              active ? 'border-accent bg-accent/6 text-accent shadow-sm shadow-accent/10' : 'border-border bg-surface-secondary/55 text-muted hover:border-border/80'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
+                                {icon}
+                              </span>
+                              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${active ? 'border-accent/20 bg-accent/12 text-accent' : 'border-border bg-surface text-muted'}`}>
+                                {active ? 'Aktiv' : 'Ausgeblendet'}
+                              </span>
+                            </div>
+                            <div className="mt-5 space-y-2">
+                              <p className={`text-xl font-semibold leading-tight ${active ? 'text-accent' : 'text-foreground'}`}>{label}</p>
+                              <p className={`text-sm leading-relaxed ${active ? 'text-accent/75' : 'text-muted'}`}>{description}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {formData.hasDeploymentAssistant !== false && (

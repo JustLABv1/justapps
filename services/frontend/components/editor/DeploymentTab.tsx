@@ -41,7 +41,11 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setFormData((p) => ({ ...p, [key]: !p[key] }))}
+                onClick={() => setFormData((p) => {
+                  const currentlyActive = p[key] !== false;
+
+                  return { ...p, [key]: !currentlyActive };
+                })}
                   className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
                     active ? 'border-accent bg-accent/5 text-accent' : 'border-border bg-surface text-muted'
                   }`}
