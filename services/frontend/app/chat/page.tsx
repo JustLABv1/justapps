@@ -17,15 +17,15 @@ import {
   sendPublicAIMessage,
 } from '@/lib/ai';
 import {
-	createGuestConversationId,
-	createGuestUserMessage,
-	deleteGuestAIConversation,
-	getGuestAIConversation,
-	getPreferredGuestAIConversation,
-	listGuestAIConversations,
-	normalizePublicAssistantMessage,
-	toPublicAIHistory,
-	upsertGuestAIConversation,
+  createGuestConversationId,
+  createGuestUserMessage,
+  deleteGuestAIConversation,
+  getGuestAIConversation,
+  getPreferredGuestAIConversation,
+  listGuestAIConversations,
+  normalizePublicAssistantMessage,
+  toPublicAIHistory,
+  upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';

@@ -3,20 +3,20 @@
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-  AIMessage,
-  AIProviderSummary,
-  listAIProviders,
-  listPublicAIProviders,
-  sendAIMessage,
-  sendPublicAIMessage,
+    AIMessage,
+    AIProviderSummary,
+    listAIProviders,
+    listPublicAIProviders,
+    sendAIMessage,
+    sendPublicAIMessage,
 } from '@/lib/ai';
 import {
-  createGuestConversationId,
-  createGuestUserMessage,
-  getPreferredGuestAIConversation,
-  normalizePublicAssistantMessage,
-  toPublicAIHistory,
-  upsertGuestAIConversation,
+    createGuestConversationId,
+    createGuestUserMessage,
+    getPreferredGuestAIConversation,
+    normalizePublicAssistantMessage,
+    toPublicAIHistory,
+    upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Modal, Select, Surface, TextArea, Tooltip } from '@heroui/react';
 import { Bot, ExternalLink, Loader2, MessageCircle, Send, Sparkles } from 'lucide-react';

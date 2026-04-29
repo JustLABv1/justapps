@@ -1,8 +1,8 @@
 import type {
-	AIConversation,
-	AIMessage,
-	PublicAIAssistantMessage,
-	PublicAIHistoryMessage,
+    AIConversation,
+    AIMessage,
+    PublicAIAssistantMessage,
+    PublicAIHistoryMessage,
 } from './ai';
 
 const GUEST_AI_STORAGE_KEY = 'justapps:guest-ai-conversations';
