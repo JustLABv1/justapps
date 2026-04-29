@@ -395,7 +395,7 @@ export default function RepositorySyncPage() {
                           isIconOnly
                           size="sm"
                           variant="tertiary"
-                          onPress={() => router.push(`/verwaltung/apps/${app.id}/edit`)}
+                          onPress={() => router.push(`/verwaltung/katalog/apps/${app.id}/edit`)}
                           aria-label="App bearbeiten"
                         >
                           <Pencil className="w-4 h-4 text-muted" />

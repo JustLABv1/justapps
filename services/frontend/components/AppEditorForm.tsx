@@ -136,7 +136,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
   const initialEditorValues = initialFormData ?? initialApp;
   const isCopyFlow = isNew && !!copySource;
   const isAdmin = user?.role === 'admin';
-  const backUrl = isAdmin ? '/verwaltung/apps' : '/meine-apps';
+  const backUrl = isAdmin ? '/verwaltung/katalog/apps' : '/meine-apps';
 
   // ── Form data ──
   const [formData, setFormData] = useState<Partial<AppConfig>>(() =>

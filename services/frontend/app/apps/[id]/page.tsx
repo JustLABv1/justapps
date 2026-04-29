@@ -203,7 +203,7 @@ export default function AppPage() {
               }
             </button>
             <NextLink
-              href={`/verwaltung/apps/${app.id}/edit`}
+              href={`/verwaltung/katalog/apps/${app.id}/edit`}
               className={headerActionClassName}
             >
               <Pencil className="w-4 h-4" />
