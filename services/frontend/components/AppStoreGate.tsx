@@ -3,13 +3,11 @@
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { Loader2 } from 'lucide-react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 export function AppStoreGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { settings, loaded: settingsLoaded } = useSettings();
 
@@ -18,10 +16,9 @@ export function AppStoreGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    const query = searchParams.toString();
-    const callbackUrl = query ? `${pathname}?${query}` : pathname;
+    const callbackUrl = `${window.location.pathname}${window.location.search}`;
     router.replace(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  }, [authLoading, pathname, router, searchParams, settings.requireAuthForAppStore, settingsLoaded, user]);
+  }, [authLoading, router, settings.requireAuthForAppStore, settingsLoaded, user]);
 
   if (!settingsLoaded || authLoading) {
     return (

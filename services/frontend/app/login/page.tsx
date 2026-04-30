@@ -3,7 +3,7 @@
 import { AuthLayout } from '@/components/AuthLayout';
 import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -17,6 +17,14 @@ function getSafeCallbackUrl(value: string | null): string {
   return value;
 }
 
+function readSafeCallbackUrl(): string {
+  if (typeof window === 'undefined') {
+    return '/';
+  }
+
+  return getSafeCallbackUrl(new URLSearchParams(window.location.search).get('callbackUrl'));
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,12 +34,10 @@ export default function LoginPage() {
   const { user, login, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
 
   React.useEffect(() => {
-    if (user) router.push(callbackUrl);
-  }, [callbackUrl, user, router]);
+    if (user) router.push(readSafeCallbackUrl());
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +51,7 @@ export default function LoginPage() {
       const data = await response.json();
       if (response.ok) {
         login(data.token, data.user);
-        router.push(callbackUrl);
+        router.push(readSafeCallbackUrl());
       } else {
         setError(data.message || 'Anmeldung fehlgeschlagen');
       }
@@ -60,7 +66,7 @@ export default function LoginPage() {
   const showLocalAuth = !settings.disableLocalAuth;
 
   const handleOIDCLogin = () => {
-    oidcLogin(callbackUrl);
+    oidcLogin(readSafeCallbackUrl());
   };
 
   // Mode 1: OIDC disabled, only local auth
