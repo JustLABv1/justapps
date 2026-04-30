@@ -711,7 +711,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Paintbrush className="w-4 h-4 text-accent" /> Branding & Erscheinungsbild
+                <Paintbrush className="w-4 h-4 text-accent" /> Erscheinungsbild
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
@@ -804,7 +804,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     accentColor: settings.accentColor,
                   }, 'branding')}
                 >
-                  {savedSection === 'branding' ? 'Gespeichert ✓' : 'Branding speichern'}
+                  {savedSection === 'branding' ? 'Gespeichert ✓' : 'Erscheinungsbild speichern'}
                 </Button>
               </div>
             </Surface>
