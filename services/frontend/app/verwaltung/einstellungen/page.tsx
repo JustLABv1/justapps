@@ -7,28 +7,28 @@ import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-  CUSTOM_BRANDING_PRESET,
-  DEFAULT_HERO_TITLE_PRESET,
-  DEFAULT_TOP_BAR_PRESET,
-  HERO_TITLE_PRESET_OPTIONS,
-  TOP_BAR_PRESET_OPTIONS,
-  normalizeBrandColorList,
-  resolveHeroTitleColors,
-  resolveTopBarColors,
-  seedCustomBrandColors,
+    CUSTOM_BRANDING_PRESET,
+    DEFAULT_HERO_TITLE_PRESET,
+    DEFAULT_TOP_BAR_PRESET,
+    HERO_TITLE_PRESET_OPTIONS,
+    TOP_BAR_PRESET_OPTIONS,
+    normalizeBrandColorList,
+    resolveHeroTitleColors,
+    resolveTopBarColors,
+    seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  TextField,
-  Tooltip
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Surface,
+    Switch,
+    TextField,
+    Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
