@@ -136,6 +136,8 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
   const initialEditorValues = initialFormData ?? initialApp;
   const isCopyFlow = isNew && !!copySource;
   const isAdmin = user?.role === 'admin';
+  const isOwner = !!user?.id && initialApp?.ownerId === user.id;
+  const canManageAppStructure = isNew || isAdmin || isOwner;
   const backUrl = isAdmin ? '/verwaltung/katalog/apps' : '/meine-apps';
 
   // ── Form data ──
@@ -266,7 +268,10 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
     }, [isNew, currentCreateStep]);
 
     useEffect(() => {
-      if (isNew || !initialApp) return;
+      if (isNew || !initialApp || !canManageAppStructure) {
+        setLoadingGitLab(false);
+        return;
+      }
 
       let active = true;
 
@@ -294,7 +299,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
       return () => {
         active = false;
       };
-    }, [initialApp, isNew]);
+    }, [canManageAppStructure, initialApp, isNew]);
 
   // ── Creation-wizard GitLab sync ──
   const handleCreationGitLabSync = async () => {
@@ -2995,19 +3000,23 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
               <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-secondary border border-border text-muted/70 ml-1">Nur Ansicht</span>
               <Tabs.Indicator />
             </Tabs.Tab>
-            <Tabs.Tab id="gitlab" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
-              <GitBranch className="w-4 h-4" />
-              Repository
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
-              <Link2 className="w-4 h-4" />
-              Verwandte Apps
-              {!isNew && relatedApps.length > 0 && (
-                <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{relatedApps.length}</span>
-              )}
-              <Tabs.Indicator />
-            </Tabs.Tab>
+            {canManageAppStructure && (
+              <>
+                <Tabs.Tab id="gitlab" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+                  <GitBranch className="w-4 h-4" />
+                  Repository
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+                  <Link2 className="w-4 h-4" />
+                  Verwandte Apps
+                  {!isNew && relatedApps.length > 0 && (
+                    <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{relatedApps.length}</span>
+                  )}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </>
+            )}
           </Tabs.List>
         </Tabs.ListContainer>
 
@@ -3141,50 +3150,54 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
           </div>
         </Tabs.Panel>
 
-        <Tabs.Panel id="gitlab">
-          <GitLabTab
-            currentApp={formData}
-            gitLabIntegration={gitLabIntegration}
-            gitLabForm={gitLabForm}
-            setGitLabForm={setGitLabForm}
-            loadingGitLab={loadingGitLab}
-            savingGitLab={savingGitLab}
-            syncingGitLab={syncingGitLab}
-            gitLabError={gitLabError}
-            hasGitLabProviders={hasGitLabProviders}
-            gitLabStatus={gitLabStatus}
-            gitLabSnapshot={gitLabSnapshot}
-            onSave={handleSaveGitLabLink}
-            onSync={handleSyncGitLab}
-            onDelete={handleDeleteGitLabLink}
-            onApprove={handleApproveGitLab}
-            onApplyReadme={handleApplyGitLabReadme}
-            onApplyMetadata={handleApplyGitLabMetadata}
-            onApplyDeployment={handleApplyGitLabDeployment}
-          />
-        </Tabs.Panel>
+        {canManageAppStructure && (
+          <>
+            <Tabs.Panel id="gitlab">
+              <GitLabTab
+                currentApp={formData}
+                gitLabIntegration={gitLabIntegration}
+                gitLabForm={gitLabForm}
+                setGitLabForm={setGitLabForm}
+                loadingGitLab={loadingGitLab}
+                savingGitLab={savingGitLab}
+                syncingGitLab={syncingGitLab}
+                gitLabError={gitLabError}
+                hasGitLabProviders={hasGitLabProviders}
+                gitLabStatus={gitLabStatus}
+                gitLabSnapshot={gitLabSnapshot}
+                onSave={handleSaveGitLabLink}
+                onSync={handleSyncGitLab}
+                onDelete={handleDeleteGitLabLink}
+                onApprove={handleApproveGitLab}
+                onApplyReadme={handleApplyGitLabReadme}
+                onApplyMetadata={handleApplyGitLabMetadata}
+                onApplyDeployment={handleApplyGitLabDeployment}
+              />
+            </Tabs.Panel>
 
-        {/* Verwandte Apps + Gruppen tab */}
-        <Tabs.Panel id="related">
-          <RelatedAppsTab
-            showDraftHint={false}
-            isAdmin={isAdmin}
-            relatedApps={relatedApps}
-            groups={groups}
-            appGroupIds={appGroupIds}
-            relatedSearch={relatedSearch}
-            setRelatedSearch={setRelatedSearch}
-            filteredRelatable={filteredRelatable}
-            addingRelated={addingRelated}
-            newGroupName={newGroupName}
-            setNewGroupName={setNewGroupName}
-            creatingGroup={creatingGroup}
-            onAddRelated={handleAddRelated}
-            onRemoveRelated={handleRemoveRelated}
-            onToggleGroup={handleToggleGroup}
-            onCreateGroup={handleCreateGroup}
-          />
-        </Tabs.Panel>
+            {/* Verwandte Apps + Gruppen tab */}
+            <Tabs.Panel id="related">
+              <RelatedAppsTab
+                showDraftHint={false}
+                isAdmin={isAdmin}
+                relatedApps={relatedApps}
+                groups={groups}
+                appGroupIds={appGroupIds}
+                relatedSearch={relatedSearch}
+                setRelatedSearch={setRelatedSearch}
+                filteredRelatable={filteredRelatable}
+                addingRelated={addingRelated}
+                newGroupName={newGroupName}
+                setNewGroupName={setNewGroupName}
+                creatingGroup={creatingGroup}
+                onAddRelated={handleAddRelated}
+                onRemoveRelated={handleRemoveRelated}
+                onToggleGroup={handleToggleGroup}
+                onCreateGroup={handleCreateGroup}
+              />
+            </Tabs.Panel>
+          </>
+        )}
       </Tabs>
           </>
           )}

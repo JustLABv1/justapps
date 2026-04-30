@@ -1,22 +1,15 @@
 'use client';
 
+import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AppConfig } from '@/config/apps';
+import { AppConfig, SystemUser } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { isDraftStatus } from '@/lib/appStatus';
 import { Button, Modal, toast } from '@heroui/react';
 import { Check, Loader2, Plus, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-
-interface SystemUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  disabled: boolean;
-}
 
 function AppsContent() {
   const router = useRouter();
@@ -26,6 +19,7 @@ function AppsContent() {
   const [error, setError] = useState<string | null>(null);
   // Transfer ownership
   const [transferApp, setTransferApp] = useState<AppConfig | null>(null);
+  const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [transferUserId, setTransferUserId] = useState('');
   const [transferring, setTransferring] = useState(false);
@@ -56,7 +50,8 @@ function AppsContent() {
       const res = await fetchApi('/users');
       if (res.ok) {
         const data = await res.json();
-        setUsers((data || []).filter((u: SystemUser) => !u.disabled));
+        const userList = Array.isArray(data) ? data : data.users || [];
+        setUsers(userList.filter((u: SystemUser) => !u.disabled));
       }
     } catch (err) {
       console.error(err);
@@ -174,6 +169,10 @@ function AppsContent() {
     setTransferUserId('');
   };
 
+  const handleOpenEditors = (app: AppConfig) => {
+    setEditorApp(app);
+  };
+
   const handleSubmitTransfer = async () => {
     if (!transferApp || !transferUserId) return;
     setTransferring(true);
@@ -184,13 +183,14 @@ function AppsContent() {
       });
       if (res.ok) {
         setTransferApp(null);
-        loadApps();
+        toast.success(`"${transferApp.name}" wurde übertragen.`);
+        void loadApps();
       } else {
         const err = await res.json().catch(() => ({}));
-        setError(err.message || 'Übertragung fehlgeschlagen');
+        toast.danger(err.message || 'Übertragung fehlgeschlagen');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verbindungsfehler');
+      toast.danger(err instanceof Error ? err.message : 'Verbindungsfehler');
     } finally {
       setTransferring(false);
     }
@@ -240,8 +240,16 @@ function AppsContent() {
         handleToggleAppLock={handleToggleAppLock}
         handleCopyApp={handleCopyApp}
         handleTransferApp={handleOpenTransfer}
+        handleManageEditors={handleOpenEditors}
         onBulkDelete={handleBulkDelete}
         onBulkToggleLock={handleBulkToggleLock}
+      />
+
+      <AppEditorsModal
+        app={editorApp}
+        users={users}
+        onOpenChange={(open) => { if (!open) setEditorApp(null); }}
+        onSaved={loadApps}
       />
 
       {/* Transfer ownership modal */}

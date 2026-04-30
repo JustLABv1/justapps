@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
@@ -38,4 +40,17 @@ type AppGroupMember struct {
 	AppID      string    `bun:"app_id,pk" json:"appId"`
 
 	App *Apps `bun:"rel:belongs-to,join:app_id=id" json:"app,omitempty"`
+}
+
+// AppEditor grants a user edit access to an app without transferring ownership.
+type AppEditor struct {
+	bun.BaseModel `bun:"table:app_editors"`
+
+	AppID     string     `bun:"app_id,pk" json:"appId"`
+	UserID    uuid.UUID  `bun:"user_id,pk,type:uuid" json:"userId"`
+	CreatedBy *uuid.UUID `bun:"created_by,type:uuid,nullzero" json:"createdBy,omitempty"`
+	CreatedAt time.Time  `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+
+	App  *Apps  `bun:"rel:belongs-to,join:app_id=id" json:"app,omitempty"`
+	User *Users `bun:"rel:belongs-to,join:user_id=id" json:"user,omitempty"`
 }

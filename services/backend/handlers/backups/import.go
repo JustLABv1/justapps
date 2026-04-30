@@ -226,6 +226,24 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		}
 	}
 
+	if hasSection(requestedSections, "apps") && len(manifest.Data.AppEditors) > 0 {
+		sectionStats, sectionWarnings, sectionErr := importAppEditors(ctx, tx, manifest.Data.AppEditors)
+		if sectionErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to restore backup section",
+				"section": "apps",
+				"detail":  sectionErr.Error(),
+			})
+			return
+		}
+		appStats := stats["apps"]
+		appStats.Created += sectionStats.Created
+		appStats.Updated += sectionStats.Updated
+		appStats.Skipped += sectionStats.Skipped
+		stats["apps"] = appStats
+		warnings = append(warnings, sectionWarnings...)
+	}
+
 	if err := tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit restore transaction", "detail": err.Error()})
 		return
@@ -394,6 +412,7 @@ func clearDatabaseForReplace(ctx context.Context, tx bun.Tx) error {
 		(*models.AIConversation)(nil),
 		(*models.AIKnowledgeChunk)(nil),
 		(*models.GitLabAppLink)(nil),
+		(*models.AppEditor)(nil),
 		(*models.AppRelation)(nil),
 		(*models.AppGroupMember)(nil),
 		(*models.AppGroup)(nil),
@@ -639,6 +658,38 @@ func importAppRelations(ctx context.Context, tx bun.Tx, relations []models.AppRe
 		stats.Created++
 	}
 	return stats, nil, nil
+}
+
+func importAppEditors(ctx context.Context, tx bun.Tx, editors []models.AppEditor) (importSectionStats, []string, error) {
+	stats := importSectionStats{}
+	warnings := make([]string, 0)
+	for _, editor := range editors {
+		if strings.TrimSpace(editor.AppID) == "" || editor.UserID == uuid.Nil {
+			stats.Skipped++
+			continue
+		}
+
+		appExists, err := tx.NewSelect().Model((*models.Apps)(nil)).Where("id = ?", editor.AppID).Exists(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		userExists, err := tx.NewSelect().Model((*models.Users)(nil)).Where("id = ?", editor.UserID).Exists(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		if !appExists || !userExists {
+			stats.Skipped++
+			warnings = append(warnings, "Skipped one or more app editor assignments because the app or user is missing.")
+			continue
+		}
+
+		_, err = tx.NewInsert().Model(&editor).On("CONFLICT DO NOTHING").Exec(ctx)
+		if err != nil {
+			return stats, warnings, err
+		}
+		stats.Created++
+	}
+	return stats, dedupeWarnings(warnings), nil
 }
 
 func importGitLabAppLinks(ctx context.Context, tx bun.Tx, links []models.GitLabAppLink) (importSectionStats, []string, error) {

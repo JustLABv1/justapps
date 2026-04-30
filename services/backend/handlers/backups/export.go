@@ -91,6 +91,12 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}
 			canonicalizeAppUploadReferences(apps)
 			manifest.Data.Apps = apps
+			appEditors, sectionErr := exportAppEditors(c, db)
+			if sectionErr != nil {
+				respondSectionError(c, section, sectionErr)
+				return
+			}
+			manifest.Data.AppEditors = appEditors
 			appendSummary(&manifest, section, len(apps))
 		case "appGroups":
 			groups, sectionErr := exportAppGroups(c, db)
@@ -306,6 +312,12 @@ func exportAppRelations(c *gin.Context, db *bun.DB) ([]models.AppRelation, error
 	var relations []models.AppRelation
 	err := db.NewSelect().Model(&relations).Order("app_id ASC", "related_app_id ASC").Scan(c.Request.Context())
 	return relations, err
+}
+
+func exportAppEditors(c *gin.Context, db *bun.DB) ([]models.AppEditor, error) {
+	var editors []models.AppEditor
+	err := db.NewSelect().Model(&editors).Order("app_id ASC", "user_id ASC").Scan(c.Request.Context())
+	return editors, err
 }
 
 func exportUsers(c *gin.Context, db *bun.DB, mode models.BackupMode) ([]models.BackupUser, bool, error) {

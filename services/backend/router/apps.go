@@ -52,6 +52,12 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			userGroup.DELETE("/:id", func(c *gin.Context) {
 				apps.DeleteApp(c, db)
 			})
+			userGroup.GET("/:id/editors", func(c *gin.Context) {
+				apps.ListAppEditors(c, db)
+			})
+			userGroup.PUT("/:id/editors", func(c *gin.Context) {
+				apps.ReplaceAppEditors(c, db)
+			})
 		}
 
 		gitlabGroup := appsGroup.Group("/:id/gitlab")

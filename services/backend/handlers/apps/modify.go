@@ -170,10 +170,18 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	// Verify Ownership / Permissions
 	isOwner := existingApp.OwnerID == userID
 	isAdmin := userRole == "admin"
+	isEditor := false
+	if !isAdmin && !isOwner {
+		isEditor, err = isEditorForApp(c.Request.Context(), db, id, userID)
+		if err != nil {
+			httperror.InternalServerError(c, "Error checking app editor permissions", err)
+			return
+		}
+	}
 
 	if !isAdmin {
-		if !isOwner {
-			httperror.Forbidden(c, "You do not have permission to edit this app", errors.New("not owner"))
+		if !isOwner && !isEditor {
+			httperror.Forbidden(c, "You do not have permission to edit this app", errors.New("not owner or editor"))
 			return
 		}
 		if existingApp.IsLocked {
@@ -354,6 +362,11 @@ func TransferApp(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Error transferring app", err)
 		return
 	}
+
+	_, _ = db.NewDelete().Model((*models.AppEditor)(nil)).
+		Where("app_id = ?", id).
+		Where("user_id = ?", newOwnerUUID).
+		Exec(c.Request.Context())
 
 	c.JSON(200, gin.H{"message": "App transferred successfully"})
 }

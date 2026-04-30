@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -32,18 +33,6 @@ func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
 	return uuid.Nil, role, false
 }
 
-func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewer bool) bool {
-	if !isDraftApp(app) {
-		return true
-	}
-
-	if viewerRole == "admin" {
-		return true
-	}
-
-	return hasViewer && app.OwnerID == viewerID
-}
-
 // allowedSortFields maps frontend-safe field names to DB column names.
 var allowedSortFields = map[string]string{
 	"name":       "name",
@@ -51,6 +40,47 @@ var allowedSortFields = map[string]string{
 	"updated_at": "updated_at",
 	"status":     "status",
 	"authority":  "authority",
+}
+
+type appEditorSummaryRow struct {
+	AppID    string    `bun:"app_id"`
+	UserID   uuid.UUID `bun:"id"`
+	Username string    `bun:"username"`
+	Email    string    `bun:"email"`
+}
+
+func loadAppEditorSummaries(ctx context.Context, db *bun.DB, appIDs []string) (map[string][]models.AppUserSummary, error) {
+	if len(appIDs) == 0 {
+		return map[string][]models.AppUserSummary{}, nil
+	}
+
+	var rows []appEditorSummaryRow
+	err := db.NewSelect().
+		TableExpr("app_editors AS ae").
+		ColumnExpr("ae.app_id").
+		ColumnExpr("u.id").
+		ColumnExpr("u.username").
+		ColumnExpr("u.email").
+		Join("JOIN users AS u ON u.id = ae.user_id").
+		Where("ae.app_id IN (?)", bun.In(appIDs)).
+		OrderExpr("ae.app_id ASC").
+		OrderExpr("LOWER(u.username) ASC").
+		OrderExpr("LOWER(u.email) ASC").
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+
+	editorsByAppID := make(map[string][]models.AppUserSummary, len(appIDs))
+	for _, row := range rows {
+		editorsByAppID[row.AppID] = append(editorsByAppID[row.AppID], models.AppUserSummary{
+			ID:       row.UserID,
+			Username: row.Username,
+			Email:    row.Email,
+		})
+	}
+
+	return editorsByAppID, nil
 }
 
 func GetApps(c *gin.Context, db *bun.DB) {
@@ -110,6 +140,9 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	if c.Query("owner") == "me" && hasViewer {
 		query = query.Where("a.owner_id = ?", viewerID)
 	}
+	if c.Query("editable") == "me" && hasViewer {
+		query = query.Where("a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+	}
 
 	err := query.Scan(c)
 	if err != nil {
@@ -117,15 +150,39 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	editorAppIDs := map[string]struct{}{}
+	if hasViewer {
+		var editorErr error
+		editorAppIDs, editorErr = loadEditorAppIDs(c.Request.Context(), db, viewerID)
+		if editorErr != nil {
+			httperror.InternalServerError(c, "Error loading app editor permissions", editorErr)
+			return
+		}
+	}
+
 	visibleApps := make([]models.Apps, 0, len(apps))
 	for _, app := range apps {
 		normalizeAppModelStatus(&app)
 		normalizeAppDetailFields(&app)
-		if canViewApp(app, viewerID, viewerRole, hasViewer) {
+		if canViewApp(app, viewerID, viewerRole, hasViewer, editorAppIDs) {
+			applyViewerPermissions(&app, viewerID, viewerRole, hasViewer, editorAppIDs)
 			visibleApps = append(visibleApps, app)
 		}
 	}
 	apps = visibleApps
+	appIDs := make([]string, 0, len(apps))
+	for _, app := range apps {
+		appIDs = append(appIDs, app.ID)
+	}
+
+	editorsByAppID, err := loadAppEditorSummaries(c.Request.Context(), db, appIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Error loading app editors", err)
+		return
+	}
+	for i := range apps {
+		apps[i].Editors = editorsByAppID[apps[i].ID]
+	}
 
 	// Move pinned apps to the front (in configured order), then featured, then rest
 	if len(settings.PinnedApps) > 0 {
@@ -133,7 +190,6 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		for i, id := range settings.PinnedApps {
 			pinnedIdx[id] = i
 		}
-
 		pinned := make([]models.Apps, len(settings.PinnedApps))
 		rest := make([]models.Apps, 0, len(apps))
 
@@ -186,11 +242,6 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 
 	if viewerRole == "admin" && len(apps) > 0 {
-		appIDs := make([]string, 0, len(apps))
-		for _, app := range apps {
-			appIDs = append(appIDs, app.ID)
-		}
-
 		var links []models.GitLabAppLink
 		if err := db.NewSelect().Model(&links).Where("app_id IN (?)", bun.In(appIDs)).Scan(c); err == nil {
 			linkByAppID := make(map[string]models.GitLabAppLink, len(links))
@@ -235,10 +286,20 @@ func GetApp(c *gin.Context, db *bun.DB) {
 	}
 	normalizeAppModelStatus(&app)
 	normalizeAppDetailFields(&app)
-	if !canViewApp(app, viewerID, viewerRole, hasViewer) {
+	editorAppIDs := map[string]struct{}{}
+	if hasViewer {
+		var editorErr error
+		editorAppIDs, editorErr = loadEditorAppIDs(c.Request.Context(), db, viewerID)
+		if editorErr != nil {
+			httperror.InternalServerError(c, "Error loading app editor permissions", editorErr)
+			return
+		}
+	}
+	if !canViewApp(app, viewerID, viewerRole, hasViewer, editorAppIDs) {
 		httperror.StatusNotFound(c, "App not found", nil)
 		return
 	}
+	applyViewerPermissions(&app, viewerID, viewerRole, hasViewer, editorAppIDs)
 
 	// Load related apps (bidirectional)
 	type relRow struct {
@@ -264,7 +325,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 	app.RelatedApps = make([]models.AppRelationSummary, 0, len(related))
 	for _, r := range related {
 		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: NormalizeAppStatus(r.Status)}
-		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer) {
+		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}
 		app.RelatedApps = append(app.RelatedApps, models.AppRelationSummary{

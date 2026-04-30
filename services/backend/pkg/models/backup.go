@@ -60,6 +60,7 @@ type BackupToken struct {
 
 type BackupData struct {
 	Apps                []Apps                   `json:"apps,omitempty"`
+	AppEditors          []AppEditor              `json:"appEditors,omitempty"`
 	AppGroups           []AppGroup               `json:"appGroups,omitempty"`
 	AppRelations        []AppRelation            `json:"appRelations,omitempty"`
 	Users               []BackupUser             `json:"users,omitempty"`
@@ -81,6 +82,7 @@ type BackupData struct {
 func (data *BackupData) UnmarshalJSON(payload []byte) error {
 	type rawBackupData struct {
 		Apps                []Apps                   `json:"apps,omitempty"`
+		AppEditors          []AppEditor              `json:"appEditors,omitempty"`
 		AppGroups           []AppGroup               `json:"appGroups,omitempty"`
 		AppRelations        []AppRelation            `json:"appRelations,omitempty"`
 		Users               []BackupUser             `json:"users,omitempty"`
@@ -104,6 +106,7 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 	}
 	*data = BackupData{
 		Apps:                raw.Apps,
+		AppEditors:          raw.AppEditors,
 		AppGroups:           raw.AppGroups,
 		AppRelations:        raw.AppRelations,
 		Users:               raw.Users,

@@ -17,6 +17,12 @@ type AppLink struct {
 	URL   string `json:"url"`
 }
 
+type AppUserSummary struct {
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
+}
+
 // DeploymentVariant defines a named deployment flavor for an app
 // (e.g. "Standalone", "High Availability", "Mit SSO").
 type DeploymentVariant struct {
@@ -58,44 +64,46 @@ type Apps struct {
 	MarkdownContent string     `bun:"markdown_content" json:"markdownContent"`
 	// CustomFields stores all "Fachliche Details" as dynamic key-value pairs.
 	// The field schema (labels, order) is managed via PlatformSettings.DetailFields.
-	CustomFields           []AppField           `bun:"custom_fields,type:jsonb" json:"customFields"`
-	Status                 string               `bun:"status" json:"status"`
-	CustomDockerCommand    string               `bun:"custom_docker_command" json:"customDockerCommand"`
-	CustomComposeCommand   string               `bun:"custom_compose_command" json:"customComposeCommand"`
-	CustomHelmCommand      string               `bun:"custom_helm_command" json:"customHelmCommand"`
-	CustomDockerNote       string               `bun:"custom_docker_note" json:"customDockerNote"`
-	CustomComposeNote      string               `bun:"custom_compose_note" json:"customComposeNote"`
-	CustomHelmNote         string               `bun:"custom_helm_note" json:"customHelmNote"`
-	CustomHelmValues       string               `bun:"custom_helm_values" json:"customHelmValues"`
-	HasDeploymentAssistant bool                 `bun:"has_deployment_assistant,notnull,default:true" json:"hasDeploymentAssistant"`
-	ShowDocker             bool                 `bun:"show_docker,notnull,default:true" json:"showDocker"`
-	ShowCompose            bool                 `bun:"show_compose,notnull,default:true" json:"showCompose"`
-	ShowHelm               bool                 `bun:"show_helm,notnull,default:true" json:"showHelm"`
-	Tags                   []string             `bun:"tags,array" json:"tags"`
-	Collections            []string             `bun:"collections,array" json:"collections"`
-	IsFeatured             bool                 `bun:"is_featured,notnull,default:false" json:"isFeatured"`
-	RatingAvg              float64              `bun:"rating_avg,notnull,default:0" json:"ratingAvg"`
-	RatingCount            int                  `bun:"rating_count,notnull,default:0" json:"ratingCount"`
-	OwnerID                uuid.UUID            `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
-	Owner                  *Users               `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
-	IsLocked               bool                 `bun:"is_locked,notnull,default:false" json:"isLocked"`
-	SkipLinkProbe          bool                 `bun:"skip_link_probe,notnull,default:false" json:"skipLinkProbe"`
-	LinkProbeStatus        string               `bun:"link_probe_status,notnull,default:'unknown'" json:"linkProbeStatus"`
-	BannerText             string               `bun:"banner_text,notnull,default:''" json:"bannerText"`
-	BannerType             string               `bun:"banner_type,notnull,default:''" json:"bannerType"`
-	BannerColor            string               `bun:"banner_color,notnull,default:''" json:"bannerColor"`
-	BannerTitle            string               `bun:"banner_title,notnull,default:''" json:"bannerTitle"`
-	KnownIssue             string               `bun:"-" json:"knownIssue,omitempty"` // legacy input alias only
-	IsReuse                bool                 `bun:"is_reuse,notnull,default:false" json:"isReuse"`
-	ReuseRequirements      string               `bun:"reuse_requirements" json:"reuseRequirements"`
-	DeploymentVariants     []DeploymentVariant  `bun:"deployment_variants,type:jsonb" json:"deploymentVariants"`
-	Version                string               `bun:"version,notnull,default:''" json:"version"`
-	Changelog              string               `bun:"changelog,notnull,default:''" json:"changelog"`
-	CreatedAt              time.Time            `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
-	UpdatedAt              time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
-	RelatedApps            []AppRelationSummary `bun:"-" json:"relatedApps,omitempty"`
-	AppGroups              []AppGroupSummary    `bun:"-" json:"appGroups,omitempty"`
-	GitLabSync             *GitLabSyncSummary   `bun:"-" json:"gitLabSync,omitempty"`
+	CustomFields           []AppField            `bun:"custom_fields,type:jsonb" json:"customFields"`
+	Status                 string                `bun:"status" json:"status"`
+	CustomDockerCommand    string                `bun:"custom_docker_command" json:"customDockerCommand"`
+	CustomComposeCommand   string                `bun:"custom_compose_command" json:"customComposeCommand"`
+	CustomHelmCommand      string                `bun:"custom_helm_command" json:"customHelmCommand"`
+	CustomDockerNote       string                `bun:"custom_docker_note" json:"customDockerNote"`
+	CustomComposeNote      string                `bun:"custom_compose_note" json:"customComposeNote"`
+	CustomHelmNote         string                `bun:"custom_helm_note" json:"customHelmNote"`
+	CustomHelmValues       string                `bun:"custom_helm_values" json:"customHelmValues"`
+	HasDeploymentAssistant bool                  `bun:"has_deployment_assistant,notnull,default:true" json:"hasDeploymentAssistant"`
+	ShowDocker             bool                  `bun:"show_docker,notnull,default:true" json:"showDocker"`
+	ShowCompose            bool                  `bun:"show_compose,notnull,default:true" json:"showCompose"`
+	ShowHelm               bool                  `bun:"show_helm,notnull,default:true" json:"showHelm"`
+	Tags                   []string              `bun:"tags,array" json:"tags"`
+	Collections            []string              `bun:"collections,array" json:"collections"`
+	IsFeatured             bool                  `bun:"is_featured,notnull,default:false" json:"isFeatured"`
+	RatingAvg              float64               `bun:"rating_avg,notnull,default:0" json:"ratingAvg"`
+	RatingCount            int                   `bun:"rating_count,notnull,default:0" json:"ratingCount"`
+	OwnerID                uuid.UUID             `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
+	Owner                  *Users                `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
+	IsLocked               bool                  `bun:"is_locked,notnull,default:false" json:"isLocked"`
+	SkipLinkProbe          bool                  `bun:"skip_link_probe,notnull,default:false" json:"skipLinkProbe"`
+	LinkProbeStatus        string                `bun:"link_probe_status,notnull,default:'unknown'" json:"linkProbeStatus"`
+	BannerText             string                `bun:"banner_text,notnull,default:''" json:"bannerText"`
+	BannerType             string                `bun:"banner_type,notnull,default:''" json:"bannerType"`
+	BannerColor            string                `bun:"banner_color,notnull,default:''" json:"bannerColor"`
+	BannerTitle            string                `bun:"banner_title,notnull,default:''" json:"bannerTitle"`
+	KnownIssue             string                `bun:"-" json:"knownIssue,omitempty"` // legacy input alias only
+	IsReuse                bool                  `bun:"is_reuse,notnull,default:false" json:"isReuse"`
+	ReuseRequirements      string                `bun:"reuse_requirements" json:"reuseRequirements"`
+	DeploymentVariants     []DeploymentVariant   `bun:"deployment_variants,type:jsonb" json:"deploymentVariants"`
+	Version                string                `bun:"version,notnull,default:''" json:"version"`
+	Changelog              string                `bun:"changelog,notnull,default:''" json:"changelog"`
+	CreatedAt              time.Time             `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	UpdatedAt              time.Time             `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updatedAt"` // Virtual: populated by GetApp for the detail view
+	RelatedApps            []AppRelationSummary  `bun:"-" json:"relatedApps,omitempty"`
+	AppGroups              []AppGroupSummary     `bun:"-" json:"appGroups,omitempty"`
+	Editors                []AppUserSummary      `bun:"-" json:"editors,omitempty"`
+	GitLabSync             *GitLabSyncSummary    `bun:"-" json:"gitLabSync,omitempty"`
+	ViewerPermissions      *AppViewerPermissions `bun:"-" json:"viewerPermissions,omitempty"`
 	// Legacy detail-field aliases kept for JSON import/export compatibility.
 	Focus           string `bun:"-" json:"focus"`
 	AppType         string `bun:"-" json:"app_type"`
@@ -122,4 +130,11 @@ type AppGroupSummary struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon"`
+}
+
+type AppViewerPermissions struct {
+	CanEdit          bool   `json:"canEdit"`
+	CanDelete        bool   `json:"canDelete"`
+	CanManageEditors bool   `json:"canManageEditors"`
+	AccessRole       string `json:"accessRole"`
 }

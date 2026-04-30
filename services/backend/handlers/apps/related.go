@@ -21,7 +21,16 @@ func GetRelatedApps(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "App not found", err)
 		return
 	}
-	if !canViewApp(baseApp, viewerID, viewerRole, hasViewer) {
+	editorAppIDs := map[string]struct{}{}
+	if hasViewer {
+		var editorErr error
+		editorAppIDs, editorErr = loadEditorAppIDs(c.Request.Context(), db, viewerID)
+		if editorErr != nil {
+			httperror.InternalServerError(c, "Error loading app editor permissions", editorErr)
+			return
+		}
+	}
+	if !canViewApp(baseApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 		httperror.StatusNotFound(c, "App not found", nil)
 		return
 	}
@@ -53,7 +62,7 @@ func GetRelatedApps(c *gin.Context, db *bun.DB) {
 	result := make([]models.AppRelationSummary, 0, len(rows))
 	for _, r := range rows {
 		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
-		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer) {
+		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}
 		result = append(result, models.AppRelationSummary{
@@ -223,9 +232,18 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 	}
 
 	result := make([]models.AppRelationSummary, 0, len(rows))
+	editorAppIDs := map[string]struct{}{}
+	if hasViewer {
+		var editorErr error
+		editorAppIDs, editorErr = loadEditorAppIDs(c.Request.Context(), db, viewerID)
+		if editorErr != nil {
+			httperror.InternalServerError(c, "Error loading app editor permissions", editorErr)
+			return
+		}
+	}
 	for _, r := range rows {
 		memberApp := models.Apps{ID: r.AppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
-		if !canViewApp(memberApp, viewerID, viewerRole, hasViewer) {
+		if !canViewApp(memberApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}
 		result = append(result, models.AppRelationSummary{ID: r.AppID, Name: r.Name, Icon: r.Icon})

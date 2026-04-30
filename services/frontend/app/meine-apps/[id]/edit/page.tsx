@@ -27,8 +27,9 @@ export default function EditMyAppPage() {
       fetchApi(`/apps/${id}`).then((r) => (r.ok ? r.json() : null)),
       fetchApi('/apps').then((r) => (r.ok ? r.json() : [])),
     ]).then(([loadedApp, apps]) => {
-      // Only allow editing own apps (backend also enforces this)
-      if (loadedApp && user.role !== 'admin' && loadedApp.ownerId !== user.id) {
+      const fallbackCanEdit = user.role === 'admin' || loadedApp?.ownerId === user.id;
+      const canEdit = loadedApp?.viewerPermissions?.canEdit ?? fallbackCanEdit;
+      if (loadedApp && !canEdit) {
         router.replace('/meine-apps');
         return;
       }
