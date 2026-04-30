@@ -24,21 +24,16 @@ function userMatchesSearch(user: SystemUser, search: string) {
 export function AppEditorsModal({ app, users, onOpenChange, onSaved }: AppEditorsModalProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(app));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!app) {
-      setSelectedIds(new Set());
-      setSearch('');
-      setError(null);
       return;
     }
 
     let active = true;
-    setLoading(true);
-    setError(null);
     fetchApi(`/apps/${app.id}/editors`, { cache: 'no-store' })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
@@ -47,6 +42,7 @@ export function AppEditorsModal({ app, users, onOpenChange, onSaved }: AppEditor
         }
         if (!active) return;
         const editors = ((data as { editors?: AppEditorUser[] }).editors || []).filter((user) => !user.disabled);
+        setError(null);
         setSelectedIds(new Set(editors.map((user) => user.id)));
       })
       .catch((loadError) => {

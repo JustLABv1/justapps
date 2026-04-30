@@ -138,6 +138,18 @@ export interface AppUserSummary {
   email: string;
 }
 
+export interface AppCatalogFilters {
+  q: string;
+  status: string;
+  category: string;
+  ownerId: string;
+  hasEditors: string;
+  syncStatus: string;
+  featured: string;
+  locked: string;
+  visibility: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;

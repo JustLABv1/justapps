@@ -2,6 +2,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,11 +43,129 @@ var allowedSortFields = map[string]string{
 	"authority":  "authority",
 }
 
+var draftStatusAliases = []string{"draft", "entwurf"}
+
+var statusFilterAliases = map[string][]string{
+	"draft":         draftStatusAliases,
+	"entwurf":       draftStatusAliases,
+	"in erprobung":  {"in erprobung", "incubating", "in inkubation"},
+	"incubating":    {"in erprobung", "incubating", "in inkubation"},
+	"in inkubation": {"in erprobung", "incubating", "in inkubation"},
+	"etabliert":     {"etabliert", "graduated", "produktiv"},
+	"graduated":     {"etabliert", "graduated", "produktiv"},
+	"produktiv":     {"etabliert", "graduated", "produktiv"},
+}
+
+var allowedSyncStatusFilters = map[string]struct{}{
+	"linked":           {},
+	"unlinked":         {},
+	"success":          {},
+	"warning":          {},
+	"pending_approval": {},
+	"error":            {},
+	"never":            {},
+}
+
+var allowedVisibilityFilters = map[string]struct{}{
+	"draft":     {},
+	"published": {},
+}
+
 type appEditorSummaryRow struct {
 	AppID    string    `bun:"app_id"`
 	UserID   uuid.UUID `bun:"id"`
 	Username string    `bun:"username"`
 	Email    string    `bun:"email"`
+}
+
+func normalizeFilterValue(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func parseOptionalBoolFilter(param string, value string) (*bool, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+
+	switch normalizeFilterValue(value) {
+	case "true":
+		parsed := true
+		return &parsed, nil
+	case "false":
+		parsed := false
+		return &parsed, nil
+	default:
+		return nil, fmt.Errorf("invalid value for %s", param)
+	}
+}
+
+func parseOptionalUUIDFilter(param string, value string) (uuid.UUID, bool, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return uuid.Nil, false, nil
+	}
+
+	parsed, err := uuid.Parse(trimmed)
+	if err != nil {
+		return uuid.Nil, false, fmt.Errorf("invalid value for %s", param)
+	}
+
+	if parsed == uuid.Nil {
+		return uuid.Nil, false, fmt.Errorf("invalid value for %s", param)
+	}
+
+	return parsed, true, nil
+}
+
+func applyStatusFilter(query *bun.SelectQuery, rawValue string) *bun.SelectQuery {
+	normalized := normalizeFilterValue(rawValue)
+	if normalized == "" {
+		return query
+	}
+
+	aliases, ok := statusFilterAliases[normalized]
+	if !ok {
+		return query.Where("LOWER(TRIM(COALESCE(a.status, ''))) = ?", normalized)
+	}
+
+	return query.Where("LOWER(TRIM(COALESCE(a.status, ''))) IN (?)", bun.In(aliases))
+}
+
+func applyVisibilityFilter(query *bun.SelectQuery, rawValue string) (*bun.SelectQuery, error) {
+	normalized := normalizeFilterValue(rawValue)
+	if normalized == "" {
+		return query, nil
+	}
+
+	if _, ok := allowedVisibilityFilters[normalized]; !ok {
+		return nil, errors.New("invalid value for visibility")
+	}
+
+	if normalized == "draft" {
+		return query.Where("LOWER(TRIM(COALESCE(a.status, ''))) IN (?)", bun.In(draftStatusAliases)), nil
+	}
+
+	return query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN (?)", bun.In(draftStatusAliases)), nil
+}
+
+func applySyncStatusFilter(query *bun.SelectQuery, rawValue string) (*bun.SelectQuery, error) {
+	normalized := normalizeFilterValue(rawValue)
+	if normalized == "" {
+		return query, nil
+	}
+
+	if _, ok := allowedSyncStatusFilters[normalized]; !ok {
+		return nil, errors.New("invalid value for syncStatus")
+	}
+
+	switch normalized {
+	case "linked":
+		return query.Where("EXISTS (SELECT 1 FROM gitlab_app_links gal WHERE gal.app_id = a.id)"), nil
+	case "unlinked":
+		return query.Where("NOT EXISTS (SELECT 1 FROM gitlab_app_links gal WHERE gal.app_id = a.id)"), nil
+	default:
+		return query.Where("EXISTS (SELECT 1 FROM gitlab_app_links gal WHERE gal.app_id = a.id AND gal.last_sync_status = ?)", normalized), nil
+	}
 }
 
 func loadAppEditorSummaries(ctx context.Context, db *bun.DB, appIDs []string) (map[string][]models.AppUserSummary, error) {
@@ -105,6 +224,28 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	techStack := c.Query("techStack")
 	statusFilter := c.Query("status")
 	groupID := c.Query("group")
+	ownerIDFilter, hasOwnerIDFilter, err := parseOptionalUUIDFilter("ownerId", c.Query("ownerId"))
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
+	}
+	hasEditorsFilter, err := parseOptionalBoolFilter("hasEditors", c.Query("hasEditors"))
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
+	}
+	featuredFilter, err := parseOptionalBoolFilter("featured", c.Query("featured"))
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
+	}
+	lockedFilter, err := parseOptionalBoolFilter("locked", c.Query("locked"))
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
+	}
+	syncStatusFilter := c.Query("syncStatus")
+	visibilityFilter := c.Query("visibility")
 
 	query := db.NewSelect().
 		Model(&apps).
@@ -128,13 +269,45 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 
 	if statusFilter != "" {
-		query = query.Where("a.status = ?", statusFilter)
+		query = applyStatusFilter(query, statusFilter)
 	}
 
 	if groupID != "" {
 		query = query.
 			Join("JOIN app_group_members agm ON agm.app_id = a.id").
 			Where("agm.app_group_id::text = ?", groupID)
+	}
+
+	if hasOwnerIDFilter {
+		query = query.Where("a.owner_id = ?", ownerIDFilter)
+	}
+
+	if hasEditorsFilter != nil {
+		if *hasEditorsFilter {
+			query = query.Where("EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id)")
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id)")
+		}
+	}
+
+	if featuredFilter != nil {
+		query = query.Where("a.is_featured = ?", *featuredFilter)
+	}
+
+	if lockedFilter != nil {
+		query = query.Where("a.is_locked = ?", *lockedFilter)
+	}
+
+	query, err = applySyncStatusFilter(query, syncStatusFilter)
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
+	}
+
+	query, err = applyVisibilityFilter(query, visibilityFilter)
+	if err != nil {
+		httperror.StatusBadRequest(c, err.Error(), err)
+		return
 	}
 
 	if c.Query("owner") == "me" && hasViewer {
@@ -144,7 +317,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		query = query.Where("a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
 	}
 
-	err := query.Scan(c)
+	err = query.Scan(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching apps", err)
 		return

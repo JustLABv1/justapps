@@ -427,6 +427,7 @@ function MyAppsContent() {
       />
 
       <AppEditorsModal
+        key={editorApp?.id ?? 'no-editor-app'}
         app={editorApp}
         users={users}
         onOpenChange={(open) => { if (!open) setEditorApp(null); }}

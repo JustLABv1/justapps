@@ -195,7 +195,7 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [gitLabIntegration, setGitLabIntegration] = useState<GitLabIntegrationState | null>(null);
   const [gitLabForm, setGitLabForm] = useState<GitLabFormState>(defaultGitLabFormState);
-  const [loadingGitLab, setLoadingGitLab] = useState(!isNew);
+  const [loadingGitLab, setLoadingGitLab] = useState(!isNew && !!initialApp && canManageAppStructure);
   const [savingGitLab, setSavingGitLab] = useState(false);
   const [syncingGitLab, setSyncingGitLab] = useState(false);
   const [gitLabError, setGitLabError] = useState<string | null>(null);
@@ -269,7 +269,6 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
 
     useEffect(() => {
       if (isNew || !initialApp || !canManageAppStructure) {
-        setLoadingGitLab(false);
         return;
       }
 
