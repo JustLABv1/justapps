@@ -9,7 +9,7 @@ export default function VerwaltungPlattformPage() {
       cards={[
         {
           href: '/verwaltung/plattform/governance',
-          title: 'Governance',
+          title: 'Regeln & Freigaben',
           description: 'Regeln Sie Einreichungen und zentrale Freigaben für Beiträge zur Plattform.',
           icon: ShieldCheck,
           note: 'Regeln und Freigaben',
@@ -23,7 +23,7 @@ export default function VerwaltungPlattformPage() {
         },
         {
           href: '/verwaltung/plattform/branding',
-          title: 'Branding',
+          title: 'Erscheinungsbild',
           description: 'Verwalten Sie Name, Farben, Logos, Favicon und weitere Darstellungsmerkmale.',
           icon: Paintbrush,
           note: 'Marke und Design',

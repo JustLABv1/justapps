@@ -3,20 +3,21 @@
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-    AIMessage,
-    AIProviderSummary,
-    listAIProviders,
-    listPublicAIProviders,
-    sendAIMessage,
-    sendPublicAIMessage,
+  AIMessage,
+  AIProviderSummary,
+  listAIProviders,
+  listPublicAIProviders,
+  sendAIMessage,
+  sendPublicAIMessage,
 } from '@/lib/ai';
+import { allowsAnonymousAI, canAccessAI } from '@/lib/ai-access';
 import {
-    createGuestConversationId,
-    createGuestUserMessage,
-    getPreferredGuestAIConversation,
-    normalizePublicAssistantMessage,
-    toPublicAIHistory,
-    upsertGuestAIConversation,
+  createGuestConversationId,
+  createGuestUserMessage,
+  getPreferredGuestAIConversation,
+  normalizePublicAssistantMessage,
+  toPublicAIHistory,
+  upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Modal, Select, Surface, TextArea, Tooltip } from '@heroui/react';
 import { Bot, ExternalLink, Loader2, MessageCircle, Send, Sparkles } from 'lucide-react';
@@ -44,8 +45,8 @@ export function AIChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scopedAppId = useMemo(() => appIdFromPath(pathname), [pathname]);
-  const guestMode = settings.aiEnabled && !user && settings.allowAnonymousAI;
-  const aiAccessible = settings.aiEnabled && (!!user || guestMode);
+  const guestMode = !user && allowsAnonymousAI(settings);
+  const aiAccessible = canAccessAI(settings, !!user);
 
   useEffect(() => {
     if (!isOpen || !aiAccessible || pathname === '/chat') return;

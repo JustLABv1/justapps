@@ -20,7 +20,7 @@ interface AuthContextType {
   profileError: string | null;
   login: (token: string, userData: User) => void;
   logout: () => void;
-  oidcLogin: () => void;
+  oidcLogin: (callbackUrl?: string) => void;
   refreshUser: () => Promise<boolean>;
 }
 
@@ -323,9 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  const oidcLogin = () => {
-    nextAuthSignIn('oidc', { callbackUrl: '/' });
-  };
+  const oidcLogin = useCallback((callbackUrl?: string) => {
+    nextAuthSignIn('oidc', { callbackUrl: callbackUrl || '/' });
+  }, []);
 
   const profileReady = status === 'authenticated'
     ? authenticatedProfileReady

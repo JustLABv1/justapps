@@ -9,6 +9,22 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { fetchApi } from '../../lib/api';
 
+function getSafeCallbackUrl(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/';
+  }
+
+  return value;
+}
+
+function readSafeCallbackUrl(): string {
+  if (typeof window === 'undefined') {
+    return '/';
+  }
+
+  return getSafeCallbackUrl(new URLSearchParams(window.location.search).get('callbackUrl'));
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +36,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    if (user) router.push('/');
+    if (user) router.push(readSafeCallbackUrl());
   }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +51,7 @@ export default function LoginPage() {
       const data = await response.json();
       if (response.ok) {
         login(data.token, data.user);
-        router.push('/');
+        router.push(readSafeCallbackUrl());
       } else {
         setError(data.message || 'Anmeldung fehlgeschlagen');
       }
@@ -48,6 +64,10 @@ export default function LoginPage() {
   };
 
   const showLocalAuth = !settings.disableLocalAuth;
+
+  const handleOIDCLogin = () => {
+    oidcLogin(readSafeCallbackUrl());
+  };
 
   // Mode 1: OIDC disabled, only local auth
   if (!settings.oidcEnabled && showLocalAuth) {
@@ -83,7 +103,7 @@ export default function LoginPage() {
   if (!showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich über Ihr Organisationskonto an.">
-        <Button onPress={oidcLogin} className="w-full">
+        <Button onPress={handleOIDCLogin} className="w-full">
           Mit Single Sign-On anmelden
         </Button>
       </AuthLayout>
@@ -94,7 +114,7 @@ export default function LoginPage() {
   return (
     <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihrem Konto an.">
       {/* Primary: OIDC */}
-      <Button onPress={oidcLogin} className="w-full">
+      <Button onPress={handleOIDCLogin} className="w-full">
         Mit Single Sign-On anmelden
       </Button>
 

@@ -1,32 +1,34 @@
 'use client';
 
+import { AppStoreGate } from '@/components/AppStoreGate';
 import { ChatMarkdown } from '@/components/ChatMarkdown';
 import { GroupIcon } from '@/components/GroupIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-  AIConversation,
-  AIMessage,
-  AIProviderSummary,
-  deleteAIConversation,
-  getAIConversation,
-  listAIConversations,
-  listAIProviders,
-  listPublicAIProviders,
-  sendAIMessage,
-  sendPublicAIMessage,
+    AIConversation,
+    AIMessage,
+    AIProviderSummary,
+    deleteAIConversation,
+    getAIConversation,
+    listAIConversations,
+    listAIProviders,
+    listPublicAIProviders,
+    sendAIMessage,
+    sendPublicAIMessage,
 } from '@/lib/ai';
+import { allowsAnonymousAI } from '@/lib/ai-access';
 import { fetchApi } from '@/lib/api';
 import {
-  createGuestConversationId,
-  createGuestUserMessage,
-  deleteGuestAIConversation,
-  getGuestAIConversation,
-  getPreferredGuestAIConversation,
-  listGuestAIConversations,
-  normalizePublicAssistantMessage,
-  toPublicAIHistory,
-  upsertGuestAIConversation,
+    createGuestConversationId,
+    createGuestUserMessage,
+    deleteGuestAIConversation,
+    getGuestAIConversation,
+    getPreferredGuestAIConversation,
+    listGuestAIConversations,
+    normalizePublicAssistantMessage,
+    toPublicAIHistory,
+    upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
@@ -95,7 +97,7 @@ function ProviderSelector({
   );
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { settings, loaded: settingsLoaded } = useSettings();
   const [providers, setProviders] = useState<AIProviderSummary[]>([]);
@@ -116,8 +118,9 @@ export default function ChatPage() {
   const appId = chatParams?.appId;
   const preferredGuestConversationId = chatParams?.guestConversationId;
   const aiDisabled = settingsLoaded && !settings.aiEnabled;
-  const guestMode = settings.aiEnabled && !user && settings.allowAnonymousAI;
-  const accessDenied = !authLoading && settingsLoaded && (aiDisabled || (!user && !settings.allowAnonymousAI));
+  const anonymousAIAllowed = allowsAnonymousAI(settings);
+  const guestMode = !user && anonymousAIAllowed;
+  const accessDenied = !authLoading && settingsLoaded && (aiDisabled || (!user && !anonymousAIAllowed));
   const dataScopeKey = !authLoading && settingsLoaded && !accessDenied
     ? [user?.id || 'guest', guestMode ? 'guest' : 'auth', appId || '', preferredGuestConversationId || ''].join(':')
     : null;
@@ -133,7 +136,7 @@ export default function ChatPage() {
     : 'AI Chat nur nach Anmeldung verfügbar';
   const accessDeniedDescription = aiDisabled
     ? 'Diese Instanz hat die AI-Funktion in den Plattform-Einstellungen deaktiviert. Ein Administrator kann sie in der Verwaltung wieder aktivieren.'
-    : 'Diese Instanz erlaubt derzeit keinen anonymen AI-Zugriff. Melden Sie sich an oder aktivieren Sie die Funktion in den Plattform-Einstellungen.';
+    : 'Diese Instanz erlaubt derzeit keinen anonymen AI-Zugriff. Melden Sie sich an oder passen Sie die Plattform-Einstellungen an.';
 
   useEffect(() => {
     if (!dataScopeKey) return;
@@ -658,5 +661,13 @@ export default function ChatPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <AppStoreGate>
+      <ChatPageContent />
+    </AppStoreGate>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { AppGrid } from "@/components/AppGrid";
+import { AppStoreGate } from "@/components/AppStoreGate";
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
@@ -61,7 +62,7 @@ function HomeLoadingState() {
   );
 }
 
-export default function Home() {
+function HomeContent() {
   const { theme } = useTheme();
   const { settings } = useSettings();
   const [apps, setApps] = useState<AppConfig[]>([]);
@@ -119,5 +120,13 @@ export default function Home() {
         </Suspense>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <AppStoreGate>
+      <HomeContent />
+    </AppStoreGate>
   );
 }

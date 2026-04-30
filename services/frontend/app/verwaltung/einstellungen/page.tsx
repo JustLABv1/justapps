@@ -45,6 +45,7 @@ type AdminSettingsWorkspaceProps = {
 type SettingsState = {
   aiEnabled: boolean;
   allowAppSubmissions: boolean;
+  requireAuthForAppStore: boolean;
   allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
@@ -75,6 +76,7 @@ type SettingsState = {
 const defaultState: SettingsState = {
   aiEnabled: true,
   allowAppSubmissions: true,
+  requireAuthForAppStore: false,
   allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',
@@ -455,6 +457,21 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   <Switch.Control><Switch.Thumb /></Switch.Control>
                 </Switch>
               </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-border pt-5 mt-5">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">App Store nur für angemeldete Nutzer</span>
+                  <p className="text-xs text-muted max-w-xl">
+                    Blockiert den öffentlichen Zugriff auf Katalog, App-Details und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
+                  </p>
+                </div>
+                <Switch
+                  isSelected={settings.requireAuthForAppStore}
+                  onChange={(val) => save({ requireAuthForAppStore: val }, 'requireAuthForAppStore')}
+                >
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
             </Surface>
           </div>
         )}
@@ -694,7 +711,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Paintbrush className="w-4 h-4 text-accent" /> Branding & Erscheinungsbild
+                <Paintbrush className="w-4 h-4 text-accent" /> Erscheinungsbild
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
@@ -787,7 +804,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     accentColor: settings.accentColor,
                   }, 'branding')}
                 >
-                  {savedSection === 'branding' ? 'Gespeichert ✓' : 'Branding speichern'}
+                  {savedSection === 'branding' ? 'Gespeichert ✓' : 'Erscheinungsbild speichern'}
                 </Button>
               </div>
             </Surface>

@@ -21,6 +21,7 @@ export interface StoreSettings {
   id: string;
   aiEnabled: boolean;
   allowAppSubmissions: boolean;
+  requireAuthForAppStore: boolean;
   allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
@@ -75,6 +76,7 @@ export const defaultSettings: StoreSettings = {
   id: 'default',
   aiEnabled: true,
   allowAppSubmissions: true,
+  requireAuthForAppStore: false,
   allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',

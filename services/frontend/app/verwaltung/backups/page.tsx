@@ -40,7 +40,7 @@ const sectionOptions: SectionOption[] = [
 	{ id: 'appGroups', label: 'Gruppen', description: 'Gruppen-Metadaten und Mitgliedschaften.' },
 	{ id: 'appRelations', label: 'Relationen', description: 'Verwandte Apps und bidirektionale Verknüpfungen.' },
 	{ id: 'users', label: 'Benutzer', description: 'Konten, Rollen und Sperrstatus.', sensitive: true },
-	{ id: 'settings', label: 'Einstellungen', description: 'Branding, Detailfelder und Store-Konfiguration.' },
+	{ id: 'settings', label: 'Einstellungen', description: 'Erscheinungsbild, Detailfelder und Store-Konfiguration.' },
 	{ id: 'repositoryProviders', label: 'Repository-Provider', description: 'Persistierte Provider-Einstellungen.' },
 	{ id: 'repositoryAppLinks', label: 'Repository-Linkstatus', description: 'App-Verknüpfungen, Snapshots und Sync-Status.' },
 	{ id: 'aiProviders', label: 'AI-Provider', description: 'AI-Provider-Einstellungen und verschlüsselte API-Keys.' },
