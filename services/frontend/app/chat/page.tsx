@@ -5,28 +5,28 @@ import { GroupIcon } from '@/components/GroupIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import {
-    AIConversation,
-    AIMessage,
-    AIProviderSummary,
-    deleteAIConversation,
-    getAIConversation,
-    listAIConversations,
-    listAIProviders,
-    listPublicAIProviders,
-    sendAIMessage,
-    sendPublicAIMessage,
+  AIConversation,
+  AIMessage,
+  AIProviderSummary,
+  deleteAIConversation,
+  getAIConversation,
+  listAIConversations,
+  listAIProviders,
+  listPublicAIProviders,
+  sendAIMessage,
+  sendPublicAIMessage,
 } from '@/lib/ai';
 import { fetchApi } from '@/lib/api';
 import {
-    createGuestConversationId,
-    createGuestUserMessage,
-    deleteGuestAIConversation,
-    getGuestAIConversation,
-    getPreferredGuestAIConversation,
-    listGuestAIConversations,
-    normalizePublicAssistantMessage,
-    toPublicAIHistory,
-    upsertGuestAIConversation,
+  createGuestConversationId,
+  createGuestUserMessage,
+  deleteGuestAIConversation,
+  getGuestAIConversation,
+  getPreferredGuestAIConversation,
+  listGuestAIConversations,
+  normalizePublicAssistantMessage,
+  toPublicAIHistory,
+  upsertGuestAIConversation,
 } from '@/lib/guest-ai';
 import { Button, ListBox, Select } from '@heroui/react';
 import { Bot, Loader2, MessageCircle, PanelLeft, Plus, Send, Sparkles, Trash2 } from 'lucide-react';
@@ -360,7 +360,7 @@ export default function ChatPage() {
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/60 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
+              <Bot className="h-3.5 w-3.5" />
             </div>
             <span className="truncate text-sm font-semibold text-foreground">JustApps AI</span>
           </div>
