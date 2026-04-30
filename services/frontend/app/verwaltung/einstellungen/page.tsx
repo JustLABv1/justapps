@@ -27,12 +27,20 @@ import {
     Select,
     Surface,
     Switch,
-    Tabs,
     TextField,
     Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+
+export type AdminSettingsSection = 'governance' | 'startseite' | 'branding' | 'inhalte' | 'apps' | 'integrationen' | 'ai';
+
+type AdminSettingsWorkspaceProps = {
+  title: string;
+  description: string;
+  sections: AdminSettingsSection[];
+};
 
 type SettingsState = {
   aiEnabled: boolean;
@@ -171,7 +179,7 @@ function PalettePreview({ colors }: { colors: string[] }) {
   );
 }
 
-export default function EinstellungenPage() {
+export function AdminSettingsWorkspace({ title, description, sections }: AdminSettingsWorkspaceProps) {
   const { refreshSettings } = useSettings();
   const [settings, setSettings] = useState<SettingsState>(defaultState);
   const [gitLabProviders, setGitLabProviders] = useState<GitLabProviderAdminSettings[]>([]);
@@ -194,6 +202,7 @@ export default function EinstellungenPage() {
   const faviconPreviewUrl = resolveAssetUrl(settings.faviconUrl);
   const topBarPreviewColors = resolveTopBarColors(settings.topBarPreset, settings.topBarColors);
   const heroTitlePreviewColors = resolveHeroTitleColors(settings.heroTitlePreset, settings.heroTitleColors);
+  const visibleSections = new Set(sections);
 
   const updateBrandColors = (field: 'topBarColors' | 'heroTitleColors', index: number, value: string) => {
     const nextColors = seedCustomBrandColors(settings[field], field === 'topBarColors' ? topBarPreviewColors : heroTitlePreviewColors);
@@ -422,61 +431,13 @@ export default function EinstellungenPage() {
   return (
     <div className="flex flex-col gap-6 w-full">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Plattform-Einstellungen</h1>
-        <p className="text-sm text-muted max-w-3xl">
-          Die Konfiguration ist in Themenbereiche aufgeteilt, damit Startseite, Branding, Inhalte und App-Verhalten schneller gepflegt werden koennen.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+        <p className="text-sm text-muted max-w-3xl">{description}</p>
       </div>
 
-      <Tabs variant="secondary" className="w-full" defaultSelectedKey="startseite">
-        <Tabs.ListContainer className="rounded-2xl border border-border/50 bg-surface p-2 shadow-sm overflow-x-auto">
-          <Tabs.List aria-label="Einstellungsbereiche" className="w-max min-w-full justify-start gap-2">
-            <Tabs.Tab id="governance" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" /> Governance
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="startseite" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4" /> Startseite
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="branding" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <Paintbrush className="w-4 h-4" /> Branding
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="inhalte" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4" /> Inhalte
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="apps" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <SortAsc className="w-4 h-4" /> Apps
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="integrationen" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <GitBranch className="w-4 h-4" /> Integrationen
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="ai" className="rounded-xl px-4 py-3 text-sm font-semibold text-muted data-[selected=true]:text-foreground">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4" /> AI
-              </div>
-              <Tabs.Indicator />
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs.ListContainer>
+      <div className="flex flex-col gap-6">
 
-        <Tabs.Panel id="governance" className="pt-6">
+        {visibleSections.has('governance') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -496,9 +457,9 @@ export default function EinstellungenPage() {
               </div>
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="startseite" className="pt-6">
+        {visibleSections.has('startseite') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -727,9 +688,9 @@ export default function EinstellungenPage() {
               </div>
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="branding" className="pt-6">
+        {visibleSections.has('branding') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -831,9 +792,9 @@ export default function EinstellungenPage() {
               </div>
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="inhalte" className="pt-6">
+        {visibleSections.has('inhalte') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
@@ -1030,9 +991,9 @@ export default function EinstellungenPage() {
               </div>
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="apps" className="pt-6">
+        {visibleSections.has('apps') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
@@ -1216,9 +1177,9 @@ export default function EinstellungenPage() {
               </div>
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="integrationen" className="pt-6">
+        {visibleSections.has('integrationen') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
@@ -1428,9 +1389,9 @@ export default function EinstellungenPage() {
               )}
             </Surface>
           </div>
-        </Tabs.Panel>
+        )}
 
-        <Tabs.Panel id="ai" className="pt-6">
+        {visibleSections.has('ai') && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -1478,8 +1439,8 @@ export default function EinstellungenPage() {
 
             <AIProviderSettingsPanel />
           </div>
-        </Tabs.Panel>
-      </Tabs>
+        )}
+      </div>
 
       <Modal.Backdrop isOpen={createProviderModalOpen} onOpenChange={(open) => { if (!open) closeCreateProviderModal(); }}>
         <Modal.Container>
@@ -1646,6 +1607,20 @@ export default function EinstellungenPage() {
         }}
         title="Repository-Provider löschen"
       />
+    </div>
+  );
+}
+
+export default function EinstellungenPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/verwaltung/plattform');
+  }, [router]);
+
+  return (
+    <div className="py-20 flex justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-accent" />
     </div>
   );
 }

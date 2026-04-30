@@ -75,15 +75,15 @@ function AppsContent() {
   }, []);
 
   const handleCreateApp = () => {
-    router.push('/verwaltung/apps/new');
+    router.push('/verwaltung/katalog/apps/new');
   };
 
   const handleEditApp = (app: AppConfig) => {
-    router.push(`/verwaltung/apps/${app.id}/edit`);
+    router.push(`/verwaltung/katalog/apps/${app.id}/edit`);
   };
 
   const handleCopyApp = (app: AppConfig) => {
-    router.push(`/verwaltung/apps/new?copy=${encodeURIComponent(app.id)}`);
+    router.push(`/verwaltung/katalog/apps/new?copy=${encodeURIComponent(app.id)}`);
   };
 
   const handleDeleteApp = async (id: string) => {
@@ -200,7 +200,7 @@ function AppsContent() {
   useEffect(() => {
     const editId = searchParams?.get('edit');
     if (editId) {
-      router.replace(`/verwaltung/apps/${editId}/edit`);
+      router.replace(`/verwaltung/katalog/apps/${editId}/edit`);
     }
   }, [searchParams, router]);
 

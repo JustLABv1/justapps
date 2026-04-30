@@ -86,7 +86,7 @@ function NewAppContent() {
             <div className="flex-1">
               <p className="text-base font-semibold text-foreground mb-2">Kopie konnte nicht vorbereitet werden</p>
               <p className="text-sm text-muted mb-4">{copyError}</p>
-              <Button variant="secondary" onPress={() => router.push('/verwaltung/apps')}>Zurück zur App-Verwaltung</Button>
+              <Button variant="secondary" onPress={() => router.push('/verwaltung/katalog/apps')}>Zurück zur App-Verwaltung</Button>
             </div>
           </div>
         </div>
