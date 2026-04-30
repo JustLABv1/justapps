@@ -113,6 +113,43 @@ export interface GitLabSyncSummary {
   lastSyncedAt?: string;
 }
 
+export interface AppViewerPermissions {
+  canEdit: boolean;
+  canDelete: boolean;
+  canManageEditors: boolean;
+  accessRole: 'admin' | 'owner' | 'editor' | 'viewer' | string;
+}
+
+export interface SystemUser {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  authType?: string;
+  canSubmitApps?: boolean;
+  disabled?: boolean;
+}
+
+export type AppEditorUser = SystemUser;
+
+export interface AppUserSummary {
+  id: string;
+  username: string;
+  email: string;
+}
+
+export interface AppCatalogFilters {
+  q: string;
+  status: string;
+  category: string;
+  ownerId: string;
+  hasEditors: string;
+  syncStatus: string;
+  featured: string;
+  locked: string;
+  visibility: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -148,11 +185,8 @@ export interface AppConfig {
   isReuse?: boolean;
   reuseRequirements?: string;
   ownerId?: string;
-  owner?: {
-    username: string;
-    email: string;
-    id: string;
-  };
+  owner?: AppUserSummary;
+  editors?: AppUserSummary[];
   tags?: string[];
   collections?: string[];
   isFeatured?: boolean;
@@ -177,6 +211,7 @@ export interface AppConfig {
   // Groups this app belongs to
   appGroups?: { id: string; name: string; icon?: string }[];
   gitLabSync?: GitLabSyncSummary;
+  viewerPermissions?: AppViewerPermissions;
   /** Opt out of the global link-probing feature for this app (e.g. links behind auth/VPN) */
   skipLinkProbe?: boolean;
   /** Backend-maintained reachability status for live endpoints. */

@@ -1,21 +1,53 @@
 'use client';
 
+import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AppConfig } from '@/config/apps';
+import { AppCatalogFilters, AppConfig, AppUserSummary, SystemUser } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import { isDraftStatus } from '@/lib/appStatus';
+import { isDraftStatus, sortAppStatuses } from '@/lib/appStatus';
 import { Button, Modal, toast } from '@heroui/react';
 import { Check, Loader2, Plus, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-interface SystemUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  disabled: boolean;
+const FILTER_PARAM_KEYS: Array<keyof AppCatalogFilters> = [
+  'q',
+  'status',
+  'category',
+  'ownerId',
+  'hasEditors',
+  'syncStatus',
+  'featured',
+  'locked',
+  'visibility',
+];
+
+const DEFAULT_STATUS_OPTIONS = ['Entwurf', 'POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
+
+function readFilters(searchParams: ReturnType<typeof useSearchParams>): AppCatalogFilters {
+  return {
+    q: searchParams?.get('q') ?? '',
+    status: searchParams?.get('status') ?? '',
+    category: searchParams?.get('category') ?? '',
+    ownerId: searchParams?.get('ownerId') ?? '',
+    hasEditors: searchParams?.get('hasEditors') ?? '',
+    syncStatus: searchParams?.get('syncStatus') ?? '',
+    featured: searchParams?.get('featured') ?? '',
+    locked: searchParams?.get('locked') ?? '',
+    visibility: searchParams?.get('visibility') ?? '',
+  };
+}
+
+function buildAppsQuery(filters: AppCatalogFilters) {
+  const params = new URLSearchParams();
+  FILTER_PARAM_KEYS.forEach((key) => {
+    const value = filters[key].trim();
+    if (value) {
+      params.set(key, value);
+    }
+  });
+  return params;
 }
 
 function AppsContent() {
@@ -26,6 +58,7 @@ function AppsContent() {
   const [error, setError] = useState<string | null>(null);
   // Transfer ownership
   const [transferApp, setTransferApp] = useState<AppConfig | null>(null);
+  const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [transferUserId, setTransferUserId] = useState('');
   const [transferring, setTransferring] = useState(false);
@@ -33,35 +66,85 @@ function AppsContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const filters = useMemo(() => readFilters(searchParams), [searchParams]);
+  const appsQueryString = useMemo(() => buildAppsQuery(filters).toString(), [filters]);
   const draftCount = apps.filter((app) => isDraftStatus(app.status)).length;
 
-  const loadApps = async () => {
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(apps.flatMap((app) => app.categories || []))).sort((left, right) => left.localeCompare(right, 'de')),
+    [apps]
+  );
+  const statusOptions = useMemo(
+    () => sortAppStatuses(Array.from(new Set([...DEFAULT_STATUS_OPTIONS, ...apps.map((app) => app.status).filter(Boolean) as string[]]))),
+    [apps]
+  );
+  const ownerOptions = useMemo(() => {
+    const owners = new Map<string, AppUserSummary>();
+    users.forEach((user) => {
+      owners.set(user.id, { id: user.id, username: user.username, email: user.email });
+    });
+    apps.forEach((app) => {
+      if (app.owner) {
+        owners.set(app.owner.id, app.owner);
+      }
+    });
+    return Array.from(owners.values()).sort((left, right) => left.username.localeCompare(right.username, 'de'));
+  }, [apps, users]);
+
+  const updateFilters = useCallback((updates: Partial<AppCatalogFilters>) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+
+    Object.entries(updates).forEach(([key, value]) => {
+      const nextValue = value?.trim() ?? '';
+      if (nextValue) {
+        params.set(key, nextValue);
+      } else {
+        params.delete(key);
+      }
+    });
+
+    const query = params.toString();
+    router.replace(query ? `/verwaltung/katalog/apps?${query}` : '/verwaltung/katalog/apps', { scroll: false });
+  }, [router, searchParams]);
+
+  const resetFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    FILTER_PARAM_KEYS.forEach((key) => params.delete(key));
+    const query = params.toString();
+    router.replace(query ? `/verwaltung/katalog/apps?${query}` : '/verwaltung/katalog/apps', { scroll: false });
+  }, [router, searchParams]);
+
+  const loadApps = useCallback(async () => {
     try {
-      const res = await fetchApi('/apps');
+      setLoading(true);
+      setError(null);
+      const res = await fetchApi(`/apps${appsQueryString ? `?${appsQueryString}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         setApps(data);
       } else {
-        setError(`Fehler beim Laden der Apps: ${res.statusText}`);
+        const err = await res.json().catch(() => ({}));
+        setError((err as { message?: string }).message || `Fehler beim Laden der Apps: ${res.statusText}`);
       }
     } catch (err) {
       setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [appsQueryString]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const res = await fetchApi('/users');
       if (res.ok) {
         const data = await res.json();
-        setUsers((data || []).filter((u: SystemUser) => !u.disabled));
+        const userList = Array.isArray(data) ? data : data.users || [];
+        setUsers(userList.filter((u: SystemUser) => !u.disabled));
       }
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -72,7 +155,7 @@ function AppsContent() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [loadApps, loadUsers]);
 
   const handleCreateApp = () => {
     router.push('/verwaltung/katalog/apps/new');
@@ -174,6 +257,10 @@ function AppsContent() {
     setTransferUserId('');
   };
 
+  const handleOpenEditors = (app: AppConfig) => {
+    setEditorApp(app);
+  };
+
   const handleSubmitTransfer = async () => {
     if (!transferApp || !transferUserId) return;
     setTransferring(true);
@@ -184,13 +271,14 @@ function AppsContent() {
       });
       if (res.ok) {
         setTransferApp(null);
-        loadApps();
+        toast.success(`"${transferApp.name}" wurde übertragen.`);
+        void loadApps();
       } else {
         const err = await res.json().catch(() => ({}));
-        setError(err.message || 'Übertragung fehlgeschlagen');
+        toast.danger(err.message || 'Übertragung fehlgeschlagen');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verbindungsfehler');
+      toast.danger(err instanceof Error ? err.message : 'Verbindungsfehler');
     } finally {
       setTransferring(false);
     }
@@ -234,14 +322,29 @@ function AppsContent() {
 
       <AppTable
         apps={apps}
+        categoryOptions={categoryOptions}
+        filters={filters}
         isLoading={loading}
+        ownerOptions={ownerOptions}
         handleEditApp={handleEditApp}
         handleDeleteApp={handleDeleteApp}
         handleToggleAppLock={handleToggleAppLock}
         handleCopyApp={handleCopyApp}
         handleTransferApp={handleOpenTransfer}
+        handleManageEditors={handleOpenEditors}
+        onFilterChange={updateFilters}
+        onResetFilters={resetFilters}
         onBulkDelete={handleBulkDelete}
         onBulkToggleLock={handleBulkToggleLock}
+        statusOptions={statusOptions}
+      />
+
+      <AppEditorsModal
+        key={editorApp?.id ?? 'no-editor-app'}
+        app={editorApp}
+        users={users}
+        onOpenChange={(open) => { if (!open) setEditorApp(null); }}
+        onSaved={loadApps}
       />
 
       {/* Transfer ownership modal */}

@@ -1,7 +1,8 @@
 'use client';
 
+import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AppConfig } from '@/config/apps';
+import { AppConfig, SystemUser } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
 import { getImageAssetUrl } from '@/lib/assets';
 import {
@@ -18,7 +19,8 @@ import {
     Pencil,
     Plus,
     ShieldCheck,
-    Trash2
+    Trash2,
+    UsersRound
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -58,10 +60,12 @@ function MyAppsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
+  const [users, setUsers] = useState<SystemUser[]>([]);
   const [settings, setSettings] = useState({ allowAppSubmissions: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
+  const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Auth check
@@ -83,7 +87,7 @@ function MyAppsContent() {
     try {
       const [settingsRes, appsRes] = await Promise.all([
         fetchApi('/settings'),
-        fetchApi('/apps?owner=me'),
+        fetchApi('/apps?editable=me'),
       ]);
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
@@ -94,6 +98,12 @@ function MyAppsContent() {
         setApps(data);
       } else {
         setError(`Fehler beim Laden Ihrer Apps: ${appsRes.statusText}`);
+      }
+      const usersRes = await fetchApi('/users');
+      if (usersRes.ok) {
+        const data = await usersRes.json();
+        const userList = Array.isArray(data) ? data : data.users || [];
+        setUsers(userList.filter((entry: SystemUser) => !entry.disabled));
       }
     } catch (err) {
       setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
@@ -135,6 +145,11 @@ function MyAppsContent() {
   };
 
   const handleCopyApp = async (app: AppConfig) => {
+    const canCopy = user?.role === 'admin' || app.ownerId === user?.id;
+    if (!canCopy) {
+      toast.info('Sie können nur eigene Apps kopieren.');
+      return;
+    }
     if (!profileReady) {
       const refreshed = await refreshUser();
       if (!refreshed) {
@@ -154,13 +169,31 @@ function MyAppsContent() {
   };
 
   const handleEditApp = (app: AppConfig) => {
-    if (app.isLocked) return;
+    const permissions = getAppPermissions(app);
+    if (app.isLocked || !permissions.canEdit) return;
     router.push(`/meine-apps/${app.id}/edit`);
   };
 
   const handleDeleteApp = (app: AppConfig) => {
-    if (app.isLocked) return;
+    const permissions = getAppPermissions(app);
+    if (app.isLocked || !permissions.canDelete) return;
     setDeleteCandidate(app);
+  };
+
+  const getAppPermissions = (app: AppConfig) => {
+    const isOwnerOrAdmin = user?.role === 'admin' || app.ownerId === user?.id;
+    return {
+      canEdit: app.viewerPermissions?.canEdit ?? isOwnerOrAdmin,
+      canDelete: app.viewerPermissions?.canDelete ?? isOwnerOrAdmin,
+      canManageEditors: app.viewerPermissions?.canManageEditors ?? isOwnerOrAdmin,
+      accessRole: app.viewerPermissions?.accessRole ?? (isOwnerOrAdmin ? (user?.role === 'admin' ? 'admin' : 'owner') : 'viewer'),
+    };
+  };
+
+  const handleManageEditors = (app: AppConfig) => {
+    const permissions = getAppPermissions(app);
+    if (!permissions.canManageEditors) return;
+    setEditorApp(app);
   };
 
   const confirmDeleteApp = async () => {
@@ -216,7 +249,7 @@ function MyAppsContent() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-1">Meine Apps</h1>
-          <p className="text-muted">Verwalten Sie Ihre eigenen Applikationen im JustApps.</p>
+          <p className="text-muted">Verwalten Sie Ihre eigenen und freigegebenen Applikationen im JustApps.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onPress={() => router.push('/')} className="font-bold gap-2">
@@ -269,6 +302,10 @@ function MyAppsContent() {
               {apps.map((app) => {
                 const statusMeta = getAppStatusMeta(app.status);
                 const iconSrc = getImageAssetUrl(app.icon);
+                const permissions = getAppPermissions(app);
+                const canEdit = permissions.canEdit && !app.isLocked;
+                const canDelete = permissions.canDelete && !app.isLocked;
+                const canCopy = user.role === 'admin' || app.ownerId === user.id;
                 return (
                   <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
                     <div className="flex flex-col md:flex-row items-center p-5 gap-6">
@@ -314,6 +351,11 @@ function MyAppsContent() {
                               <Lock className="w-3 h-3" /> Gesperrt
                             </Chip>
                           )}
+                          {permissions.accessRole === 'editor' && (
+                            <Chip size="sm" color="accent" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <UsersRound className="w-3 h-3" /> Bearbeiter
+                            </Chip>
+                          )}
                         </div>
                       </div>
 
@@ -322,24 +364,32 @@ function MyAppsContent() {
                           <ExternalLink className="w-4 h-4 text-muted" />
                           Ansehen
                         </Button>
-                        <Button size="sm" variant="secondary" onPress={() => void handleCopyApp(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
-                          <Copy className="w-4 h-4 text-muted" />
-                          Kopieren
-                        </Button>
+                        {canCopy && (
+                          <Button size="sm" variant="secondary" onPress={() => void handleCopyApp(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
+                            <Copy className="w-4 h-4 text-muted" />
+                            Kopieren
+                          </Button>
+                        )}
                         <Button
                           size="sm" variant="secondary"
                           onPress={() => handleEditApp(app)}
-                          isDisabled={!!app.isLocked}
-                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          isDisabled={!canEdit}
+                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <Pencil className="w-4 h-4 text-muted" />
                           Bearbeiten
                         </Button>
+                        {permissions.canManageEditors && (
+                          <Button size="sm" variant="secondary" onPress={() => handleManageEditors(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
+                            <UsersRound className="w-4 h-4 text-muted" />
+                            Bearbeiter
+                          </Button>
+                        )}
                         <Button
                           size="sm" variant="danger-soft"
                           onPress={() => handleDeleteApp(app)}
-                          isDisabled={!!app.isLocked}
-                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${app.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          isDisabled={!canDelete}
+                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${!canDelete ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <Trash2 className="w-4 h-4" />
                           Löschen
@@ -352,7 +402,7 @@ function MyAppsContent() {
 
               {apps.length === 0 && (
                 <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
-                  <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen Apps erstellt.</p>
+                  <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen oder freigegebenen Apps.</p>
                   {(user.canSubmitApps || user.role === 'admin') ? (
                     <Button variant="ghost" onPress={handleCreateApp}>Erste App erstellen</Button>
                   ) : (
@@ -374,6 +424,14 @@ function MyAppsContent() {
         onConfirm={confirmDeleteApp}
         onOpenChange={(open) => { if (!open && !isDeleting) setDeleteCandidate(null); }}
         title="App wirklich löschen?"
+      />
+
+      <AppEditorsModal
+        key={editorApp?.id ?? 'no-editor-app'}
+        app={editorApp}
+        users={users}
+        onOpenChange={(open) => { if (!open) setEditorApp(null); }}
+        onSaved={loadData}
       />
     </div>
   );

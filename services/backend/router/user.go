@@ -10,6 +10,13 @@ import (
 )
 
 func User(router *gin.RouterGroup, db *bun.DB) {
+	usersGroup := router.Group("/users").Use(middlewares.Auth(db))
+	{
+		usersGroup.GET("", func(c *gin.Context) {
+			users.ListSelectableUsers(c, db)
+		})
+	}
+
 	user := router.Group("/user").Use(middlewares.Auth(db))
 	{
 		user.GET("/", func(c *gin.Context) {

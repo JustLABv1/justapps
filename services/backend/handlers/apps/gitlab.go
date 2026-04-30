@@ -283,7 +283,16 @@ func loadGitLabViewableApp(c *gin.Context, db *bun.DB, appID string, viewerID uu
 		return models.Apps{}, false
 	}
 	normalizeAppModelStatus(&app)
-	if !canViewApp(app, viewerID, viewerRole, hasViewer) {
+	editorAppIDs := map[string]struct{}{}
+	if hasViewer {
+		var editorErr error
+		editorAppIDs, editorErr = loadEditorAppIDs(c.Request.Context(), db, viewerID)
+		if editorErr != nil {
+			httperror.InternalServerError(c, "App-Berechtigungen konnten nicht geladen werden", editorErr)
+			return models.Apps{}, false
+		}
+	}
+	if !canViewApp(app, viewerID, viewerRole, hasViewer, editorAppIDs) {
 		httperror.StatusNotFound(c, "App nicht gefunden", nil)
 		return models.Apps{}, false
 	}

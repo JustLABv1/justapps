@@ -1,47 +1,208 @@
 'use client';
 
-import { AppConfig } from '@/config/apps';
+import { AppCatalogFilters, AppConfig, AppUserSummary } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
 import { getImageAssetUrl } from '@/lib/assets';
 import {
+    Avatar,
     Button,
     Checkbox,
     Chip,
     Dropdown,
     EmptyState,
     Input,
+    ListBox,
     Pagination,
+    Select,
     type Selection,
-    Table
+    Table,
+    Tooltip,
 } from '@heroui/react';
 import {
     Copy,
     ExternalLink,
+    Filter,
     Info,
     Lock,
     MoreVertical,
     Pencil,
+    RotateCcw,
     Search,
+    SlidersHorizontal,
     Star,
     Trash2,
     Unlock,
     UserRoundCog,
+    UsersRound,
     X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
 
+const MAX_VISIBLE_EDITORS = 4;
+const ALL_FILTER_VALUE = '__all__';
+
+const SYNC_STATUS_OPTIONS = [
+  { value: 'linked', label: 'Verknüpft' },
+  { value: 'unlinked', label: 'Nicht verknüpft' },
+  { value: 'success', label: 'Synchronisiert' },
+  { value: 'warning', label: 'Mit Hinweisen' },
+  { value: 'pending_approval', label: 'Wartet auf Freigabe' },
+  { value: 'error', label: 'Fehler' },
+  { value: 'never', label: 'Noch nicht synchronisiert' },
+];
+
 interface AppTableProps {
   apps: AppConfig[];
+  categoryOptions: string[];
+  filters: AppCatalogFilters;
   isLoading?: boolean;
+  ownerOptions: AppUserSummary[];
   handleEditApp: (app: AppConfig) => void;
   handleDeleteApp: (id: string) => void;
   handleToggleAppLock: (app: AppConfig) => void;
   handleCopyApp?: (app: AppConfig) => void;
   handleTransferApp?: (app: AppConfig) => void;
+  handleManageEditors?: (app: AppConfig) => void;
+  onFilterChange: (updates: Partial<AppCatalogFilters>) => void;
+  onResetFilters: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkToggleLock?: (ids: string[], lock: boolean) => void;
+  statusOptions: string[];
+}
+
+function FilterSelect({
+  ariaLabel,
+  options,
+  value,
+  widthClassName,
+  onChange,
+}: {
+  ariaLabel: string;
+  options: Array<{ value: string; label: string; description?: string }>;
+  value: string;
+  widthClassName?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      aria-label={ariaLabel}
+      className={widthClassName}
+      selectedKey={value || ALL_FILTER_VALUE}
+      onSelectionChange={(key) => onChange(String(key) === ALL_FILTER_VALUE ? '' : String(key))}
+    >
+      <Select.Trigger className="bg-field-background border-border">
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox>
+          {options.map((option) => (
+            <ListBox.Item key={option.value || ALL_FILTER_VALUE} id={option.value || ALL_FILTER_VALUE} textValue={option.label}>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm">{option.label}</span>
+                {option.description ? <span className="text-xs text-muted">{option.description}</span> : null}
+              </div>
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
+}
+
+function getUserInitials(user: AppUserSummary) {
+  const source = user.username.trim() || user.email.trim();
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
+
+function UserAvatarTooltip({
+  user,
+  showName = false,
+}: {
+  user: AppUserSummary;
+  showName?: boolean;
+}) {
+  return (
+    <Tooltip delay={0}>
+      <Tooltip.Trigger>
+        <div className="flex items-center gap-2 min-w-0">
+          <Avatar size="sm" className="shrink-0 border-2 border-border shadow-sm">
+            <Avatar.Fallback>{getUserInitials(user)}</Avatar.Fallback>
+          </Avatar>
+          {showName ? (
+            <span className="truncate text-xs font-medium text-foreground">{user.username}</span>
+          ) : null}
+        </div>
+      </Tooltip.Trigger>
+      <Tooltip.Content placement="top">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-xs font-semibold text-foreground">{user.username}</span>
+          <span className="text-[11px] text-muted">{user.email}</span>
+        </div>
+      </Tooltip.Content>
+    </Tooltip>
+  );
+}
+
+function EditorsAvatarGroup({ editors }: { editors?: AppUserSummary[] }) {
+  if (!editors?.length) {
+    return <span className="text-xs text-muted italic">Keine</span>;
+  }
+
+  const visibleEditors = editors.slice(0, MAX_VISIBLE_EDITORS);
+  const overflowEditors = editors.slice(MAX_VISIBLE_EDITORS);
+
+  return (
+    <div className="flex items-center">
+      <div className="flex items-center -space-x-2">
+        {visibleEditors.map((editor) => (
+          <Tooltip key={editor.id} delay={0}>
+            <Tooltip.Trigger>
+              <div>
+                <Avatar size="sm" className="border-2 border-border bg-surface shadow-sm">
+                  <Avatar.Fallback>{getUserInitials(editor)}</Avatar.Fallback>
+                </Avatar>
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Content placement="top">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-xs font-semibold text-foreground">{editor.username}</span>
+                <span className="text-[11px] text-muted">{editor.email}</span>
+              </div>
+            </Tooltip.Content>
+          </Tooltip>
+        ))}
+        {overflowEditors.length > 0 ? (
+          <Tooltip delay={0}>
+            <Tooltip.Trigger>
+              <div>
+                <Avatar size="sm" className="border-2 border-border bg-accent/10 text-accent shadow-sm">
+                  <Avatar.Fallback className="text-[10px] font-semibold">+{overflowEditors.length}</Avatar.Fallback>
+                </Avatar>
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Content placement="top">
+              <div className="flex flex-col gap-1">
+                {overflowEditors.map((editor) => (
+                  <div key={editor.id} className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-foreground">{editor.username}</span>
+                    <span className="text-[11px] text-muted">{editor.email}</span>
+                  </div>
+                ))}
+              </div>
+            </Tooltip.Content>
+          </Tooltip>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function TableSkeleton() {
@@ -102,32 +263,61 @@ const getGitLabStatusMeta = (status?: string) => {
 
 export function AppTable({
   apps,
+  categoryOptions,
+  filters,
   isLoading,
+  ownerOptions,
   handleEditApp,
   handleDeleteApp,
   handleToggleAppLock,
   handleCopyApp,
   handleTransferApp,
+  handleManageEditors,
+  onFilterChange,
+  onResetFilters,
   onBulkDelete,
   onBulkToggleLock,
+  statusOptions,
 }: AppTableProps) {
   const router = useRouter();
-  const [filterValue, setFilterValue] = useState('');
-  const [page, setPage] = useState(1);
+  const filterStateKey = useMemo(
+    () => [
+      filters.q,
+      filters.status,
+      filters.category,
+      filters.ownerId,
+      filters.hasEditors,
+      filters.syncStatus,
+      filters.featured,
+      filters.locked,
+      filters.visibility,
+    ].join('|'),
+    [filters.category, filters.featured, filters.hasEditors, filters.locked, filters.ownerId, filters.q, filters.status, filters.syncStatus, filters.visibility]
+  );
+  const [pagination, setPagination] = useState({ key: filterStateKey, page: 1 });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [advancedFiltersUi, setAdvancedFiltersUi] = useState({ key: filterStateKey, open: false });
   const rowsPerPage = 10;
 
-  const filteredItems = useMemo(() => {
-    if (!filterValue) return [...apps];
-    return apps.filter((app) =>
-      app.name.toLowerCase().includes(filterValue.toLowerCase()) ||
-      app.id.toLowerCase().includes(filterValue.toLowerCase()) ||
-      app.owner?.username?.toLowerCase().includes(filterValue.toLowerCase())
-    );
-  }, [apps, filterValue]);
+  const hasAdvancedFilters = Boolean(filters.hasEditors || filters.syncStatus || filters.featured || filters.locked || filters.visibility);
+  const hasActiveFilters = Boolean(
+    filters.q ||
+    filters.status ||
+    filters.category ||
+    filters.ownerId ||
+    filters.hasEditors ||
+    filters.syncStatus ||
+    filters.featured ||
+    filters.locked ||
+    filters.visibility
+  );
 
-  const totalPages = Math.ceil(filteredItems.length / rowsPerPage);
-  const currentPage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+  const totalPages = Math.ceil(apps.length / rowsPerPage);
+    const rawCurrentPage = pagination.key === filterStateKey ? pagination.page : 1;
+    const currentPage = totalPages === 0 ? 1 : Math.min(rawCurrentPage, totalPages);
+    const showAdvancedFilters = advancedFiltersUi.key === filterStateKey
+      ? advancedFiltersUi.open
+      : hasAdvancedFilters;
 
   const appIdSet = useMemo(() => new Set(apps.map((app) => app.id)), [apps]);
   const selectedIdSet = useMemo(
@@ -138,14 +328,23 @@ export function AppTable({
 
   const items = useMemo(() => {
     const start = (currentPage - 1) * rowsPerPage;
-    return filteredItems.slice(start, start + rowsPerPage);
-  }, [currentPage, filteredItems]);
+    return apps.slice(start, start + rowsPerPage);
+  }, [apps, currentPage]);
   const currentPageIds = useMemo(() => new Set(items.map((app) => app.id)), [items]);
 
-  const onSearchChange = React.useCallback((value: string) => {
-    setFilterValue(value);
-    setPage(1);
-  }, []);
+  const setPage = React.useCallback((nextPage: number | ((page: number) => number)) => {
+    setPagination((previous) => {
+      const previousPage = previous.key === filterStateKey ? previous.page : 1;
+      const resolvedPage = typeof nextPage === 'function'
+        ? nextPage(previousPage)
+        : nextPage;
+
+      return {
+        key: filterStateKey,
+        page: resolvedPage,
+      };
+    });
+  }, [filterStateKey]);
 
   const handleSelectionChange = React.useCallback((keys: Selection) => {
     setSelectedIds((prev) => {
@@ -165,16 +364,117 @@ export function AppTable({
 
   const topContent = (
     <div className="mb-5 flex flex-col gap-3">
-      <div className="flex justify-between gap-3 items-center">
-        <div className="relative w-full sm:max-w-[32rem]">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative w-full xl:max-w-[24rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none z-10" />
           <Input
             className="w-full pl-9"
             placeholder="Nach App suchen..."
-            value={filterValue}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={filters.q}
+            onChange={(e) => onFilterChange({ q: e.target.value })}
             variant="secondary"
           />
+        </div>
+        <div className="flex flex-1 flex-col gap-3 xl:items-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap xl:justify-end">
+            <FilterSelect
+              ariaLabel="Status filtern"
+              options={[{ value: '', label: 'Alle Status' }, ...statusOptions.map((status) => ({ value: status, label: status }))]}
+              value={filters.status}
+              widthClassName="w-full sm:w-[11rem]"
+              onChange={(value) => onFilterChange({ status: value })}
+            />
+            <FilterSelect
+              ariaLabel="Kategorie filtern"
+              options={[{ value: '', label: 'Alle Kategorien' }, ...categoryOptions.map((category) => ({ value: category, label: category }))]}
+              value={filters.category}
+              widthClassName="w-full sm:w-[12rem]"
+              onChange={(value) => onFilterChange({ category: value })}
+            />
+            <FilterSelect
+              ariaLabel="Besitzer filtern"
+              options={[
+                { value: '', label: 'Alle Besitzer' },
+                ...ownerOptions.map((owner) => ({ value: owner.id, label: owner.username, description: owner.email })),
+              ]}
+              value={filters.ownerId}
+              widthClassName="w-full sm:w-[13rem]"
+              onChange={(value) => onFilterChange({ ownerId: value })}
+            />
+            <Button
+              variant={showAdvancedFilters ? 'secondary' : 'ghost'}
+              className="gap-2"
+              onPress={() => setAdvancedFiltersUi((previous) => ({
+                key: filterStateKey,
+                open: previous.key === filterStateKey ? !previous.open : !hasAdvancedFilters,
+              }))}
+            >
+              <SlidersHorizontal className="h-4 w-4" /> Weitere Filter
+            </Button>
+            {hasActiveFilters ? (
+              <Button variant="ghost" className="gap-2 text-muted" onPress={onResetFilters}>
+                <RotateCcw className="h-4 w-4" /> Filter zurücksetzen
+              </Button>
+            ) : null}
+          </div>
+          {showAdvancedFilters ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-secondary/30 p-3 sm:flex-row sm:flex-wrap xl:justify-end">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                <Filter className="h-3.5 w-3.5" /> Weitere Filter
+              </div>
+              <FilterSelect
+                ariaLabel="Bearbeiter filtern"
+                options={[
+                  { value: '', label: 'Bearbeiter: alle' },
+                  { value: 'true', label: 'Mit Bearbeitern' },
+                  { value: 'false', label: 'Ohne Bearbeiter' },
+                ]}
+                value={filters.hasEditors}
+                widthClassName="w-full sm:w-[11rem]"
+                onChange={(value) => onFilterChange({ hasEditors: value })}
+              />
+              <FilterSelect
+                ariaLabel="Repository Sync filtern"
+                options={[{ value: '', label: 'Repository Sync: alle' }, ...SYNC_STATUS_OPTIONS]}
+                value={filters.syncStatus}
+                widthClassName="w-full sm:w-[14rem]"
+                onChange={(value) => onFilterChange({ syncStatus: value })}
+              />
+              <FilterSelect
+                ariaLabel="Featured filtern"
+                options={[
+                  { value: '', label: 'Top: alle' },
+                  { value: 'true', label: 'Nur Top' },
+                  { value: 'false', label: 'Nicht Top' },
+                ]}
+                value={filters.featured}
+                widthClassName="w-full sm:w-[10rem]"
+                onChange={(value) => onFilterChange({ featured: value })}
+              />
+              <FilterSelect
+                ariaLabel="Sperrstatus filtern"
+                options={[
+                  { value: '', label: 'Sperrung: alle' },
+                  { value: 'true', label: 'Gesperrt' },
+                  { value: 'false', label: 'Nicht gesperrt' },
+                ]}
+                value={filters.locked}
+                widthClassName="w-full sm:w-[11rem]"
+                onChange={(value) => onFilterChange({ locked: value })}
+              />
+              <FilterSelect
+                ariaLabel="Sichtbarkeit filtern"
+                options={[
+                  { value: '', label: 'Sichtbarkeit: alle' },
+                  { value: 'draft', label: 'Nur Entwürfe' },
+                  { value: 'published', label: 'Nur veröffentlichte Apps' },
+                ]}
+                value={filters.visibility}
+                widthClassName="w-full sm:w-[13rem]"
+                onChange={(value) => onFilterChange({ visibility: value })}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -225,14 +525,13 @@ export function AppTable({
     </div>
   );
 
-  const bottomContent = useMemo(() => {
-    if (totalPages <= 1) return null;
+  const bottomContent = totalPages <= 1 ? null : (() => {
     const start = (currentPage - 1) * rowsPerPage + 1;
-    const end = Math.min(currentPage * rowsPerPage, filteredItems.length);
+    const end = Math.min(currentPage * rowsPerPage, apps.length);
     return (
       <div className="py-2 px-2 flex justify-between items-center mt-4">
         <Pagination size="sm">
-          <Pagination.Summary>{start} bis {end} von {filteredItems.length} Apps</Pagination.Summary>
+          <Pagination.Summary>{start} bis {end} von {apps.length} Apps</Pagination.Summary>
           <Pagination.Content>
             <Pagination.Item>
               <Pagination.Previous isDisabled={currentPage === 1} onPress={() => setPage(p => Math.max(1, p - 1))}>
@@ -253,7 +552,7 @@ export function AppTable({
         </Pagination>
       </div>
     );
-  }, [currentPage, totalPages, filteredItems.length]);
+  })();
 
   if (isLoading) {
     return (
@@ -271,7 +570,7 @@ export function AppTable({
         <Table.ScrollContainer>
           <Table.Content
             aria-label="Tabelle der Apps"
-            className="min-w-[1180px] xl:min-w-0"
+            className="min-w-[1320px] xl:min-w-0"
             selectedKeys={selectedIdSet}
             selectionMode="multiple"
             onSelectionChange={handleSelectionChange}
@@ -288,6 +587,7 @@ export function AppTable({
               <Table.Column>Repository Sync</Table.Column>
               <Table.Column>Lösung</Table.Column>
               <Table.Column>Besitzer</Table.Column>
+              <Table.Column>Bearbeiter</Table.Column>
               <Table.Column className="text-right">Aktionen</Table.Column>
             </Table.Header>
             <Table.Body
@@ -405,13 +705,15 @@ export function AppTable({
                   {/* Owner */}
                   <Table.Cell>
                     {app.owner ? (
-                      <div className="flex flex-col">
-                        <span className="text-xs font-medium text-foreground">{app.owner.username}</span>
-                        <span className="text-[10px] text-muted">{app.owner.email}</span>
-                      </div>
+                      <UserAvatarTooltip user={app.owner} showName />
                     ) : (
                       <span className="text-xs text-muted italic">System</span>
                     )}
+                  </Table.Cell>
+
+                  {/* Editors */}
+                  <Table.Cell>
+                    <EditorsAvatarGroup editors={app.editors} />
                   </Table.Cell>
 
                   {/* Actions */}
@@ -431,6 +733,7 @@ export function AppTable({
                           <Dropdown.Menu onAction={(key) => {
                             if (key === 'copy' && handleCopyApp) handleCopyApp(app);
                             if (key === 'lock') handleToggleAppLock(app);
+                            if (key === 'editors' && handleManageEditors) handleManageEditors(app);
                             if (key === 'transfer' && handleTransferApp) handleTransferApp(app);
                             if (key === 'delete') handleDeleteApp(app.id);
                           }}>
@@ -447,6 +750,13 @@ export function AppTable({
                                 {app.isLocked ? 'Freigeben' : 'Sperren'}
                               </div>
                             </Dropdown.Item>
+                            {handleManageEditors && (
+                              <Dropdown.Item id="editors" textValue="Bearbeiter verwalten">
+                                <div className="flex items-center gap-2">
+                                  <UsersRound className="w-4 h-4" /> Bearbeiter verwalten
+                                </div>
+                              </Dropdown.Item>
+                            )}
                             {handleTransferApp && (
                               <Dropdown.Item id="transfer" textValue="Besitzer übertragen">
                                 <div className="flex items-center gap-2">

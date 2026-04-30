@@ -134,7 +134,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 
 	if viewer.Role != "admin" {
 		if viewer.HasUser && strings.TrimSpace(viewer.UserID) != "" {
-			selectQuery = selectQuery.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ?)", viewer.UserID)
+			selectQuery = selectQuery.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
 		} else {
 			selectQuery = selectQuery.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf'))")
 		}
@@ -173,7 +173,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 			OrderExpr("aikc.indexed_at DESC").
 			Limit(limit)
 		if viewer.Role != "admin" {
-			fallback = fallback.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ?)", viewer.UserID)
+			fallback = fallback.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
 		}
 		if err := fallback.Scan(ctx); err != nil {
 			return RetrievedContext{}, err
@@ -202,7 +202,16 @@ func AppIsViewable(ctx context.Context, db *bun.DB, appID string, viewer Viewer)
 	if status != "draft" && status != "entwurf" {
 		return true, nil
 	}
-	return viewer.HasUser && strings.TrimSpace(viewer.UserID) != "" && app.OwnerID.String() == viewer.UserID, nil
+	if !viewer.HasUser || strings.TrimSpace(viewer.UserID) == "" {
+		return false, nil
+	}
+	if app.OwnerID.String() == viewer.UserID {
+		return true, nil
+	}
+	return db.NewSelect().Model((*models.AppEditor)(nil)).
+		Where("app_id = ?", strings.TrimSpace(appID)).
+		Where("user_id::text = ?", viewer.UserID).
+		Exists(ctx)
 }
 
 func SourcesFromChunks(chunks []models.AIKnowledgeChunk) []models.AIMessageSource {
