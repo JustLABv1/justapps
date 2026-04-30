@@ -280,9 +280,23 @@ export function AppTable({
   statusOptions,
 }: AppTableProps) {
   const router = useRouter();
-  const [page, setPage] = useState(1);
+  const filterStateKey = useMemo(
+    () => [
+      filters.q,
+      filters.status,
+      filters.category,
+      filters.ownerId,
+      filters.hasEditors,
+      filters.syncStatus,
+      filters.featured,
+      filters.locked,
+      filters.visibility,
+    ].join('|'),
+    [filters.category, filters.featured, filters.hasEditors, filters.locked, filters.ownerId, filters.q, filters.status, filters.syncStatus, filters.visibility]
+  );
+  const [pagination, setPagination] = useState({ key: filterStateKey, page: 1 });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFiltersUi, setAdvancedFiltersUi] = useState({ key: filterStateKey, open: false });
   const rowsPerPage = 10;
 
   const hasAdvancedFilters = Boolean(filters.hasEditors || filters.syncStatus || filters.featured || filters.locked || filters.visibility);
@@ -299,7 +313,11 @@ export function AppTable({
   );
 
   const totalPages = Math.ceil(apps.length / rowsPerPage);
-  const currentPage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const rawCurrentPage = pagination.key === filterStateKey ? pagination.page : 1;
+    const currentPage = totalPages === 0 ? 1 : Math.min(rawCurrentPage, totalPages);
+    const showAdvancedFilters = advancedFiltersUi.key === filterStateKey
+      ? advancedFiltersUi.open
+      : hasAdvancedFilters;
 
   const appIdSet = useMemo(() => new Set(apps.map((app) => app.id)), [apps]);
   const selectedIdSet = useMemo(
@@ -314,15 +332,19 @@ export function AppTable({
   }, [apps, currentPage]);
   const currentPageIds = useMemo(() => new Set(items.map((app) => app.id)), [items]);
 
-  React.useEffect(() => {
-    setPage(1);
-  }, [filters.category, filters.featured, filters.hasEditors, filters.locked, filters.ownerId, filters.q, filters.status, filters.syncStatus, filters.visibility]);
+  const setPage = React.useCallback((nextPage: number | ((page: number) => number)) => {
+    setPagination((previous) => {
+      const previousPage = previous.key === filterStateKey ? previous.page : 1;
+      const resolvedPage = typeof nextPage === 'function'
+        ? nextPage(previousPage)
+        : nextPage;
 
-  React.useEffect(() => {
-    if (hasAdvancedFilters) {
-      setShowAdvancedFilters(true);
-    }
-  }, [hasAdvancedFilters]);
+      return {
+        key: filterStateKey,
+        page: resolvedPage,
+      };
+    });
+  }, [filterStateKey]);
 
   const handleSelectionChange = React.useCallback((keys: Selection) => {
     setSelectedIds((prev) => {
@@ -382,7 +404,10 @@ export function AppTable({
             <Button
               variant={showAdvancedFilters ? 'secondary' : 'ghost'}
               className="gap-2"
-              onPress={() => setShowAdvancedFilters((current) => !current)}
+              onPress={() => setAdvancedFiltersUi((previous) => ({
+                key: filterStateKey,
+                open: previous.key === filterStateKey ? !previous.open : !hasAdvancedFilters,
+              }))}
             >
               <SlidersHorizontal className="h-4 w-4" /> Weitere Filter
             </Button>
@@ -500,8 +525,7 @@ export function AppTable({
     </div>
   );
 
-  const bottomContent = useMemo(() => {
-    if (totalPages <= 1) return null;
+  const bottomContent = totalPages <= 1 ? null : (() => {
     const start = (currentPage - 1) * rowsPerPage + 1;
     const end = Math.min(currentPage * rowsPerPage, apps.length);
     return (
@@ -528,7 +552,7 @@ export function AppTable({
         </Pagination>
       </div>
     );
-  }, [apps.length, currentPage, totalPages]);
+  })();
 
   if (isLoading) {
     return (
