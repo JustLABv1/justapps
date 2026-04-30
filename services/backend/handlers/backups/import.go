@@ -527,7 +527,7 @@ func importSettings(ctx context.Context, tx bun.Tx, settings *models.PlatformSet
 		_, err = tx.NewUpdate().Model(settings).
 			Where("id = ?", "default").
 			Column(
-				"ai_enabled", "allow_app_submissions", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
+				"ai_enabled", "allow_app_submissions", "require_auth_for_app_store", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
 				"detail_fields", "store_name", "store_description", "logo_url", "logo_dark_url",
 				"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_title_preset", "hero_title_colors", "hero_subtitle",
 				"footer_text", "footer_links", "show_flag_bar", "top_bar_preset", "top_bar_colors", "app_sort_field", "app_sort_direction",

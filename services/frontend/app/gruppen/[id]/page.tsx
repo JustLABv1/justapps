@@ -1,6 +1,7 @@
 'use client';
 
 import { AppCard } from '@/components/AppCard';
+import { AppStoreGate } from '@/components/AppStoreGate';
 import { GroupIcon } from '@/components/GroupIcon';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
@@ -52,7 +53,7 @@ function getTopCategories(members: AppConfig[]): string[] {
     .map(([category]) => category);
 }
 
-export default function GruppenDetailPage() {
+function GruppenDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const [group, setGroup] = useState<AppGroup | null>(null);
   const [members, setMembers] = useState<AppConfig[]>([]);
@@ -313,5 +314,13 @@ export default function GruppenDetailPage() {
         </section>
       )}
     </div>
+  );
+}
+
+export default function GruppenDetailPage() {
+  return (
+    <AppStoreGate>
+      <GruppenDetailPageContent />
+    </AppStoreGate>
   );
 }

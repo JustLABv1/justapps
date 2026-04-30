@@ -553,7 +553,7 @@ func anonymousAIAllowed(c *gin.Context, db *bun.DB) (bool, error) {
 	if !found {
 		return false, nil
 	}
-	return settings.AllowAnonymousAI, nil
+	return settings.AllowAnonymousAI && !settings.RequireAuthForAppStore, nil
 }
 
 func buildPublicHistory(history []publicHistoryMessage) []models.AIMessage {

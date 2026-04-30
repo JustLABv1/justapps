@@ -1,5 +1,6 @@
 'use client';
 
+import { AppStoreGate } from "@/components/AppStoreGate";
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
 import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
@@ -15,21 +16,21 @@ import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
-    BookOpen,
-    Check,
-    ChevronLeft,
-    ExternalLink,
-    GitBranch,
-    History,
-    Layers,
-    LayoutDashboard,
-    Link2,
-    Loader2,
-    Pencil,
-    Scale,
-    Server,
-    Share2,
-    Star
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ExternalLink,
+  GitBranch,
+  History,
+  Layers,
+  LayoutDashboard,
+  Link2,
+  Loader2,
+  Pencil,
+  Scale,
+  Server,
+  Share2,
+  Star
 } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -52,7 +53,7 @@ function MetaCard({ label, value, icon }: { label: string; value?: string; icon?
   );
 }
 
-export default function AppPage() {
+function AppPageContent() {
   const params = useParams();
   const id = params?.id as string;
   const { user } = useAuth();
@@ -654,5 +655,13 @@ export default function AppPage() {
         </span>
       </div>
     </div>
+  );
+}
+
+export default function AppPage() {
+  return (
+    <AppStoreGate>
+      <AppPageContent />
+    </AppStoreGate>
   );
 }

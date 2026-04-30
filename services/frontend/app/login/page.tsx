@@ -3,11 +3,19 @@
 import { AuthLayout } from '@/components/AuthLayout';
 import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { fetchApi } from '../../lib/api';
+
+function getSafeCallbackUrl(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/';
+  }
+
+  return value;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,10 +26,12 @@ export default function LoginPage() {
   const { user, login, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
 
   React.useEffect(() => {
-    if (user) router.push('/');
-  }, [user, router]);
+    if (user) router.push(callbackUrl);
+  }, [callbackUrl, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +45,7 @@ export default function LoginPage() {
       const data = await response.json();
       if (response.ok) {
         login(data.token, data.user);
-        router.push('/');
+        router.push(callbackUrl);
       } else {
         setError(data.message || 'Anmeldung fehlgeschlagen');
       }
@@ -48,6 +58,10 @@ export default function LoginPage() {
   };
 
   const showLocalAuth = !settings.disableLocalAuth;
+
+  const handleOIDCLogin = () => {
+    oidcLogin(callbackUrl);
+  };
 
   // Mode 1: OIDC disabled, only local auth
   if (!settings.oidcEnabled && showLocalAuth) {
@@ -83,7 +97,7 @@ export default function LoginPage() {
   if (!showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich über Ihr Organisationskonto an.">
-        <Button onPress={oidcLogin} className="w-full">
+        <Button onPress={handleOIDCLogin} className="w-full">
           Mit Single Sign-On anmelden
         </Button>
       </AuthLayout>
@@ -94,7 +108,7 @@ export default function LoginPage() {
   return (
     <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihrem Konto an.">
       {/* Primary: OIDC */}
-      <Button onPress={oidcLogin} className="w-full">
+      <Button onPress={handleOIDCLogin} className="w-full">
         Mit Single Sign-On anmelden
       </Button>
 

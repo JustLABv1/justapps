@@ -132,6 +132,10 @@ func RemoveRelatedApp(c *gin.Context, db *bun.DB) {
 
 // ListGroups returns all app groups.
 func ListGroups(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	groups := make([]models.AppGroup, 0)
 	err := db.NewSelect().Model(&groups).Scan(c)
 	if err != nil {
@@ -209,6 +213,10 @@ func DeleteGroup(c *gin.Context, db *bun.DB) {
 
 // GetGroupMembers returns all apps in a group.
 func GetGroupMembers(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	groupID := c.Param("groupId")
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 

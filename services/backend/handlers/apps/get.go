@@ -203,6 +203,10 @@ func loadAppEditorSummaries(ctx context.Context, db *bun.DB, appIDs []string) (m
 }
 
 func GetApps(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 
 	// Load platform settings to determine sort order and pinned apps
@@ -449,6 +453,10 @@ func GetApps(c *gin.Context, db *bun.DB) {
 }
 
 func GetApp(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	id := c.Param("id")
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 	var app models.Apps

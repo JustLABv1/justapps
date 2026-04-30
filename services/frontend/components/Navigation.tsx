@@ -17,6 +17,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { adminNavLinks } from "../lib/admin-navigation";
+import { canAccessAI } from "../lib/ai-access";
 import { JustAppsLogo } from "./JustAppsLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -81,7 +82,7 @@ export function Navigation() {
     { href: "/", label: "Apps", icon: Layers, active: pathname === '/' },
     { href: "/gruppen", label: "Gruppen", icon: Layers2, active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
     ...(user ? [{ href: "/meine-apps", label: "Meine Apps", icon: Package, active: pathname === '/meine-apps' }] : []),
-    ...(settings.aiEnabled && (user || settings.allowAnonymousAI) ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
+    ...(canAccessAI(settings, !!user) ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
   ];
 
   return (

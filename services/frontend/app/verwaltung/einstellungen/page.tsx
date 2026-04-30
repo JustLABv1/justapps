@@ -7,28 +7,28 @@ import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-    CUSTOM_BRANDING_PRESET,
-    DEFAULT_HERO_TITLE_PRESET,
-    DEFAULT_TOP_BAR_PRESET,
-    HERO_TITLE_PRESET_OPTIONS,
-    TOP_BAR_PRESET_OPTIONS,
-    normalizeBrandColorList,
-    resolveHeroTitleColors,
-    resolveTopBarColors,
-    seedCustomBrandColors,
+  CUSTOM_BRANDING_PRESET,
+  DEFAULT_HERO_TITLE_PRESET,
+  DEFAULT_TOP_BAR_PRESET,
+  HERO_TITLE_PRESET_OPTIONS,
+  TOP_BAR_PRESET_OPTIONS,
+  normalizeBrandColorList,
+  resolveHeroTitleColors,
+  resolveTopBarColors,
+  seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    Surface,
-    Switch,
-    TextField,
-    Tooltip
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  Surface,
+  Switch,
+  TextField,
+  Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -45,6 +45,7 @@ type AdminSettingsWorkspaceProps = {
 type SettingsState = {
   aiEnabled: boolean;
   allowAppSubmissions: boolean;
+  requireAuthForAppStore: boolean;
   allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
@@ -75,6 +76,7 @@ type SettingsState = {
 const defaultState: SettingsState = {
   aiEnabled: true,
   allowAppSubmissions: true,
+  requireAuthForAppStore: false,
   allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',
@@ -451,6 +453,21 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Switch
                   isSelected={settings.allowAppSubmissions}
                   onChange={(val) => save({ allowAppSubmissions: val }, 'submissions')}
+                >
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-border pt-5 mt-5">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">App Store nur für angemeldete Nutzer</span>
+                  <p className="text-xs text-muted max-w-xl">
+                    Blockiert den öffentlichen Zugriff auf Katalog, App-Details und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
+                  </p>
+                </div>
+                <Switch
+                  isSelected={settings.requireAuthForAppStore}
+                  onChange={(val) => save({ requireAuthForAppStore: val }, 'requireAuthForAppStore')}
                 >
                   <Switch.Control><Switch.Thumb /></Switch.Control>
                 </Switch>

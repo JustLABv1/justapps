@@ -19,13 +19,14 @@ type FooterLink struct {
 type PlatformSettings struct {
 	bun.BaseModel `bun:"table:platform_settings,alias:ps"`
 
-	ID                  string `bun:"id,pk" json:"id"` // Singleton: "default"
-	AIEnabled           bool   `bun:"ai_enabled,notnull,default:true" json:"aiEnabled"`
-	AllowAppSubmissions bool   `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
-	AllowAnonymousAI    bool   `bun:"allow_anonymous_ai,notnull,default:false" json:"allowAnonymousAI"`
-	ShowTopBanner       bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
-	TopBannerText       string `bun:"top_banner_text" json:"topBannerText"`
-	TopBannerType       string `bun:"top_banner_type,notnull,default:'info'" json:"topBannerType"`
+	ID                     string `bun:"id,pk" json:"id"` // Singleton: "default"
+	AIEnabled              bool   `bun:"ai_enabled,notnull,default:true" json:"aiEnabled"`
+	AllowAppSubmissions    bool   `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
+	RequireAuthForAppStore bool   `bun:"require_auth_for_app_store,notnull,default:false" json:"requireAuthForAppStore"`
+	AllowAnonymousAI       bool   `bun:"allow_anonymous_ai,notnull,default:false" json:"allowAnonymousAI"`
+	ShowTopBanner          bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
+	TopBannerText          string `bun:"top_banner_text" json:"topBannerText"`
+	TopBannerType          string `bun:"top_banner_type,notnull,default:'info'" json:"topBannerType"`
 	// DetailFields is the admin-configurable schema for the "Fachliche Details" tab.
 	DetailFields []DetailFieldDef `bun:"detail_fields,type:jsonb,notnull,default:'[]'" json:"detailFields"`
 

@@ -1,12 +1,14 @@
+'use client';
+
+import { AppStoreGate } from '@/components/AppStoreGate';
 import { GroupIcon } from '@/components/GroupIcon';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { getAppFreshness, getRelativeTimeMeta } from '@/lib/appFreshness';
-import { ArrowRight, Layers2, Sparkles, Star } from 'lucide-react';
-import { Metadata } from 'next';
+import { ArrowRight, Layers2, Loader2, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
-export const metadata: Metadata = { title: 'App-Gruppen' };
 export const dynamic = 'force-dynamic';
 
 interface AppGroup {
@@ -107,8 +109,42 @@ function enrichGroups(groups: AppGroup[], apps: AppConfig[]): EnrichedAppGroup[]
     .sort((left, right) => right.appCount - left.appCount || right.featuredCount - left.featuredCount || left.name.localeCompare(right.name, 'de'));
 }
 
-export default async function GruppenPage() {
-  const [groups, apps] = await Promise.all([loadGroups(), loadApps()]);
+function GruppenPageContent() {
+  const [groups, setGroups] = useState<AppGroup[]>([]);
+  const [apps, setApps] = useState<AppConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([loadGroups(), loadApps()])
+      .then(([nextGroups, nextApps]) => {
+        if (!active) {
+          return;
+        }
+
+        setGroups(nextGroups);
+        setApps(nextApps);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-6 h-6 animate-spin text-muted" />
+      </div>
+    );
+  }
+
   const enrichedGroups = enrichGroups(groups, apps);
   const totalGroupedApps = new Set(enrichedGroups.flatMap((group) => group.members.map((app) => app.id))).size;
   const totalFreshApps = enrichedGroups.reduce((sum, group) => sum + group.freshCount, 0);
@@ -283,5 +319,13 @@ export default async function GruppenPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GruppenPage() {
+  return (
+    <AppStoreGate>
+      <GruppenPageContent />
+    </AppStoreGate>
   );
 }
