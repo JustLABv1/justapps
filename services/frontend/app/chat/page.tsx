@@ -346,7 +346,6 @@ export default function ChatPage() {
     }
   };
 
-  const activeProvider = providers.find((p) => p.key === providerKey);
   const canSend = Boolean(draft.trim()) && !sending && providers.length > 0;
 
   return (
@@ -361,7 +360,7 @@ export default function ChatPage() {
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/60 px-4">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
+              <Bot className="h-3.5 w-3.5" />
             </div>
             <span className="truncate text-sm font-semibold text-foreground">JustApps AI</span>
           </div>
@@ -475,7 +474,7 @@ export default function ChatPage() {
 
         {/* Messages */}
         <div ref={messagesRef} className="flex-1 overflow-y-auto">
-          <div className={`w-full px-6 pb-44 lg:px-10 ${sidebarOpen ? 'pt-8' : 'pt-24'}`}>
+          <div className={`w-full px-6 pb-44 lg:px-10 ${messages.length === 0 && !loading && !accessDenied ? 'pt-0' : sidebarOpen ? 'pt-8' : 'pt-24'}`}>
             {accessDenied ? (
 				<div className="mx-auto flex max-w-2xl flex-col items-center gap-5 pt-[14vh] text-center">
 				  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-accent">
@@ -493,7 +492,7 @@ export default function ChatPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-accent" />
               </div>
             ) : messages.length === 0 ? (
-              <div className="relative mx-auto flex w-full flex-col items-center gap-5 pt-[10vh] text-center">
+              <div className="relative mx-auto flex min-h-[calc(100vh-18rem)] w-full flex-col items-center justify-center gap-5 py-10 text-center">
                 {/* Floating Background Apps */}
                 <div className="absolute inset-0 z-0 pointer-events-none hidden xl:block opacity-30 mix-blend-luminosity">
                   {backgroundApps.map((app) => (
@@ -521,9 +520,6 @@ export default function ChatPage() {
                 </div>
                 <div className="relative z-10 animate-fade-slide-up" style={{ animationDelay: '0.05s' }}>
                   <p className="text-xl font-semibold text-foreground">Womit kann ich helfen?</p>
-                  {activeProvider && (
-                    <p className="mt-1 text-sm text-muted">{activeProvider.label} · {activeProvider.chatModel}</p>
-                  )}
                   {guestMode && (
 					<p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Gastmodus mit lokalem Verlauf</p>
 				  )}
@@ -616,22 +612,29 @@ export default function ChatPage() {
             <div
               className={`flex items-end overflow-hidden rounded-[1.75rem] border bg-overlay/95 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-colors duration-200 ${canSend ? 'border-accent/40' : 'border-border/80'}`}
             >
-              <textarea
-                ref={textareaRef}
-                aria-label="Nachricht schreiben"
-                className="max-h-[200px] min-h-[54px] flex-1 resize-none bg-transparent px-4 py-4 text-sm leading-6 text-foreground outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 transition-[height] duration-200 ease-in-out"
-                disabled={sending}
-                placeholder="Nachricht schreiben… (Shift+Enter für Zeilenumbruch)"
-                rows={1}
-                value={draft}
-                onChange={(e) => { setDraft(e.target.value); autoResize(); }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSend();
-                  }
-                }}
-              />
+              <div className="relative flex-1">
+                {!draft && (
+                  <div className="pointer-events-none absolute inset-x-4 top-1/2 -translate-y-1/2 text-sm leading-5 text-muted">
+                    <span>Nachricht schreiben...</span>
+                    <span className="ml-1.5">(Shift+Enter für Zeilenumbruch)</span>
+                  </div>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  aria-label="Nachricht schreiben"
+                  className="max-h-[200px] min-h-[54px] flex-1 resize-none bg-transparent px-4 py-[17px] text-sm leading-5 text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60 transition-[height] duration-200 ease-in-out w-full"
+                  disabled={sending}
+                  rows={1}
+                  value={draft}
+                  onChange={(e) => { setDraft(e.target.value); autoResize(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                />
+              </div>
               <div className="flex items-center px-3 py-3">
                 <Button
                   isIconOnly
