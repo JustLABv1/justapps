@@ -1,7 +1,9 @@
 package apps
 
 import (
+	"fmt"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 	"net/http"
 
@@ -46,6 +48,13 @@ func AddRating(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Error saving rating", err)
 		return
 	}
+
+	actorID, _ := c.Get("user_id")
+	operation := "app.rating.create"
+	if exists {
+		operation = "app.rating.update"
+	}
+	audit.WriteAudit(c.Request.Context(), db, audit.ActorID(actorID, rating.UserID), operation, fmt.Sprintf("saved rating for app %s", appID))
 
 	// Recalculate App Average
 	var stats struct {
@@ -129,6 +138,8 @@ func DeleteRating(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Error deleting rating", err)
 		return
 	}
+
+	audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userIDVal, rating.UserID), "app.rating.delete", fmt.Sprintf("deleted rating %s for app %s", ratingID, appID))
 
 	// Recalculate App Average after deletion
 	var stats struct {

@@ -1,8 +1,10 @@
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "justapps.fullname" . -}}
-{{- $svcPort := .Values.frontend.service.port -}}
+{{- $frontendSvcPort := .Values.frontend.service.port -}}
+{{- $backendSvcPort := .Values.backend.service.port -}}
 {{- if eq .Values.deploymentMode "monolith" -}}
-  {{- $svcPort = .Values.monolith.service.port -}}
+  {{- $frontendSvcPort = .Values.monolith.service.port -}}
+  {{- $backendSvcPort = .Values.monolith.service.backendPort -}}
 {{- end -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) -}}
   {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") -}}
@@ -45,6 +47,7 @@ spec:
       http:
         paths:
           {{- range .paths }}
+          {{- $useBackend := default false .backend }}
           - path: {{ .path }}
             {{- if semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion }}
             pathType: {{ .pathType }}
@@ -52,12 +55,12 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else }}{{ $fullName }}-frontend{{ end }}
+                name: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else if $useBackend }}{{ $fullName }}-backend{{ else }}{{ $fullName }}-frontend{{ end }}
                 port:
-                  number: {{ .port | default $svcPort }}
+                  number: {{ .port | default (ternary $backendSvcPort $frontendSvcPort $useBackend) }}
               {{- else }}
-              serviceName: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else }}{{ $fullName }}-frontend{{ end }}
-              servicePort: {{ .port | default $svcPort }}
+              serviceName: {{ if eq $.Values.deploymentMode "monolith" }}{{ $fullName }}{{ else if .serviceName }}{{ .serviceName }}{{ else if $useBackend }}{{ $fullName }}-backend{{ else }}{{ $fullName }}-frontend{{ end }}
+              servicePort: {{ .port | default (ternary $backendSvcPort $frontendSvcPort $useBackend) }}
               {{- end }}
           {{- end }}
     {{- end }}

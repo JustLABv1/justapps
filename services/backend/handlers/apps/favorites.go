@@ -1,9 +1,11 @@
 package apps
 
 import (
+	"fmt"
 	"net/http"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -56,10 +58,14 @@ func AddFavorite(c *gin.Context, db *bun.DB) {
 	}
 
 	fav := &models.UserFavorite{UserID: userID, AppID: appID}
-	_, err := db.NewInsert().Model(fav).On("CONFLICT DO NOTHING").Exec(c)
+	result, err := db.NewInsert().Model(fav).On("CONFLICT DO NOTHING").Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Could not add favorite", err)
 		return
+	}
+
+	if rowsAffected, err := result.RowsAffected(); err == nil && rowsAffected > 0 {
+		audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "app.favorite.add", fmt.Sprintf("added favorite for app %s", appID))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -90,13 +96,17 @@ func RemoveFavorite(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	_, err := db.NewDelete().
+	result, err := db.NewDelete().
 		TableExpr("user_favorites").
 		Where("user_id = ? AND app_id = ?", userID, appID).
 		Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Could not remove favorite", err)
 		return
+	}
+
+	if rowsAffected, err := result.RowsAffected(); err == nil && rowsAffected > 0 {
+		audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "app.favorite.remove", fmt.Sprintf("removed favorite for app %s", appID))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})

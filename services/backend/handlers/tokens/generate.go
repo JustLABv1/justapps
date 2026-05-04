@@ -8,6 +8,7 @@ import (
 	"justapps-backend/config"
 	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -82,6 +83,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		Set("last_login_at = ?", now).
 		Where("id = ?", user.ID).
 		Exec(context)
+	audit.WriteAudit(context.Request.Context(), db, audit.ActorID(user.ID, user.Email), "auth.login.local.success", "successful local login")
 
 	type UserResponse struct {
 		ID             uuid.UUID `json:"id"`

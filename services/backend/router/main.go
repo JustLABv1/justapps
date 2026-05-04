@@ -30,6 +30,7 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 	corsConfig.MaxAge = 12 * time.Hour
 
 	router.Use(cors.New(corsConfig))
+	Metrics(router, db)
 
 	v1 := router.Group("/api/v1")
 	{

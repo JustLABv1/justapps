@@ -140,7 +140,10 @@ ingress:
           pathType: Prefix
         - path: /api/v1
           pathType: Prefix
-          port: 8080
+          backend: true
+        - path: /metrics
+          pathType: Prefix
+          backend: true
   tls: []
 
 ## Uploads / file persistence
