@@ -10,6 +10,7 @@ import (
 	"justapps-backend/config"
 	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -156,6 +157,7 @@ func CreateConversation(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Konversation konnte nicht erstellt werden", err)
 		return
 	}
+	audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "ai.conversation.create", "created AI conversation "+conversation.ID.String())
 	c.JSON(201, conversation)
 }
 
@@ -287,6 +289,7 @@ func SendMessage(c *gin.Context, db *bun.DB) {
 			CreatedAt:      time.Now().UTC(),
 		}
 		_, _ = db.NewInsert().Model(&errorMessage).Exec(c.Request.Context())
+		audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "ai.chat.authenticated.error", "failed authenticated AI chat for conversation "+conversation.ID.String())
 		httperror.InternalServerError(c, "Die AI-Antwort konnte nicht erzeugt werden", err)
 		return
 	}
@@ -313,6 +316,7 @@ func SendMessage(c *gin.Context, db *bun.DB) {
 		conversation.Title = conversationTitle(req.Message)
 	}
 	_, _ = db.NewUpdate().Model(&conversation).Where("id = ?", conversation.ID).Column("title", "updated_at").Exec(c.Request.Context())
+	audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "ai.chat.authenticated.success", "completed authenticated AI chat for conversation "+conversation.ID.String())
 
 	c.JSON(200, gin.H{
 		"conversation":     conversation,
@@ -391,6 +395,7 @@ func SendPublicMessage(c *gin.Context, db *bun.DB) {
 		MaxOutputTokens: provider.MaxOutputTokens,
 	})
 	if err != nil {
+		audit.WriteAudit(c.Request.Context(), db, "anonymous", "ai.chat.public.error", "failed public AI chat")
 		httperror.InternalServerError(c, "Die AI-Antwort konnte nicht erzeugt werden", err)
 		return
 	}
@@ -407,6 +412,7 @@ func SendPublicMessage(c *gin.Context, db *bun.DB) {
 		Error:          "",
 		CreatedAt:      time.Now().UTC(),
 	}
+	audit.WriteAudit(c.Request.Context(), db, "anonymous", "ai.chat.public.success", "completed public AI chat")
 
 	c.JSON(200, publicSendMessageResponse{
 		AssistantMessage: assistantMessage,

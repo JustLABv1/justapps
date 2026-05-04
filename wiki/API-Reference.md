@@ -2,6 +2,8 @@
 
 Base URL: `/api/v1`
 
+The Prometheus scrape endpoint is exposed separately at `/metrics` and is not part of the `/api/v1` namespace.
+
 **Auth levels:**
 - `—` — public, no token required
 - `User` — valid JWT required
@@ -15,6 +17,23 @@ Base URL: `/api/v1`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/health` | — | Returns `{"status":"ok"}` |
+
+---
+
+## Metrics
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/metrics` | — | Returns Prometheus/OpenMetrics text for catalog and functional metrics |
+
+The `/metrics` endpoint is intentionally public and emits cluster-global metrics derived from the database and audit log.
+
+It includes:
+- catalog snapshots such as app, user, rating, favorite, and AI conversation/message counts
+- per-app low-cardinality series keyed by `app_id`
+- cumulative functional counters derived from audit operations such as app lifecycle, GitLab sync, rating, favorite, AI chat, and local login events
+
+It intentionally excludes per-process Go runtime, memory, and HTTP request metrics so the public scrape remains correct behind load balancing and multiple backend replicas.
 
 ---
 
