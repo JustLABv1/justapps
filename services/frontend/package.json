@@ -22,7 +22,7 @@
     "react-dom": "19.2.5",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "simple-icons": "^16.18.0"
+    "simple-icons": "^16.18.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
