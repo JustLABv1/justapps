@@ -107,6 +107,12 @@ export const defaultSettings: StoreSettings = {
   enableLinkProbing: true,
 };
 
+const allowedAppSortFields = new Set(['name', 'rating_avg', 'updated_at', 'status']);
+
+function normalizeAppSortField(value: string | undefined) {
+  return value && allowedAppSortFields.has(value) ? value : 'name';
+}
+
 function buildFaviconHref(faviconUrl: string) {
   const href = resolveAssetUrl(faviconUrl) || '/favicon.ico';
   const separator = href.includes('?') ? '&' : '?';
@@ -127,6 +133,7 @@ function normalizeSettings(data: Partial<StoreSettings>): StoreSettings {
     heroTitleColors: normalizeBrandColorList(data.heroTitleColors),
     topBarPreset: data.topBarPreset || DEFAULT_TOP_BAR_PRESET,
     topBarColors: normalizeBrandColorList(data.topBarColors),
+    appSortField: normalizeAppSortField(data.appSortField),
     pinnedApps: Array.isArray(data.pinnedApps)
       ? data.pinnedApps
       : [],

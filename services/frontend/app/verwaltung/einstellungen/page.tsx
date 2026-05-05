@@ -134,6 +134,12 @@ const defaultProviderDraft = (): ProviderDraftState => ({
   defaultComposeFilePath: '',
 });
 
+const allowedAppSortFields = new Set(['name', 'rating_avg', 'updated_at', 'status']);
+
+function normalizeAppSortField(value: string | undefined) {
+  return value && allowedAppSortFields.has(value) ? value : 'name';
+}
+
 function defaultBaseUrlForProviderType(providerType: 'gitlab' | 'github'): string {
   return providerType === 'github' ? 'https://github.com' : 'https://gitlab.com';
 }
@@ -159,7 +165,7 @@ function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
     heroTitleColors: normalizeBrandColorList(data.heroTitleColors),
     topBarPreset: data.topBarPreset || DEFAULT_TOP_BAR_PRESET,
     topBarColors: normalizeBrandColorList(data.topBarColors),
-    appSortField: data.appSortField || 'name',
+    appSortField: normalizeAppSortField(data.appSortField),
     appSortDirection: data.appSortDirection || 'asc',
     pinnedApps: Array.isArray(data.pinnedApps)
       ? data.pinnedApps
@@ -1036,7 +1042,6 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                         <ListBox.Item id="rating_avg" textValue="Bewertung">Bewertung<ListBox.ItemIndicator /></ListBox.Item>
                         <ListBox.Item id="updated_at" textValue="Zuletzt aktualisiert">Zuletzt aktualisiert<ListBox.ItemIndicator /></ListBox.Item>
                         <ListBox.Item id="status" textValue="Status">Status<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="authority" textValue="Herausgeber">Herausgeber<ListBox.ItemIndicator /></ListBox.Item>
                       </ListBox>
                     </Select.Popover>
                   </Select>
