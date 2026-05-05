@@ -40,7 +40,6 @@ var allowedSortFields = map[string]string{
 	"rating_avg": "rating_avg",
 	"updated_at": "updated_at",
 	"status":     "status",
-	"authority":  "authority",
 }
 
 var draftStatusAliases = []string{"draft", "entwurf"}
@@ -254,13 +253,14 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	query := db.NewSelect().
 		Model(&apps).
 		Relation("Owner").
-		Order("is_featured DESC", fmt.Sprintf("%s %s", sortField, sortDir))
+		OrderExpr("is_featured DESC").
+		OrderExpr(fmt.Sprintf("%s %s", sortField, sortDir))
 
 	if q != "" {
 		pattern := "%" + strings.ToLower(q) + "%"
 		query = query.Where(
-			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ? OR LOWER(a.authority) LIKE ?",
-			pattern, pattern, pattern,
+			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ?",
+			pattern, pattern,
 		)
 	}
 

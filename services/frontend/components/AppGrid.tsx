@@ -142,7 +142,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
         : (!query ||
             app.name.toLowerCase().includes(query) ||
             app.description.toLowerCase().includes(query) ||
-            app.authority?.toLowerCase().includes(query) ||
             app.categories?.some(cat => cat.toLowerCase().includes(query)) ||
             app.tags?.some(tag => tag.toLowerCase().includes(query)));
 

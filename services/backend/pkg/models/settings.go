@@ -49,7 +49,7 @@ type PlatformSettings struct {
 	TopBarColors     []string     `bun:"top_bar_colors,type:jsonb,notnull,default:'[]'" json:"topBarColors"`
 
 	// App sort configuration (admin-configurable)
-	// Supported values for AppSortField: name, rating_avg, updated_at, status, authority
+	// Supported values for AppSortField: name, rating_avg, updated_at, status
 	AppSortField     string   `bun:"app_sort_field,notnull,default:'name'" json:"appSortField"`
 	AppSortDirection string   `bun:"app_sort_direction,notnull,default:'asc'" json:"appSortDirection"`
 	PinnedApps       []string `bun:"pinned_apps,array,notnull,default:'{}'" json:"pinnedApps"`

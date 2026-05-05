@@ -35,7 +35,22 @@ var defaultDetailFields = []models.DetailFieldDef{
 	{Key: "additional_info", Label: "Sonstiges", Icon: "ClipboardList"},
 }
 
+var allowedAppSortFields = map[string]struct{}{
+	"name":       {},
+	"rating_avg": {},
+	"updated_at": {},
+	"status":     {},
+}
+
 const defaultBrandPreset = "deutschland"
+
+func normalizeAppSortField(value string) string {
+	if _, ok := allowedAppSortFields[value]; ok {
+		return value
+	}
+
+	return "name"
+}
 
 // GetSettings - Fetches the platform settings. Open to all users.
 // Note: We use *models.PlatformSettings(nil) in Count/Select to ensure Bun knows the model if struct is empty
@@ -90,6 +105,7 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 	if settings.HeroTitlePreset == "" {
 		settings.HeroTitlePreset = defaultBrandPreset
 	}
+	settings.AppSortField = normalizeAppSortField(settings.AppSortField)
 
 	c.JSON(200, settingsResponse{
 		PlatformSettings:    settings,
@@ -113,6 +129,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 		return
 	}
 	req.ID = "default"
+	req.AppSortField = normalizeAppSortField(req.AppSortField)
 
 	_, err := db.NewUpdate().
 		Model(&req).
