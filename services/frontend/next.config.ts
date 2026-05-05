@@ -6,6 +6,24 @@ const { version } = JSON.parse(
   readFileSync(resolve(__dirname, "package.json"), "utf-8")
 );
 
+function parsePositiveInteger(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+const buildCpuLimit = parsePositiveInteger(process.env.NEXT_BUILD_CPUS);
+const staticGenerationMaxConcurrency = parsePositiveInteger(
+  process.env.NEXT_STATIC_GENERATION_MAX_CONCURRENCY
+);
+
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
@@ -13,6 +31,12 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
+  },
+  experimental: {
+    ...(buildCpuLimit ? { cpus: buildCpuLimit } : {}),
+    ...(staticGenerationMaxConcurrency
+      ? { staticGenerationMaxConcurrency }
+      : {}),
   },
   images: {
     remotePatterns: [

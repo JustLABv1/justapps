@@ -33,6 +33,9 @@ ENV NEXT_LINT_DISABLED=1
 ENV NEXT_TYPECHECK_DISABLED=1
 # Use a more conservative memory limit (1GB) to ensure OS has breathing room in a 2GB VM
 ENV NODE_OPTIONS="--max-old-space-size=1024"
+# Reduce Next static-generation worker parallelism for QEMU arm64 builds in CI.
+ENV NEXT_BUILD_CPUS=1
+ENV NEXT_STATIC_GENERATION_MAX_CONCURRENCY=1
 
 # Use the CA certificate during the build to fetch external resources (fonts etc)
 # Also enable Turbopack system TLS certs as suggested by the error
