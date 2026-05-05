@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
 import { readFileSync } from "fs";
+import type { NextConfig } from "next";
 import { resolve } from "path";
 
 const { version } = JSON.parse(
