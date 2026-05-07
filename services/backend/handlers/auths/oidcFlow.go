@@ -31,6 +31,7 @@ type oidcStateClaims struct {
 	ProviderKey string `json:"providerKey"`
 	CallbackURL string `json:"callbackUrl"`
 	Nonce       string `json:"nonce"`
+	CodeVerifier string `json:"codeVerifier"`
 	Type        string `json:"type"`
 	jwt.RegisteredClaims
 }
@@ -58,6 +59,11 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
 		return
 	}
+	stateClaims, err := parseOIDCStateToken(stateToken)
+	if err != nil {
+		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
+		return
+	}
 
 	oauthConfig, err := buildProviderOAuthConfig(c, provider)
 	if err != nil {
@@ -65,7 +71,11 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	authURL := oauthConfig.AuthCodeURL(stateToken, oauth2.AccessTypeOnline)
+	authURL := oauthConfig.AuthCodeURL(
+		stateToken,
+		oauth2.AccessTypeOnline,
+		oauth2.S256ChallengeOption(stateClaims.CodeVerifier),
+	)
 	c.Redirect(http.StatusFound, authURL)
 }
 
@@ -110,7 +120,7 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider-Metadaten konnten nicht geladen werden")
 		return
 	}
-	oauthToken, err := oauthConfig.Exchange(verifyCtx, code)
+	oauthToken, err := oauthConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(stateClaims.CodeVerifier))
 	if err != nil {
 		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Codeaustausch fehlgeschlagen")
 		return
@@ -217,12 +227,14 @@ func buildOIDCStateToken(providerKey, callbackURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	codeVerifier := oauth2.GenerateVerifier()
 
 	now := time.Now()
 	claims := oidcStateClaims{
 		ProviderKey: providerKey,
 		CallbackURL: sanitizeCallbackURL(callbackURL),
 		Nonce:       nonce,
+		CodeVerifier: codeVerifier,
 		Type:        oidcStateTokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
