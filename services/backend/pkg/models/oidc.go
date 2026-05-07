@@ -21,7 +21,7 @@ type OIDCProviderSettings struct {
 	Enabled          bool      `bun:"enabled,notnull,default:true" json:"enabled"`
 	Insecure         bool      `bun:"insecure,notnull,default:false" json:"insecure"`
 	DisableLocalAuth bool      `bun:"disable_local_auth,notnull,default:false" json:"disableLocalAuth"`
-	Scopes           []string  `bun:"scopes,type:jsonb,notnull,default:'[\"openid\",\"profile\",\"email\"]'" json:"scopes"`
+	Scopes           []string  `bun:"scopes,type:jsonb,notnull" json:"scopes"`
 	CreatedAt        time.Time `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt        time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 }
