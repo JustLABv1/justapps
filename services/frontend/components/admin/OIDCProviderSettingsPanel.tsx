@@ -91,11 +91,53 @@ export function OIDCProviderSettingsPanel() {
   };
 
   useEffect(() => {
-    loadProviders()
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'OIDC-Provider konnten nicht geladen werden.');
-      })
-      .finally(() => setLoading(false));
+    let active = true;
+
+    (async () => {
+      try {
+        const response = await fetchApi('/settings/oidc-providers');
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error((body as { message?: string }).message || 'OIDC-Provider konnten nicht geladen werden.');
+        }
+
+        const data = await response.json() as OIDCProviderAdminSettings[];
+        const normalized = Array.isArray(data) ? data.map((provider) => ({
+          ...provider,
+          scopes: Array.isArray(provider.scopes) && provider.scopes.length > 0 ? provider.scopes : ['openid', 'profile', 'email'],
+        })) : [];
+
+        if (!active) {
+          return;
+        }
+
+        setProviders(normalized);
+        setExpandedProviders((prev) => {
+          const next: Record<string, boolean> = {};
+          for (const provider of normalized) {
+            next[provider.providerKey] = prev[provider.providerKey] ?? false;
+          }
+
+          if (normalized.length > 0 && !Object.values(next).some(Boolean)) {
+            next[normalized[0].providerKey] = true;
+          }
+
+          return next;
+        });
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'OIDC-Provider konnten nicht geladen werden.');
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const updateProvider = (providerKey: string, patch: Partial<OIDCProviderAdminSettings>) => {

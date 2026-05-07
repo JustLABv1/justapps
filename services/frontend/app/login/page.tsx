@@ -41,11 +41,11 @@ function readOIDCResult() {
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => readOIDCResult().error || '');
   const [loading, setLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [oidcProviders, setOidcProviders] = useState<OIDCProviderSummary[]>([]);
-  const [oidcLoading, setOidcLoading] = useState(false);
+  const [oidcLoading, setOidcLoading] = useState(true);
   const { user, login, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
@@ -55,26 +55,42 @@ export default function LoginPage() {
   }, [user, router]);
 
   React.useEffect(() => {
-    setOidcLoading(true);
-    fetchApi('/auth/oidc/providers')
-      .then(async (response) => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetchApi('/auth/oidc/providers');
         if (!response.ok) {
-          setOidcProviders([]);
+          if (active) {
+            setOidcProviders([]);
+          }
           return;
         }
+
         const data = await response.json() as OIDCProviderSummary[];
         if (!Array.isArray(data)) {
-          setOidcProviders([]);
+          if (active) {
+            setOidcProviders([]);
+          }
           return;
         }
-        setOidcProviders(data.filter((provider) => provider.configured));
-      })
-      .catch(() => {
-        setOidcProviders([]);
-      })
-      .finally(() => {
-        setOidcLoading(false);
-      });
+
+        if (active) {
+          setOidcProviders(data.filter((provider) => provider.configured));
+        }
+      } catch {
+        if (active) {
+          setOidcProviders([]);
+        }
+      } finally {
+        if (active) {
+          setOidcLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -84,7 +100,6 @@ export default function LoginPage() {
     }
 
     if (oidcError) {
-      setError(oidcError);
       return;
     }
 
