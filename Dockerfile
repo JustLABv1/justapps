@@ -4,7 +4,7 @@ FROM node:25.9.0-alpine AS base
 FROM base AS frontend-builder
 WORKDIR /app/frontend
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.33.4
 
 COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
 COPY services/frontend/pnpm-workspace.yaml ./
