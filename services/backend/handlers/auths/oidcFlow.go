@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,12 +30,12 @@ const oidcStateTokenType = "oidc_state"
 const oidcPKCECookieBase = "oidc_pkce"
 
 type oidcStateClaims struct {
-	ProviderKey  string `json:"providerKey"`
-	CallbackURL  string `json:"callbackUrl"`
+	ProviderKey    string `json:"providerKey"`
+	CallbackURL    string `json:"callbackUrl"`
 	FrontendOrigin string `json:"frontendOrigin"`
-	Nonce        string `json:"nonce"`
-	CodeVerifier string `json:"codeVerifier"`
-	Type         string `json:"type"`
+	Nonce          string `json:"nonce"`
+	CodeVerifier   string `json:"codeVerifier"`
+	Type           string `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -67,7 +67,7 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
 		return
 	}
- 
+
 	codeVerifier := oauth2.GenerateVerifier()
 	if err := setOIDCPKCECookie(c, provider.Key, stateClaims.Nonce, codeVerifier); err != nil {
 		httperror.InternalServerError(c, "OIDC-PKCE konnte nicht vorbereitet werden", err)
@@ -275,12 +275,12 @@ func buildOIDCStateToken(providerKey, callbackURL, frontendOrigin string) (strin
 
 	now := time.Now()
 	claims := oidcStateClaims{
-		ProviderKey:  providerKey,
-		CallbackURL:  sanitizeCallbackURL(callbackURL),
+		ProviderKey:    providerKey,
+		CallbackURL:    sanitizeCallbackURL(callbackURL),
 		FrontendOrigin: sanitizeOriginURL(frontendOrigin),
-		Nonce:        nonce,
-		CodeVerifier: codeVerifier,
-		Type:         oidcStateTokenType,
+		Nonce:          nonce,
+		CodeVerifier:   codeVerifier,
+		Type:           oidcStateTokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(10 * time.Minute)),
