@@ -2,39 +2,40 @@
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AIProviderSettingsPanel } from '@/components/admin/AIProviderSettingsPanel';
+import { OIDCProviderSettingsPanel } from '@/components/admin/OIDCProviderSettingsPanel';
 import { GitLabProviderAdminSettings } from '@/config/apps';
 import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
 import { fetchApi, uploadFile } from '@/lib/api';
 import { resolveAssetUrl } from '@/lib/assets';
 import {
-    CUSTOM_BRANDING_PRESET,
-    DEFAULT_HERO_TITLE_PRESET,
-    DEFAULT_TOP_BAR_PRESET,
-    HERO_TITLE_PRESET_OPTIONS,
-    TOP_BAR_PRESET_OPTIONS,
-    normalizeBrandColorList,
-    resolveHeroTitleColors,
-    resolveTopBarColors,
-    seedCustomBrandColors,
+  CUSTOM_BRANDING_PRESET,
+  DEFAULT_HERO_TITLE_PRESET,
+  DEFAULT_TOP_BAR_PRESET,
+  HERO_TITLE_PRESET_OPTIONS,
+  TOP_BAR_PRESET_OPTIONS,
+  normalizeBrandColorList,
+  resolveHeroTitleColors,
+  resolveTopBarColors,
+  seedCustomBrandColors,
 } from '@/lib/branding';
 import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    Surface,
-    Switch,
-    TextField,
-    Tooltip
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  Surface,
+  Switch,
+  TextField,
+  Tooltip
 } from '@heroui/react';
 import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-export type AdminSettingsSection = 'governance' | 'startseite' | 'branding' | 'inhalte' | 'apps' | 'integrationen' | 'ai';
+export type AdminSettingsSection = 'governance' | 'auth' | 'startseite' | 'branding' | 'inhalte' | 'apps' | 'integrationen' | 'ai';
 
 type AdminSettingsWorkspaceProps = {
   title: string;
@@ -463,8 +464,17 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   <Switch.Control><Switch.Thumb /></Switch.Control>
                 </Switch>
               </div>
+            </Surface>
+          </div>
+        )}
 
-              <div className="flex items-center justify-between gap-4 border-t border-border pt-5 mt-5">
+        {visibleSections.has('auth') && (
+          <div className="flex flex-col gap-6">
+            <Surface className="p-6 border border-border/50 shadow-sm">
+              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-accent" /> Zugriffsschutz
+              </h3>
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-semibold">App Store nur für angemeldete Nutzer</span>
                   <p className="text-xs text-muted max-w-xl">
@@ -479,6 +489,8 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 </Switch>
               </div>
             </Surface>
+
+            <OIDCProviderSettingsPanel />
           </div>
         )}
 

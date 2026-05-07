@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthLayout } from '@/components/AuthLayout';
+import { OIDCProviderSummary } from '@/config/apps';
 import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -25,12 +26,26 @@ function readSafeCallbackUrl(): string {
   return getSafeCallbackUrl(new URLSearchParams(window.location.search).get('callbackUrl'));
 }
 
+function readOIDCResult() {
+  if (typeof window === 'undefined') {
+    return { token: null as string | null, error: null as string | null };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    token: params.get('oidc_token'),
+    error: params.get('oidc_error'),
+  };
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => readOIDCResult().error || '');
   const [loading, setLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [oidcProviders, setOidcProviders] = useState<OIDCProviderSummary[]>([]);
+  const [oidcLoading, setOidcLoading] = useState(true);
   const { user, login, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
@@ -38,6 +53,93 @@ export default function LoginPage() {
   React.useEffect(() => {
     if (user) router.push(readSafeCallbackUrl());
   }, [user, router]);
+
+  React.useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetchApi('/auth/oidc/providers');
+        if (!response.ok) {
+          if (active) {
+            setOidcProviders([]);
+          }
+          return;
+        }
+
+        const data = await response.json() as OIDCProviderSummary[];
+        if (!Array.isArray(data)) {
+          if (active) {
+            setOidcProviders([]);
+          }
+          return;
+        }
+
+        if (active) {
+          setOidcProviders(data.filter((provider) => provider.configured));
+        }
+      } catch {
+        if (active) {
+          setOidcProviders([]);
+        }
+      } finally {
+        if (active) {
+          setOidcLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const { token, error: oidcError } = readOIDCResult();
+    if (!token && !oidcError) {
+      return;
+    }
+
+    if (oidcError) {
+      return;
+    }
+
+    if (!token) {
+      return;
+    }
+
+    const backendToken = token;
+
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetchApi('/user/', {
+          headers: {
+            Authorization: `Bearer ${backendToken}`,
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.user) {
+          if (active) {
+            setError((data as { message?: string }).message || 'OIDC-Anmeldung fehlgeschlagen.');
+          }
+          return;
+        }
+
+        if (active) {
+          login(backendToken, data.user);
+          router.replace(readSafeCallbackUrl());
+        }
+      } catch {
+        if (active) {
+          setError('OIDC-Anmeldung fehlgeschlagen.');
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [login, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,13 +166,39 @@ export default function LoginPage() {
   };
 
   const showLocalAuth = !settings.disableLocalAuth;
+  const hasDynamicProviders = oidcProviders.length > 0;
+  const showOIDC = settings.oidcEnabled;
 
-  const handleOIDCLogin = () => {
-    oidcLogin(readSafeCallbackUrl());
+  const handleOIDCLogin = (providerKey?: string) => {
+    oidcLogin(providerKey, readSafeCallbackUrl());
+  };
+
+  const renderOIDCButtons = () => {
+    if (!showOIDC) {
+      return null;
+    }
+
+    if (!hasDynamicProviders) {
+      return (
+        <Button onPress={() => handleOIDCLogin()} className="w-full" isDisabled={oidcLoading}>
+          Mit Single Sign-On anmelden
+        </Button>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {oidcProviders.map((provider) => (
+          <Button key={provider.key} onPress={() => handleOIDCLogin(provider.key)} className="w-full">
+            {provider.label || 'Single Sign-On'}
+          </Button>
+        ))}
+      </div>
+    );
   };
 
   // Mode 1: OIDC disabled, only local auth
-  if (!settings.oidcEnabled && showLocalAuth) {
+  if (!showOIDC && showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihren Zugangsdaten an.">
         <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -103,9 +231,7 @@ export default function LoginPage() {
   if (!showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich über Ihr Organisationskonto an.">
-        <Button onPress={handleOIDCLogin} className="w-full">
-          Mit Single Sign-On anmelden
-        </Button>
+        {renderOIDCButtons()}
       </AuthLayout>
     );
   }
@@ -114,9 +240,7 @@ export default function LoginPage() {
   return (
     <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihrem Konto an.">
       {/* Primary: OIDC */}
-      <Button onPress={handleOIDCLogin} className="w-full">
-        Mit Single Sign-On anmelden
-      </Button>
+      {renderOIDCButtons()}
 
       {/* Toggle for local auth */}
       <div className="mt-4">

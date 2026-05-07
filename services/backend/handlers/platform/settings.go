@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"justapps-backend/config"
+	authfunc "justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
@@ -106,12 +107,27 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 		settings.HeroTitlePreset = defaultBrandPreset
 	}
 	settings.AppSortField = normalizeAppSortField(settings.AppSortField)
+	oidcProviders, err := authfunc.ListOIDCProviderSummaries(c.Request.Context(), db, config.Config)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to retrieve OIDC providers", err)
+		return
+	}
+	oidcEnabled := config.Config != nil && config.Config.OIDC.Enabled
+	disableLocalAuth := config.Config != nil && config.Config.OIDC.DisableLocalAuth
+	for _, provider := range oidcProviders {
+		if provider.Configured {
+			oidcEnabled = true
+		}
+		if provider.DisableLocalAuth {
+			disableLocalAuth = true
+		}
+	}
 
 	c.JSON(200, settingsResponse{
 		PlatformSettings:    settings,
-		DisableLocalAuth:    config.Config != nil && config.Config.OIDC.DisableLocalAuth,
+		DisableLocalAuth:    disableLocalAuth,
 		DisableRegistration: config.Config != nil && config.Config.OIDC.DisableRegistration,
-		OIDCEnabled:         config.Config != nil && config.Config.OIDC.Enabled,
+		OIDCEnabled:         oidcEnabled,
 	})
 }
 

@@ -1,10 +1,10 @@
 package auth
 
 import (
-	"justapps-backend/config"
 	"context"
 	"crypto/tls"
 	"errors"
+	"justapps-backend/config"
 	"net/http"
 	"strings"
 
@@ -164,7 +164,11 @@ func getStringSlice(m map[string]interface{}, key string) []string {
 }
 
 func IsAdminOIDC(claims *OIDCClaims) bool {
-	adminGroup := strings.ToLower(config.Config.OIDC.AdminGroup)
+	return IsAdminOIDCWithGroup(claims, config.Config.OIDC.AdminGroup)
+}
+
+func IsAdminOIDCWithGroup(claims *OIDCClaims, adminGroup string) bool {
+	adminGroup = strings.ToLower(strings.TrimSpace(adminGroup))
 	if adminGroup == "" {
 		adminGroup = "admin"
 	}

@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthLayout } from '@/components/AuthLayout';
+import { OIDCProviderSummary } from '@/config/apps';
 import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
@@ -14,10 +15,30 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oidcProviders, setOidcProviders] = useState<OIDCProviderSummary[]>([]);
   const { user, oidcLogin } = useAuth();
   const { settings } = useSettings();
   const router = useRouter();
   const showOidcLogin = settings.oidcEnabled;
+
+  React.useEffect(() => {
+    fetchApi('/auth/oidc/providers')
+      .then(async (response) => {
+        if (!response.ok) {
+          setOidcProviders([]);
+          return;
+        }
+        const data = await response.json() as OIDCProviderSummary[];
+        if (!Array.isArray(data)) {
+          setOidcProviders([]);
+          return;
+        }
+        setOidcProviders(data.filter((provider) => provider.configured));
+      })
+      .catch(() => {
+        setOidcProviders([]);
+      });
+  }, []);
 
   React.useEffect(() => {
     if (user) {
@@ -29,6 +50,10 @@ export default function RegisterPage() {
   }, [user, router, settings.disableRegistration, settings.disableLocalAuth]);
 
   const handleOIDCLogin = () => {
+    if (oidcProviders.length > 0) {
+      oidcLogin(oidcProviders[0].key, '/');
+      return;
+    }
     oidcLogin();
   };
 
@@ -113,7 +138,7 @@ export default function RegisterPage() {
             variant="outline"
             className="w-full"
           >
-            Mit Single Sign-On anmelden
+            {oidcProviders[0]?.label ? `Mit ${oidcProviders[0].label} anmelden` : 'Mit Single Sign-On anmelden'}
           </Button>
         </>
       )}
