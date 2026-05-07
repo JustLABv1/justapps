@@ -5,13 +5,15 @@ JustApps supports two authentication modes:
 | Mode | Description |
 |------|-------------|
 | **Local** | Username/password stored in PostgreSQL, JWT-issued tokens |
-| **OIDC** | OAuth2 / OpenID Connect via standards-compliant providers such as Keycloak or Authentik, handled by NextAuth v5 |
+| **OIDC** | OAuth2 / OpenID Connect via one or more provider configurations managed in JustApps Admin settings (backend-managed auth code flow) |
 
 Both modes can coexist. OIDC users are managed in your identity provider; local users are managed in the JustApps admin UI.
 
+OIDC providers are configured in the UI under `Verwaltung -> Integrationen -> Authentifizierung`.
+
 ---
 
-## Keycloak Setup
+## OIDC Provider Setup (Keycloak Example)
 
 ### 1. Create a Realm
 
@@ -20,17 +22,17 @@ Create a new realm (e.g. `justapps`) or reuse an existing one.
 ### 2. Create a Client
 
 1. Go to **Clients** → **Create client**
-2. **Client ID**: `justapps` (must match `AUTH_OIDC_ID` and `oidc.client_id`)
+2. **Client ID**: choose a unique ID (for example `justapps-main`)
 3. **Client Protocol**: `openid-connect`
-4. **Access Type**: `confidential` (required for NextAuth server-side flows)
+4. **Access Type**: `confidential`
 5. **Valid Redirect URIs**:
-   - Development: `http://localhost:3000/api/auth/callback/oidc`
-   - Production: `https://your-domain.com/api/auth/callback/oidc`
+   - Development: `http://localhost:8080/api/v1/auth/oidc/<provider-key>/callback`
+   - Production: `https://<backend-domain>/api/v1/auth/oidc/<provider-key>/callback`
 6. **Web Origins**: `*` or your frontend URL
 
 ### 3. Client Secret
 
-Copy the **Client Secret** from the **Credentials** tab into `AUTH_OIDC_SECRET`.
+Copy the **Client Secret** from the **Credentials** tab into the provider entry in JustApps admin settings.
 
 ### 4. Admin Group
 
@@ -55,9 +57,24 @@ To prevent `Offline user session not found` errors and enable persistent session
 
 ---
 
+## Runtime Behavior
+
+OIDC login flow:
+
+1. Frontend loads available providers from `GET /api/v1/auth/oidc/providers`.
+2. User clicks a provider button on `/login`.
+3. Frontend redirects to `GET /api/v1/auth/oidc/:key/start`.
+4. Backend handles provider redirect and callback.
+5. Backend issues a JustApps JWT and redirects back to frontend `/login` with `oidc_token`.
+6. Frontend validates the token with `GET /api/v1/user/` and stores session.
+
+PKCE is enabled in the backend-managed flow.
+
 ## Environment Variables
 
 ### Backend (`config.yaml` or env overrides)
+
+The legacy single-provider backend config still exists as fallback, but the recommended setup is provider configuration in Admin UI.
 
 ```yaml
 oidc:
@@ -69,21 +86,19 @@ oidc:
 
 | Env var | Description |
 |---------|-------------|
-| `BACKEND_OIDC_ENABLED` | `true` to enable OIDC |
-| `BACKEND_OIDC_ISSUER` | Keycloak realm URL |
-| `BACKEND_OIDC_CLIENT_ID` | Must match Keycloak client ID |
-| `BACKEND_OIDC_ADMIN_GROUP` | Group name that grants admin rights |
+| `BACKEND_OIDC_ENABLED` | Legacy toggle/fallback for single-provider config |
+| `BACKEND_OIDC_ISSUER` | Legacy single-provider issuer |
+| `BACKEND_OIDC_CLIENT_ID` | Legacy single-provider client ID |
+| `BACKEND_OIDC_ADMIN_GROUP` | Legacy single-provider admin group |
 
 ### Frontend (`.env`)
 
 ```env
-AUTH_OIDC_ID=justapps
-AUTH_OIDC_SECRET=your-client-secret
-AUTH_OIDC_ISSUER=https://your-keycloak/realms/your-realm
-AUTH_ADMIN_GROUP=admin
 AUTH_SECRET=random-secret-string
 AUTH_URL=https://your-domain.com
 ```
+
+`AUTH_OIDC_*` variables are not required for the backend-managed provider-key flow.
 
 ---
 
@@ -104,8 +119,9 @@ Admins can create and manage local users through the **Admin UI** at `/verwaltun
 
 | Symptom | Fix |
 |---------|-----|
-| `Token Validation Failed` | Ensure `oidc.issuer` matches the `iss` claim in the JWT exactly (no trailing slash) |
+| Callback redirects to backend `/login` and returns 404 | Ensure backend callback redirects are configured to frontend origin and your frontend is reachable at that origin |
+| `Token Validation Failed` | Ensure provider issuer matches the `iss` claim exactly (no trailing slash mismatch) |
 | `Admin Access Denied` | Inspect the token at [jwt.io](https://jwt.io) — confirm `groups` or `roles` claim contains your admin group name |
 | `CORS Issues` | Add your frontend URL to Keycloak **Web Origins** |
-| `Offline User Session Not Found` | Ensure `offline_access` scope is assigned to the client and user/group |
+| `OIDC-Codeaustausch fehlgeschlagen` | Confirm client secret, callback URL, and PKCE settings in the IdP client |
 | Sessions expire too quickly | Increase **Realm Settings** → **Sessions** → **SSO Session Idle** (30m+) |

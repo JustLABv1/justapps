@@ -11,7 +11,7 @@ JustApps is a full-stack web application with a clear separation between a React
                │ HTTP
 ┌──────────────▼──────────────────────┐
 │         Next.js Frontend             │
-│  (React 19 · HeroUI · NextAuth v5)  │
+│  (React 19 · HeroUI)                 │
 │                                      │
 │  Pages: /, /apps/:id, /verwaltung,  │
 │          /login, /register           │
@@ -41,9 +41,8 @@ JustApps is a full-stack web application with a clear separation between a React
 | `components/` | Shared UI components (AppCard, AppModal, etc.) |
 | `context/` | React context providers (Auth, Favorites, Settings) |
 | `lib/` | API client, utility helpers |
-| `auth.ts` | NextAuth configuration (Keycloak OIDC provider) |
 
-**Key dependencies:** Next.js 16, React 19, HeroUI v3, Tailwind CSS v4, NextAuth v5
+**Key dependencies:** Next.js 16, React 19, HeroUI v3, Tailwind CSS v4
 
 ### Backend (`services/backend/`)
 
@@ -97,13 +96,15 @@ Browser → POST /auth/login → Backend validates credentials → Issues JWT
 Frontend stores JWT → Sends as Bearer token on API requests
 ```
 
-### OIDC (Keycloak)
+### OIDC (Provider-Key Flow)
 
 ```
-Browser → NextAuth sign-in → Redirect to Keycloak
-Keycloak authenticates → Returns ID + access tokens to NextAuth
-NextAuth stores session → Frontend calls POST /auth/oidc/exchange
-Backend validates OIDC token → Issues its own JWT for API calls
+Browser → GET /auth/oidc/providers → Show available provider buttons
+Browser → GET /auth/oidc/:key/start (backend)
+Backend redirects to IdP and handles callback at /auth/oidc/:key/callback
+Backend validates ID token, upserts user, issues JustApps JWT
+Backend redirects to frontend /login?oidc_token=...
+Frontend validates token via GET /user/ and stores session
 ```
 
 ---
@@ -113,10 +114,11 @@ Backend validates OIDC token → Issues its own JWT for API calls
 Every protected route passes through the auth middleware (`middlewares/auth.go`):
 
 1. Extract `Authorization: Bearer <token>` header
-2. Attempt JWT validation (local token)
-3. If the token has an OIDC issuer claim, validate against the OIDC provider
-4. Attach user identity to the request context
-5. Admin-only routes additionally check the `is_admin` flag via `middlewares/admin.go`
+2. Attempt backend-issued OIDC session token validation
+3. Fall back to raw OIDC token validation
+4. Fall back to local JWT validation
+5. Attach user identity to the request context
+6. Admin-only routes additionally check role via `middlewares/admin.go`
 
 ---
 

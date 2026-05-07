@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -26,10 +27,12 @@ import (
 )
 
 const oidcStateTokenType = "oidc_state"
+const oidcPKCECookieBase = "oidc_pkce"
 
 type oidcStateClaims struct {
 	ProviderKey  string `json:"providerKey"`
 	CallbackURL  string `json:"callbackUrl"`
+	FrontendOrigin string `json:"frontendOrigin"`
 	Nonce        string `json:"nonce"`
 	CodeVerifier string `json:"codeVerifier"`
 	Type         string `json:"type"`
@@ -54,7 +57,7 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 	}
 
 	callbackURL := sanitizeCallbackURL(c.Query("callbackUrl"))
-	stateToken, err := buildOIDCStateToken(provider.Key, callbackURL)
+	stateToken, err := buildOIDCStateToken(provider.Key, callbackURL, resolveFrontendOrigin(c))
 	if err != nil {
 		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
 		return
@@ -62,6 +65,12 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 	stateClaims, err := parseOIDCStateToken(stateToken)
 	if err != nil {
 		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
+		return
+	}
+ 
+	codeVerifier := oauth2.GenerateVerifier()
+	if err := setOIDCPKCECookie(c, provider.Key, stateClaims.Nonce, codeVerifier); err != nil {
+		httperror.InternalServerError(c, "OIDC-PKCE konnte nicht vorbereitet werden", err)
 		return
 	}
 
@@ -74,7 +83,7 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 	authURL := oauthConfig.AuthCodeURL(
 		stateToken,
 		oauth2.AccessTypeOnline,
-		oauth2.S256ChallengeOption(stateClaims.CodeVerifier),
+		oauth2.S256ChallengeOption(codeVerifier),
 	)
 	c.Redirect(http.StatusFound, authURL)
 }
@@ -83,77 +92,112 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 	providerKey := strings.TrimSpace(c.Param("key"))
 	stateToken := strings.TrimSpace(c.Query("state"))
 	code := strings.TrimSpace(c.Query("code"))
+	callbackError := strings.TrimSpace(c.Query("error"))
+	callbackErrorDescription := strings.TrimSpace(c.Query("error_description"))
+
+	if callbackError != "" {
+		errMsg := "OIDC-Anmeldung wurde abgebrochen"
+		if callbackErrorDescription != "" {
+			errMsg = callbackErrorDescription
+		} else if callbackError != "" {
+			errMsg = callbackError
+		}
+
+		if providerKey == "" || stateToken == "" {
+			redirectOIDCError(c, "", "/", errMsg)
+			return
+		}
+
+		stateClaims, err := parseOIDCStateToken(stateToken)
+		if err != nil {
+			redirectOIDCError(c, "", "/", errMsg)
+			return
+		}
+		clearOIDCPKCECookie(c, providerKey)
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), errMsg)
+		return
+	}
 
 	if providerKey == "" || stateToken == "" || code == "" {
-		redirectOIDCError(c, "/", "Ungültiger OIDC-Callback")
+		redirectOIDCError(c, "", "/", "Ungültiger OIDC-Callback")
 		return
 	}
 
 	stateClaims, err := parseOIDCStateToken(stateToken)
 	if err != nil {
-		redirectOIDCError(c, "/", "OIDC-Status ungültig oder abgelaufen")
+		redirectOIDCError(c, "", "/", "OIDC-Status ungültig oder abgelaufen")
 		return
 	}
 	if !strings.EqualFold(stateClaims.ProviderKey, providerKey) {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider passt nicht zum Callback")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider passt nicht zum Callback")
 		return
 	}
 
+	codeVerifier, err := getOIDCPKCEVerifier(c, providerKey, stateClaims.Nonce)
+	if err != nil {
+		if strings.TrimSpace(stateClaims.CodeVerifier) == "" {
+			redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Status ungültig oder abgelaufen")
+			return
+		}
+		codeVerifier = stateClaims.CodeVerifier
+	}
+	clearOIDCPKCECookie(c, providerKey)
+
 	provider, found, err := authfunc.ResolveOIDCProvider(c.Request.Context(), db, config.Config, providerKey)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider konnte nicht geladen werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider konnte nicht geladen werden")
 		return
 	}
 	if !found {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider ist nicht verfügbar")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider ist nicht verfügbar")
 		return
 	}
 
 	oauthConfig, err := buildProviderOAuthConfig(c, provider)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider konnte nicht initialisiert werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider konnte nicht initialisiert werden")
 		return
 	}
 
 	providerClient, verifyCtx, err := oidcProviderContext(c.Request.Context(), provider)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider-Metadaten konnten nicht geladen werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Provider-Metadaten konnten nicht geladen werden")
 		return
 	}
-	oauthToken, err := oauthConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(stateClaims.CodeVerifier))
+	oauthToken, err := oauthConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(codeVerifier))
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Codeaustausch fehlgeschlagen")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Codeaustausch fehlgeschlagen")
 		return
 	}
 
 	rawIDToken, _ := oauthToken.Extra("id_token").(string)
 	if strings.TrimSpace(rawIDToken) == "" {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-ID-Token fehlt")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-ID-Token fehlt")
 		return
 	}
 
 	verifier := providerClient.Verifier(&oidc.Config{ClientID: provider.ClientID})
 	idToken, err := verifier.Verify(verifyCtx, rawIDToken)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-ID-Token ungültig")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-ID-Token ungültig")
 		return
 	}
 
 	claims, err := authfunc.GetOIDCClaims(idToken)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Claims konnten nicht gelesen werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Claims konnten nicht gelesen werden")
 		return
 	}
 
 	user, err := upsertOIDCUser(c, db, claims, provider.AdminGroup)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "Benutzer konnte nicht erstellt werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Benutzer konnte nicht erstellt werden")
 		return
 	}
 
 	sessionToken, _, err := authfunc.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)
 	if err != nil {
-		redirectOIDCError(c, sanitizeCallbackURL(stateClaims.CallbackURL), "Sitzung konnte nicht erstellt werden")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Sitzung konnte nicht erstellt werden")
 		return
 	}
 
@@ -161,7 +205,7 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 	values.Set("oidc_token", sessionToken)
 	values.Set("callbackUrl", sanitizeCallbackURL(stateClaims.CallbackURL))
 	values.Set("oidc_provider", provider.Key)
-	c.Redirect(http.StatusFound, "/login?"+values.Encode())
+	c.Redirect(http.StatusFound, buildLoginRedirectURL(stateClaims.FrontendOrigin, values))
 }
 
 func buildProviderOAuthConfig(c *gin.Context, provider authfunc.OIDCProviderRuntime) (*oauth2.Config, error) {
@@ -222,7 +266,7 @@ func sanitizeCallbackURL(value string) string {
 	return trimmed
 }
 
-func buildOIDCStateToken(providerKey, callbackURL string) (string, error) {
+func buildOIDCStateToken(providerKey, callbackURL, frontendOrigin string) (string, error) {
 	nonce, err := randomNonce()
 	if err != nil {
 		return "", err
@@ -233,6 +277,7 @@ func buildOIDCStateToken(providerKey, callbackURL string) (string, error) {
 	claims := oidcStateClaims{
 		ProviderKey:  providerKey,
 		CallbackURL:  sanitizeCallbackURL(callbackURL),
+		FrontendOrigin: sanitizeOriginURL(frontendOrigin),
 		Nonce:        nonce,
 		CodeVerifier: codeVerifier,
 		Type:         oidcStateTokenType,
@@ -270,11 +315,118 @@ func randomNonce() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
-func redirectOIDCError(c *gin.Context, callbackURL, message string) {
+type oidcPKCECookieClaims struct {
+	Nonce    string `json:"nonce"`
+	Verifier string `json:"verifier"`
+}
+
+func oidcPKCECookieName(providerKey string) string {
+	normalized := strings.ToLower(strings.TrimSpace(providerKey))
+	if normalized == "" {
+		normalized = "default"
+	}
+	b := strings.Builder{}
+	b.Grow(len(normalized))
+	for _, r := range normalized {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteRune('_')
+	}
+	return oidcPKCECookieBase + "_" + b.String()
+}
+
+func setOIDCPKCECookie(c *gin.Context, providerKey, nonce, verifier string) error {
+	payload := oidcPKCECookieClaims{Nonce: nonce, Verifier: verifier}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(raw)
+	secure := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")), "https") || c.Request.TLS != nil
+	c.SetCookie(oidcPKCECookieName(providerKey), encoded, 10*60, "/", "", secure, true)
+	return nil
+}
+
+func getOIDCPKCEVerifier(c *gin.Context, providerKey, expectedNonce string) (string, error) {
+	rawCookie, err := c.Cookie(oidcPKCECookieName(providerKey))
+	if err != nil {
+		return "", err
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(rawCookie)
+	if err != nil {
+		return "", err
+	}
+	var payload oidcPKCECookieClaims
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(payload.Nonce) == "" || strings.TrimSpace(payload.Verifier) == "" {
+		return "", errors.New("invalid oidc pkce cookie")
+	}
+	if payload.Nonce != expectedNonce {
+		return "", errors.New("oidc pkce nonce mismatch")
+	}
+	return payload.Verifier, nil
+}
+
+func clearOIDCPKCECookie(c *gin.Context, providerKey string) {
+	secure := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")), "https") || c.Request.TLS != nil
+	c.SetCookie(oidcPKCECookieName(providerKey), "", -1, "/", "", secure, true)
+}
+
+func redirectOIDCError(c *gin.Context, frontendOrigin, callbackURL, message string) {
 	values := url.Values{}
 	values.Set("oidc_error", message)
 	values.Set("callbackUrl", sanitizeCallbackURL(callbackURL))
-	c.Redirect(http.StatusFound, "/login?"+values.Encode())
+	c.Redirect(http.StatusFound, buildLoginRedirectURL(frontendOrigin, values))
+}
+
+func sanitizeOriginURL(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ""
+	}
+	parsed.Path = ""
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return strings.TrimRight(parsed.String(), "/")
+}
+
+func resolveFrontendOrigin(c *gin.Context) string {
+	if value := sanitizeOriginURL(c.GetHeader("X-Frontend-Origin")); value != "" {
+		return value
+	}
+	if value := sanitizeOriginURL(c.GetHeader("Origin")); value != "" {
+		return value
+	}
+	referer := strings.TrimSpace(c.GetHeader("Referer"))
+	if referer == "" {
+		return ""
+	}
+	parsed, err := url.Parse(referer)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return sanitizeOriginURL(parsed.Scheme + "://" + parsed.Host)
+}
+
+func buildLoginRedirectURL(frontendOrigin string, values url.Values) string {
+	query := values.Encode()
+	origin := sanitizeOriginURL(frontendOrigin)
+	if origin == "" {
+		return "/login?" + query
+	}
+	return origin + "/login?" + query
 }
 
 func upsertOIDCUser(c *gin.Context, db *bun.DB, claims *authfunc.OIDCClaims, adminGroup string) (models.Users, error) {

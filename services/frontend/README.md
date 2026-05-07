@@ -29,15 +29,21 @@ env:
     value: "/app/config/config.yaml"
 ```
 
-### OIDC Configuration (NextAuth / Auth.js)
+### OIDC Configuration (Backend-managed)
 
-To enable OIDC integration in the frontend, set the following environment variables:
+The frontend uses backend-managed OIDC providers and does not require static `AUTH_OIDC_*` provider configuration.
 
-- `AUTH_OIDC_ID`: OIDC client ID (e.g., `justapps`)
-- `AUTH_OIDC_SECRET`: OIDC client secret
-- `AUTH_OIDC_ISSUER`: OIDC issuer URL (e.g., `https://<idp-url>/application/o/<slug>/` or `https://<keycloak-url>/realms/<realm-name>`)
+Runtime behavior:
+
+- Login page fetches providers from `GET /api/v1/auth/oidc/providers`
+- Clicking a provider redirects to `GET /api/v1/auth/oidc/:key/start`
+- Backend handles callback and returns to frontend `/login` with `oidc_token`
+
+Required frontend auth env vars:
+
 - `AUTH_SECRET`: A random secret for NextAuth sessions (e.g., `openssl rand -base64 32`)
-- `AUTH_ADMIN_GROUP`: OIDC group name mapped to admin role (e.g., `2Fa` or `admin`)
+
+`AUTH_OIDC_*` values are legacy and not required for the new provider-key flow.
 
 ### Admin Management
 

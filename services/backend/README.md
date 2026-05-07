@@ -1,8 +1,20 @@
 # JustApps Backend
 
-## OIDC Configuration (Keycloak)
+## OIDC Configuration
 
-To enable OIDC authentication with Keycloak, update your `config.yaml` or set the following environment variables:
+OIDC is managed in runtime via Admin UI and supports multiple providers.
+
+Configure providers in `Verwaltung -> Integrationen -> Authentifizierung`.
+
+Each provider requires:
+
+- Provider key
+- Label
+- Issuer URL
+- Client ID
+- Client secret
+- Admin group/role mapping
+- Scopes (default: `openid`, `profile`, `email`)
 
 ### Config File (`config.yaml`)
 
@@ -14,12 +26,14 @@ oidc:
   admin_group: "2Fa" # The group or role in Keycloak that identifies an admin
 ```
 
-### Environment Variables
+### Environment Variables (Legacy Single-Provider Fallback)
 
 - `BACKEND_OIDC_ENABLED`: `true`
 - `BACKEND_OIDC_ISSUER`: `https://<keycloak-url>/realms/<realm-name>`
 - `BACKEND_OIDC_CLIENT_ID`: `justapps`
-- `BACKEND_OIDC_ADMIN_GROUP`: `2Fa` (Default for this deployment)
+- `BACKEND_OIDC_ADMIN_GROUP`: `admin`
+
+These values are kept for compatibility but are not required for the new provider-key flow when providers are configured in Admin settings.
 
 ## User Management
 

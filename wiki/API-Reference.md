@@ -103,7 +103,11 @@ Common fields accepted in the request body:
 |--------|------|------|-------------|
 | `POST` | `/auth/register` | — | Register a local account |
 | `POST` | `/auth/login` | — | Login, returns JWT |
-| `POST` | `/auth/oidc/exchange` | — | Exchange Keycloak token for app JWT |
+| `GET` | `/auth/oidc/providers` | — | List enabled OIDC providers (public summaries) |
+| `GET` | `/auth/oidc/:key/start` | — | Start backend-managed OIDC login flow for a provider |
+| `GET` | `/auth/oidc/:key/callback` | — | OIDC callback endpoint used by identity provider |
+
+`POST /auth/oidc/exchange` is a legacy endpoint and not part of the recommended multi-provider flow.
 
 ### Login Body
 
@@ -174,6 +178,16 @@ Do not store secrets in platform settings. The `/settings` endpoint is public by
 | `POST` | `/settings/ai-providers/:key/test` | Admin | Test an AI provider connection |
 
 Supported provider types include `openai`, `azure-openai`, `anthropic`, `gemini`, `mistral`, `cohere`, `openrouter`, `together`, `openai-compatible`, `vllm`, `ollama` and `lmstudio`.
+
+### OIDC Provider Settings
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/settings/oidc-providers/available` | — | List enabled OIDC providers for public frontend settings |
+| `GET` | `/settings/oidc-providers` | Admin | List OIDC providers for admin management |
+| `POST` | `/settings/oidc-providers` | Admin | Create an OIDC provider |
+| `PUT` | `/settings/oidc-providers/:key` | Admin | Update an OIDC provider and optionally rotate secret |
+| `DELETE` | `/settings/oidc-providers/:key` | Admin | Delete an OIDC provider |
 
 ---
 
