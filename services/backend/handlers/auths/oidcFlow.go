@@ -28,11 +28,11 @@ import (
 const oidcStateTokenType = "oidc_state"
 
 type oidcStateClaims struct {
-	ProviderKey string `json:"providerKey"`
-	CallbackURL string `json:"callbackUrl"`
-	Nonce       string `json:"nonce"`
+	ProviderKey  string `json:"providerKey"`
+	CallbackURL  string `json:"callbackUrl"`
+	Nonce        string `json:"nonce"`
 	CodeVerifier string `json:"codeVerifier"`
-	Type        string `json:"type"`
+	Type         string `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -231,11 +231,11 @@ func buildOIDCStateToken(providerKey, callbackURL string) (string, error) {
 
 	now := time.Now()
 	claims := oidcStateClaims{
-		ProviderKey: providerKey,
-		CallbackURL: sanitizeCallbackURL(callbackURL),
-		Nonce:       nonce,
+		ProviderKey:  providerKey,
+		CallbackURL:  sanitizeCallbackURL(callbackURL),
+		Nonce:        nonce,
 		CodeVerifier: codeVerifier,
-		Type:        oidcStateTokenType,
+		Type:         oidcStateTokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(10 * time.Minute)),
