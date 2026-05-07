@@ -11,7 +11,7 @@ RUN npm install -g pnpm
 # 2. Dependencies Stage
 FROM platform AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install project dependencies
 RUN pnpm install --frozen-lockfile
