@@ -41,12 +41,10 @@ go run main.go --config /etc/justapps/config.yaml
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL (e.g. `http://localhost:8082/api/v1`) |
-| `AUTH_SECRET` | Yes | NextAuth secret — `openssl rand -base64 32` |
+| `AUTH_SECRET` | Yes | Frontend auth/session secret — `openssl rand -base64 32` |
 | `AUTH_URL` | Yes | Public URL of the frontend (e.g. `http://localhost:3000`) |
-| `AUTH_OIDC_ID` | OIDC only | OIDC client ID |
-| `AUTH_OIDC_SECRET` | OIDC only | OIDC client secret |
-| `AUTH_OIDC_ISSUER` | OIDC only | OIDC issuer URL |
-| `AUTH_ADMIN_GROUP` | OIDC only | OIDC group that grants admin rights (e.g. `admin`) |
+
+OIDC providers are configured in the admin UI (`Verwaltung -> Integrationen -> Authentifizierung`) and are not configured through frontend `AUTH_OIDC_*` variables in the recommended flow.
 
 See [`.env.example`](https://github.com/JustLABv1/justapps/blob/main/.env.example) for a full reference template.
 
@@ -66,6 +64,8 @@ All `config.yaml` values can be overridden with environment variables using the 
 | `oidc.issuer` | `BACKEND_OIDC_ISSUER` |
 | `oidc.client_id` | `BACKEND_OIDC_CLIENT_ID` |
 | `oidc.admin_group` | `BACKEND_OIDC_ADMIN_GROUP` |
+
+The `BACKEND_OIDC_*` keys are legacy single-provider fallback settings. Multi-provider OIDC is managed in the database via admin UI.
 
 ---
 
@@ -89,7 +89,7 @@ AI providers are created and maintained in the admin UI under **Verwaltung → E
 ## Generating Secrets
 
 ```bash
-# JWT secret and NextAuth secret
+# JWT secret and frontend auth secret
 openssl rand -base64 32
 ```
 

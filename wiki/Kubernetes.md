@@ -92,9 +92,6 @@ frontend:
     NEXT_PUBLIC_API_URL: https://justapps.your-domain.com/api/v1
     AUTH_SECRET: replace-with-secret
     AUTH_URL: https://justapps.your-domain.com
-    AUTH_OIDC_ID: justapps
-    AUTH_OIDC_SECRET: replace-with-client-secret
-    AUTH_OIDC_ISSUER: https://your-keycloak/realms/your-realm
 
 postgresql:
   enabled: true             # Deploys an in-cluster PostgreSQL instance
@@ -109,6 +106,8 @@ persistence:
 ```
 
 > **Secret management:** Store `jwt.secret`, database passwords, Keycloak secrets, and the repository provider encryption secret in Kubernetes Secrets or a Vault-injected secret, not plaintext in `values.yaml`.
+
+OIDC provider records (issuer, client id, encrypted client secret, scopes, admin group) are managed at runtime in the admin UI and persisted in the database.
 
 ---
 

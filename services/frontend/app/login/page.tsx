@@ -232,6 +232,7 @@ export default function LoginPage() {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich über Ihr Organisationskonto an.">
         {renderOIDCButtons()}
+        {error && <p className="mt-3 text-danger text-sm text-center">{error}</p>}
       </AuthLayout>
     );
   }
@@ -241,6 +242,7 @@ export default function LoginPage() {
     <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihrem Konto an.">
       {/* Primary: OIDC */}
       {renderOIDCButtons()}
+      {error && <p className="mt-3 text-danger text-sm text-center">{error}</p>}
 
       {/* Toggle for local auth */}
       <div className="mt-4">
