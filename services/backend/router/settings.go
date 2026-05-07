@@ -31,6 +31,9 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 		settings.GET("/ai-providers/available", middlewares.Auth(db), func(c *gin.Context) {
 			platform.ListAvailableAIProviders(c, db)
 		})
+		settings.GET("/oidc-providers/available", func(c *gin.Context) {
+			platform.ListAvailableOIDCProviders(c, db)
+		})
 
 		gitlabProviders := settings.Group("/gitlab/providers")
 		gitlabProviders.Use(middlewares.Admin(db))
@@ -77,6 +80,23 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			})
 			aiProviders.POST("/:key/test", func(c *gin.Context) {
 				platform.TestAIProvider(c, db)
+			})
+		}
+
+		oidcProviders := settings.Group("/oidc-providers")
+		oidcProviders.Use(middlewares.Admin(db))
+		{
+			oidcProviders.GET("", func(c *gin.Context) {
+				platform.ListOIDCProviders(c, db)
+			})
+			oidcProviders.POST("", func(c *gin.Context) {
+				platform.CreateOIDCProvider(c, db)
+			})
+			oidcProviders.PUT("/:key", func(c *gin.Context) {
+				platform.UpdateOIDCProvider(c, db)
+			})
+			oidcProviders.DELETE("/:key", func(c *gin.Context) {
+				platform.DeleteOIDCProvider(c, db)
 			})
 		}
 	}

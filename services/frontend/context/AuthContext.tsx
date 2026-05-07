@@ -1,5 +1,6 @@
 'use client';
 
+import { getApiUrl } from '@/lib/apiUrl';
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 
@@ -20,7 +21,7 @@ interface AuthContextType {
   profileError: string | null;
   login: (token: string, userData: User) => void;
   logout: () => void;
-  oidcLogin: (callbackUrl?: string) => void;
+  oidcLogin: (providerKey?: string, callbackUrl?: string) => void;
   refreshUser: () => Promise<boolean>;
 }
 
@@ -323,7 +324,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  const oidcLogin = useCallback((callbackUrl?: string) => {
+  const oidcLogin = useCallback((providerKey?: string, callbackUrl?: string) => {
+    if (providerKey && typeof window !== 'undefined') {
+      const apiBase = getApiUrl();
+      const params = new URLSearchParams();
+      params.set('callbackUrl', callbackUrl || '/');
+      window.location.href = `${apiBase}/auth/oidc/${encodeURIComponent(providerKey)}/start?${params.toString()}`;
+      return;
+    }
+
     nextAuthSignIn('oidc', { callbackUrl: callbackUrl || '/' });
   }, []);
 

@@ -59,6 +59,32 @@ export interface GitLabProviderAdminSettings {
   tokenConfigured: boolean;
 }
 
+export interface OIDCProviderSummary {
+  key: string;
+  label: string;
+  issuer: string;
+  clientId: string;
+  adminGroup: string;
+  insecure: boolean;
+  disableLocalAuth: boolean;
+  scopes: string[];
+  configured: boolean;
+}
+
+export interface OIDCProviderAdminSettings {
+  providerKey: string;
+  label: string;
+  issuer: string;
+  clientId: string;
+  adminGroup: string;
+  enabled: boolean;
+  insecure: boolean;
+  disableLocalAuth: boolean;
+  scopes: string[];
+  configured: boolean;
+  secretConfigured: boolean;
+}
+
 export interface GitLabSyncSnapshot {
   projectId?: number;
   projectName?: string;

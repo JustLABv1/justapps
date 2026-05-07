@@ -1,5 +1,5 @@
 import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { Bot, GitBranch, Workflow } from 'lucide-react';
+import { Bot, GitBranch, ShieldCheck, Workflow } from 'lucide-react';
 
 export default function VerwaltungIntegrationenPage() {
   return (
@@ -20,6 +20,13 @@ export default function VerwaltungIntegrationenPage() {
           description: 'Pflegen Sie GitLab- und GitHub-Provider, Tokens und Standardpfade für den Sync.',
           icon: GitBranch,
           note: 'Provider und Tokens',
+        },
+        {
+          href: '/verwaltung/integrationen/auth',
+          title: 'Authentifizierung',
+          description: 'Konfigurieren Sie OIDC-Provider und regeln Sie den Zugriff auf den App Store über Login-Pflicht.',
+          icon: ShieldCheck,
+          note: 'OIDC und Zugriff',
         },
         {
           href: '/verwaltung/integrationen/ai',

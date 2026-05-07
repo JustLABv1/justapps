@@ -23,5 +23,14 @@ func Auth(router *gin.RouterGroup, db *bun.DB) {
 		auth.POST("/oidc/exchange", func(c *gin.Context) {
 			auths.OIDCExchange(c, db)
 		})
+		auth.GET("/oidc/providers", func(c *gin.Context) {
+			auths.ListOIDCProviders(c, db)
+		})
+		auth.GET("/oidc/:key/start", func(c *gin.Context) {
+			auths.StartOIDCLogin(c, db)
+		})
+		auth.GET("/oidc/:key/callback", func(c *gin.Context) {
+			auths.HandleOIDCCallback(c, db)
+		})
 	}
 }
