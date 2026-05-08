@@ -48,14 +48,6 @@ config:
     password: ""
   # JWT signing secret: keep empty here and provide via Secret
   jwtSecret: ""
-  oidc:
-    enabled: true
-    issuer: "https://login-keycloak.example.com/realms/example"
-    clientId: justapps
-    # Client secret must be provided via Secret or Vault
-    clientSecret: ""
-    adminGroup: justapps-admin
-    insecure: false
   repositoryProviderEncryption:
     # Secret used to encrypt repository provider tokens stored in the database.
     # Keep empty here; provide it via Kubernetes Secret or Vault.

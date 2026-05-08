@@ -57,31 +57,10 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: repository-provider-encryption-secret
-            - name: BACKEND_OIDC_ENABLED
-              value: {{ .Values.config.oidc.enabled | quote }}
-            - name: BACKEND_OIDC_ISSUER
-              value: {{ .Values.config.oidc.issuer | quote }}
-            - name: BACKEND_OIDC_CLIENT_ID
-              value: {{ .Values.config.oidc.clientId | quote }}
-            - name: BACKEND_OIDC_ADMIN_GROUP
-              value: {{ .Values.config.oidc.adminGroup | quote }}
-            - name: BACKEND_OIDC_INSECURE
-              value: {{ .Values.config.oidc.insecure | default false | quote }}
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
             {{- end }}
-            - name: AUTH_OIDC_ID
-              value: {{ .Values.config.oidc.clientId | quote }}
-            - name: AUTH_OIDC_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $secretName }}
-                  key: oidc-client-secret
-            - name: AUTH_OIDC_ISSUER
-              value: {{ .Values.config.oidc.issuer | quote }}
-            - name: AUTH_ADMIN_GROUP
-              value: {{ .Values.config.oidc.adminGroup | quote }}
             - name: NEXT_PUBLIC_API_URL
               value: {{ .Values.frontend.env.apiUrl | default (printf "http://localhost:%d" (.Values.monolith.service.backendPort | default 8080 | int)) | quote }}
             - name: NEXTAUTH_URL
@@ -95,10 +74,6 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: nextauth-secret
-            {{- if .Values.config.oidc.insecure }}
-            - name: NODE_TLS_REJECT_UNAUTHORIZED
-              value: "0"
-            {{- end }}
             - name: BACKEND_DATA_PATH
               value: /app/data
           livenessProbe:
@@ -220,16 +195,6 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: repository-provider-encryption-secret
-            - name: BACKEND_OIDC_ENABLED
-              value: {{ .Values.config.oidc.enabled | quote }}
-            - name: BACKEND_OIDC_ISSUER
-              value: {{ .Values.config.oidc.issuer | quote }}
-            - name: BACKEND_OIDC_CLIENT_ID
-              value: {{ .Values.config.oidc.clientId | quote }}
-            - name: BACKEND_OIDC_ADMIN_GROUP
-              value: {{ .Values.config.oidc.adminGroup | quote }}
-            - name: BACKEND_OIDC_INSECURE
-              value: {{ .Values.config.oidc.insecure | default false | quote }}
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
@@ -297,17 +262,6 @@ spec:
               containerPort: 3000
               protocol: TCP
           env:
-            - name: AUTH_OIDC_ID
-              value: {{ .Values.config.oidc.clientId | quote }}
-            - name: AUTH_OIDC_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $secretName }}
-                  key: oidc-client-secret
-            - name: AUTH_OIDC_ISSUER
-              value: {{ .Values.config.oidc.issuer | quote }}
-            - name: AUTH_ADMIN_GROUP
-              value: {{ .Values.config.oidc.adminGroup | quote }}
             - name: NEXT_PUBLIC_API_URL
               value: {{ .Values.frontend.env.apiUrl | quote }}
             - name: NEXTAUTH_URL
@@ -321,10 +275,6 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: nextauth-secret
-            {{- if .Values.config.oidc.insecure }}
-            - name: NODE_TLS_REJECT_UNAUTHORIZED
-              value: "0"
-            {{- end }}
           livenessProbe:
             httpGet:
               path: /api/auth/session

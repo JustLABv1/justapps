@@ -13,15 +13,6 @@ database:
 jwt:
   secret: change-me
 
-oidc:
-  enabled: false
-  issuer: ""
-  client_id: ""
-  admin_group: admin
-  insecure: false
-  disable_local_auth: false
-  disable_registration: false
-
 gitlab:
   providers: []
 

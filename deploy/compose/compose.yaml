@@ -32,13 +32,6 @@ services:
       BACKEND_DATABASE_USER: ${POSTGRES_USER:-justapps}
       BACKEND_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-justapps}
       BACKEND_JWT_SECRET: ${BACKEND_JWT_SECRET:-change-me}
-      BACKEND_OIDC_ENABLED: ${BACKEND_OIDC_ENABLED:-false}
-      BACKEND_OIDC_ISSUER: ${BACKEND_OIDC_ISSUER:-}
-      BACKEND_OIDC_CLIENT_ID: ${BACKEND_OIDC_CLIENT_ID:-}
-      BACKEND_OIDC_ADMIN_GROUP: ${BACKEND_OIDC_ADMIN_GROUP:-admin}
-      BACKEND_OIDC_INSECURE: ${BACKEND_OIDC_INSECURE:-false}
-      BACKEND_OIDC_DISABLE_LOCAL_AUTH: ${BACKEND_OIDC_DISABLE_LOCAL_AUTH:-false}
-      BACKEND_OIDC_DISABLE_REGISTRATION: ${BACKEND_OIDC_DISABLE_REGISTRATION:-false}
     volumes:
       - ./backend.config.yaml:/etc/justapps/config.yaml:ro
       - uploads-data:/app/data
@@ -56,10 +49,6 @@ services:
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8080/api/v1}
       AUTH_SECRET: ${AUTH_SECRET:-change-me}
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
-      AUTH_ADMIN_GROUP: ${AUTH_ADMIN_GROUP:-admin}
-      AUTH_OIDC_ID: ${AUTH_OIDC_ID:-}
-      AUTH_OIDC_SECRET: ${AUTH_OIDC_SECRET:-}
-      AUTH_OIDC_ISSUER: ${AUTH_OIDC_ISSUER:-}
 
   nginx:
     profiles:

@@ -13,12 +13,6 @@ data:
       port: {{ if .Values.postgresql.enabled }}5432{{ else }}{{ .Values.config.database.port }}{{ end }}
       name: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.database | default "postgres" }}{{ else }}{{ .Values.config.database.name }}{{ end }}
       user: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.username | default "postgres" }}{{ else }}{{ .Values.config.database.user }}{{ end }}
-    oidc:
-      enabled: {{ .Values.config.oidc.enabled }}
-      issuer: {{ .Values.config.oidc.issuer | quote }}
-      client_id: {{ .Values.config.oidc.clientId | quote }}
-      admin_group: {{ .Values.config.oidc.adminGroup | quote }}
-      insecure: {{ .Values.config.oidc.insecure | default false }}
     cors:
       allowed_origins:
         {{- toYaml .Values.config.cors.allowedOrigins | nindent 8 }}

@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 	"golang.org/x/oauth2"
 )
@@ -57,7 +58,8 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 	}
 
 	callbackURL := sanitizeCallbackURL(c.Query("callbackUrl"))
-	stateToken, err := buildOIDCStateToken(provider.Key, callbackURL, resolveFrontendOrigin(c))
+	codeVerifier := oauth2.GenerateVerifier()
+	stateToken, err := buildOIDCStateToken(provider.Key, callbackURL, resolveFrontendOrigin(c), codeVerifier)
 	if err != nil {
 		httperror.InternalServerError(c, "OIDC-State konnte nicht erstellt werden", err)
 		return
@@ -68,7 +70,6 @@ func StartOIDCLogin(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	codeVerifier := oauth2.GenerateVerifier()
 	if err := setOIDCPKCECookie(c, provider.Key, stateClaims.Nonce, codeVerifier); err != nil {
 		httperror.InternalServerError(c, "OIDC-PKCE konnte nicht vorbereitet werden", err)
 		return
@@ -135,6 +136,7 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 
 	codeVerifier, err := getOIDCPKCEVerifier(c, providerKey, stateClaims.Nonce)
 	if err != nil {
+		log.WithError(err).WithField("providerKey", providerKey).Warn("OIDC: PKCE cookie missing or invalid, falling back to state verifier")
 		if strings.TrimSpace(stateClaims.CodeVerifier) == "" {
 			redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Status ungültig oder abgelaufen")
 			return
@@ -166,6 +168,11 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 	}
 	oauthToken, err := oauthConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(codeVerifier))
 	if err != nil {
+		log.WithError(err).WithFields(log.Fields{
+			"providerKey": providerKey,
+			"issuer":      provider.Issuer,
+			"redirectURL": oauthConfig.RedirectURL,
+		}).Warn("OIDC: code exchange failed")
 		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Codeaustausch fehlgeschlagen")
 		return
 	}
@@ -266,12 +273,11 @@ func sanitizeCallbackURL(value string) string {
 	return trimmed
 }
 
-func buildOIDCStateToken(providerKey, callbackURL, frontendOrigin string) (string, error) {
+func buildOIDCStateToken(providerKey, callbackURL, frontendOrigin, codeVerifier string) (string, error) {
 	nonce, err := randomNonce()
 	if err != nil {
 		return "", err
 	}
-	codeVerifier := oauth2.GenerateVerifier()
 
 	now := time.Now()
 	claims := oidcStateClaims{
