@@ -168,6 +168,14 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 	}
 	oauthToken, err := oauthConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(codeVerifier))
 	if err != nil {
+		if isOIDCClientAuthError(err) {
+			retryConfig := *oauthConfig
+			retryConfig.Endpoint = oauthConfig.Endpoint
+			retryConfig.Endpoint.AuthStyle = oauth2.AuthStyleInParams
+			oauthToken, err = retryConfig.Exchange(verifyCtx, code, oauth2.VerifierOption(codeVerifier))
+		}
+	}
+	if err != nil {
 		log.WithError(err).WithFields(log.Fields{
 			"providerKey": providerKey,
 			"issuer":      provider.Issuer,
@@ -433,6 +441,16 @@ func buildLoginRedirectURL(frontendOrigin string, values url.Values) string {
 		return "/login?" + query
 	}
 	return origin + "/login?" + query
+}
+
+func isOIDCClientAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "unauthorized_client") ||
+		strings.Contains(msg, "invalid_client") ||
+		strings.Contains(msg, "invalid client credentials")
 }
 
 func upsertOIDCUser(c *gin.Context, db *bun.DB, claims *authfunc.OIDCClaims, adminGroup string) (models.Users, error) {
