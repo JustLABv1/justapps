@@ -39,8 +39,7 @@ WORKDIR /app
 
 RUN apk update && apk add --no-cache \
     ca-certificates \
-    tini \
-    postgresql-client
+    tini
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
