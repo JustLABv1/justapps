@@ -23,7 +23,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id/repository", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetGitLabIntegration(c, db)
 		})
-		appsGroup.GET("/:id/ratings", func(c *gin.Context) {
+		appsGroup.GET("/:id/ratings", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRatings(c, db)
 		})
 

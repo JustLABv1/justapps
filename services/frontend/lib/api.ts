@@ -85,8 +85,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
       headers,
     });
 
-    const isAuthEndpoint = cleanEndpoint.startsWith('/auth/');
-    if (response.status === 401 && (hadAuthorization || !isAuthEndpoint)) {
+    if (response.status === 401 && hadAuthorization) {
        if (typeof window !== 'undefined') {
          localStorage.removeItem('token');
          localStorage.removeItem('user');

@@ -81,6 +81,10 @@ func AddRating(c *gin.Context, db *bun.DB) {
 }
 
 func GetRatings(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	appID := c.Param("id")
 	ratings := make([]models.Rating, 0)
 	err := db.NewSelect().
