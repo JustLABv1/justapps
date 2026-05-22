@@ -28,6 +28,10 @@ type upsertGitLabLinkRequest struct {
 }
 
 func GetGitLabIntegration(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	appID := c.Param("id")
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 

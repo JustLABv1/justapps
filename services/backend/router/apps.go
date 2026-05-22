@@ -115,7 +115,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 		}
 
-		// Related apps — read is public, write requires auth
+		// Related-app reads follow app-store visibility; writes require auth.
 		appsGroup.GET("/:id/related", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRelatedApps(c, db)
 		})
@@ -131,10 +131,10 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		}
 	}
 
-	// App groups — read is public, write requires admin
+	// App-group reads follow app-store visibility; writes require admin.
 	groupsGroup := router.Group("/app-groups")
 	{
-		groupsGroup.GET("", func(c *gin.Context) {
+		groupsGroup.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.ListGroups(c, db)
 		})
 		groupsGroup.GET("/:groupId/members", middlewares.OptionalAuth(db), func(c *gin.Context) {

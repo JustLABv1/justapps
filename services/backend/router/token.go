@@ -18,7 +18,7 @@ func Token(router *gin.RouterGroup, db *bun.DB) {
 		token.POST("/refresh", func(c *gin.Context) {
 			tokens.RefreshToken(c, db)
 		})
-		token.PUT("/:id", func(c *gin.Context) {
+		token.PUT("/:id", middlewares.Admin(db), func(c *gin.Context) {
 			tokens.UpdateToken(c, db)
 		})
 	}

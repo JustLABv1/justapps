@@ -13,6 +13,10 @@ import (
 
 // GetRelatedApps returns all apps related to the given app (bidirectional).
 func GetRelatedApps(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+
 	id := c.Param("id")
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 
