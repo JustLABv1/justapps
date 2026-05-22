@@ -85,7 +85,7 @@ backend:
     tag: backend
   service:
     type: ClusterIP
-    # External port used for service routing; container listens on 8082
+    # Backend service port (also used by the backend container in microservices mode)
     port: 8182
   resources:
     limits:
