@@ -220,6 +220,11 @@ spec:
               mountPath: /etc/justapps
             - name: data
               mountPath: /app/data
+            {{- if .Values.customCA.enabled }}
+            - name: custom-ca
+              mountPath: {{ .Values.customCA.mountPath }}
+              subPath: ca.crt
+            {{- end }}
       volumes:
         - name: config
           configMap:
@@ -231,6 +236,16 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.customCA.enabled }}
+        - name: custom-ca
+          {{- if .Values.customCA.secret }}
+          secret:
+            secretName: {{ .Values.customCA.name }}
+          {{- else }}
+          configMap:
+            name: {{ .Values.customCA.name }}
+          {{- end }}
+        {{- end }}
 ---
 # Microservices Mode - Frontend
 apiVersion: apps/v1
@@ -291,4 +306,21 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if .Values.customCA.enabled }}
+          volumeMounts:
+            - name: custom-ca
+              mountPath: {{ .Values.customCA.mountPath }}
+              subPath: ca.crt
+          {{- end }}
+      {{- if .Values.customCA.enabled }}
+      volumes:
+        - name: custom-ca
+          {{- if .Values.customCA.secret }}
+          secret:
+            secretName: {{ .Values.customCA.name }}
+          {{- else }}
+          configMap:
+            name: {{ .Values.customCA.name }}
+          {{- end }}
+      {{- end }}
 {{- end }}
