@@ -1,8 +1,9 @@
 'use client';
 
 import { getApiUrl } from '@/lib/apiUrl';
+import { toast } from '@heroui/react';
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
-import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -149,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [fetchedUserToken, setFetchedUserToken] = useState<string | null>(null);
   const [authenticatedProfileReady, setAuthenticatedProfileReady] = useState(false);
   const [authenticatedProfileError, setAuthenticatedProfileError] = useState<string | null>(null);
+  const hasShownSessionExpiredNoticeRef = useRef(false);
+  const delayedLogoutTimeoutRef = useRef<number | null>(null);
 
   // Derive the active user and token immediately from session if available
   const s = session as {
@@ -172,6 +175,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const oidcUserKey = oidcUser ? JSON.stringify(oidcUser) : null;
 
   const logout = useCallback(() => {
+    if (delayedLogoutTimeoutRef.current !== null) {
+      window.clearTimeout(delayedLogoutTimeoutRef.current);
+      delayedLogoutTimeoutRef.current = null;
+    }
+    hasShownSessionExpiredNoticeRef.current = false;
     clearStoredAuthSession();
     setFetchedUser(null);
     setFetchedUserToken(null);
@@ -182,13 +190,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [status]);
 
+  const notifySessionExpiredThenLogout = useCallback(() => {
+    if (hasShownSessionExpiredNoticeRef.current) {
+      return;
+    }
+    hasShownSessionExpiredNoticeRef.current = true;
+    toast.warning('Sitzung abgelaufen. Sie werden zur Anmeldung weitergeleitet.');
+    delayedLogoutTimeoutRef.current = window.setTimeout(() => {
+      delayedLogoutTimeoutRef.current = null;
+      logout();
+    }, 1500);
+  }, [logout]);
+
   useEffect(() => {
     if (!s?.error) return;
 
     const timeoutId = window.setTimeout(() => {
       if (s.error === 'RefreshAccessTokenError' || s.error === 'SessionExpired') {
-        console.warn('Session expired or refresh failed, logging out...');
-        logout();
+        console.warn('Session expired or refresh failed, scheduling logout...');
+        notifySessionExpiredThenLogout();
       }
 
       if (s.error === 'ExchangeFailed') {
@@ -201,7 +221,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [logout, s?.error]);
+  }, [notifySessionExpiredThenLogout, s?.error]);
+
+  useEffect(() => {
+    return () => {
+      if (delayedLogoutTimeoutRef.current !== null) {
+        window.clearTimeout(delayedLogoutTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const user = fetchedUser && fetchedUserToken === oidcToken
     ? fetchedUser
@@ -247,8 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.status === 401) {
-        console.warn('Backend rejected token, logging out...');
-        logout();
+        console.warn('Backend rejected token, scheduling logout...');
+        notifySessionExpiredThenLogout();
         return false;
       }
 
@@ -281,14 +309,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthenticatedProfileError(message);
       return false;
     }
-  }, [localSession.token, localSession.user, logout, status, token]);
+  }, [localSession.token, localSession.user, notifySessionExpiredThenLogout, status, token]);
 
   // Sync token to localStorage when OIDC session changes manually to avoid race conditions
   useEffect(() => {
-    if (status === 'authenticated' && oidcToken && oidcUserKey) {
+    if (status !== 'authenticated' || !oidcToken || !oidcUserKey) {
+      return;
+    }
+
+    // Keep localStorage aligned with active OIDC session even if another
+    // consumer cleared token/user while next-auth still reports authenticated.
+    const storedUserKey = localSession.user ? JSON.stringify(localSession.user) : null;
+    if (localSession.token !== oidcToken || storedUserKey !== oidcUserKey) {
       writeStoredAuthSession(oidcToken, JSON.parse(oidcUserKey) as User);
     }
-  }, [oidcToken, oidcUserKey, status]);
+  }, [localSession.token, localSession.user, oidcToken, oidcUserKey, status]);
 
   // Fetch user data on mount or when the backend token changes.
   useEffect(() => {
@@ -315,14 +350,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleUnauthorized = () => {
-      logout();
+      notifySessionExpiredThenLogout();
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('auth:unauthorized', handleUnauthorized);
       return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
     }
-  }, [logout]);
+  }, [notifySessionExpiredThenLogout]);
 
   const oidcLogin = useCallback((providerKey?: string, callbackUrl?: string) => {
     if (providerKey && typeof window !== 'undefined') {
