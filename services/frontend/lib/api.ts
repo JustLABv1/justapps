@@ -2,6 +2,31 @@ import { getApiUrl } from './apiUrl';
 
 const API_URL = getApiUrl();
 
+async function resolveTokenFromSessionCookie(): Promise<string | null> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const response = await fetch('/api/auth/session', { cache: 'no-store' });
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json() as { accessToken?: string };
+    const accessToken = typeof data?.accessToken === 'string' ? data.accessToken.trim() : '';
+    if (!accessToken) {
+      return null;
+    }
+
+    localStorage.setItem('token', accessToken);
+    window.dispatchEvent(new Event('auth:storage-change'));
+    return accessToken;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Upload a file to the backend. Returns the public path of the uploaded asset.
  * Use for multipart/form-data uploads (e.g. logos).
@@ -9,7 +34,10 @@ const API_URL = getApiUrl();
 export async function uploadFile(endpoint: string, file: File): Promise<string> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_URL}${cleanEndpoint}`;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    token = await resolveTokenFromSessionCookie();
+  }
 
   const form = new FormData();
   form.append('file', file);
@@ -34,7 +62,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_URL}${cleanEndpoint}`;
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (!token) {
+    token = await resolveTokenFromSessionCookie();
+  }
   const headers = new Headers(options.headers);
   const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
@@ -54,7 +85,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
       headers,
     });
 
-    if (response.status === 401 && hadAuthorization) {
+    const isAuthEndpoint = cleanEndpoint.startsWith('/auth/');
+    if (response.status === 401 && (hadAuthorization || !isAuthEndpoint)) {
        if (typeof window !== 'undefined') {
          localStorage.removeItem('token');
          localStorage.removeItem('user');
