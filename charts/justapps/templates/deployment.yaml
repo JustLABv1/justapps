@@ -110,7 +110,7 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+              until pg_isready -h {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.postgresql.service.port | default 5432 }} -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
                 echo "waiting for database at {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
@@ -166,7 +166,7 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
+              until pg_isready -h {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.postgresql.service.port | default 5432 }} -U {{ .Values.postgresql.auth.username | default "postgres" }}; do
                 echo "waiting for database at {{ include "justapps.fullname" . }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local";
                 sleep 2;
               done;
@@ -177,7 +177,7 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - name: backend
-              containerPort: 8082
+              containerPort: {{ .Values.backend.service.port | default 8080 }}
               protocol: TCP
           env:
             - name: BACKEND_DATABASE_PASSWORD
@@ -201,14 +201,14 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /health
-              port: 8082
+              path: /api/v1/health
+              port: {{ .Values.backend.service.port | default 8080 }}
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
-              port: 8082
+              path: /api/v1/health
+              port: {{ .Values.backend.service.port | default 8080 }}
             initialDelaySeconds: 5
             periodSeconds: 10
           {{- with .Values.backend.resources }}
