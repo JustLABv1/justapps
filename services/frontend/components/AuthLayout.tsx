@@ -25,7 +25,7 @@ interface AuthLayoutProps {
 }
 
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
-  const { settings } = useSettings();
+  const { settings, loaded: settingsLoaded } = useSettings();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
@@ -38,11 +38,15 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
   const [appCount, setAppCount] = useState<number | null>(null);
   useEffect(() => {
+    if (!settingsLoaded || settings.requireAuthForAppStore) {
+      return;
+    }
+
     fetchApi('/apps')
       .then((r) => r.ok ? r.json() : null)
       .then((data: unknown) => { if (Array.isArray(data)) setAppCount(data.length); })
       .catch(() => {});
-  }, []);
+  }, [settings.requireAuthForAppStore, settingsLoaded]);
 
   return (
     <>

@@ -341,6 +341,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser, status]);
 
   const login = useCallback((nextToken: string, userData: User) => {
+    if (delayedLogoutTimeoutRef.current !== null) {
+      window.clearTimeout(delayedLogoutTimeoutRef.current);
+      delayedLogoutTimeoutRef.current = null;
+    }
+    hasShownSessionExpiredNoticeRef.current = false;
     writeStoredAuthSession(nextToken, userData);
     setFetchedUser(null);
     setFetchedUserToken(null);

@@ -51,7 +51,10 @@ export default function LoginPage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    if (user) router.push(readSafeCallbackUrl());
+    const oidcResult = readOIDCResult();
+    if (user && !oidcResult.token && !oidcResult.error) {
+      router.push(readSafeCallbackUrl());
+    }
   }, [user, router]);
 
   React.useEffect(() => {
