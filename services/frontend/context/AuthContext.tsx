@@ -21,13 +21,18 @@ interface AuthContextType {
   profileReady: boolean;
   profileError: string | null;
   login: (token: string, userData: User) => void;
-  logout: () => void;
+  logout: (options?: LogoutOptions) => void;
   oidcLogin: (providerKey?: string, callbackUrl?: string) => void;
   refreshUser: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_STORAGE_EVENT = 'auth:storage-change';
+const LOGIN_PATH = '/login';
+
+interface LogoutOptions {
+  preserveCurrentUrl?: boolean;
+}
 
 interface LocalAuthSession {
   user: User | null;
@@ -119,6 +124,40 @@ function clearStoredAuthSession() {
   }
 }
 
+function getCurrentCallbackUrl() {
+  if (typeof window === 'undefined') {
+    return '/';
+  }
+
+  const callbackUrl = `${window.location.pathname}${window.location.search}`;
+  if (!callbackUrl || callbackUrl === LOGIN_PATH || callbackUrl.startsWith(`${LOGIN_PATH}?`)) {
+    return '/';
+  }
+
+  return callbackUrl;
+}
+
+function getLoginRedirectPath(preserveCurrentUrl?: boolean) {
+  if (!preserveCurrentUrl) {
+    return LOGIN_PATH;
+  }
+
+  return `${LOGIN_PATH}?callbackUrl=${encodeURIComponent(getCurrentCallbackUrl())}`;
+}
+
+function redirectToLogin(path: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  if (currentPath === path) {
+    return;
+  }
+
+  window.location.assign(path);
+}
+
 function subscribeToStoredAuthSession(onStoreChange: () => void) {
   if (typeof window === 'undefined') {
     return () => {};
@@ -174,11 +213,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
   const oidcUserKey = oidcUser ? JSON.stringify(oidcUser) : null;
 
-  const logout = useCallback(() => {
+  const logout = useCallback((options?: LogoutOptions) => {
     if (delayedLogoutTimeoutRef.current !== null) {
       window.clearTimeout(delayedLogoutTimeoutRef.current);
       delayedLogoutTimeoutRef.current = null;
     }
+
+    const loginRedirectPath = getLoginRedirectPath(options?.preserveCurrentUrl);
     hasShownSessionExpiredNoticeRef.current = false;
     clearStoredAuthSession();
     setFetchedUser(null);
@@ -186,8 +227,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthenticatedProfileReady(false);
     setAuthenticatedProfileError(null);
     if (status === 'authenticated') {
-      nextAuthSignOut({ callbackUrl: '/login' });
+      void nextAuthSignOut({ redirect: false, callbackUrl: loginRedirectPath })
+        .catch((error) => {
+          console.warn('NextAuth sign-out failed before login redirect:', error);
+        })
+        .finally(() => redirectToLogin(loginRedirectPath));
+      return;
     }
+    redirectToLogin(loginRedirectPath);
   }, [status]);
 
   const notifySessionExpiredThenLogout = useCallback(() => {
@@ -198,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.warning('Sitzung abgelaufen. Sie werden zur Anmeldung weitergeleitet.');
     delayedLogoutTimeoutRef.current = window.setTimeout(() => {
       delayedLogoutTimeoutRef.current = null;
-      logout();
+      logout({ preserveCurrentUrl: true });
     }, 1500);
   }, [logout]);
 
