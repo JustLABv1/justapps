@@ -15,27 +15,32 @@
     {
       "description": "Automerge patch and minor updates",
       "matchUpdateTypes": ["patch", "minor"],
-      "automerge": true
+      "automerge": true,
+      "minimumReleaseAge": "2 days"
     },
     {
       "description": "Group all minor/patch updates",
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies"
+      "groupName": "all non-major dependencies",
+      "minimumReleaseAge": "2 days"
     },
     {
       "description": "Separate major updates",
       "matchUpdateTypes": ["major"],
-      "automerge": false
+      "automerge": false,
+      "minimumReleaseAge": "2 days"
     },
     {
       "description": "Go modules",
       "matchManagers": ["gomod"],
-      "groupName": "go dependencies"
+      "groupName": "go dependencies",
+      "minimumReleaseAge": "2 days"
     },
     {
       "description": "Node / Next.js dependencies",
       "matchManagers": ["npm"],
-      "groupName": "frontend dependencies"
+      "groupName": "frontend dependencies",
+      "minimumReleaseAge": "2 days"
     }
   ],
 
