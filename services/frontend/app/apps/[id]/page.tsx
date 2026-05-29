@@ -4,8 +4,9 @@ import { AppStoreGate } from "@/components/AppStoreGate";
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
 import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
+import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
 import { RatingSection } from "@/components/RatingSection";
-import { AppConfig, GitLabIntegrationState } from "@/config/apps";
+import { AppConfig, AppRelease, GitLabIntegrationState } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
@@ -14,7 +15,7 @@ import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
+import { Accordion, Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
   BookOpen,
   Check,
@@ -59,6 +60,7 @@ function AppPageContent() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const [app, setApp] = useState<AppConfig | null>(null);
+  const [releases, setReleases] = useState<AppRelease[]>([]);
   const [gitLabIntegration, setGitLabIntegration] = useState<GitLabIntegrationState | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('docs');
@@ -95,15 +97,22 @@ function AppPageContent() {
     async function loadApp() {
       if (!id) return;
       try {
-        const [appResponse, gitLabResponse] = await Promise.all([
+        const [appResponse, gitLabResponse, releasesResponse] = await Promise.all([
           fetchApi(`/apps/${id}`, { cache: 'no-store' }),
           fetchApi(`/apps/${id}/repository`, { cache: 'no-store' }),
+          fetchApi(`/apps/${id}/releases`, { cache: 'no-store' }),
         ]);
 
         if (appResponse.ok) {
           const data = await appResponse.json();
           setApp(data);
           addRecentlyViewed({ id: data.id, name: data.name, icon: data.icon });
+          if (releasesResponse.ok) {
+            const releaseData = await releasesResponse.json() as AppRelease[];
+            setReleases(Array.isArray(releaseData) ? releaseData : []);
+          } else {
+            setReleases([]);
+          }
           if (gitLabResponse.ok) {
             const gitLabData = await gitLabResponse.json() as GitLabIntegrationState;
             setGitLabIntegration(gitLabData.linked ? gitLabData : null);
@@ -112,11 +121,13 @@ function AppPageContent() {
           }
         } else {
           setApp(null);
+          setReleases([]);
           setGitLabIntegration(null);
         }
       } catch (err) {
         console.error(err);
         setApp(null);
+        setReleases([]);
         setGitLabIntegration(null);
       } finally {
         setLoading(false);
@@ -124,6 +135,21 @@ function AppPageContent() {
     }
     loadApp();
   }, [id]);
+
+  useEffect(() => {
+    if (!user || !app?.id) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchApi('/user/recently-viewed', {
+        method: 'POST',
+        body: JSON.stringify({ appId: app.id }),
+      }).catch(() => {});
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [app?.id, user]);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -534,10 +560,13 @@ function AppPageContent() {
               )}
               <Tabs.Indicator />
             </Tabs.Tab>
-            {app.changelog && (
+            {(releases.length > 0 || app.changelog) && (
               <Tabs.Tab id="changelog" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
                 <History className="w-4 h-4" />
                 Änderungsprotokoll
+                {releases.length > 0 && (
+                  <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{releases.length}</span>
+                )}
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
@@ -585,10 +614,60 @@ function AppPageContent() {
         </Tabs.Panel>
 
         {/* Änderungsprotokoll */}
-        {app.changelog && (
+        {(releases.length > 0 || app.changelog) && (
           <Tabs.Panel id="changelog">
-            <div className="prose prose-bund max-w-none min-h-[200px]">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{app.changelog}</ReactMarkdown>
+            <div className="flex flex-col gap-4 min-h-[200px]">
+              {releases.map((release) => (
+                <div key={release.id} className="rounded-2xl border border-border bg-surface p-5">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <Chip size="sm" color={release.releaseType === 'minor' ? 'accent' : 'success'} variant="soft" className="text-[10px] font-bold uppercase">
+                      {release.releaseType}
+                    </Chip>
+                    <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase">
+                      v{release.version}
+                    </Chip>
+                    <span className="text-xs text-muted">{new Date(release.publishedAt).toLocaleDateString('de-DE')}</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground">{release.title}</h3>
+                  <p className="text-sm text-muted mt-1">{release.summary}</p>
+                  {release.diffPreview && (
+                    <p className="mt-2 text-sm font-medium text-foreground/85">{release.diffPreview}</p>
+                  )}
+                  {release.changedAreas.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {release.changedAreas.map((area) => (
+                        <Chip key={area} size="sm" variant="soft" className="text-[10px] font-semibold uppercase">
+                          {area}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  {release.changeDetails.length > 0 && (
+                    <Accordion variant="surface" className="mt-4 rounded-2xl bg-surface-secondary/50">
+                      <Accordion.Item>
+                        <Accordion.Heading>
+                          <Accordion.Trigger className="text-sm font-medium">
+                            Diff anzeigen
+                            <Accordion.Indicator />
+                          </Accordion.Trigger>
+                        </Accordion.Heading>
+                        <Accordion.Panel>
+                          <Accordion.Body className="flex flex-col gap-3">
+                            {release.changeDetails.map((detail) => (
+                              <ReleaseDiffViewer key={`${detail.area}-${detail.field}`} detail={detail} />
+                            ))}
+                          </Accordion.Body>
+                        </Accordion.Panel>
+                      </Accordion.Item>
+                    </Accordion>
+                  )}
+                </div>
+              ))}
+              {!releases.length && app.changelog && (
+                <div className="prose prose-bund max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{app.changelog}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </Tabs.Panel>
         )}
