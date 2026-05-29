@@ -79,6 +79,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 	link.LastAppliedAt = now
 	link.LastManualChangeAt = time.Time{}
 	link.LastSyncStatus = result.Status
+	appContentChanged := false
 
 	err = db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
@@ -86,15 +87,18 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 			return err
 		}
 
-		applySnapshotToApp(&app, provider.Label, result.Snapshot)
-		app.UpdatedAt = now
+		appContentChanged = snapshotChangesAppContent(app, provider.Label, result.Snapshot)
+		if appContentChanged {
+			applySnapshotToApp(&app, provider.Label, result.Snapshot)
+			app.UpdatedAt = now
 
-		if _, err := tx.NewUpdate().
-			Model(&app).
-			Where("id = ?", link.AppID).
-			Column("description", "license", "markdown_content", "tags", "repositories", "custom_helm_values", "custom_compose_command", "updated_at").
-			Exec(ctx); err != nil {
-			return err
+			if _, err := tx.NewUpdate().
+				Model(&app).
+				Where("id = ?", link.AppID).
+				Column("description", "license", "markdown_content", "tags", "repositories", "custom_helm_values", "custom_compose_command", "updated_at").
+				Exec(ctx); err != nil {
+				return err
+			}
 		}
 
 		_, err := tx.NewUpdate().
@@ -107,7 +111,10 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 	if err != nil {
 		return err
 	}
-	return aifunc.ReindexApp(ctx, db, link.AppID)
+	if appContentChanged {
+		return aifunc.ReindexApp(ctx, db, link.AppID)
+	}
+	return nil
 }
 
 func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntime, link *models.GitLabAppLink) error {
@@ -124,6 +131,7 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 	link.LastSyncStatus = pendingSnapshotStatus(link.Snapshot)
 	link.LastSyncError = ""
 	link.UpdatedAt = now
+	appContentChanged := false
 
 	err := db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
@@ -131,15 +139,18 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 			return err
 		}
 
-		applySnapshotToApp(&app, provider.Label, link.Snapshot)
-		app.UpdatedAt = now
+		appContentChanged = snapshotChangesAppContent(app, provider.Label, link.Snapshot)
+		if appContentChanged {
+			applySnapshotToApp(&app, provider.Label, link.Snapshot)
+			app.UpdatedAt = now
 
-		if _, err := tx.NewUpdate().
-			Model(&app).
-			Where("id = ?", link.AppID).
-			Column("description", "license", "markdown_content", "tags", "repositories", "custom_helm_values", "custom_compose_command", "updated_at").
-			Exec(ctx); err != nil {
-			return err
+			if _, err := tx.NewUpdate().
+				Model(&app).
+				Where("id = ?", link.AppID).
+				Column("description", "license", "markdown_content", "tags", "repositories", "custom_helm_values", "custom_compose_command", "updated_at").
+				Exec(ctx); err != nil {
+				return err
+			}
 		}
 
 		_, err := tx.NewUpdate().
@@ -152,7 +163,10 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 	if err != nil {
 		return err
 	}
-	return aifunc.ReindexApp(ctx, db, link.AppID)
+	if appContentChanged {
+		return aifunc.ReindexApp(ctx, db, link.AppID)
+	}
+	return nil
 }
 
 func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID string) error {
@@ -360,6 +374,48 @@ func tagsContainAllTopics(tags []string, topics []string) bool {
 			continue
 		}
 		if _, exists := tagSet[normalized]; !exists {
+			return false
+		}
+	}
+
+	return true
+}
+
+func snapshotChangesAppContent(app models.Apps, providerLabel string, snapshot models.GitLabSyncSnapshot) bool {
+	next := cloneAppContent(app)
+	applySnapshotToApp(&next, providerLabel, snapshot)
+	return !appContentEqual(app, next)
+}
+
+func cloneAppContent(app models.Apps) models.Apps {
+	cloned := app
+	if app.Repositories != nil {
+		cloned.Repositories = append([]models.AppLink(nil), app.Repositories...)
+	}
+	if app.Tags != nil {
+		cloned.Tags = append([]string(nil), app.Tags...)
+	}
+	return cloned
+}
+
+func appContentEqual(left models.Apps, right models.Apps) bool {
+	if left.Description != right.Description ||
+		left.License != right.License ||
+		left.MarkdownContent != right.MarkdownContent ||
+		left.CustomHelmValues != right.CustomHelmValues ||
+		left.CustomComposeCommand != right.CustomComposeCommand ||
+		len(left.Repositories) != len(right.Repositories) ||
+		len(left.Tags) != len(right.Tags) {
+		return false
+	}
+
+	for index := range left.Repositories {
+		if left.Repositories[index] != right.Repositories[index] {
+			return false
+		}
+	}
+	for index := range left.Tags {
+		if left.Tags[index] != right.Tags[index] {
 			return false
 		}
 	}
