@@ -14,7 +14,7 @@
     "@heroui/react": "3.1.0",
     "@heroui/styles": "3.1.0",
     "js-yaml": "^4.1.1",
-    "lucide-react": "^1.16.0",
+    "lucide-react": "^1.17.0",
     "next": "16.2.6",
     "next-auth": "5.0.0-beta.31",
     "next-themes": "^0.4.6",
@@ -22,7 +22,7 @@
     "react-dom": "19.2.6",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "simple-icons": "^16.21.0"
+    "simple-icons": "^16.22.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",
