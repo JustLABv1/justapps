@@ -37,9 +37,11 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 FROM base AS runner
 WORKDIR /app
 
-RUN apk update && apk add --no-cache \
+RUN apk add --upgrade --no-cache \
     ca-certificates \
-    tini
+    tini \
+    libcrypto3 \
+    libssl3
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs

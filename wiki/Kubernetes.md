@@ -130,21 +130,58 @@ The chart stores the secret in the chart-managed Secret under `repository-provid
 
 ### Option B — External Kubernetes Secret
 
-Create the secret independently:
+Each credential can reference its own Kubernetes Secret name and data key. For
+example, to use one shared Secret with custom key names, create it independently:
 
 ```bash
 kubectl create secret generic justapps-secrets \
-  --from-literal=repository-provider-encryption-secret=replace-with-secure-random-string
+  --from-literal=provider-token-key=replace-with-secure-random-string
 ```
 
 Reference it in values:
 
 ```yaml
 secrets:
-  existingSecret: justapps-secrets
+  refs:
+    repositoryProviderEncryptionSecret:
+      name: justapps-secrets
+      key: provider-token-key
 ```
 
-The referenced Secret must include the key `repository-provider-encryption-secret`. No provider definitions or tokens are stored in `values.yaml` or the ConfigMap.
+The chart also supports separate Secrets for each credential:
+
+```yaml
+secrets:
+  refs:
+    databasePassword:
+      name: production-database
+      key: password
+    jwtSecret:
+      name: justapps-backend
+      key: jwt
+    repositoryProviderEncryptionSecret:
+      name: justapps-backend
+      key: provider-encryption
+    frontendAuthSecret:
+      name: justapps-frontend
+      key: auth-secret
+```
+
+When `postgresql.enabled` is `true`, both the bundled PostgreSQL deployment and
+the backend use `secrets.refs.postgresqlPassword`. Otherwise, the backend uses
+`secrets.refs.databasePassword`.
+
+For backwards compatibility, `secrets.existingSecret` remains available as a
+deprecated shared Secret name fallback. When a per-credential `name` is empty,
+the chart uses `secrets.existingSecret`, then the chart-generated
+`<fullname>-secrets` name. Default key names remain unchanged.
+
+Custom keys also apply when `secrets.create` is enabled. Credentials whose
+per-credential `name` points elsewhere are treated as externally managed and
+are not added to the chart-managed Secret.
+
+The referenced Secrets must include the configured keys. No provider
+definitions or tokens are stored in `values.yaml` or the ConfigMap.
 
 > **Runtime behavior:** Once the encryption secret is available, admins can add, rotate, or delete repository providers directly in the UI without redeploying the chart.
 

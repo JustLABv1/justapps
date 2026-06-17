@@ -20,6 +20,8 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 FROM alpine:3.24 AS runner
 WORKDIR /app
 
+RUN apk add --upgrade --no-cache libcrypto3 libssl3
+
 COPY --from=builder /app/justapps-backend /app/
 
 RUN addgroup --system --gid 1001 justapps

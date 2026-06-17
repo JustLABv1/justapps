@@ -5,6 +5,8 @@ FROM node:26.3.0-alpine AS base
 FROM base AS platform
 WORKDIR /app
 
+RUN apk add --upgrade --no-cache libcrypto3 libssl3
+
 # Install pnpm using the secret mount for CA trust
 RUN npm install -g pnpm@10.33.4
 
