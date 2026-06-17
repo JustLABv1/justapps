@@ -1,5 +1,6 @@
 {{- if .Values.postgresql.enabled }}
-{{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "justapps.fullname" .)) }}
+{{- $postgresqlPasswordName := include "justapps.secretRefName" (dict "root" . "ref" "postgresqlPassword") }}
+{{- $postgresqlPasswordKey := include "justapps.secretRefKey" (dict "root" . "ref" "postgresqlPassword") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,8 +57,8 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: postgresql-password
+                  name: {{ $postgresqlPasswordName | quote }}
+                  key: {{ $postgresqlPasswordKey | quote }}
             - name: PGDATA
               value: {{ .Values.postgresql.mountPath | default "/var/lib/postgresql/data" }}/pgdata
           livenessProbe:

@@ -182,7 +182,42 @@ secrets:
     destination:
       create: false
   # If you manage a Secret externally, put the name here.
+  # Deprecated: use refs.<credential>.name instead. This remains as a shared
+  # Secret name fallback for backwards compatibility.
   existingSecret: ""
+  # Per-credential Kubernetes Secret references. Leave name empty to fall back
+  # to existingSecret, then to the chart-generated <fullname>-secrets name.
+  # Keys are used consistently by workloads and the chart-managed Secret.
+  refs:
+    databasePassword:
+      name: ""
+      key: database-password
+    postgresqlPassword:
+      name: ""
+      key: postgresql-password
+    jwtSecret:
+      name: ""
+      key: jwt-secret
+    repositoryProviderEncryptionSecret:
+      name: ""
+      key: repository-provider-encryption-secret
+    frontendAuthSecret:
+      name: ""
+      key: nextauth-secret
+  # Shared external Secret example:
+  # existingSecret: justapps-secrets
+  # refs:
+  #   jwtSecret:
+  #     key: backend-jwt
+  #
+  # Separate external Secrets example:
+  # refs:
+  #   databasePassword:
+  #     name: production-database
+  #     key: password
+  #   frontendAuthSecret:
+  #     name: justapps-frontend
+  #     key: auth-secret
 
 # Custom CA certificate (optional)
 # To trust a self-signed or private CA, create a Kubernetes Secret or ConfigMap

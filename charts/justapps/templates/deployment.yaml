@@ -1,5 +1,13 @@
-{{- $secretName := .Values.secrets.existingSecret | default (printf "%s-secrets" (include "justapps.fullname" .)) }}
-{{- $databasePasswordKey := ternary "postgresql-password" "database-password" .Values.postgresql.enabled }}
+{{- include "justapps.validateSecretRefs" . }}
+{{- $databasePasswordRef := ternary "postgresqlPassword" "databasePassword" .Values.postgresql.enabled }}
+{{- $databasePasswordName := include "justapps.secretRefName" (dict "root" . "ref" $databasePasswordRef) }}
+{{- $databasePasswordKey := include "justapps.secretRefKey" (dict "root" . "ref" $databasePasswordRef) }}
+{{- $jwtSecretName := include "justapps.secretRefName" (dict "root" . "ref" "jwtSecret") }}
+{{- $jwtSecretKey := include "justapps.secretRefKey" (dict "root" . "ref" "jwtSecret") }}
+{{- $repositoryProviderEncryptionSecretName := include "justapps.secretRefName" (dict "root" . "ref" "repositoryProviderEncryptionSecret") }}
+{{- $repositoryProviderEncryptionSecretKey := include "justapps.secretRefKey" (dict "root" . "ref" "repositoryProviderEncryptionSecret") }}
+{{- $frontendAuthSecretName := include "justapps.secretRefName" (dict "root" . "ref" "frontendAuthSecret") }}
+{{- $frontendAuthSecretKey := include "justapps.secretRefKey" (dict "root" . "ref" "frontendAuthSecret") }}
 {{- if eq .Values.deploymentMode "monolith" }}
 apiVersion: apps/v1
 kind: Deployment
@@ -45,18 +53,18 @@ spec:
             - name: BACKEND_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: {{ $databasePasswordKey }}
+                  name: {{ $databasePasswordName | quote }}
+                  key: {{ $databasePasswordKey | quote }}
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: jwt-secret
+                  name: {{ $jwtSecretName | quote }}
+                  key: {{ $jwtSecretKey | quote }}
             - name: BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: repository-provider-encryption-secret
+                  name: {{ $repositoryProviderEncryptionSecretName | quote }}
+                  key: {{ $repositoryProviderEncryptionSecretKey | quote }}
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
@@ -72,8 +80,8 @@ spec:
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: nextauth-secret
+                  name: {{ $frontendAuthSecretName | quote }}
+                  key: {{ $frontendAuthSecretKey | quote }}
             - name: BACKEND_DATA_PATH
               value: /app/data
           livenessProbe:
@@ -183,18 +191,18 @@ spec:
             - name: BACKEND_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: {{ $databasePasswordKey }}
+                  name: {{ $databasePasswordName | quote }}
+                  key: {{ $databasePasswordKey | quote }}
             - name: BACKEND_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: jwt-secret
+                  name: {{ $jwtSecretName | quote }}
+                  key: {{ $jwtSecretKey | quote }}
             - name: BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: repository-provider-encryption-secret
+                  name: {{ $repositoryProviderEncryptionSecretName | quote }}
+                  key: {{ $repositoryProviderEncryptionSecretKey | quote }}
             {{- if .Values.config.cors.allowedOrigins }}
             - name: BACKEND_CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.config.cors.allowedOrigins | quote }}
@@ -288,8 +296,8 @@ spec:
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ $secretName }}
-                  key: nextauth-secret
+                  name: {{ $frontendAuthSecretName | quote }}
+                  key: {{ $frontendAuthSecretKey | quote }}
           livenessProbe:
             httpGet:
               path: /api/auth/session
