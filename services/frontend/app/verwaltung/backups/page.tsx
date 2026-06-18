@@ -35,6 +35,25 @@ type PendingExportAction = {
 	sections: string[];
 };
 
+type BackupUpload = {
+	uploadId: string;
+	chunkSize: number;
+};
+
+type BackupImportJob = {
+	jobId: string;
+	status: 'processing';
+};
+
+type BackupImportJobStatus = {
+	status: 'processing' | 'completed' | 'failed';
+	result?: ImportResult;
+	error?: {
+		error?: string;
+		detail?: string;
+	};
+};
+
 const sectionOptions: SectionOption[] = [
 	{ id: 'apps', label: 'Apps', description: 'App-Stammdaten, Inhalte und Metadaten.' },
 	{ id: 'appGroups', label: 'Gruppen', description: 'Gruppen-Metadaten und Mitgliedschaften.' },
@@ -98,6 +117,24 @@ function parseDownloadFilename(headerValue: string | null, fallback: string) {
 	return match?.[1] || fallback;
 }
 
+function getRequestError(payload: unknown, fallback: string) {
+	if (!payload || typeof payload !== 'object') {
+		return fallback;
+	}
+	const errorPayload = payload as { detail?: unknown; error?: unknown };
+	if (typeof errorPayload.detail === 'string') {
+		return errorPayload.detail;
+	}
+	if (typeof errorPayload.error === 'string') {
+		return errorPayload.error;
+	}
+	return fallback;
+}
+
+function wait(milliseconds: number) {
+	return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 export default function BackupsPage() {
 	const [downloadingId, setDownloadingId] = useState<string | null>(null);
 	const [isFullMode, setIsFullMode] = useState(false);
@@ -111,6 +148,8 @@ export default function BackupsPage() {
 	const [importPassphrase, setImportPassphrase] = useState('');
 	const [pendingExport, setPendingExport] = useState<PendingExportAction | null>(null);
 	const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+	const [importProgress, setImportProgress] = useState(0);
+	const [importPhase, setImportPhase] = useState<'uploading' | 'processing'>('uploading');
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const allSectionsSelected = selectedSections.length === sectionOptions.length;
@@ -137,6 +176,8 @@ export default function BackupsPage() {
 		}
 		setPendingImportFile(null);
 		setImportPassphrase('');
+		setImportProgress(0);
+		setImportPhase('uploading');
 	};
 
 	const openExportModal = (mode: BackupMode, presetId: string, sections?: string[]) => {
@@ -233,6 +274,8 @@ export default function BackupsPage() {
 		}
 		setPendingImportFile(file);
 		setImportPassphrase('');
+		setImportProgress(0);
+		setImportPhase('uploading');
 	};
 
 	const submitImport = async () => {
@@ -241,27 +284,86 @@ export default function BackupsPage() {
 		}
 
 		setImporting(true);
+		setImportProgress(0);
+		setImportPhase('uploading');
+		let uploadId = '';
 		try {
-			const formData = new FormData();
-			formData.append('file', pendingImportFile);
-			formData.append('restoreMode', restoreMode);
-			formData.append('sections', selectedSectionsParam);
-			if (importPassphrase) {
-				formData.append('passphrase', importPassphrase);
+			const createResponse = await fetchApi('/admin/backups/import/uploads', {
+				method: 'POST',
+				body: JSON.stringify({
+					fileName: pendingImportFile.name,
+					size: pendingImportFile.size,
+				}),
+			});
+			const upload = await createResponse.json().catch(() => null) as BackupUpload | null;
+			if (!createResponse.ok || !upload?.uploadId || !upload.chunkSize) {
+				throw new Error(getRequestError(upload, 'Backup-Upload konnte nicht gestartet werden.'));
+			}
+			uploadId = upload.uploadId;
+
+			let offset = 0;
+			while (offset < pendingImportFile.size) {
+				const chunk = pendingImportFile.slice(offset, offset + upload.chunkSize);
+				const chunkResponse = await fetchApi(`/admin/backups/import/uploads/${encodeURIComponent(uploadId)}?offset=${offset}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/octet-stream' },
+					body: chunk,
+				});
+				const chunkResult = await chunkResponse.json().catch(() => null);
+				if (!chunkResponse.ok) {
+					throw new Error(chunkResult?.detail || chunkResult?.error || 'Ein Backup-Teil konnte nicht hochgeladen werden.');
+				}
+				offset += chunk.size;
+				setImportProgress(Math.min(99, Math.round((offset / pendingImportFile.size) * 100)));
 			}
 
-			const response = await fetchApi('/admin/backups/import', {
+			const response = await fetchApi(`/admin/backups/import/uploads/${encodeURIComponent(uploadId)}/complete`, {
 				method: 'POST',
-				body: formData,
+				body: JSON.stringify({
+					restoreMode,
+					sections: selectedSectionsParam,
+					passphrase: importPassphrase,
+				}),
 			});
-			const result = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(result?.detail || result?.error || 'Backup konnte nicht importiert werden.');
+			const job = await response.json().catch(() => null) as BackupImportJob | null;
+			if (!response.ok || !job?.jobId) {
+				throw new Error(getRequestError(job, 'Backup konnte nicht gestartet werden.'));
 			}
-			setImportResult(result as ImportResult);
+			uploadId = '';
+			setImportPhase('processing');
+
+			let result: ImportResult | undefined;
+			while (!result) {
+				await wait(1000);
+				const statusResponse = await fetchApi(`/admin/backups/import/jobs/${encodeURIComponent(job.jobId)}`, {
+					cache: 'no-store',
+				});
+				const status = await statusResponse.json().catch(() => null) as BackupImportJobStatus | null;
+				if (!statusResponse.ok || !status) {
+					throw new Error(getRequestError(status, 'Importstatus konnte nicht geladen werden.'));
+				}
+				if (status.status === 'failed') {
+					throw new Error(getRequestError(status.error, 'Backup konnte nicht importiert werden.'));
+				}
+				if (status.status === 'completed') {
+					if (!status.result) {
+						throw new Error('Der Import wurde ohne Ergebnis abgeschlossen.');
+					}
+					result = status.result;
+				}
+			}
+
+			setImportProgress(100);
+			setImportResult(result);
 			toast.success('Backup wurde importiert.');
-			closeImportModal();
+			setPendingImportFile(null);
+			setImportPassphrase('');
 		} catch (error) {
+			if (uploadId) {
+				await fetchApi(`/admin/backups/import/uploads/${encodeURIComponent(uploadId)}`, {
+					method: 'DELETE',
+				}).catch(() => undefined);
+			}
 			toast.danger(error instanceof Error ? error.message : 'Backup konnte nicht importiert werden.');
 		} finally {
 			setImporting(false);
@@ -581,6 +683,20 @@ export default function BackupsPage() {
 									<p className="text-sm text-muted">
 										Für `.jabackup`-Dateien ist die Passphrase erforderlich. Legacy-JSON-Backups können ohne Passphrase importiert werden und erzeugen einen Warnhinweis.
 									</p>
+									{importing ? (
+										<div className="space-y-2">
+											<div className="flex items-center justify-between text-xs text-muted">
+												<span>{importPhase === 'uploading' ? 'Backup wird in kleinen Teilen übertragen' : 'Backup wird wiederhergestellt'}</span>
+												<span>{importProgress}%</span>
+											</div>
+											<div className="h-2 overflow-hidden rounded-full bg-default">
+												<div
+													className="h-full rounded-full bg-accent transition-[width] duration-200"
+													style={{ width: `${importProgress}%` }}
+												/>
+											</div>
+										</div>
+									) : null}
 								</div>
 							</Modal.Body>
 							<Modal.Footer>

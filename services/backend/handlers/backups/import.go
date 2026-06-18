@@ -40,6 +40,11 @@ type importResponse struct {
 	Stats           map[string]importSectionStats `json:"stats"`
 }
 
+type importExecutionResult struct {
+	Status int
+	Body   any
+}
+
 func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 	payload, passphrase, requestedSectionsInput, restoreModeInput, err := readImportRequest(c)
 	if err != nil {
@@ -47,59 +52,55 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		return
 	}
 
+	result := executeBackupImport(c.Request.Context(), db, dataPath, payload, passphrase, requestedSectionsInput, restoreModeInput)
+	c.JSON(result.Status, result.Body)
+}
+
+func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, payload []byte, passphrase, requestedSectionsInput, restoreModeInput string) importExecutionResult {
 	manifest, importWarnings, err := decodeBackupPayload(payload, passphrase)
 	if err != nil {
 		message := "Backup payload could not be decrypted or verified. Check the passphrase and the file integrity."
 		if errors.Is(err, errEncryptedBackupInvalid) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": message})
-			return
+			return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": message}}
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": message, "detail": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": message, "detail": err.Error()}}
 	}
 
 	if strings.TrimSpace(manifest.SchemaVersion) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Backup schemaVersion is required"})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": "Backup schemaVersion is required"}}
 	}
 
 	requestedSections, err := parseImportSections(requestedSectionsInput, manifest)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": err.Error()}}
 	}
 
 	mode, err := parseRestoreMode(restoreModeInput)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": err.Error()}}
 	}
 
 	availableSections, err := manifestAvailableSections(manifest)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": err.Error()}}
 	}
 
 	if mode == restoreModeReplace && !isFullScope(requestedSections) {
-		c.JSON(http.StatusBadRequest, gin.H{
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{
 			"error":  "Replace restore currently requires the full backup scope",
 			"detail": "Use merge for selective section imports or include all sections for a destructive replace.",
-		})
-		return
+		}}
 	}
 	if mode == restoreModeReplace && !isFullScope(availableSections) {
-		c.JSON(http.StatusBadRequest, gin.H{
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{
 			"error":  "Replace restore requires a backup file that contains the full backup scope",
 			"detail": "Use merge for selective backups or import a backup that was exported with all sections.",
-		})
-		return
+		}}
 	}
 
 	filteredSections, skippedSections := filterUnavailableSections(requestedSections, availableSections)
 	if len(filteredSections) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Selected sections are not present in the backup file"})
-		return
+		return importExecutionResult{Status: http.StatusBadRequest, Body: gin.H{"error": "Selected sections are not present in the backup file"}}
 	}
 	requestedSections = filteredSections
 
@@ -109,116 +110,111 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		warnings = append(warnings, "Skipped sections that are not present in the backup file: "+strings.Join(skippedSections, ", "))
 	}
 
-	tx, err := db.BeginTx(c.Request.Context(), nil)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start restore transaction", "detail": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{"error": "Failed to start restore transaction", "detail": err.Error()}}
 	}
 	defer tx.Rollback()
 
-	ctx := c.Request.Context()
-
 	if mode == restoreModeReplace {
 		if err := clearDatabaseForReplace(ctx, tx); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear existing data for replace restore", "detail": err.Error()})
-			return
+			return importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{"error": "Failed to clear existing data for replace restore", "detail": err.Error()}}
 		}
 	}
 
-	applySection := func(section string, fn func() (importSectionStats, []string, error)) bool {
+	applySection := func(section string, fn func() (importSectionStats, []string, error)) *importExecutionResult {
 		sectionStats, sectionWarnings, sectionErr := fn()
 		if sectionErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
+			return &importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{
 				"error":   "Failed to restore backup section",
 				"section": section,
 				"detail":  sectionErr.Error(),
-			})
-			return false
+			}}
 		}
 		stats[section] = sectionStats
 		warnings = append(warnings, sectionWarnings...)
-		return true
+		return nil
 	}
 
 	for _, section := range requestedSections {
 		switch section {
 		case "users":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importUsers(ctx, tx, manifest.Data.Users)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "settings":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importSettings(ctx, tx, manifest.Data.Settings)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "repositoryProviders", "gitLabProviders":
-			if !applySection("repositoryProviders", func() (importSectionStats, []string, error) {
+			if result := applySection("repositoryProviders", func() (importSectionStats, []string, error) {
 				return importGitLabProviders(ctx, tx, manifest.Data.RepositoryProviders)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "apps":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importApps(ctx, tx, manifest.Data.Apps)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "appGroups":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAppGroups(ctx, tx, manifest.Data.AppGroups)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "appRelations":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAppRelations(ctx, tx, manifest.Data.AppRelations)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "repositoryAppLinks", "gitLabAppLinks":
-			if !applySection("repositoryAppLinks", func() (importSectionStats, []string, error) {
+			if result := applySection("repositoryAppLinks", func() (importSectionStats, []string, error) {
 				return importGitLabAppLinks(ctx, tx, manifest.Data.RepositoryAppLinks)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "aiProviders":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAIProviders(ctx, tx, manifest.Data.AIProviders)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "aiConversations":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAIConversations(ctx, tx, manifest.Data.AIConversations, manifest.Data.AIMessages)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "tokens":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importTokens(ctx, tx, manifest.Data.Tokens)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "favorites":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importFavorites(ctx, tx, manifest.Data.Favorites)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "ratings":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importRatings(ctx, tx, manifest.Data.Ratings)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "audit":
-			if !applySection(section, func() (importSectionStats, []string, error) {
+			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAudit(ctx, tx, manifest.Data.Audit)
-			}) {
-				return
+			}); result != nil {
+				return *result
 			}
 		case "assets":
 			// Assets are restored after the DB transaction commits.
@@ -229,12 +225,11 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 	if hasSection(requestedSections, "apps") && len(manifest.Data.AppEditors) > 0 {
 		sectionStats, sectionWarnings, sectionErr := importAppEditors(ctx, tx, manifest.Data.AppEditors)
 		if sectionErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
+			return importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{
 				"error":   "Failed to restore backup section",
 				"section": "apps",
 				"detail":  sectionErr.Error(),
-			})
-			return
+			}}
 		}
 		appStats := stats["apps"]
 		appStats.Created += sectionStats.Created
@@ -245,8 +240,7 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 	}
 
 	if err := tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit restore transaction", "detail": err.Error()})
-		return
+		return importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{"error": "Failed to commit restore transaction", "detail": err.Error()}}
 	}
 
 	if hasSection(requestedSections, "assets") {
@@ -254,25 +248,24 @@ func ImportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 		warnings = append(warnings, assetWarnings...)
 		stats["assets"] = assetStats
 		if assetErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
+			return importExecutionResult{Status: http.StatusInternalServerError, Body: gin.H{
 				"error":           "Backup data was restored, but asset restore failed",
 				"detail":          assetErr.Error(),
 				"restoreMode":     mode,
 				"appliedSections": requestedSections,
 				"warnings":        warnings,
 				"stats":           stats,
-			})
-			return
+			}}
 		}
 	}
 
-	c.JSON(http.StatusOK, importResponse{
+	return importExecutionResult{Status: http.StatusOK, Body: importResponse{
 		Message:         "Backup import completed",
 		RestoreMode:     mode,
 		AppliedSections: requestedSections,
 		Warnings:        warnings,
 		Stats:           stats,
-	})
+	}}
 }
 
 func readImportRequest(c *gin.Context) ([]byte, string, string, string, error) {
