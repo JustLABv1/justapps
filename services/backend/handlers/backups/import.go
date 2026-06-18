@@ -428,6 +428,11 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 	warnings := make([]string, 0)
 
 	for _, backupUser := range backupUsers {
+		authType := strings.ToLower(strings.TrimSpace(backupUser.AuthType))
+		if authType == "" {
+			authType = "local"
+		}
+
 		var existing models.Users
 		err := tx.NewSelect().Model(&existing).Where("id = ?", backupUser.ID).Scan(ctx)
 		exists := err == nil
@@ -442,11 +447,13 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 				return stats, warnings, hashErr
 			}
 			password = generated.Password
-			backupUser.Disabled = true
-			if strings.TrimSpace(backupUser.DisabledReason) == "" {
-				backupUser.DisabledReason = "Restored from safe backup without password hash; password reset required"
+			if importedUserRequiresPasswordReset(authType) {
+				backupUser.Disabled = true
+				if strings.TrimSpace(backupUser.DisabledReason) == "" {
+					backupUser.DisabledReason = models.RestoredSafeBackupPasswordResetReason
+				}
+				warnings = append(warnings, "Created placeholder password hashes for one or more restored users.")
 			}
-			warnings = append(warnings, "Created placeholder password hashes for one or more restored users.")
 		}
 		if exists && password == "" {
 			password = existing.Password
@@ -458,7 +465,7 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 			Email:          backupUser.Email,
 			Password:       password,
 			Role:           strings.ToLower(strings.TrimSpace(backupUser.Role)),
-			AuthType:       strings.TrimSpace(backupUser.AuthType),
+			AuthType:       authType,
 			CanSubmitApps:  backupUser.CanSubmitApps,
 			Disabled:       backupUser.Disabled,
 			DisabledReason: backupUser.DisabledReason,
@@ -468,9 +475,6 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		}
 		if user.Role == "" {
 			user.Role = "user"
-		}
-		if user.AuthType == "" {
-			user.AuthType = "local"
 		}
 		if user.UpdatedAt.IsZero() {
 			user.UpdatedAt = time.Now().UTC()
@@ -498,6 +502,10 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 	}
 
 	return stats, dedupeWarnings(warnings), nil
+}
+
+func importedUserRequiresPasswordReset(authType string) bool {
+	return !strings.EqualFold(strings.TrimSpace(authType), "oidc")
 }
 
 func importSettings(ctx context.Context, tx bun.Tx, settings *models.PlatformSettings) (importSectionStats, []string, error) {

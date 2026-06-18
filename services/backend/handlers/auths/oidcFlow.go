@@ -206,6 +206,7 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 
 	user, err := upsertOIDCUser(c, db, claims, provider.AdminGroup)
 	if err != nil {
+		log.WithError(err).WithField("email", claims.Email).Warn("OIDC: user provisioning failed")
 		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Benutzer konnte nicht erstellt werden")
 		return
 	}
@@ -493,6 +494,9 @@ func upsertOIDCUser(c *gin.Context, db *bun.DB, claims *authfunc.OIDCClaims, adm
 	if err := db.NewSelect().Model(&user).Where("email = ?", claims.Email).Scan(c); err != nil {
 		return models.Users{}, err
 	}
+	if err := reactivateOIDCUserDisabledBySafeRestore(c, db, &user); err != nil {
+		return models.Users{}, err
+	}
 	if user.Disabled {
 		return models.Users{}, errors.New("account disabled")
 	}
@@ -518,4 +522,28 @@ func upsertOIDCUser(c *gin.Context, db *bun.DB, claims *authfunc.OIDCClaims, adm
 	}
 
 	return user, nil
+}
+
+func reactivateOIDCUserDisabledBySafeRestore(ctx context.Context, db *bun.DB, user *models.Users) error {
+	if !shouldReactivateOIDCUserDisabledBySafeRestore(user) {
+		return nil
+	}
+
+	if _, err := db.NewUpdate().Model((*models.Users)(nil)).
+		Set("disabled = false").
+		Set("disabled_reason = ''").
+		Where("id = ?", user.ID).
+		Exec(ctx); err != nil {
+		return err
+	}
+	user.Disabled = false
+	user.DisabledReason = ""
+	return nil
+}
+
+func shouldReactivateOIDCUserDisabledBySafeRestore(user *models.Users) bool {
+	return user != nil &&
+		user.Disabled &&
+		strings.EqualFold(strings.TrimSpace(user.AuthType), "oidc") &&
+		strings.TrimSpace(user.DisabledReason) == models.RestoredSafeBackupPasswordResetReason
 }
