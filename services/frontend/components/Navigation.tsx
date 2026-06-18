@@ -1,21 +1,34 @@
-'use client';
+"use client";
 
 import { resolveAssetUrl } from "@/lib/assets";
 import {
-    Avatar,
-    Button,
-    Dropdown,
-    Label,
-    Link,
-    Separator
+  Avatar,
+  Button,
+  Chip,
+  Dropdown,
+  Label,
+  Link,
+  Separator,
 } from "@heroui/react";
-import { Bot, ChevronDown, Layers, Layers2, LayoutDashboard, Menu, Package, Search, X } from "lucide-react";
+import {
+  Bell,
+  Bot,
+  ChevronDown,
+  Layers,
+  Layers2,
+  LayoutDashboard,
+  Menu,
+  Package,
+  Search,
+  X,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
+import { useUpdates } from "../context/UpdatesContext";
 import { adminNavLinks } from "../lib/admin-navigation";
 import { canAccessAI } from "../lib/ai-access";
 import { JustAppsLogo } from "./JustAppsLogo";
@@ -27,33 +40,34 @@ export function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
+  const { totalUnread } = useUpdates();
   const { resolvedTheme } = useTheme();
 
   // Close search and clear on navigation
   useEffect(() => {
     startTransition(() => {
       setSearchOpen(false);
-      setSearchQuery('');
+      setSearchQuery("");
     });
   }, [pathname]);
 
   // Cmd+K / Ctrl+K opens search; Escape closes
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
         setTimeout(() => searchInputRef.current?.focus(), 50);
-      } else if (e.key === 'Escape' && searchOpen) {
+      } else if (e.key === "Escape" && searchOpen) {
         setSearchOpen(false);
-        setSearchQuery('');
+        setSearchQuery("");
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [searchOpen]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -62,27 +76,60 @@ export function Navigation() {
       router.push(`/?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-  const isDark = resolvedTheme === 'dark';
+  const isDark = resolvedTheme === "dark";
 
-  const storeName = settings.storeName || 'JustApps';
+  const storeName = settings.storeName || "JustApps";
   const logoSrc = isDark
-    ? (settings.logoDarkUrl || settings.logoUrl || null)
-    : (settings.logoUrl || null);
+    ? settings.logoDarkUrl || settings.logoUrl || null
+    : settings.logoUrl || null;
   const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
-  const isInVerwaltung = pathname.startsWith('/verwaltung');
+  const isInVerwaltung = pathname.startsWith("/verwaltung");
   const visibleAdminNavLinks = adminNavLinks;
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.push("/");
   };
 
   const regularNavLinks = [
-    { href: "/", label: "Apps", icon: Layers, active: pathname === '/' },
-    { href: "/gruppen", label: "Gruppen", icon: Layers2, active: pathname === '/gruppen' || pathname.startsWith('/gruppen/') },
-    ...(user ? [{ href: "/meine-apps", label: "Meine Apps", icon: Package, active: pathname === '/meine-apps' }] : []),
-    ...(canAccessAI(settings, !!user) ? [{ href: "/chat", label: "AI Chat", icon: Bot, active: pathname === '/chat' }] : []),
+    { href: "/", label: "Apps", icon: Layers, active: pathname === "/" },
+    {
+      href: "/gruppen",
+      label: "Gruppen",
+      icon: Layers2,
+      active: pathname === "/gruppen" || pathname.startsWith("/gruppen/"),
+    },
+    ...(user
+      ? [
+          {
+            href: "/meine-apps",
+            label: "Meine Apps",
+            icon: Package,
+            active: pathname === "/meine-apps",
+          },
+        ]
+      : []),
+    ...(user
+      ? [
+          {
+            href: "/updates",
+            label: "Updates",
+            icon: Bell,
+            active: pathname === "/updates",
+          },
+        ]
+      : []),
+    ...(canAccessAI(settings, !!user)
+      ? [
+          {
+            href: "/chat",
+            label: "AI Chat",
+            icon: Bot,
+            active: pathname === "/chat",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -96,11 +143,20 @@ export function Navigation() {
           <div className="flex flex-cols items-center gap-2 leading-tight">
             {resolvedLogoSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolvedLogoSrc} alt={`${storeName} Logo`} width={24} height={24} className="rounded-sm object-contain" style={{ maxHeight: 24 }} />
+              <img
+                src={resolvedLogoSrc}
+                alt={`${storeName} Logo`}
+                width={24}
+                height={24}
+                className="rounded-sm object-contain"
+                style={{ maxHeight: 24 }}
+              />
             ) : (
               <JustAppsLogo className="w-6 h-6" />
             )}
-            <span className="text-[9px] font-bold tracking-[0.2em]">{storeName}</span>
+            <span className="text-[9px] font-bold tracking-[0.2em]">
+              {storeName}
+            </span>
           </div>
         </Link>
 
@@ -115,26 +171,36 @@ export function Navigation() {
                 href={link.href}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors no-underline ${
                   link.active
-                    ? 'text-accent bg-accent/8'
-                    : 'text-muted hover:text-foreground hover:bg-default'
+                    ? "text-accent bg-accent/8"
+                    : "text-muted hover:text-foreground hover:bg-default"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span>{link.label}</span>
+                {link.href === "/updates" && totalUnread > 0 && (
+                  <Chip
+                    size="sm"
+                    color="accent"
+                    variant="soft"
+                    className="text-[10px] font-bold"
+                  >
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </Chip>
+                )}
               </Link>
             );
           })}
 
           {/* Verwaltung dropdown (admin only) */}
-          {user?.role === 'admin' && (
+          {user?.role === "admin" && (
             <Dropdown>
               <Button
                 variant="ghost"
                 size="sm"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors h-auto ${
                   isInVerwaltung
-                    ? 'text-accent bg-accent/8'
-                    : 'text-muted hover:text-foreground hover:bg-default'
+                    ? "text-accent bg-accent/8"
+                    : "text-muted hover:text-foreground hover:bg-default"
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
@@ -170,7 +236,9 @@ export function Navigation() {
                   ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
+                  onBlur={() => {
+                    if (!searchQuery) setSearchOpen(false);
+                  }}
                   placeholder="Apps suchen..."
                   className="w-52 h-8 rounded-lg border border-border bg-surface-secondary px-3 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/60"
                   autoFocus
@@ -178,7 +246,10 @@ export function Navigation() {
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                    onClick={() => {
+                      setSearchQuery("");
+                      searchInputRef.current?.focus();
+                    }}
                     className="ml-1 p-1 text-muted hover:text-foreground transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -187,7 +258,10 @@ export function Navigation() {
               </form>
             ) : (
               <button
-                onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                onClick={() => {
+                  setSearchOpen(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 50);
+                }}
                 className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm text-muted hover:text-foreground hover:bg-default transition-colors"
                 aria-label="Suche öffnen (Cmd+K)"
               >
@@ -205,18 +279,33 @@ export function Navigation() {
             <div className="h-8 w-8 rounded-full bg-default/50 animate-pulse" />
           ) : user ? (
             <Dropdown>
-              <Button variant="secondary" className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none" aria-label="Benutzermenü">
+              <Button
+                variant="secondary"
+                className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none"
+                aria-label="Benutzermenü"
+              >
                 <Avatar size="sm">
-                  <Avatar.Fallback>{user.username.slice(0, 2).toUpperCase()}</Avatar.Fallback>
+                  <Avatar.Fallback>
+                    {user.username.slice(0, 2).toUpperCase()}
+                  </Avatar.Fallback>
                 </Avatar>
               </Button>
               <Dropdown.Popover>
-                <Dropdown.Menu onAction={(key) => key === 'logout' && handleLogout()}>
-                  <Dropdown.Item id="profile" textValue={`Angemeldet als ${user.email}`}>
+                <Dropdown.Menu
+                  onAction={(key) => key === "logout" && handleLogout()}
+                >
+                  <Dropdown.Item
+                    id="profile"
+                    textValue={`Angemeldet als ${user.email}`}
+                  >
                     <div className="flex flex-col gap-0.5">
-                      <Label className="font-semibold text-sm">Angemeldet als</Label>
-                      <div className="text-xs text-muted text-balance break-all max-w-[180px]">{user.email}</div>
-                      {user.authType === 'oidc' && (
+                      <Label className="font-semibold text-sm">
+                        Angemeldet als
+                      </Label>
+                      <div className="text-xs text-muted text-balance break-all max-w-[180px]">
+                        {user.email}
+                      </div>
+                      {user.authType === "oidc" && (
                         <div className="mt-1">
                           <span className="text-[10px] bg-sky-500/10 text-sky-500 px-1.5 py-0.5 rounded border border-sky-500/20 whitespace-nowrap">
                             Managed by SSO
@@ -226,7 +315,11 @@ export function Navigation() {
                     </div>
                   </Dropdown.Item>
                   <Separator />
-                  <Dropdown.Item id="logout" variant="danger" textValue="Abmelden">
+                  <Dropdown.Item
+                    id="logout"
+                    variant="danger"
+                    textValue="Abmelden"
+                  >
                     <Label>Abmelden</Label>
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -234,10 +327,14 @@ export function Navigation() {
             </Dropdown>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
-              <Button onPress={() => router.push('/login')} variant="secondary" size="sm">
+              <Button
+                onPress={() => router.push("/login")}
+                variant="secondary"
+                size="sm"
+              >
                 Anmelden
               </Button>
-              <Button onPress={() => router.push('/register')} size="sm">
+              <Button onPress={() => router.push("/register")} size="sm">
                 Registrieren
               </Button>
             </div>
@@ -252,7 +349,11 @@ export function Navigation() {
             onPress={() => setMobileOpen(!mobileOpen)}
             aria-label="Menü öffnen"
           >
-            {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            {mobileOpen ? (
+              <X className="w-4 h-4" />
+            ) : (
+              <Menu className="w-4 h-4" />
+            )}
           </Button>
         </div>
       </div>
@@ -261,7 +362,13 @@ export function Navigation() {
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-surface p-4 space-y-2">
           {/* Mobile search */}
-          <form onSubmit={(e) => { handleSearchSubmit(e); setMobileOpen(false); }} className="relative mb-2">
+          <form
+            onSubmit={(e) => {
+              handleSearchSubmit(e);
+              setMobileOpen(false);
+            }}
+            className="relative mb-2"
+          >
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -288,9 +395,11 @@ export function Navigation() {
           })}
 
           {/* Admin links inline in mobile menu */}
-          {user?.role === 'admin' && (
+          {user?.role === "admin" && (
             <div className="pt-2 border-t border-separator">
-              <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">Verwaltung</p>
+              <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">
+                Verwaltung
+              </p>
               {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
@@ -307,10 +416,25 @@ export function Navigation() {
 
           {!user && (
             <div className="flex gap-2 pt-2 border-t border-separator mt-2">
-              <Button onPress={() => { router.push('/login'); setMobileOpen(false); }} variant="secondary" size="sm" className="flex-1">
+              <Button
+                onPress={() => {
+                  router.push("/login");
+                  setMobileOpen(false);
+                }}
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+              >
                 Anmelden
               </Button>
-              <Button onPress={() => { router.push('/register'); setMobileOpen(false); }} size="sm" className="flex-1">
+              <Button
+                onPress={() => {
+                  router.push("/register");
+                  setMobileOpen(false);
+                }}
+                size="sm"
+                className="flex-1"
+              >
                 Registrieren
               </Button>
             </div>

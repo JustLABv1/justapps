@@ -26,6 +26,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id/ratings", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRatings(c, db)
 		})
+		appsGroup.GET("/:id/releases", middlewares.OptionalAuth(db), func(c *gin.Context) {
+			apps.ListReleases(c, db)
+		})
 
 		// Rating modifications require Auth
 		ratingAuthGroup := appsGroup.Group("/:id/ratings")

@@ -2,13 +2,13 @@ package gitlab
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 	"time"
 
 	"justapps-backend/config"
 	aifunc "justapps-backend/functions/ai"
+	appupdates "justapps-backend/functions/appupdates"
 	"justapps-backend/pkg/models"
 
 	"github.com/uptrace/bun"
@@ -62,17 +62,6 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 	}
 
 	link.LastSyncError = ""
-	if link.ApprovalRequired {
-		link.PendingSnapshot = result.Snapshot
-		link.LastSyncStatus = "pending_approval"
-		_, err = db.NewUpdate().
-			Model(link).
-			Where("app_id = ?", link.AppID).
-			Column("provider_type", "project_id", "project_web_url", "last_sync_status", "last_sync_error", "last_synced_at", "pending_snapshot", "updated_at").
-			Exec(ctx)
-		return err
-	}
-
 	link.Snapshot = result.Snapshot
 	link.PendingSnapshot = models.GitLabSyncSnapshot{}
 	link.ApprovalRequired = false
@@ -86,6 +75,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		if err := tx.NewSelect().Model(&app).Where("id = ?", link.AppID).Scan(ctx); err != nil {
 			return err
 		}
+		previousApp := app
 
 		appContentChanged = snapshotChangesAppContent(app, provider.Label, result.Snapshot)
 		if appContentChanged {
@@ -97,6 +87,10 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 				Where("id = ?", link.AppID).
 				Column("description", "license", "markdown_content", "tags", "repositories", "custom_helm_values", "custom_compose_command", "updated_at").
 				Exec(ctx); err != nil {
+				return err
+			}
+
+			if _, err := appupdates.CreateReleaseForAppSync(ctx, tx, previousApp, app); err != nil {
 				return err
 			}
 		}
@@ -170,56 +164,11 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 }
 
 func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID string) error {
-	var app models.Apps
-	if err := db.NewSelect().Model(&app).Where("id = ?", appID).Scan(ctx); err != nil {
-		return err
-	}
-
-	return MarkManualChangePendingApprovalForApp(ctx, db, app)
+	return nil
 }
 
 func MarkManualChangePendingApprovalForApp(ctx context.Context, db *bun.DB, app models.Apps) error {
-	var link models.GitLabAppLink
-	err := db.NewSelect().Model(&link).Where("app_id = ?", app.ID).Scan(ctx)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		return err
-	}
-
-	if link.ApprovalRequired && snapshotHasContent(link.PendingSnapshot) {
-		return nil
-	}
-
-	if !appHasManualGitLabChanges(app, link) {
-		if !link.ApprovalRequired || snapshotHasContent(link.PendingSnapshot) {
-			return nil
-		}
-
-		link.ApprovalRequired = false
-		link.LastManualChangeAt = time.Time{}
-		link.UpdatedAt = time.Now().UTC()
-
-		_, err = db.NewUpdate().
-			Model(&link).
-			Where("app_id = ?", app.ID).
-			Column("approval_required", "last_manual_change_at", "updated_at").
-			Exec(ctx)
-		return err
-	}
-
-	now := time.Now().UTC()
-	link.ApprovalRequired = true
-	link.LastManualChangeAt = now
-	link.UpdatedAt = now
-
-	_, err = db.NewUpdate().
-		Model(&link).
-		Where("app_id = ?", app.ID).
-		Column("approval_required", "last_manual_change_at", "updated_at").
-		Exec(ctx)
-	return err
+	return nil
 }
 
 func snapshotHasContent(snapshot models.GitLabSyncSnapshot) bool {

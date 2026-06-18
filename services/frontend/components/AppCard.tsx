@@ -2,6 +2,7 @@
 
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
+import { useUpdates } from "@/context/UpdatesContext";
 import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
@@ -17,6 +18,7 @@ import { LinkStatusDot } from "./LinkStatusDot";
 export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
   const { settings } = useSettings();
+  const { appUnreadCounts } = useUpdates();
   const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
   const probeStatus = probeEnabled ? app.linkProbeStatus : undefined;
   const hasRating = app.ratingCount !== undefined && app.ratingCount > 0;
@@ -42,6 +44,7 @@ export function AppCard({ app }: { app: AppConfig }) {
   ];
   const spotlightBadge = freshness.badgeLabel;
   const spotlightBadgeColor = freshness.badgeColor;
+  const unreadCount = appUnreadCounts[app.id] || 0;
 
   return (
     <Card
@@ -125,6 +128,11 @@ export function AppCard({ app }: { app: AppConfig }) {
               {spotlightBadge && (
                 <Chip size="sm" color={spotlightBadgeColor} variant="soft" className="text-[10px] font-bold uppercase h-5">
                   {spotlightBadge}
+                </Chip>
+              )}
+              {unreadCount > 0 && (
+                <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase h-5">
+                  {unreadCount} neu
                 </Chip>
               )}
             </div>

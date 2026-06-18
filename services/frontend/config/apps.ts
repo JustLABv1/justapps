@@ -146,6 +146,60 @@ export interface AppViewerPermissions {
   accessRole: 'admin' | 'owner' | 'editor' | 'viewer' | string;
 }
 
+export interface AppRelease {
+  id: string;
+  appId: string;
+  version: string;
+  releaseType: 'patch' | 'minor' | 'major' | string;
+  source: string;
+  title: string;
+  summary: string;
+  changedAreas: string[];
+  changeDetails: ReleaseChangeDetail[];
+  diffPreview: string;
+  fingerprint: string;
+  publishedAt: string;
+  createdAt: string;
+}
+
+export interface ReleaseChangeDetail {
+  area: string;
+  field: string;
+  label: string;
+  language: string;
+  preview: string;
+  diff: string;
+  beforeText: string;
+  afterText: string;
+}
+
+export interface UpdatePreferences {
+  userId: string;
+  notifyFavoritedApps: boolean;
+  notifyRecentlyViewedApps: boolean;
+  notifyOwnedManagedApps: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReleaseInboxItem {
+  id: string;
+  releaseId: string;
+  appId: string;
+  appName: string;
+  appIcon?: string;
+  version: string;
+  releaseType: 'patch' | 'minor' | 'major' | string;
+  title: string;
+  summary: string;
+  changedAreas: string[];
+  changeDetails: ReleaseChangeDetail[];
+  diffPreview: string;
+  reason: string;
+  publishedAt: string;
+  seenAt?: string | null;
+}
+
 export interface SystemUser {
   id: string;
   username: string;
@@ -266,4 +320,3 @@ export const getApps = (): AppConfig[] => {
 };
 
 export const apps: AppConfig[] = []; // Keep as fallback or for types if needed
-

@@ -7,7 +7,6 @@ import (
 
 	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
-	gitlabsync "justapps-backend/functions/integrations/gitlab"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
@@ -243,9 +242,6 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.update", fmt.Sprintf("updated app %s (%s)", app.Name, app.ID))
-	if err := gitlabsync.MarkManualChangePendingApprovalForApp(c.Request.Context(), db, app); err != nil {
-		log.WithError(err).WithField("appID", id).Warn("Failed to mark GitLab sync as requiring approval after manual app update")
-	}
 	if err := aifunc.ReindexApp(c.Request.Context(), db, app.ID); err != nil {
 		log.WithError(err).WithField("appID", id).Warn("Failed to refresh AI knowledge index after app update")
 	}

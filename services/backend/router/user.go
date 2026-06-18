@@ -40,5 +40,23 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 		user.GET("/favorites", func(c *gin.Context) {
 			apps.GetFavorites(c, db)
 		})
+		user.GET("/update-preferences", func(c *gin.Context) {
+			users.GetUpdatePreferences(c, db)
+		})
+		user.PUT("/update-preferences", func(c *gin.Context) {
+			users.UpdateUpdatePreferences(c, db)
+		})
+		user.POST("/recently-viewed", func(c *gin.Context) {
+			users.RecordRecentlyViewedApp(c, db)
+		})
+		user.GET("/updates", func(c *gin.Context) {
+			users.ListReleaseUpdates(c, db)
+		})
+		user.GET("/updates/summary", func(c *gin.Context) {
+			users.GetReleaseUpdateSummary(c, db)
+		})
+		user.POST("/updates/:id/seen", func(c *gin.Context) {
+			users.MarkReleaseUpdateSeen(c, db)
+		})
 	}
 }

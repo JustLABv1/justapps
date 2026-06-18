@@ -64,6 +64,8 @@ services/backend/go.work
 services/backend/.env
 services/backend/.envrc
 
+services/backend/.gocache
+
 services/backend/config.yaml
 
 csv-files/
