@@ -121,6 +121,10 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 			return
 		}
 
+		if err := reactivateOIDCUserDisabledBySafeRestore(c, db, &user); err != nil {
+			httperror.InternalServerError(c, "Error restoring OIDC user state", err)
+			return
+		}
 		if user.Disabled {
 			log.WithField("email", user.Email).Warn("OIDC login blocked: User disabled")
 			httperror.Unauthorized(c, "Account is disabled: "+user.DisabledReason, errors.New("account disabled"))
