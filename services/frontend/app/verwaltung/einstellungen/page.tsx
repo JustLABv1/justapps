@@ -1,41 +1,71 @@
-'use client';
+"use client";
 
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { AIProviderSettingsPanel } from '@/components/admin/AIProviderSettingsPanel';
-import { OIDCProviderSettingsPanel } from '@/components/admin/OIDCProviderSettingsPanel';
-import { GitLabProviderAdminSettings } from '@/config/apps';
-import { DetailFieldDef, FooterLink, defaultDetailFields, useSettings } from '@/context/SettingsContext';
-import { fetchApi, uploadFile } from '@/lib/api';
-import { resolveAssetUrl } from '@/lib/assets';
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { AIProviderSettingsPanel } from "@/components/admin/AIProviderSettingsPanel";
+import { OIDCProviderSettingsPanel } from "@/components/admin/OIDCProviderSettingsPanel";
+import { GitLabProviderAdminSettings } from "@/config/apps";
 import {
-  CUSTOM_BRANDING_PRESET,
-  DEFAULT_HERO_TITLE_PRESET,
-  DEFAULT_TOP_BAR_PRESET,
-  HERO_TITLE_PRESET_OPTIONS,
-  TOP_BAR_PRESET_OPTIONS,
-  normalizeBrandColorList,
-  resolveHeroTitleColors,
-  resolveTopBarColors,
-  seedCustomBrandColors,
-} from '@/lib/branding';
-import { AVAILABLE_ICONS } from '@/lib/detailFieldIcons';
+    DetailFieldDef,
+    FooterLink,
+    defaultDetailFields,
+    useSettings,
+} from "@/context/SettingsContext";
+import { fetchApi, uploadFile } from "@/lib/api";
+import { resolveAssetUrl } from "@/lib/assets";
 import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  TextField,
-  Tooltip
-} from '@heroui/react';
-import { ArrowDown, ArrowUp, Bot, ExternalLink, GitBranch, Globe, Layers, Loader2, Paintbrush, Pin, Plus, ShieldCheck, SortAsc, SortDesc, Trash2, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+    CUSTOM_BRANDING_PRESET,
+    DEFAULT_HERO_TITLE_PRESET,
+    DEFAULT_TOP_BAR_PRESET,
+    HERO_TITLE_PRESET_OPTIONS,
+    TOP_BAR_PRESET_OPTIONS,
+    normalizeBrandColorList,
+    resolveHeroTitleColors,
+    resolveTopBarColors,
+    seedCustomBrandColors,
+} from "@/lib/branding";
+import { AVAILABLE_ICONS } from "@/lib/detailFieldIcons";
+import {
+    Button,
+    Input,
+    Label,
+    ListBox,
+    Modal,
+    Select,
+    Surface,
+    Switch,
+    TextField,
+    Tooltip,
+} from "@heroui/react";
+import {
+    ArrowDown,
+    ArrowUp,
+    Bot,
+    ExternalLink,
+    GitBranch,
+    Globe,
+    Layers,
+    Loader2,
+    Paintbrush,
+    Pin,
+    Plus,
+    ShieldCheck,
+    SortAsc,
+    SortDesc,
+    Trash2,
+    Upload,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
-export type AdminSettingsSection = 'governance' | 'auth' | 'startseite' | 'branding' | 'inhalte' | 'apps' | 'integrationen' | 'ai';
+export type AdminSettingsSection =
+  | "governance"
+  | "auth"
+  | "startseite"
+  | "branding"
+  | "inhalte"
+  | "apps"
+  | "integrationen"
+  | "ai";
 
 type AdminSettingsWorkspaceProps = {
   title: string;
@@ -80,34 +110,34 @@ const defaultState: SettingsState = {
   requireAuthForAppStore: false,
   allowAnonymousAI: false,
   showTopBanner: false,
-  topBannerText: '',
-  topBannerType: 'info',
+  topBannerText: "",
+  topBannerType: "info",
   detailFields: defaultDetailFields,
-  storeName: '',
-  storeDescription: '',
-  logoUrl: '',
-  logoDarkUrl: '',
-  faviconUrl: '',
-  accentColor: '',
-  heroBadge: '',
-  heroTitle: '',
+  storeName: "",
+  storeDescription: "",
+  logoUrl: "",
+  logoDarkUrl: "",
+  faviconUrl: "",
+  accentColor: "",
+  heroBadge: "",
+  heroTitle: "",
   heroTitlePreset: DEFAULT_HERO_TITLE_PRESET,
   heroTitleColors: [],
-  heroSubtitle: '',
-  footerText: '',
+  heroSubtitle: "",
+  footerText: "",
   footerLinks: [],
   showFlagBar: true,
   topBarPreset: DEFAULT_TOP_BAR_PRESET,
   topBarColors: [],
-  appSortField: 'name',
-  appSortDirection: 'asc',
+  appSortField: "name",
+  appSortDirection: "asc",
   pinnedApps: [],
   enableLinkProbing: true,
 };
 
 type ProviderDraftState = {
   providerKey: string;
-  providerType: 'gitlab' | 'github';
+  providerType: "gitlab" | "github";
   label: string;
   baseUrl: string;
   token: string;
@@ -121,28 +151,37 @@ type ProviderDraftState = {
 };
 
 const defaultProviderDraft = (): ProviderDraftState => ({
-  providerKey: '',
-  providerType: 'gitlab',
-  label: '',
-  baseUrl: 'https://gitlab.com',
-  token: '',
-  namespaceAllowlist: '',
+  providerKey: "",
+  providerType: "gitlab",
+  label: "",
+  baseUrl: "https://gitlab.com",
+  token: "",
+  namespaceAllowlist: "",
   enabled: true,
   autoSyncEnabled: true,
   syncIntervalMinutes: 15,
-  defaultReadmePath: '',
-  defaultHelmValuesPath: '',
-  defaultComposeFilePath: '',
+  defaultReadmePath: "",
+  defaultHelmValuesPath: "",
+  defaultComposeFilePath: "",
 });
 
-const allowedAppSortFields = new Set(['name', 'rating_avg', 'updated_at', 'status']);
+const allowedAppSortFields = new Set([
+  "name",
+  "rating_avg",
+  "updated_at",
+  "status",
+]);
 
 function normalizeAppSortField(value: string | undefined) {
-  return value && allowedAppSortFields.has(value) ? value : 'name';
+  return value && allowedAppSortFields.has(value) ? value : "name";
 }
 
-function defaultBaseUrlForProviderType(providerType: 'gitlab' | 'github'): string {
-  return providerType === 'github' ? 'https://github.com' : 'https://gitlab.com';
+function defaultBaseUrlForProviderType(
+  providerType: "gitlab" | "github",
+): string {
+  return providerType === "github"
+    ? "https://github.com"
+    : "https://gitlab.com";
 }
 
 function parseProviderAllowlist(value: string): string[] {
@@ -156,21 +195,18 @@ function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
   return {
     ...defaultState,
     ...data,
-    detailFields: Array.isArray(data.detailFields) && data.detailFields.length > 0
-      ? data.detailFields
-      : defaultDetailFields,
-    footerLinks: Array.isArray(data.footerLinks)
-      ? data.footerLinks
-      : [],
+    detailFields:
+      Array.isArray(data.detailFields) && data.detailFields.length > 0
+        ? data.detailFields
+        : defaultDetailFields,
+    footerLinks: Array.isArray(data.footerLinks) ? data.footerLinks : [],
     heroTitlePreset: data.heroTitlePreset || DEFAULT_HERO_TITLE_PRESET,
     heroTitleColors: normalizeBrandColorList(data.heroTitleColors),
     topBarPreset: data.topBarPreset || DEFAULT_TOP_BAR_PRESET,
     topBarColors: normalizeBrandColorList(data.topBarColors),
     appSortField: normalizeAppSortField(data.appSortField),
-    appSortDirection: data.appSortDirection || 'asc',
-    pinnedApps: Array.isArray(data.pinnedApps)
-      ? data.pinnedApps
-      : [],
+    appSortDirection: data.appSortDirection || "asc",
+    pinnedApps: Array.isArray(data.pinnedApps) ? data.pinnedApps : [],
   };
 }
 
@@ -188,33 +224,60 @@ function PalettePreview({ colors }: { colors: string[] }) {
   );
 }
 
-export function AdminSettingsWorkspace({ title, description, sections }: AdminSettingsWorkspaceProps) {
+export function AdminSettingsWorkspace({
+  title,
+  description,
+  sections,
+}: AdminSettingsWorkspaceProps) {
   const { refreshSettings } = useSettings();
   const [settings, setSettings] = useState<SettingsState>(defaultState);
-  const [gitLabProviders, setGitLabProviders] = useState<GitLabProviderAdminSettings[]>([]);
+  const [gitLabProviders, setGitLabProviders] = useState<
+    GitLabProviderAdminSettings[]
+  >([]);
   const [createProviderModalOpen, setCreateProviderModalOpen] = useState(false);
-  const [newProvider, setNewProvider] = useState<ProviderDraftState>(defaultProviderDraft);
-  const [providerTokenDrafts, setProviderTokenDrafts] = useState<Record<string, string>>({});
-  const [providerToDelete, setProviderToDelete] = useState<GitLabProviderAdminSettings | null>(null);
+  const [newProvider, setNewProvider] =
+    useState<ProviderDraftState>(defaultProviderDraft);
+  const [providerTokenDrafts, setProviderTokenDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [providerToDelete, setProviderToDelete] =
+    useState<GitLabProviderAdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSection, setSavedSection] = useState<string | null>(null);
-  const [uploading, setUploading] = useState<'logo' | 'logoDark' | 'favicon' | null>(null);
+  const [uploading, setUploading] = useState<
+    "logo" | "logoDark" | "favicon" | null
+  >(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [gitLabProviderError, setGitLabProviderError] = useState<string | null>(null);
-  const [pinnedAppInput, setPinnedAppInput] = useState('');
+  const [gitLabProviderError, setGitLabProviderError] = useState<string | null>(
+    null,
+  );
+  const [pinnedAppInput, setPinnedAppInput] = useState("");
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const logoPreviewUrl = resolveAssetUrl(settings.logoUrl);
   const logoDarkPreviewUrl = resolveAssetUrl(settings.logoDarkUrl);
   const faviconPreviewUrl = resolveAssetUrl(settings.faviconUrl);
-  const topBarPreviewColors = resolveTopBarColors(settings.topBarPreset, settings.topBarColors);
-  const heroTitlePreviewColors = resolveHeroTitleColors(settings.heroTitlePreset, settings.heroTitleColors);
+  const topBarPreviewColors = resolveTopBarColors(
+    settings.topBarPreset,
+    settings.topBarColors,
+  );
+  const heroTitlePreviewColors = resolveHeroTitleColors(
+    settings.heroTitlePreset,
+    settings.heroTitleColors,
+  );
   const visibleSections = new Set(sections);
 
-  const updateBrandColors = (field: 'topBarColors' | 'heroTitleColors', index: number, value: string) => {
-    const nextColors = seedCustomBrandColors(settings[field], field === 'topBarColors' ? topBarPreviewColors : heroTitlePreviewColors);
+  const updateBrandColors = (
+    field: "topBarColors" | "heroTitleColors",
+    index: number,
+    value: string,
+  ) => {
+    const nextColors = seedCustomBrandColors(
+      settings[field],
+      field === "topBarColors" ? topBarPreviewColors : heroTitlePreviewColors,
+    );
     nextColors[index] = value.trim();
     setSettings({ ...settings, [field]: nextColors });
   };
@@ -223,9 +286,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     setSettings({
       ...settings,
       topBarPreset: key,
-      topBarColors: key === CUSTOM_BRANDING_PRESET
-        ? seedCustomBrandColors(settings.topBarColors, topBarPreviewColors)
-        : settings.topBarColors,
+      topBarColors:
+        key === CUSTOM_BRANDING_PRESET
+          ? seedCustomBrandColors(settings.topBarColors, topBarPreviewColors)
+          : settings.topBarColors,
     });
   };
 
@@ -233,37 +297,56 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     setSettings({
       ...settings,
       heroTitlePreset: key,
-      heroTitleColors: key === CUSTOM_BRANDING_PRESET
-        ? seedCustomBrandColors(settings.heroTitleColors, heroTitlePreviewColors)
-        : settings.heroTitleColors,
+      heroTitleColors:
+        key === CUSTOM_BRANDING_PRESET
+          ? seedCustomBrandColors(
+              settings.heroTitleColors,
+              heroTitlePreviewColors,
+            )
+          : settings.heroTitleColors,
     });
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'logoUrl' | 'logoDarkUrl' | 'faviconUrl') => {
+  const handleLogoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "logoUrl" | "logoDarkUrl" | "faviconUrl",
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const key = field === 'logoUrl' ? 'logo' : field === 'logoDarkUrl' ? 'logoDark' : 'favicon';
-    setUploading(key as 'logo' | 'logoDark' | 'favicon');
+    const key =
+      field === "logoUrl"
+        ? "logo"
+        : field === "logoDarkUrl"
+          ? "logoDark"
+          : "favicon";
+    setUploading(key as "logo" | "logoDark" | "favicon");
     setUploadError(null);
     try {
-      const url = await uploadFile('/upload/logo', file);
-      setSettings(prev => ({ ...prev, [field]: url }));
+      const url = await uploadFile("/upload/logo", file);
+      setSettings((prev) => ({ ...prev, [field]: url }));
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload fehlgeschlagen');
+      setUploadError(
+        err instanceof Error ? err.message : "Upload fehlgeschlagen",
+      );
     } finally {
       setUploading(null);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
-  const fetchRepositoryProviders = async (): Promise<GitLabProviderAdminSettings[]> => {
-    const res = await fetchApi('/settings/repository-providers');
+  const fetchRepositoryProviders = async (): Promise<
+    GitLabProviderAdminSettings[]
+  > => {
+    const res = await fetchApi("/settings/repository-providers");
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
-      throw new Error((error as { message?: string }).message || 'Repository-Provider konnten nicht geladen werden.');
+      throw new Error(
+        (error as { message?: string }).message ||
+          "Repository-Provider konnten nicht geladen werden.",
+      );
     }
 
-    const providersData = await res.json() as GitLabProviderAdminSettings[];
+    const providersData = (await res.json()) as GitLabProviderAdminSettings[];
     return Array.isArray(providersData) ? providersData : [];
   };
 
@@ -275,7 +358,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
 
   useEffect(() => {
     Promise.all([
-      fetchApi('/settings').then(res => res.ok ? res.json() : null),
+      fetchApi("/settings").then((res) => (res.ok ? res.json() : null)),
       fetchRepositoryProviders(),
     ])
       .then(([settingsData, providersData]) => {
@@ -284,7 +367,11 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
         setGitLabProviderError(null);
       })
       .catch((error) => {
-        setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnten nicht geladen werden.');
+        setGitLabProviderError(
+          error instanceof Error
+            ? error.message
+            : "Repository-Provider konnten nicht geladen werden.",
+        );
       })
       .finally(() => setLoading(false));
   }, []);
@@ -293,8 +380,8 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     const updated = { ...settings, ...patch };
     setSaving(true);
     try {
-      const res = await fetchApi('/settings', {
-        method: 'PUT',
+      const res = await fetchApi("/settings", {
+        method: "PUT",
         body: JSON.stringify(updated),
       });
       if (res.ok) {
@@ -310,10 +397,17 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     }
   };
 
-  const updateGitLabProvider = (providerKey: string, patch: Partial<GitLabProviderAdminSettings>) => {
-    setGitLabProviders((prev) => prev.map((provider) => (
-      provider.providerKey === providerKey ? { ...provider, ...patch } : provider
-    )));
+  const updateGitLabProvider = (
+    providerKey: string,
+    patch: Partial<GitLabProviderAdminSettings>,
+  ) => {
+    setGitLabProviders((prev) =>
+      prev.map((provider) =>
+        provider.providerKey === providerKey
+          ? { ...provider, ...patch }
+          : provider,
+      ),
+    );
   };
 
   const updateProviderTokenDraft = (providerKey: string, value: string) => {
@@ -329,15 +423,17 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     setSaving(true);
     setGitLabProviderError(null);
     try {
-      const res = await fetchApi('/settings/repository-providers', {
-        method: 'POST',
+      const res = await fetchApi("/settings/repository-providers", {
+        method: "POST",
         body: JSON.stringify({
           providerKey: newProvider.providerKey.trim(),
           providerType: newProvider.providerType,
           label: newProvider.label,
           baseUrl: newProvider.baseUrl.trim(),
           token: newProvider.token,
-          namespaceAllowlist: parseProviderAllowlist(newProvider.namespaceAllowlist),
+          namespaceAllowlist: parseProviderAllowlist(
+            newProvider.namespaceAllowlist,
+          ),
           enabled: newProvider.enabled,
           autoSyncEnabled: newProvider.autoSyncEnabled,
           syncIntervalMinutes: newProvider.syncIntervalMinutes,
@@ -349,45 +445,62 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht erstellt werden.');
+        throw new Error(
+          (data as { message?: string }).message ||
+            "Repository-Provider konnte nicht erstellt werden.",
+        );
       }
 
       await loadRepositoryProviders();
       closeCreateProviderModal();
-      setSavedSection('gitlab-create');
+      setSavedSection("gitlab-create");
       setTimeout(() => setSavedSection(null), 2000);
     } catch (error) {
-      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht erstellt werden.');
+      setGitLabProviderError(
+        error instanceof Error
+          ? error.message
+          : "Repository-Provider konnte nicht erstellt werden.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const saveGitLabProvider = async (provider: GitLabProviderAdminSettings, options?: { clearToken?: boolean }) => {
+  const saveGitLabProvider = async (
+    provider: GitLabProviderAdminSettings,
+    options?: { clearToken?: boolean },
+  ) => {
     setSaving(true);
     setGitLabProviderError(null);
     try {
-      const tokenDraft = providerTokenDrafts[provider.providerKey]?.trim() || '';
-      const res = await fetchApi(`/settings/repository-providers/${provider.providerKey}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          label: provider.label,
-          baseUrl: provider.baseUrl,
-          token: options?.clearToken ? '' : tokenDraft,
-          clearToken: options?.clearToken ?? false,
-          namespaceAllowlist: provider.namespaceAllowlist,
-          enabled: provider.enabled,
-          autoSyncEnabled: provider.autoSyncEnabled,
-          syncIntervalMinutes: provider.syncIntervalMinutes,
-          defaultReadmePath: provider.defaultReadmePath,
-          defaultHelmValuesPath: provider.defaultHelmValuesPath,
-          defaultComposeFilePath: provider.defaultComposeFilePath,
-        }),
-      });
+      const tokenDraft =
+        providerTokenDrafts[provider.providerKey]?.trim() || "";
+      const res = await fetchApi(
+        `/settings/repository-providers/${provider.providerKey}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            label: provider.label,
+            baseUrl: provider.baseUrl,
+            token: options?.clearToken ? "" : tokenDraft,
+            clearToken: options?.clearToken ?? false,
+            namespaceAllowlist: provider.namespaceAllowlist,
+            enabled: provider.enabled,
+            autoSyncEnabled: provider.autoSyncEnabled,
+            syncIntervalMinutes: provider.syncIntervalMinutes,
+            defaultReadmePath: provider.defaultReadmePath,
+            defaultHelmValuesPath: provider.defaultHelmValuesPath,
+            defaultComposeFilePath: provider.defaultComposeFilePath,
+          }),
+        },
+      );
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht gespeichert werden.');
+        throw new Error(
+          (data as { message?: string }).message ||
+            "Repository-Provider konnte nicht gespeichert werden.",
+        );
       }
 
       await loadRepositoryProviders();
@@ -399,7 +512,11 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
       setSavedSection(`gitlab-${provider.providerKey}`);
       setTimeout(() => setSavedSection(null), 2000);
     } catch (error) {
-      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht gespeichert werden.');
+      setGitLabProviderError(
+        error instanceof Error
+          ? error.message
+          : "Repository-Provider konnte nicht gespeichert werden.",
+      );
     } finally {
       setSaving(false);
     }
@@ -411,42 +528,54 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
     setSaving(true);
     setGitLabProviderError(null);
     try {
-      const res = await fetchApi(`/settings/repository-providers/${providerToDelete.providerKey}`, {
-        method: 'DELETE',
-      });
+      const res = await fetchApi(
+        `/settings/repository-providers/${providerToDelete.providerKey}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { message?: string }).message || 'Repository-Provider konnte nicht gelöscht werden.');
+        throw new Error(
+          (data as { message?: string }).message ||
+            "Repository-Provider konnte nicht gelöscht werden.",
+        );
       }
 
       await loadRepositoryProviders();
       setProviderToDelete(null);
-      setSavedSection('gitlab-delete');
+      setSavedSection("gitlab-delete");
       setTimeout(() => setSavedSection(null), 2000);
     } catch (error) {
-      setGitLabProviderError(error instanceof Error ? error.message : 'Repository-Provider konnte nicht gelöscht werden.');
+      setGitLabProviderError(
+        error instanceof Error
+          ? error.message
+          : "Repository-Provider konnte nicht gelöscht werden.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return (
-    <div className="py-20 flex justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-accent" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="py-20 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-6 w-full">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {title}
+        </h1>
         <p className="text-sm text-muted max-w-3xl">{description}</p>
       </div>
 
       <div className="flex flex-col gap-6">
-
-        {visibleSections.has('governance') && (
+        {visibleSections.has("governance") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -454,15 +583,23 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               </h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">App-Einreichungen erlauben</span>
-                  <p className="text-xs text-muted max-w-xs">Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen.</p>
+                  <span className="text-sm font-semibold">
+                    App-Einreichungen erlauben
+                  </span>
+                  <p className="text-xs text-muted max-w-xs">
+                    Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen.
+                  </p>
                 </div>
                 <Switch
                   isSelected={settings.allowAppSubmissions}
-                  onChange={(val) => save({ allowAppSubmissions: val }, 'submissions')}
+                  onChange={(val) =>
+                    save({ allowAppSubmissions: val }, "submissions")
+                  }
                 >
                   <Switch.Content>
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
                   </Switch.Content>
                 </Switch>
               </div>
@@ -470,7 +607,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
           </div>
         )}
 
-        {visibleSections.has('auth') && (
+        {visibleSections.has("auth") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -478,17 +615,27 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               </h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">App Store nur für angemeldete Nutzer</span>
+                  <span className="text-sm font-semibold">
+                    App Store nur für angemeldete Nutzer
+                  </span>
                   <p className="text-xs text-muted max-w-xl">
-                    Blockiert den öffentlichen Zugriff auf Katalog, App-Details und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
+                    Blockiert den öffentlichen Zugriff auf Katalog, App-Details
+                    und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
                   </p>
                 </div>
                 <Switch
                   isSelected={settings.requireAuthForAppStore}
-                  onChange={(val) => save({ requireAuthForAppStore: val }, 'requireAuthForAppStore')}
+                  onChange={(val) =>
+                    save(
+                      { requireAuthForAppStore: val },
+                      "requireAuthForAppStore",
+                    )
+                  }
                 >
                   <Switch.Content>
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
                   </Switch.Content>
                 </Switch>
               </div>
@@ -498,7 +645,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
           </div>
         )}
 
-        {visibleSections.has('startseite') && (
+        {visibleSections.has("startseite") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -509,25 +656,44 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   <TextField
                     className="flex-grow"
                     value={settings.topBannerText}
-                    onChange={(val) => setSettings({ ...settings, topBannerText: val })}
+                    onChange={(val) =>
+                      setSettings({ ...settings, topBannerText: val })
+                    }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Banner Text</Label>
-                    <Input placeholder="Ankuendigung hier eingeben..." className="bg-field-background" />
+                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      Banner Text
+                    </Label>
+                    <Input
+                      placeholder="Ankuendigung hier eingeben..."
+                      className="bg-field-background"
+                    />
                   </TextField>
                   <Button
                     size="sm"
                     className="bg-accent text-white"
                     isDisabled={saving}
-                    onPress={() => save({ topBannerText: settings.topBannerText, topBannerType: settings.topBannerType }, 'banner')}
+                    onPress={() =>
+                      save(
+                        {
+                          topBannerText: settings.topBannerText,
+                          topBannerType: settings.topBannerType,
+                        },
+                        "banner",
+                      )
+                    }
                   >
-                    {savedSection === 'banner' ? 'Gespeichert ✓' : 'Speichern'}
+                    {savedSection === "banner" ? "Gespeichert ✓" : "Speichern"}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted">Typ</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                    Typ
+                  </span>
                   <Select
-                    selectedKey={settings.topBannerType || 'info'}
-                    onSelectionChange={(key) => setSettings({ ...settings, topBannerType: String(key) })}
+                    selectedKey={settings.topBannerType || "info"}
+                    onSelectionChange={(key) =>
+                      setSettings({ ...settings, topBannerType: String(key) })
+                    }
                     className="w-40"
                     aria-label="Banner-Typ"
                   >
@@ -544,13 +710,19 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   </Select>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted">Status</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                    Status
+                  </span>
                   <Switch
                     isSelected={settings.showTopBanner}
-                    onChange={(val) => save({ showTopBanner: val }, 'bannerToggle')}
+                    onChange={(val) =>
+                      save({ showTopBanner: val }, "bannerToggle")
+                    }
                   >
                     <Switch.Content>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                     </Switch.Content>
                   </Switch>
                 </div>
@@ -564,45 +736,81 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
                   value={settings.heroBadge}
-                  onChange={(val) => setSettings({ ...settings, heroBadge: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, heroBadge: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Hero Badge</Label>
-                  <Input placeholder="Open Source. Community-getrieben." className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Hero Badge
+                  </Label>
+                  <Input
+                    placeholder="Open Source. Community-getrieben."
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <TextField
                   value={settings.heroTitle}
-                  onChange={(val) => setSettings({ ...settings, heroTitle: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, heroTitle: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Hero Titel</Label>
-                  <Input placeholder="Der App Store fuer alle." className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Hero Titel
+                  </Label>
+                  <Input
+                    placeholder="Der App Store fuer alle."
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <TextField
                   className="md:col-span-2"
                   value={settings.heroSubtitle}
-                  onChange={(val) => setSettings({ ...settings, heroSubtitle: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, heroSubtitle: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Hero Untertitel</Label>
-                  <Input placeholder="Entdecken Sie Open-Source-Apps, cloud-native Loesungen..." className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Hero Untertitel
+                  </Label>
+                  <Input
+                    placeholder="Entdecken Sie Open-Source-Apps, cloud-native Loesungen..."
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <TextField
                   className="md:col-span-2"
                   value={settings.footerText}
-                  onChange={(val) => setSettings({ ...settings, footerText: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, footerText: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Footer Text</Label>
-                  <Input placeholder="Die Plattform fuer moderne, souveraene Software-Loesungen..." className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Footer Text
+                  </Label>
+                  <Input
+                    placeholder="Die Plattform fuer moderne, souveraene Software-Loesungen..."
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <div className="md:col-span-2 flex items-center justify-between border-t border-border pt-4 mt-1">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">Farbbalken oben anzeigen</span>
-                    <p className="text-xs text-muted">Zeigt einen schmalen Farbbalken am oberen Seitenrand.</p>
+                    <span className="text-sm font-semibold">
+                      Farbbalken oben anzeigen
+                    </span>
+                    <p className="text-xs text-muted">
+                      Zeigt einen schmalen Farbbalken am oberen Seitenrand.
+                    </p>
                   </div>
                   <Switch
                     isSelected={settings.showFlagBar}
-                    onChange={(val) => setSettings({ ...settings, showFlagBar: val })}
+                    onChange={(val) =>
+                      setSettings({ ...settings, showFlagBar: val })
+                    }
                   >
                     <Switch.Content>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                     </Switch.Content>
                   </Switch>
                 </div>
@@ -610,9 +818,13 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
                     <Select
                       selectedKey={settings.topBarPreset}
-                      onSelectionChange={(key) => handleTopBarPresetChange(String(key))}
+                      onSelectionChange={(key) =>
+                        handleTopBarPresetChange(String(key))
+                      }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Preset fuer den oberen Balken</Label>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                        Preset fuer den oberen Balken
+                      </Label>
                       <Select.Trigger>
                         <Select.Value />
                         <Select.Indicator />
@@ -620,10 +832,16 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       <Select.Popover>
                         <ListBox>
                           {TOP_BAR_PRESET_OPTIONS.map((option) => (
-                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                            <ListBox.Item
+                              key={option.id}
+                              id={option.id}
+                              textValue={option.label}
+                            >
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span>{option.label}</span>
-                                <span className="text-xs text-muted">{option.description}</span>
+                                <span className="text-xs text-muted">
+                                  {option.description}
+                                </span>
                               </div>
                               <ListBox.ItemIndicator />
                             </ListBox.Item>
@@ -632,22 +850,37 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       </Select.Popover>
                     </Select>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Vorschau</span>
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                        Vorschau
+                      </span>
                       <PalettePreview colors={topBarPreviewColors} />
                     </div>
                   </div>
                   {settings.topBarPreset === CUSTOM_BRANDING_PRESET && (
                     <div className="grid gap-3 md:grid-cols-3">
                       {topBarPreviewColors.map((color, index) => (
-                        <div key={`top-bar-color-${index}`} className="flex items-end gap-2">
-                          <div className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border" style={{ backgroundColor: color || 'transparent' }} />
+                        <div
+                          key={`top-bar-color-${index}`}
+                          className="flex items-end gap-2"
+                        >
+                          <div
+                            className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border"
+                            style={{ backgroundColor: color || "transparent" }}
+                          />
                           <TextField
                             className="flex-1"
-                            value={settings.topBarColors[index] || ''}
-                            onChange={(val) => updateBrandColors('topBarColors', index, val)}
+                            value={settings.topBarColors[index] || ""}
+                            onChange={(val) =>
+                              updateBrandColors("topBarColors", index, val)
+                            }
                           >
-                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Balkenfarbe {index + 1}</Label>
-                            <Input placeholder="#004B76" className="bg-field-background font-mono text-sm" />
+                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                              Balkenfarbe {index + 1}
+                            </Label>
+                            <Input
+                              placeholder="#004B76"
+                              className="bg-field-background font-mono text-sm"
+                            />
                           </TextField>
                         </div>
                       ))}
@@ -658,9 +891,13 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
                     <Select
                       selectedKey={settings.heroTitlePreset}
-                      onSelectionChange={(key) => handleHeroTitlePresetChange(String(key))}
+                      onSelectionChange={(key) =>
+                        handleHeroTitlePresetChange(String(key))
+                      }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Preset fuer die Hero-Titel-Farben</Label>
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                        Preset fuer die Hero-Titel-Farben
+                      </Label>
                       <Select.Trigger>
                         <Select.Value />
                         <Select.Indicator />
@@ -668,10 +905,16 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       <Select.Popover>
                         <ListBox>
                           {HERO_TITLE_PRESET_OPTIONS.map((option) => (
-                            <ListBox.Item key={option.id} id={option.id} textValue={option.label}>
+                            <ListBox.Item
+                              key={option.id}
+                              id={option.id}
+                              textValue={option.label}
+                            >
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span>{option.label}</span>
-                                <span className="text-xs text-muted">{option.description}</span>
+                                <span className="text-xs text-muted">
+                                  {option.description}
+                                </span>
                               </div>
                               <ListBox.ItemIndicator />
                             </ListBox.Item>
@@ -680,13 +923,17 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       </Select.Popover>
                     </Select>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Vorschau</span>
+                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                        Vorschau
+                      </span>
                       <div className="rounded-xl border border-border/70 bg-surface px-4 py-3">
                         <p
                           className="text-lg font-extrabold tracking-tight bg-clip-text text-transparent"
-                          style={{ backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(', ')})` }}
+                          style={{
+                            backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(", ")})`,
+                          }}
                         >
-                          {settings.heroTitle || 'Der App Store fuer alle.'}
+                          {settings.heroTitle || "Der App Store fuer alle."}
                         </p>
                       </div>
                     </div>
@@ -694,15 +941,28 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   {settings.heroTitlePreset === CUSTOM_BRANDING_PRESET && (
                     <div className="grid gap-3 md:grid-cols-3">
                       {heroTitlePreviewColors.map((color, index) => (
-                        <div key={`hero-title-color-${index}`} className="flex items-end gap-2">
-                          <div className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border" style={{ backgroundColor: color || 'transparent' }} />
+                        <div
+                          key={`hero-title-color-${index}`}
+                          className="flex items-end gap-2"
+                        >
+                          <div
+                            className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border"
+                            style={{ backgroundColor: color || "transparent" }}
+                          />
                           <TextField
                             className="flex-1"
-                            value={settings.heroTitleColors[index] || ''}
-                            onChange={(val) => updateBrandColors('heroTitleColors', index, val)}
+                            value={settings.heroTitleColors[index] || ""}
+                            onChange={(val) =>
+                              updateBrandColors("heroTitleColors", index, val)
+                            }
                           >
-                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Titelfarbe {index + 1}</Label>
-                            <Input placeholder="#004B76" className="bg-field-background font-mono text-sm" />
+                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                              Titelfarbe {index + 1}
+                            </Label>
+                            <Input
+                              placeholder="#004B76"
+                              className="bg-field-background font-mono text-sm"
+                            />
                           </TextField>
                         </div>
                       ))}
@@ -714,26 +974,33 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving}
-                  onPress={() => save({
-                    heroBadge: settings.heroBadge,
-                    heroTitle: settings.heroTitle,
-                    heroTitlePreset: settings.heroTitlePreset,
-                    heroTitleColors: settings.heroTitleColors,
-                    heroSubtitle: settings.heroSubtitle,
-                    footerText: settings.footerText,
-                    showFlagBar: settings.showFlagBar,
-                    topBarPreset: settings.topBarPreset,
-                    topBarColors: settings.topBarColors,
-                  }, 'homepage')}
+                  onPress={() =>
+                    save(
+                      {
+                        heroBadge: settings.heroBadge,
+                        heroTitle: settings.heroTitle,
+                        heroTitlePreset: settings.heroTitlePreset,
+                        heroTitleColors: settings.heroTitleColors,
+                        heroSubtitle: settings.heroSubtitle,
+                        footerText: settings.footerText,
+                        showFlagBar: settings.showFlagBar,
+                        topBarPreset: settings.topBarPreset,
+                        topBarColors: settings.topBarColors,
+                      },
+                      "homepage",
+                    )
+                  }
                 >
-                  {savedSection === 'homepage' ? 'Gespeichert ✓' : 'Startseite speichern'}
+                  {savedSection === "homepage"
+                    ? "Gespeichert ✓"
+                    : "Startseite speichern"}
                 </Button>
               </div>
             </Surface>
           </div>
         )}
 
-        {visibleSections.has('branding') && (
+        {visibleSections.has("branding") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -742,115 +1009,248 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
                   value={settings.storeName}
-                  onChange={(val) => setSettings({ ...settings, storeName: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, storeName: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Store Name</Label>
-                  <Input placeholder="JustApps" className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Store Name
+                  </Label>
+                  <Input
+                    placeholder="JustApps"
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <TextField
                   value={settings.accentColor}
-                  onChange={(val) => setSettings({ ...settings, accentColor: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, accentColor: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Akzentfarbe (CSS-Wert)</Label>
-                  <Input placeholder="#004B76 oder oklch(0.42 0.12 245)" className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Akzentfarbe (CSS-Wert)
+                  </Label>
+                  <Input
+                    placeholder="#004B76 oder oklch(0.42 0.12 245)"
+                    className="bg-field-background"
+                  />
                 </TextField>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Logo (Hell-Modus)</Label>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                    Logo (Hell-Modus)
+                  </Label>
                   <div className="flex gap-2 items-center">
                     {logoPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logoPreviewUrl} alt="Logo Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
+                      <img
+                        src={logoPreviewUrl}
+                        alt="Logo Preview"
+                        className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0"
+                      />
                     )}
-                    <TextField value={settings.logoUrl} onChange={(val) => setSettings({ ...settings, logoUrl: val })} className="flex-1">
-                      <Input placeholder="https://example.com/logo.png" className="bg-field-background" />
+                    <TextField
+                      value={settings.logoUrl}
+                      onChange={(val) =>
+                        setSettings({ ...settings, logoUrl: val })
+                      }
+                      className="flex-1"
+                    >
+                      <Input
+                        placeholder="https://example.com/logo.png"
+                        className="bg-field-background"
+                      />
                     </TextField>
-                    <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e, 'logoUrl')} />
-                    <Button size="sm" variant="secondary" className="gap-1.5 shrink-0" isDisabled={uploading === 'logo'} onPress={() => logoInputRef.current?.click()}>
-                      {uploading === 'logo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {uploading === 'logo' ? 'Laedt...' : 'Upload'}
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleLogoUpload(e, "logoUrl")}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5 shrink-0"
+                      isDisabled={uploading === "logo"}
+                      onPress={() => logoInputRef.current?.click()}
+                    >
+                      {uploading === "logo" ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {uploading === "logo" ? "Laedt..." : "Upload"}
                     </Button>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Logo (Dunkel-Modus)</Label>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                    Logo (Dunkel-Modus)
+                  </Label>
                   <div className="flex gap-2 items-center">
                     {logoDarkPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logoDarkPreviewUrl} alt="Logo Dark Preview" className="h-8 w-8 rounded object-contain border border-border bg-[#1a1a1a] shrink-0" />
+                      <img
+                        src={logoDarkPreviewUrl}
+                        alt="Logo Dark Preview"
+                        className="h-8 w-8 rounded object-contain border border-border bg-[#1a1a1a] shrink-0"
+                      />
                     )}
-                    <TextField value={settings.logoDarkUrl} onChange={(val) => setSettings({ ...settings, logoDarkUrl: val })} className="flex-1">
-                      <Input placeholder="https://example.com/logo-dark.png" className="bg-field-background" />
+                    <TextField
+                      value={settings.logoDarkUrl}
+                      onChange={(val) =>
+                        setSettings({ ...settings, logoDarkUrl: val })
+                      }
+                      className="flex-1"
+                    >
+                      <Input
+                        placeholder="https://example.com/logo-dark.png"
+                        className="bg-field-background"
+                      />
                     </TextField>
-                    <input ref={logoDarkInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e, 'logoDarkUrl')} />
-                    <Button size="sm" variant="secondary" className="gap-1.5 shrink-0" isDisabled={uploading === 'logoDark'} onPress={() => logoDarkInputRef.current?.click()}>
-                      {uploading === 'logoDark' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {uploading === 'logoDark' ? 'Laedt...' : 'Upload'}
+                    <input
+                      ref={logoDarkInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleLogoUpload(e, "logoDarkUrl")}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5 shrink-0"
+                      isDisabled={uploading === "logoDark"}
+                      onPress={() => logoDarkInputRef.current?.click()}
+                    >
+                      {uploading === "logoDark" ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {uploading === "logoDark" ? "Laedt..." : "Upload"}
                     </Button>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Favicon</Label>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                    Favicon
+                  </Label>
                   <div className="flex gap-2 items-center">
                     {faviconPreviewUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={faviconPreviewUrl} alt="Favicon Preview" className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0" />
+                      <img
+                        src={faviconPreviewUrl}
+                        alt="Favicon Preview"
+                        className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0"
+                      />
                     )}
-                    <TextField value={settings.faviconUrl} onChange={(val) => setSettings({ ...settings, faviconUrl: val })} className="flex-1">
-                      <Input placeholder="https://example.com/favicon.ico" className="bg-field-background" />
+                    <TextField
+                      value={settings.faviconUrl}
+                      onChange={(val) =>
+                        setSettings({ ...settings, faviconUrl: val })
+                      }
+                      className="flex-1"
+                    >
+                      <Input
+                        placeholder="https://example.com/favicon.ico"
+                        className="bg-field-background"
+                      />
                     </TextField>
-                    <input ref={faviconInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e, 'faviconUrl')} />
-                    <Button size="sm" variant="secondary" className="gap-1.5 shrink-0" isDisabled={uploading === 'favicon'} onPress={() => faviconInputRef.current?.click()}>
-                      {uploading === 'favicon' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      {uploading === 'favicon' ? 'Laedt...' : 'Upload'}
+                    <input
+                      ref={faviconInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleLogoUpload(e, "faviconUrl")}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5 shrink-0"
+                      isDisabled={uploading === "favicon"}
+                      onPress={() => faviconInputRef.current?.click()}
+                    >
+                      {uploading === "favicon" ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {uploading === "favicon" ? "Laedt..." : "Upload"}
                     </Button>
                   </div>
                 </div>
                 <TextField
                   className="md:col-span-2"
                   value={settings.storeDescription}
-                  onChange={(val) => setSettings({ ...settings, storeDescription: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, storeDescription: val })
+                  }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Store Beschreibung (SEO / Metadata)</Label>
-                  <Input placeholder="Zentraler App Store fuer Softwareloesungen..." className="bg-field-background" />
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Store Beschreibung (SEO / Metadata)
+                  </Label>
+                  <Input
+                    placeholder="Zentraler App Store fuer Softwareloesungen..."
+                    className="bg-field-background"
+                  />
                 </TextField>
               </div>
               {uploadError && (
-                <p className="mt-3 text-xs text-danger font-medium">{uploadError}</p>
+                <p className="mt-3 text-xs text-danger font-medium">
+                  {uploadError}
+                </p>
               )}
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving || uploading !== null}
-                  onPress={() => save({
-                    storeName: settings.storeName,
-                    storeDescription: settings.storeDescription,
-                    logoUrl: settings.logoUrl,
-                    logoDarkUrl: settings.logoDarkUrl,
-                    faviconUrl: settings.faviconUrl,
-                    accentColor: settings.accentColor,
-                  }, 'branding')}
+                  onPress={() =>
+                    save(
+                      {
+                        storeName: settings.storeName,
+                        storeDescription: settings.storeDescription,
+                        logoUrl: settings.logoUrl,
+                        logoDarkUrl: settings.logoDarkUrl,
+                        faviconUrl: settings.faviconUrl,
+                        accentColor: settings.accentColor,
+                      },
+                      "branding",
+                    )
+                  }
                 >
-                  {savedSection === 'branding' ? 'Gespeichert ✓' : 'Erscheinungsbild speichern'}
+                  {savedSection === "branding"
+                    ? "Gespeichert ✓"
+                    : "Erscheinungsbild speichern"}
                 </Button>
               </div>
             </Surface>
           </div>
         )}
 
-        {visibleSections.has('inhalte') && (
+        {visibleSections.has("inhalte") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-accent" /> Fachliche Details — Felder
+                <Layers className="w-4 h-4 text-accent" /> Fachliche Details —
+                Felder
               </h3>
-              <p className="text-xs text-muted mb-5">Definieren Sie, welche Felder im Tab &quot;Fachliche Details&quot; einer App angezeigt und bearbeitet werden koennen. Reihenfolge, Label und Schluessel sind frei konfigurierbar.</p>
+              <p className="text-xs text-muted mb-5">
+                Definieren Sie, welche Felder im Tab &quot;Fachliche
+                Details&quot; einer App angezeigt und bearbeitet werden koennen.
+                Reihenfolge, Label und Schluessel sind frei konfigurierbar.
+              </p>
 
               <div className="flex flex-col gap-2 mb-4">
                 {settings.detailFields.map((field, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5"
+                  >
                     <div className="flex flex-col gap-1 flex-1 md:flex-row md:gap-3">
                       <div className="flex flex-col gap-1 shrink-0">
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Icon</Label>
+                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                          Icon
+                        </Label>
                         <div className="flex flex-wrap gap-1 p-1.5 bg-field-background border border-border rounded-lg w-full md:w-56 max-h-24 overflow-y-auto">
                           {AVAILABLE_ICONS.map(({ name, component }) => (
                             <Tooltip key={name} delay={0}>
@@ -859,10 +1259,16 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                                   type="button"
                                   onClick={() => {
                                     const fields = [...settings.detailFields];
-                                    fields[idx] = { ...fields[idx], icon: name };
-                                    setSettings({ ...settings, detailFields: fields });
+                                    fields[idx] = {
+                                      ...fields[idx],
+                                      icon: name,
+                                    };
+                                    setSettings({
+                                      ...settings,
+                                      detailFields: fields,
+                                    });
                                   }}
-                                  className={`p-1 rounded transition-colors ${field.icon === name ? 'bg-accent text-white' : 'text-muted hover:bg-surface-secondary hover:text-foreground'}`}
+                                  className={`p-1 rounded transition-colors ${field.icon === name ? "bg-accent text-white" : "text-muted hover:bg-surface-secondary hover:text-foreground"}`}
                                 >
                                   {component}
                                 </button>
@@ -881,19 +1287,32 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             setSettings({ ...settings, detailFields: fields });
                           }}
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Bezeichnung</Label>
-                          <Input placeholder="z.B. Themenfeld" className="bg-field-background" />
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                            Bezeichnung
+                          </Label>
+                          <Input
+                            placeholder="z.B. Themenfeld"
+                            className="bg-field-background"
+                          />
                         </TextField>
                         <TextField
                           value={field.key}
                           onChange={(val) => {
                             const fields = [...settings.detailFields];
-                            fields[idx] = { ...fields[idx], key: val.toLowerCase().replace(/\s+/g, '_') };
+                            fields[idx] = {
+                              ...fields[idx],
+                              key: val.toLowerCase().replace(/\s+/g, "_"),
+                            };
                             setSettings({ ...settings, detailFields: fields });
                           }}
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Schluessel (intern)</Label>
-                          <Input placeholder="z.B. focus" className="bg-field-background font-mono text-sm" />
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                            Schluessel (intern)
+                          </Label>
+                          <Input
+                            placeholder="z.B. focus"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
                       </div>
                     </div>
@@ -905,7 +1324,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                         isDisabled={idx === 0}
                         onPress={() => {
                           const fields = [...settings.detailFields];
-                          [fields[idx - 1], fields[idx]] = [fields[idx], fields[idx - 1]];
+                          [fields[idx - 1], fields[idx]] = [
+                            fields[idx],
+                            fields[idx - 1],
+                          ];
                           setSettings({ ...settings, detailFields: fields });
                         }}
                       >
@@ -918,7 +1340,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                         isDisabled={idx === settings.detailFields.length - 1}
                         onPress={() => {
                           const fields = [...settings.detailFields];
-                          [fields[idx], fields[idx + 1]] = [fields[idx + 1], fields[idx]];
+                          [fields[idx], fields[idx + 1]] = [
+                            fields[idx + 1],
+                            fields[idx],
+                          ];
                           setSettings({ ...settings, detailFields: fields });
                         }}
                       >
@@ -930,7 +1355,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       variant="secondary"
                       className="h-9 w-9 p-0 text-danger shrink-0"
                       onPress={() => {
-                        const fields = settings.detailFields.filter((_, i) => i !== idx);
+                        const fields = settings.detailFields.filter(
+                          (_, i) => i !== idx,
+                        );
                         setSettings({ ...settings, detailFields: fields });
                       }}
                     >
@@ -946,7 +1373,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   variant="secondary"
                   className="gap-1.5"
                   onPress={() => {
-                    const fields = [...settings.detailFields, { key: '', label: '' }];
+                    const fields = [
+                      ...settings.detailFields,
+                      { key: "", label: "" },
+                    ];
                     setSettings({ ...settings, detailFields: fields });
                   }}
                 >
@@ -955,9 +1385,16 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving}
-                  onPress={() => save({ detailFields: settings.detailFields }, 'detailFields')}
+                  onPress={() =>
+                    save(
+                      { detailFields: settings.detailFields },
+                      "detailFields",
+                    )
+                  }
                 >
-                  {savedSection === 'detailFields' ? 'Gespeichert ✓' : 'Felder speichern'}
+                  {savedSection === "detailFields"
+                    ? "Gespeichert ✓"
+                    : "Felder speichern"}
                 </Button>
               </div>
             </Surface>
@@ -966,11 +1403,17 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
                 <ExternalLink className="w-4 h-4 text-accent" /> Footer — Links
               </h3>
-              <p className="text-xs text-muted mb-5">Konfigurieren Sie die Links im Footer (z.B. Impressum, Datenschutz). Ohne Eintraege werden die Standardlinks angezeigt.</p>
+              <p className="text-xs text-muted mb-5">
+                Konfigurieren Sie die Links im Footer (z.B. Impressum,
+                Datenschutz). Ohne Eintraege werden die Standardlinks angezeigt.
+              </p>
 
               <div className="flex flex-col gap-2 mb-4">
                 {settings.footerLinks.map((link, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5"
+                  >
                     <div className="flex flex-col gap-3 flex-1 md:flex-row md:gap-3">
                       <TextField
                         className="flex-1"
@@ -981,8 +1424,13 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                           setSettings({ ...settings, footerLinks: links });
                         }}
                       >
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">Bezeichnung</Label>
-                        <Input placeholder="z.B. Impressum" className="bg-field-background" />
+                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                          Bezeichnung
+                        </Label>
+                        <Input
+                          placeholder="z.B. Impressum"
+                          className="bg-field-background"
+                        />
                       </TextField>
                       <TextField
                         className="flex-1"
@@ -993,8 +1441,13 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                           setSettings({ ...settings, footerLinks: links });
                         }}
                       >
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">URL</Label>
-                        <Input placeholder="https://example.com/impressum" className="bg-field-background font-mono text-sm" />
+                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                          URL
+                        </Label>
+                        <Input
+                          placeholder="https://example.com/impressum"
+                          className="bg-field-background font-mono text-sm"
+                        />
                       </TextField>
                     </div>
                     <Button
@@ -1002,7 +1455,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       variant="secondary"
                       className="h-9 w-9 p-0 text-danger shrink-0 self-end mb-0.5"
                       onPress={() => {
-                        const links = settings.footerLinks.filter((_, i) => i !== idx);
+                        const links = settings.footerLinks.filter(
+                          (_, i) => i !== idx,
+                        );
                         setSettings({ ...settings, footerLinks: links });
                       }}
                     >
@@ -1018,7 +1473,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   variant="secondary"
                   className="gap-1.5"
                   onPress={() => {
-                    const links = [...settings.footerLinks, { label: '', url: '' }];
+                    const links = [
+                      ...settings.footerLinks,
+                      { label: "", url: "" },
+                    ];
                     setSettings({ ...settings, footerLinks: links });
                   }}
                 >
@@ -1027,61 +1485,101 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving}
-                  onPress={() => save({ footerLinks: settings.footerLinks }, 'footerLinks')}
+                  onPress={() =>
+                    save({ footerLinks: settings.footerLinks }, "footerLinks")
+                  }
                 >
-                  {savedSection === 'footerLinks' ? 'Gespeichert ✓' : 'Links speichern'}
+                  {savedSection === "footerLinks"
+                    ? "Gespeichert ✓"
+                    : "Links speichern"}
                 </Button>
               </div>
             </Surface>
           </div>
         )}
 
-        {visibleSections.has('apps') && (
+        {visibleSections.has("apps") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
                 <SortAsc className="w-4 h-4 text-accent" /> App-Sortierung
               </h3>
-              <p className="text-xs text-muted mb-5">Legen Sie fest, nach welchem Kriterium Apps standardmaessig sortiert werden und welche Apps immer oben erscheinen.</p>
+              <p className="text-xs text-muted mb-5">
+                Legen Sie fest, nach welchem Kriterium Apps standardmaessig
+                sortiert werden und welche Apps immer oben erscheinen.
+              </p>
 
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
                   <Select
                     className="flex-1"
                     selectedKey={settings.appSortField}
-                    onSelectionChange={(key) => setSettings({ ...settings, appSortField: String(key) })}
+                    onSelectionChange={(key) =>
+                      setSettings({ ...settings, appSortField: String(key) })
+                    }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Sortierfeld</Label>
+                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                      Sortierfeld
+                    </Label>
                     <Select.Trigger>
                       <Select.Value />
                       <Select.Indicator />
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        <ListBox.Item id="name" textValue="Name (A–Z)">Name (A–Z)<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="rating_avg" textValue="Bewertung">Bewertung<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="updated_at" textValue="Zuletzt aktualisiert">Zuletzt aktualisiert<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="status" textValue="Status">Status<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="name" textValue="Name (A–Z)">
+                          Name (A–Z)
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                        <ListBox.Item id="rating_avg" textValue="Bewertung">
+                          Bewertung
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                        <ListBox.Item
+                          id="updated_at"
+                          textValue="Zuletzt aktualisiert"
+                        >
+                          Zuletzt aktualisiert
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                        <ListBox.Item id="status" textValue="Status">
+                          Status
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
                       </ListBox>
                     </Select.Popover>
                   </Select>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Richtung</Label>
+                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                      Richtung
+                    </Label>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant={settings.appSortDirection === 'asc' ? 'primary' : 'secondary'}
-                        className={`gap-1.5 ${settings.appSortDirection === 'asc' ? 'bg-accent text-white' : ''}`}
-                        onPress={() => setSettings({ ...settings, appSortDirection: 'asc' })}
+                        variant={
+                          settings.appSortDirection === "asc"
+                            ? "primary"
+                            : "secondary"
+                        }
+                        className={`gap-1.5 ${settings.appSortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                        onPress={() =>
+                          setSettings({ ...settings, appSortDirection: "asc" })
+                        }
                       >
                         <SortAsc className="w-3.5 h-3.5" /> Aufsteigend
                       </Button>
                       <Button
                         size="sm"
-                        variant={settings.appSortDirection === 'desc' ? 'primary' : 'secondary'}
-                        className={`gap-1.5 ${settings.appSortDirection === 'desc' ? 'bg-accent text-white' : ''}`}
-                        onPress={() => setSettings({ ...settings, appSortDirection: 'desc' })}
+                        variant={
+                          settings.appSortDirection === "desc"
+                            ? "primary"
+                            : "secondary"
+                        }
+                        className={`gap-1.5 ${settings.appSortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                        onPress={() =>
+                          setSettings({ ...settings, appSortDirection: "desc" })
+                        }
                       >
                         <SortDesc className="w-3.5 h-3.5" /> Absteigend
                       </Button>
@@ -1092,18 +1590,31 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <div className="border-t border-border pt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Pin className="w-3.5 h-3.5 text-accent" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-muted">Angepinnte Apps</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                      Angepinnte Apps
+                    </span>
                   </div>
-                  <p className="text-xs text-muted mb-3">Apps-IDs, die unabhaengig von der Sortierung immer an erster Stelle angezeigt werden. Reihenfolge entspricht der Anzeigereihenfolge.</p>
+                  <p className="text-xs text-muted mb-3">
+                    Apps-IDs, die unabhaengig von der Sortierung immer an erster
+                    Stelle angezeigt werden. Reihenfolge entspricht der
+                    Anzeigereihenfolge.
+                  </p>
 
                   <div className="flex flex-col gap-2 mb-3">
                     {settings.pinnedApps.length === 0 && (
-                      <p className="text-xs text-muted/60 italic">Keine Apps angepinnt.</p>
+                      <p className="text-xs text-muted/60 italic">
+                        Keine Apps angepinnt.
+                      </p>
                     )}
                     {settings.pinnedApps.map((appId, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-surface/50 border border-border rounded-lg px-3 py-2">
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 bg-surface/50 border border-border rounded-lg px-3 py-2"
+                      >
                         <Pin className="w-3 h-3 text-accent shrink-0" />
-                        <span className="flex-1 text-sm font-mono truncate">{appId}</span>
+                        <span className="flex-1 text-sm font-mono truncate">
+                          {appId}
+                        </span>
                         <div className="flex gap-1 shrink-0">
                           <Button
                             size="sm"
@@ -1112,7 +1623,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             isDisabled={idx === 0}
                             onPress={() => {
                               const pins = [...settings.pinnedApps];
-                              [pins[idx - 1], pins[idx]] = [pins[idx], pins[idx - 1]];
+                              [pins[idx - 1], pins[idx]] = [
+                                pins[idx],
+                                pins[idx - 1],
+                              ];
                               setSettings({ ...settings, pinnedApps: pins });
                             }}
                           >
@@ -1125,7 +1639,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             isDisabled={idx === settings.pinnedApps.length - 1}
                             onPress={() => {
                               const pins = [...settings.pinnedApps];
-                              [pins[idx], pins[idx + 1]] = [pins[idx + 1], pins[idx]];
+                              [pins[idx], pins[idx + 1]] = [
+                                pins[idx + 1],
+                                pins[idx],
+                              ];
                               setSettings({ ...settings, pinnedApps: pins });
                             }}
                           >
@@ -1136,7 +1653,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             variant="secondary"
                             className="h-6 w-6 p-0 text-danger"
                             onPress={() => {
-                              const pins = settings.pinnedApps.filter((_, i) => i !== idx);
+                              const pins = settings.pinnedApps.filter(
+                                (_, i) => i !== idx,
+                              );
                               setSettings({ ...settings, pinnedApps: pins });
                             }}
                           >
@@ -1153,18 +1672,27 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       value={pinnedAppInput}
                       onChange={(val) => setPinnedAppInput(val)}
                     >
-                      <Input placeholder="App-ID eingeben (z.B. nextcloud)" className="bg-field-background font-mono text-sm" />
+                      <Input
+                        placeholder="App-ID eingeben (z.B. nextcloud)"
+                        className="bg-field-background font-mono text-sm"
+                      />
                     </TextField>
                     <Button
                       size="sm"
                       variant="secondary"
                       className="gap-1.5 shrink-0"
-                      isDisabled={!pinnedAppInput.trim() || settings.pinnedApps.includes(pinnedAppInput.trim())}
+                      isDisabled={
+                        !pinnedAppInput.trim() ||
+                        settings.pinnedApps.includes(pinnedAppInput.trim())
+                      }
                       onPress={() => {
                         const id = pinnedAppInput.trim();
                         if (id && !settings.pinnedApps.includes(id)) {
-                          setSettings({ ...settings, pinnedApps: [...settings.pinnedApps, id] });
-                          setPinnedAppInput('');
+                          setSettings({
+                            ...settings,
+                            pinnedApps: [...settings.pinnedApps, id],
+                          });
+                          setPinnedAppInput("");
                         }
                       }}
                     >
@@ -1178,35 +1706,55 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving}
-                  onPress={() => save({
-                    appSortField: settings.appSortField,
-                    appSortDirection: settings.appSortDirection,
-                    pinnedApps: settings.pinnedApps,
-                  }, 'sort')}
+                  onPress={() =>
+                    save(
+                      {
+                        appSortField: settings.appSortField,
+                        appSortDirection: settings.appSortDirection,
+                        pinnedApps: settings.pinnedApps,
+                      },
+                      "sort",
+                    )
+                  }
                 >
-                  {savedSection === 'sort' ? 'Gespeichert ✓' : 'Sortierung speichern'}
+                  {savedSection === "sort"
+                    ? "Gespeichert ✓"
+                    : "Sortierung speichern"}
                 </Button>
               </div>
             </Surface>
 
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-accent" /> Link-Status-Prüfung
+                <ExternalLink className="w-4 h-4 text-accent" />{" "}
+                Link-Status-Prüfung
               </h3>
               <p className="text-xs text-muted mb-5">
-                Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links serverseitig geprüft und ein farbiger Status-Punkt angezeigt. Einzelne Apps können die Prüfung über ihre eigene Einstellung deaktivieren (z.B. bei Links hinter Authentifizierung).
+                Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links
+                serverseitig geprüft und ein farbiger Status-Punkt angezeigt.
+                Einzelne Apps können die Prüfung über ihre eigene Einstellung
+                deaktivieren (z.B. bei Links hinter Authentifizierung).
               </p>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">Status-Prüfung aktivieren</span>
-                  <p className="text-xs text-muted max-w-xs">Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links an.</p>
+                  <span className="text-sm font-semibold">
+                    Status-Prüfung aktivieren
+                  </span>
+                  <p className="text-xs text-muted max-w-xs">
+                    Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links
+                    an.
+                  </p>
                 </div>
                 <Switch
                   isSelected={settings.enableLinkProbing}
-                  onChange={(val) => setSettings({ ...settings, enableLinkProbing: val })}
+                  onChange={(val) =>
+                    setSettings({ ...settings, enableLinkProbing: val })
+                  }
                 >
                   <Switch.Content>
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
                   </Switch.Content>
                 </Switch>
               </div>
@@ -1214,23 +1762,33 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <Button
                   className="bg-accent text-white"
                   isDisabled={saving}
-                  onPress={() => save({ enableLinkProbing: settings.enableLinkProbing }, 'linkProbing')}
+                  onPress={() =>
+                    save(
+                      { enableLinkProbing: settings.enableLinkProbing },
+                      "linkProbing",
+                    )
+                  }
                 >
-                  {savedSection === 'linkProbing' ? 'Gespeichert ✓' : 'Speichern'}
+                  {savedSection === "linkProbing"
+                    ? "Gespeichert ✓"
+                    : "Speichern"}
                 </Button>
               </div>
             </Surface>
           </div>
         )}
 
-        {visibleSections.has('integrationen') && (
+        {visibleSections.has("integrationen") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-accent" /> Repository-Provider
+                <GitBranch className="w-4 h-4 text-accent" />{" "}
+                Repository-Provider
               </h3>
               <p className="text-xs text-muted mb-5">
-                Verwalten Sie hier Repository-Provider vollständig in der Datenbank. Tokens werden verschlüsselt gespeichert und nach dem Speichern nicht mehr angezeigt.
+                Verwalten Sie hier Repository-Provider vollständig in der
+                Datenbank. Tokens werden verschlüsselt gespeichert und nach dem
+                Speichern nicht mehr angezeigt.
               </p>
 
               {gitLabProviderError && (
@@ -1242,34 +1800,52 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               <div className="mb-5 rounded-2xl border border-dashed border-border bg-surface-secondary/35 p-5">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Neuen Repository-Provider anlegen</p>
-                    <p className="mt-1 text-xs text-muted">Der Formular-Dialog hält die Integrationsseite kompakt. Schlüssel, Typ und Token werden dort beim Erstellen festgelegt.</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      Neuen Repository-Provider anlegen
+                    </p>
+                    <p className="mt-1 text-xs text-muted">
+                      Der Formular-Dialog hält die Integrationsseite kompakt.
+                      Schlüssel, Typ und Token werden dort beim Erstellen
+                      festgelegt.
+                    </p>
                   </div>
                   <Button
                     className="bg-accent text-white"
                     onPress={() => setCreateProviderModalOpen(true)}
                   >
                     <Plus className="w-4 h-4" />
-                    {savedSection === 'gitlab-create' ? 'Provider erstellt ✓' : 'Neuen Provider anlegen'}
+                    {savedSection === "gitlab-create"
+                      ? "Provider erstellt ✓"
+                      : "Neuen Provider anlegen"}
                   </Button>
                 </div>
               </div>
 
               {gitLabProviders.length === 0 ? (
                 <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-                  Es sind aktuell keine Repository-Provider in der Datenbank konfiguriert.
+                  Es sind aktuell keine Repository-Provider in der Datenbank
+                  konfiguriert.
                 </div>
               ) : (
                 <div className="flex flex-col gap-5">
                   {gitLabProviders.map((provider) => (
-                    <div key={provider.providerKey} className="rounded-2xl border border-border bg-surface p-5">
+                    <div
+                      key={provider.providerKey}
+                      className="rounded-2xl border border-border bg-surface p-5"
+                    >
                       <div className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground">{provider.providerKey}</p>
+                            <p className="text-sm font-semibold text-foreground">
+                              {provider.providerKey}
+                            </p>
                             {provider.providerType && (
                               <span className="inline-flex rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
-                                {provider.providerType === 'github' ? 'GitHub' : provider.providerType === 'gitlab' ? 'GitLab' : provider.providerType}
+                                {provider.providerType === "github"
+                                  ? "GitHub"
+                                  : provider.providerType === "gitlab"
+                                    ? "GitLab"
+                                    : provider.providerType}
                               </span>
                             )}
                             {(provider.linkedAppsCount || 0) > 0 && (
@@ -1279,16 +1855,26 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             )}
                           </div>
                           <p className="mt-1 text-xs text-muted">
-                            {provider.tokenConfigured ? 'Token verschlüsselt in der Datenbank gespeichert' : 'Kein Token gespeichert'}
-                            {provider.configured ? ' · Provider aktiv konfiguriert' : ' · Provider derzeit nicht vollständig nutzbar'}
+                            {provider.tokenConfigured
+                              ? "Token verschlüsselt in der Datenbank gespeichert"
+                              : "Kein Token gespeichert"}
+                            {provider.configured
+                              ? " · Provider aktiv konfiguriert"
+                              : " · Provider derzeit nicht vollständig nutzbar"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.enabled ? 'border-success/20 bg-success/10 text-success' : 'border-border bg-surface-secondary text-muted'}`}>
-                            {provider.enabled ? 'Aktiv' : 'Deaktiviert'}
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted"}`}
+                          >
+                            {provider.enabled ? "Aktiv" : "Deaktiviert"}
                           </span>
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? 'border-accent/20 bg-accent/10 text-accent' : 'border-border bg-surface-secondary text-muted'}`}>
-                            {provider.autoSyncEnabled ? 'Auto-Sync an' : 'Auto-Sync aus'}
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? "border-accent/20 bg-accent/10 text-accent" : "border-border bg-surface-secondary text-muted"}`}
+                          >
+                            {provider.autoSyncEnabled
+                              ? "Auto-Sync an"
+                              : "Auto-Sync aus"}
                           </span>
                           <Tooltip delay={0}>
                             <Tooltip.Trigger>
@@ -1297,7 +1883,10 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                                   size="sm"
                                   variant="secondary"
                                   className="h-8 w-8 p-0 text-danger"
-                                  isDisabled={saving || (provider.linkedAppsCount || 0) > 0}
+                                  isDisabled={
+                                    saving ||
+                                    (provider.linkedAppsCount || 0) > 0
+                                  }
                                   onPress={() => setProviderToDelete(provider)}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1306,55 +1895,149 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                             </Tooltip.Trigger>
                             <Tooltip.Content>
                               {(provider.linkedAppsCount || 0) > 0
-                                ? 'Verknüpfte Apps zuerst lösen, bevor der Provider gelöscht werden kann.'
-                                : 'Provider löschen'}
+                                ? "Verknüpfte Apps zuerst lösen, bevor der Provider gelöscht werden kann."
+                                : "Provider löschen"}
                             </Tooltip.Content>
                           </Tooltip>
                         </div>
                       </div>
 
                       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <TextField value={provider.label} onChange={(val) => updateGitLabProvider(provider.providerKey, { label: val })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Bezeichnung</Label>
-                          <Input placeholder="z. B. interne Forge oder GitHub.com" className="bg-field-background" />
+                        <TextField
+                          value={provider.label}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              label: val,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Bezeichnung
+                          </Label>
+                          <Input
+                            placeholder="z. B. interne Forge oder GitHub.com"
+                            className="bg-field-background"
+                          />
                         </TextField>
 
-                        <TextField value={provider.baseUrl} onChange={(val) => updateGitLabProvider(provider.providerKey, { baseUrl: val })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Base URL</Label>
-                          <Input placeholder="https://gitlab.example.org oder https://github.com" className="bg-field-background font-mono text-sm" />
+                        <TextField
+                          value={provider.baseUrl}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              baseUrl: val,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Base URL
+                          </Label>
+                          <Input
+                            placeholder="https://gitlab.example.org oder https://github.com"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
 
-                        <TextField value={provider.defaultReadmePath || ''} onChange={(val) => updateGitLabProvider(provider.providerKey, { defaultReadmePath: val })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard README-Pfad</Label>
-                          <Input placeholder="optional, z. B. docs/README.md" className="bg-field-background font-mono text-sm" />
+                        <TextField
+                          value={provider.defaultReadmePath || ""}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              defaultReadmePath: val,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Standard README-Pfad
+                          </Label>
+                          <Input
+                            placeholder="optional, z. B. docs/README.md"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
 
-                        <TextField value={provider.defaultHelmValuesPath || ''} onChange={(val) => updateGitLabProvider(provider.providerKey, { defaultHelmValuesPath: val })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Helm Values</Label>
-                          <Input placeholder="chart/values.yaml" className="bg-field-background font-mono text-sm" />
+                        <TextField
+                          value={provider.defaultHelmValuesPath || ""}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              defaultHelmValuesPath: val,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Standard Helm Values
+                          </Label>
+                          <Input
+                            placeholder="chart/values.yaml"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
 
-                        <TextField value={provider.defaultComposeFilePath || ''} onChange={(val) => updateGitLabProvider(provider.providerKey, { defaultComposeFilePath: val })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Compose-Datei</Label>
-                          <Input placeholder="docker-compose.yml" className="bg-field-background font-mono text-sm" />
+                        <TextField
+                          value={provider.defaultComposeFilePath || ""}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              defaultComposeFilePath: val,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Standard Compose-Datei
+                          </Label>
+                          <Input
+                            placeholder="docker-compose.yml"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
 
-                        <TextField value={providerTokenDrafts[provider.providerKey] || ''} onChange={(val) => updateProviderTokenDraft(provider.providerKey, val)}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Token ersetzen</Label>
-                          <Input placeholder={provider.tokenConfigured ? 'Neuen Token eingeben, um den bestehenden zu ersetzen' : 'Token eingeben'} className="bg-field-background font-mono text-sm" type="password" />
+                        <TextField
+                          value={
+                            providerTokenDrafts[provider.providerKey] || ""
+                          }
+                          onChange={(val) =>
+                            updateProviderTokenDraft(provider.providerKey, val)
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Token ersetzen
+                          </Label>
+                          <Input
+                            placeholder={
+                              provider.tokenConfigured
+                                ? "Neuen Token eingeben, um den bestehenden zu ersetzen"
+                                : "Token eingeben"
+                            }
+                            className="bg-field-background font-mono text-sm"
+                            type="password"
+                          />
                         </TextField>
 
-                        <TextField value={String(provider.syncIntervalMinutes)} onChange={(val) => updateGitLabProvider(provider.providerKey, { syncIntervalMinutes: Number.parseInt(val || '15', 10) || 15 })}>
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Sync-Intervall (Minuten)</Label>
-                          <Input placeholder="15" className="bg-field-background font-mono text-sm" />
+                        <TextField
+                          value={String(provider.syncIntervalMinutes)}
+                          onChange={(val) =>
+                            updateGitLabProvider(provider.providerKey, {
+                              syncIntervalMinutes:
+                                Number.parseInt(val || "15", 10) || 15,
+                            })
+                          }
+                        >
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Sync-Intervall (Minuten)
+                          </Label>
+                          <Input
+                            placeholder="15"
+                            className="bg-field-background font-mono text-sm"
+                          />
                         </TextField>
 
                         <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
                           <div className="flex h-full flex-col justify-between gap-3">
                             <div>
-                              <p className="text-sm font-semibold text-foreground">Token-Status</p>
+                              <p className="text-sm font-semibold text-foreground">
+                                Token-Status
+                              </p>
                               <p className="mt-1 text-xs text-muted">
-                                {provider.tokenConfigured ? 'Ein Token ist gespeichert. Beim Ersetzen wird der alte Token überschrieben.' : 'Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für Sync nutzbar.'}
+                                {provider.tokenConfigured
+                                  ? "Ein Token ist gespeichert. Beim Ersetzen wird der alte Token überschrieben."
+                                  : "Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für Sync nutzbar."}
                               </p>
                             </div>
                             <div className="flex justify-end">
@@ -1363,7 +2046,11 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                                 variant="secondary"
                                 className="text-danger"
                                 isDisabled={saving || !provider.tokenConfigured}
-                                onPress={() => saveGitLabProvider(provider, { clearToken: true })}
+                                onPress={() =>
+                                  saveGitLabProvider(provider, {
+                                    clearToken: true,
+                                  })
+                                }
                               >
                                 Token löschen
                               </Button>
@@ -1372,33 +2059,51 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                         </div>
 
                         <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Namespace-Allowlist</Label>
+                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            Namespace-Allowlist
+                          </Label>
                           <textarea
-                            value={provider.namespaceAllowlist.join('\n')}
-                            onChange={(event) => updateGitLabProvider(provider.providerKey, {
-                              namespaceAllowlist: event.target.value
-                                .split(/\n|,/)
-                                .map((value) => value.trim())
-                                .filter(Boolean),
-                            })}
+                            value={provider.namespaceAllowlist.join("\n")}
+                            onChange={(event) =>
+                              updateGitLabProvider(provider.providerKey, {
+                                namespaceAllowlist: event.target.value
+                                  .split(/\n|,/)
+                                  .map((value) => value.trim())
+                                  .filter(Boolean),
+                              })
+                            }
                             className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                            placeholder={'gruppe\norganisation/team'}
+                            placeholder={"gruppe\norganisation/team"}
                           />
-                          <p className="mt-2 text-xs text-muted">Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro Zeile oder komma-getrennt.</p>
+                          <p className="mt-2 text-xs text-muted">
+                            Leer lassen, um alle Namespaces zuzulassen. Ein
+                            Eintrag pro Zeile oder komma-getrennt.
+                          </p>
                         </div>
 
                         <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
                           <div className="flex items-center justify-between gap-4">
                             <div>
-                              <p className="text-sm font-semibold text-foreground">Provider im UI aktiv</p>
-                              <p className="text-xs text-muted">Steuert, ob Apps diesen Provider auswählen dürfen.</p>
+                              <p className="text-sm font-semibold text-foreground">
+                                Provider im UI aktiv
+                              </p>
+                              <p className="text-xs text-muted">
+                                Steuert, ob Apps diesen Provider auswählen
+                                dürfen.
+                              </p>
                             </div>
                             <Switch
                               isSelected={provider.enabled}
-                              onChange={(val) => updateGitLabProvider(provider.providerKey, { enabled: val })}
+                              onChange={(val) =>
+                                updateGitLabProvider(provider.providerKey, {
+                                  enabled: val,
+                                })
+                              }
                             >
                               <Switch.Content>
-                                <Switch.Control><Switch.Thumb /></Switch.Control>
+                                <Switch.Control>
+                                  <Switch.Thumb />
+                                </Switch.Control>
                               </Switch.Content>
                             </Switch>
                           </div>
@@ -1407,15 +2112,26 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                         <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
                           <div className="flex items-center justify-between gap-4">
                             <div>
-                              <p className="text-sm font-semibold text-foreground">Automatische Synchronisation</p>
-                              <p className="text-xs text-muted">Aktiviert den geplanten Hintergrund-Sync für verknüpfte Apps dieses Providers.</p>
+                              <p className="text-sm font-semibold text-foreground">
+                                Automatische Synchronisation
+                              </p>
+                              <p className="text-xs text-muted">
+                                Aktiviert den geplanten Hintergrund-Sync für
+                                verknüpfte Apps dieses Providers.
+                              </p>
                             </div>
                             <Switch
                               isSelected={provider.autoSyncEnabled}
-                              onChange={(val) => updateGitLabProvider(provider.providerKey, { autoSyncEnabled: val })}
+                              onChange={(val) =>
+                                updateGitLabProvider(provider.providerKey, {
+                                  autoSyncEnabled: val,
+                                })
+                              }
                             >
                               <Switch.Content>
-                                <Switch.Control><Switch.Thumb /></Switch.Control>
+                                <Switch.Control>
+                                  <Switch.Thumb />
+                                </Switch.Control>
                               </Switch.Content>
                             </Switch>
                           </div>
@@ -1428,7 +2144,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                           isDisabled={saving}
                           onPress={() => saveGitLabProvider(provider)}
                         >
-                          {savedSection === `gitlab-${provider.providerKey}` ? 'Gespeichert ✓' : 'Provider speichern'}
+                          {savedSection === `gitlab-${provider.providerKey}`
+                            ? "Gespeichert ✓"
+                            : "Provider speichern"}
                         </Button>
                       </div>
                     </div>
@@ -1439,7 +2157,7 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
           </div>
         )}
 
-        {visibleSections.has('ai') && (
+        {visibleSections.has("ai") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
               <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
@@ -1448,42 +2166,56 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">AI-Funktion aktivieren</span>
+                    <span className="text-sm font-semibold">
+                      AI-Funktion aktivieren
+                    </span>
                     <p className="text-xs text-muted max-w-xl">
-                      Schaltet den AI-Chat, das Floating-Widget und die zugehörigen API-Endpunkte global ein oder aus.
+                      Schaltet den AI-Chat, das Floating-Widget und die
+                      zugehörigen API-Endpunkte global ein oder aus.
                     </p>
                   </div>
                   <Switch
                     isSelected={settings.aiEnabled}
-                    onChange={(val) => save({ aiEnabled: val }, 'aiEnabled')}
+                    onChange={(val) => save({ aiEnabled: val }, "aiEnabled")}
                   >
                     <Switch.Content>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                     </Switch.Content>
                   </Switch>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">Anonymen AI-Zugriff erlauben</span>
+                    <span className="text-sm font-semibold">
+                      Anonymen AI-Zugriff erlauben
+                    </span>
                     <p className="text-xs text-muted max-w-xl">
-                      Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert.
+                      Erlaubt nicht angemeldeten Besuchern den Zugriff auf den
+                      AI-Chat und das Floating-Widget. Der Verlauf bleibt nur
+                      lokal im Browser gespeichert.
                     </p>
                   </div>
                   <Switch
                     isDisabled={!settings.aiEnabled}
                     isSelected={settings.allowAnonymousAI}
-                    onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
+                    onChange={(val) =>
+                      save({ allowAnonymousAI: val }, "anonymousAI")
+                    }
                   >
                     <Switch.Content>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                     </Switch.Content>
                   </Switch>
                 </div>
 
                 {!settings.aiEnabled && (
                   <p className="text-xs text-muted">
-                    Die AI-Provider-Konfiguration bleibt erhalten und wird wieder verwendet, sobald die Funktion erneut aktiviert wird.
+                    Die AI-Provider-Konfiguration bleibt erhalten und wird
+                    wieder verwendet, sobald die Funktion erneut aktiviert wird.
                   </p>
                 )}
               </div>
@@ -1494,7 +2226,12 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
         )}
       </div>
 
-      <Modal.Backdrop isOpen={createProviderModalOpen} onOpenChange={(open) => { if (!open) closeCreateProviderModal(); }}>
+      <Modal.Backdrop
+        isOpen={createProviderModalOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCreateProviderModal();
+        }}
+      >
         <Modal.Container>
           <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
             <Modal.CloseTrigger />
@@ -1506,7 +2243,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
             </Modal.Header>
             <Modal.Body>
               <p className="text-sm text-muted">
-                Schlüssel und Typ werden beim Erstellen festgelegt und anschließend nicht mehr geändert. Tokens werden verschlüsselt gespeichert.
+                Schlüssel und Typ werden beim Erstellen festgelegt und
+                anschließend nicht mehr geändert. Tokens werden verschlüsselt
+                gespeichert.
               </p>
 
               {gitLabProviderError && (
@@ -1516,25 +2255,42 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               )}
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <TextField value={newProvider.providerKey} onChange={(val) => setNewProvider((prev) => ({ ...prev, providerKey: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Provider-Schlüssel</Label>
-                  <Input placeholder="z. B. github-com" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={newProvider.providerKey}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({ ...prev, providerKey: val }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Provider-Schlüssel
+                  </Label>
+                  <Input
+                    placeholder="z. B. github-com"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
                 <Select
                   selectedKey={newProvider.providerType}
                   onSelectionChange={(key) => {
-                    const providerType = String(key) as ProviderDraftState['providerType'];
+                    const providerType = String(
+                      key,
+                    ) as ProviderDraftState["providerType"];
                     setNewProvider((prev) => ({
                       ...prev,
                       providerType,
-                      baseUrl: prev.baseUrl.trim() === '' || prev.baseUrl === defaultBaseUrlForProviderType(prev.providerType)
-                        ? defaultBaseUrlForProviderType(providerType)
-                        : prev.baseUrl,
+                      baseUrl:
+                        prev.baseUrl.trim() === "" ||
+                        prev.baseUrl ===
+                          defaultBaseUrlForProviderType(prev.providerType)
+                          ? defaultBaseUrlForProviderType(providerType)
+                          : prev.baseUrl,
                     }));
                   }}
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Provider-Typ</Label>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Provider-Typ
+                  </Label>
                   <Select.Trigger className="bg-field-background">
                     <Select.Value />
                     <Select.Indicator />
@@ -1553,53 +2309,145 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   </Select.Popover>
                 </Select>
 
-                <TextField value={newProvider.label} onChange={(val) => setNewProvider((prev) => ({ ...prev, label: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Bezeichnung</Label>
-                  <Input placeholder="z. B. GitHub.com" className="bg-field-background" />
+                <TextField
+                  value={newProvider.label}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({ ...prev, label: val }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Bezeichnung
+                  </Label>
+                  <Input
+                    placeholder="z. B. GitHub.com"
+                    className="bg-field-background"
+                  />
                 </TextField>
 
-                <TextField value={newProvider.baseUrl} onChange={(val) => setNewProvider((prev) => ({ ...prev, baseUrl: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Base URL</Label>
-                  <Input placeholder="https://github.com" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={newProvider.baseUrl}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({ ...prev, baseUrl: val }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Base URL
+                  </Label>
+                  <Input
+                    placeholder="https://github.com"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
-                <TextField value={newProvider.token} onChange={(val) => setNewProvider((prev) => ({ ...prev, token: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Token</Label>
-                  <Input placeholder="Personal Access Token" className="bg-field-background font-mono text-sm" type="password" />
+                <TextField
+                  value={newProvider.token}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({ ...prev, token: val }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Token
+                  </Label>
+                  <Input
+                    placeholder="Personal Access Token"
+                    className="bg-field-background font-mono text-sm"
+                    type="password"
+                  />
                 </TextField>
 
-                <TextField value={String(newProvider.syncIntervalMinutes)} onChange={(val) => setNewProvider((prev) => ({ ...prev, syncIntervalMinutes: Number.parseInt(val || '15', 10) || 15 }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Sync-Intervall (Minuten)</Label>
-                  <Input placeholder="15" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={String(newProvider.syncIntervalMinutes)}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      syncIntervalMinutes:
+                        Number.parseInt(val || "15", 10) || 15,
+                    }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Sync-Intervall (Minuten)
+                  </Label>
+                  <Input
+                    placeholder="15"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
-                <TextField value={newProvider.defaultReadmePath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultReadmePath: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard README-Pfad</Label>
-                  <Input placeholder="optional, z. B. docs/README.md" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={newProvider.defaultReadmePath}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      defaultReadmePath: val,
+                    }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Standard README-Pfad
+                  </Label>
+                  <Input
+                    placeholder="optional, z. B. docs/README.md"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
-                <TextField value={newProvider.defaultHelmValuesPath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultHelmValuesPath: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Helm Values</Label>
-                  <Input placeholder="chart/values.yaml" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={newProvider.defaultHelmValuesPath}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      defaultHelmValuesPath: val,
+                    }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Standard Helm Values
+                  </Label>
+                  <Input
+                    placeholder="chart/values.yaml"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
-                <TextField value={newProvider.defaultComposeFilePath} onChange={(val) => setNewProvider((prev) => ({ ...prev, defaultComposeFilePath: val }))}>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Standard Compose-Datei</Label>
-                  <Input placeholder="docker-compose.yml" className="bg-field-background font-mono text-sm" />
+                <TextField
+                  value={newProvider.defaultComposeFilePath}
+                  onChange={(val) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      defaultComposeFilePath: val,
+                    }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Standard Compose-Datei
+                  </Label>
+                  <Input
+                    placeholder="docker-compose.yml"
+                    className="bg-field-background font-mono text-sm"
+                  />
                 </TextField>
 
                 <div className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Provider aktiv</p>
-                      <p className="text-xs text-muted">Steuert, ob Apps diesen Provider auswählen dürfen.</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        Provider aktiv
+                      </p>
+                      <p className="text-xs text-muted">
+                        Steuert, ob Apps diesen Provider auswählen dürfen.
+                      </p>
                     </div>
                     <Switch
                       isSelected={newProvider.enabled}
-                      onChange={(val) => setNewProvider((prev) => ({ ...prev, enabled: val }))}
+                      onChange={(val) =>
+                        setNewProvider((prev) => ({ ...prev, enabled: val }))
+                      }
                     >
                       <Switch.Content>
-                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
                       </Switch.Content>
                     </Switch>
                   </div>
@@ -1608,29 +2456,51 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                 <div className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Automatische Synchronisation</p>
-                      <p className="text-xs text-muted">Aktiviert den geplanten Hintergrund-Sync für verknüpfte Apps dieses Providers.</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        Automatische Synchronisation
+                      </p>
+                      <p className="text-xs text-muted">
+                        Aktiviert den geplanten Hintergrund-Sync für verknüpfte
+                        Apps dieses Providers.
+                      </p>
                     </div>
                     <Switch
                       isSelected={newProvider.autoSyncEnabled}
-                      onChange={(val) => setNewProvider((prev) => ({ ...prev, autoSyncEnabled: val }))}
+                      onChange={(val) =>
+                        setNewProvider((prev) => ({
+                          ...prev,
+                          autoSyncEnabled: val,
+                        }))
+                      }
                     >
                       <Switch.Content>
-                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                        <Switch.Control>
+                          <Switch.Thumb />
+                        </Switch.Control>
                       </Switch.Content>
                     </Switch>
                   </div>
                 </div>
 
                 <div className="lg:col-span-2 rounded-xl border border-border bg-surface p-4">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Namespace-Allowlist</Label>
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Namespace-Allowlist
+                  </Label>
                   <textarea
                     value={newProvider.namespaceAllowlist}
-                    onChange={(event) => setNewProvider((prev) => ({ ...prev, namespaceAllowlist: event.target.value }))}
+                    onChange={(event) =>
+                      setNewProvider((prev) => ({
+                        ...prev,
+                        namespaceAllowlist: event.target.value,
+                      }))
+                    }
                     className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    placeholder={'gruppe\norganisation/team'}
+                    placeholder={"gruppe\norganisation/team"}
                   />
-                  <p className="mt-2 text-xs text-muted">Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro Zeile oder komma-getrennt.</p>
+                  <p className="mt-2 text-xs text-muted">
+                    Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro
+                    Zeile oder komma-getrennt.
+                  </p>
                 </div>
               </div>
             </Modal.Body>
@@ -1640,10 +2510,19 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
               </Button>
               <Button
                 className="bg-accent text-white"
-                isDisabled={saving || !newProvider.providerKey.trim() || !newProvider.baseUrl.trim() || !newProvider.token.trim()}
+                isDisabled={
+                  saving ||
+                  !newProvider.providerKey.trim() ||
+                  !newProvider.baseUrl.trim() ||
+                  !newProvider.token.trim()
+                }
                 onPress={createGitLabProvider}
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
                 Provider anlegen
               </Button>
             </Modal.Footer>
@@ -1653,7 +2532,11 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
 
       <ConfirmDialog
         confirmLabel="Provider löschen"
-        description={providerToDelete ? `Der Provider ${providerToDelete.providerKey} wird dauerhaft entfernt. Verknüpfte Apps verhindern das Löschen automatisch.` : ''}
+        description={
+          providerToDelete
+            ? `Der Provider ${providerToDelete.providerKey} wird dauerhaft entfernt. Verknüpfte Apps verhindern das Löschen automatisch.`
+            : ""
+        }
         isDanger
         isLoading={saving}
         isOpen={providerToDelete !== null}
@@ -1671,7 +2554,7 @@ export default function EinstellungenPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/verwaltung/plattform');
+    router.replace("/verwaltung/plattform");
   }, [router]);
 
   return (

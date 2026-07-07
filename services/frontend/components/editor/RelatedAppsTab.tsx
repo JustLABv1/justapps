@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { AppConfig } from '@/config/apps';
-import { getImageAssetUrl } from '@/lib/assets';
-import { Button, Chip, Input, Switch } from '@heroui/react';
-import { Grip, Link2, Loader2, Plus, X } from 'lucide-react';
-import Image from 'next/image';
+import { AppConfig } from "@/config/apps";
+import { getImageAssetUrl } from "@/lib/assets";
+import { Button, Chip, Input, Switch } from "@heroui/react";
+import { Grip, Link2, Loader2, Plus, X } from "lucide-react";
+import Image from "next/image";
 
 interface RelatedApp {
   id: string;
@@ -38,27 +38,48 @@ interface RelatedAppsTabProps {
 }
 
 export function RelatedAppsTab({
-  showDraftHint = false, isAdmin, relatedApps, groups, appGroupIds,
-  relatedSearch, setRelatedSearch, filteredRelatable, addingRelated,
-  newGroupName, setNewGroupName, creatingGroup,
-  onAddRelated, onRemoveRelated, onToggleGroup, onCreateGroup,
+  showDraftHint = false,
+  isAdmin,
+  relatedApps,
+  groups,
+  appGroupIds,
+  relatedSearch,
+  setRelatedSearch,
+  filteredRelatable,
+  addingRelated,
+  newGroupName,
+  setNewGroupName,
+  creatingGroup,
+  onAddRelated,
+  onRemoveRelated,
+  onToggleGroup,
+  onCreateGroup,
 }: RelatedAppsTabProps) {
   return (
     <div className="flex flex-col gap-8">
       {showDraftHint && (
         <div className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-muted">
-          Beim ersten Verknüpfen wird automatisch ein Entwurf angelegt, damit die Beziehung direkt gespeichert werden kann.
+          Beim ersten Verknüpfen wird automatisch ein Entwurf angelegt, damit
+          die Beziehung direkt gespeichert werden kann.
         </div>
       )}
 
       {/* Current group memberships */}
       {isAdmin && appGroupIds.size > 0 && (
         <div className="flex flex-wrap gap-2">
-          {groups.filter(g => appGroupIds.has(g.id)).map(g => (
-            <Chip key={g.id} size="sm" variant="soft" color="accent" className="text-xs font-semibold">
-              {g.name}
-            </Chip>
-          ))}
+          {groups
+            .filter((g) => appGroupIds.has(g.id))
+            .map((g) => (
+              <Chip
+                key={g.id}
+                size="sm"
+                variant="soft"
+                color="accent"
+                className="text-xs font-semibold"
+              >
+                {g.name}
+              </Chip>
+            ))}
         </div>
       )}
 
@@ -75,13 +96,22 @@ export function RelatedAppsTab({
               >
                 <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
                   {iconSrc ? (
-                    <Image src={iconSrc} alt={related.name} width={40} height={40} className="object-contain p-1" unoptimized />
+                    <Image
+                      src={iconSrc}
+                      alt={related.name}
+                      width={40}
+                      height={40}
+                      className="object-contain p-1"
+                      unoptimized
+                    />
                   ) : (
-                    related.icon || '🏛️'
+                    related.icon || "🏛️"
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
+                  <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">
+                    {related.name}
+                  </p>
                   <p className="text-xs text-muted flex items-center gap-1">
                     <Link2 className="w-3 h-3" /> {related.id}
                   </p>
@@ -104,7 +134,9 @@ export function RelatedAppsTab({
 
       {/* Search and add related apps */}
       <div className="space-y-3">
-        <span className="text-xs font-bold text-muted uppercase tracking-wider">App suchen und verknüpfen</span>
+        <span className="text-xs font-bold text-muted uppercase tracking-wider">
+          App suchen und verknüpfen
+        </span>
         <Input
           className="w-full"
           placeholder="App-Name oder ID suchen..."
@@ -127,14 +159,25 @@ export function RelatedAppsTab({
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-secondary text-xl shadow-sm">
                     {iconSrc ? (
-                      <Image src={iconSrc} alt={a.name} width={40} height={40} className="object-contain p-1" unoptimized />
+                      <Image
+                        src={iconSrc}
+                        alt={a.name}
+                        width={40}
+                        height={40}
+                        className="object-contain p-1"
+                        unoptimized
+                      />
                     ) : (
-                      a.icon || '🏛️'
+                      a.icon || "🏛️"
                     )}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                    <p className="text-xs text-muted">{a.categories?.join(', ')}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {a.name}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {a.categories?.join(", ")}
+                    </p>
                   </div>
                   {addingRelated ? (
                     <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />
@@ -145,7 +188,9 @@ export function RelatedAppsTab({
               );
             })}
             {filteredRelatable.length === 0 && (
-              <p className="p-4 text-sm text-muted text-center">Keine weiteren Apps gefunden</p>
+              <p className="p-4 text-sm text-muted text-center">
+                Keine weiteren Apps gefunden
+              </p>
             )}
           </div>
         )}
@@ -158,7 +203,9 @@ export function RelatedAppsTab({
             <Grip className="w-4 h-4 text-accent" />
             <span className="text-sm font-bold text-foreground">Gruppen</span>
           </div>
-          <p className="text-xs text-muted">Ordnen Sie diese App einer oder mehreren Gruppen zu.</p>
+          <p className="text-xs text-muted">
+            Ordnen Sie diese App einer oder mehreren Gruppen zu.
+          </p>
           <div className="space-y-2">
             {groups.map((group) => {
               const inGroup = appGroupIds.has(group.id);
@@ -166,16 +213,27 @@ export function RelatedAppsTab({
                 <div
                   key={group.id}
                   className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                    inGroup ? 'bg-accent/5 border-accent/30' : 'bg-surface border-border'
+                    inGroup
+                      ? "bg-accent/5 border-accent/30"
+                      : "bg-surface border-border"
                   }`}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{group.name}</p>
-                    {group.description && <p className="text-xs text-muted">{group.description}</p>}
+                    <p className="text-sm font-semibold text-foreground">
+                      {group.name}
+                    </p>
+                    {group.description && (
+                      <p className="text-xs text-muted">{group.description}</p>
+                    )}
                   </div>
-                  <Switch isSelected={inGroup} onChange={() => onToggleGroup(group.id)}>
+                  <Switch
+                    isSelected={inGroup}
+                    onChange={() => onToggleGroup(group.id)}
+                  >
                     <Switch.Content>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
                     </Switch.Content>
                   </Switch>
                 </div>
@@ -194,7 +252,9 @@ export function RelatedAppsTab({
               value={newGroupName}
               variant="secondary"
               onChange={(e) => setNewGroupName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') onCreateGroup(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onCreateGroup();
+              }}
             />
             <Button
               onPress={onCreateGroup}

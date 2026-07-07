@@ -1,10 +1,19 @@
 "use client";
 
-import type { ReleaseInboxItem } from "@/config/apps";
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
+import type { ReleaseInboxItem } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useUpdates } from "@/context/UpdatesContext";
-import { Accordion, Button, Card, Chip, Label, Spinner, Switch, toast } from "@heroui/react";
+import {
+    Accordion,
+    Button,
+    Card,
+    Chip,
+    Label,
+    Spinner,
+    Switch,
+    toast,
+} from "@heroui/react";
 import { Bell, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
