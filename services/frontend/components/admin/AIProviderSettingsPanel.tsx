@@ -291,7 +291,9 @@ export function AIProviderSettingsPanel() {
                         <p className="text-xs text-muted">Im AI Chat auswählbar</p>
                       </div>
                       <Switch isSelected={provider.enabled} onChange={(value) => updateProvider(provider.providerKey, { enabled: value })}>
-                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                        <Switch.Content>
+                          <Switch.Control><Switch.Thumb /></Switch.Control>
+                        </Switch.Content>
                       </Switch>
                     </div>
                   </div>
@@ -302,7 +304,9 @@ export function AIProviderSettingsPanel() {
                         <p className="text-xs text-muted">Vorauswahl für neue Chats</p>
                       </div>
                       <Switch isSelected={provider.isDefault} onChange={(value) => updateProvider(provider.providerKey, { isDefault: value })}>
-                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                        <Switch.Content>
+                          <Switch.Control><Switch.Thumb /></Switch.Control>
+                        </Switch.Content>
                       </Switch>
                     </div>
                   </div>

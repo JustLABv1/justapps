@@ -174,7 +174,9 @@ export function RelatedAppsTab({
                     {group.description && <p className="text-xs text-muted">{group.description}</p>}
                   </div>
                   <Switch isSelected={inGroup} onChange={() => onToggleGroup(group.id)}>
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch.Content>
                   </Switch>
                 </div>
               );

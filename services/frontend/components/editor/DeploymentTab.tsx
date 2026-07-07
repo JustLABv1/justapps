@@ -24,7 +24,9 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
           isSelected={formData.hasDeploymentAssistant ?? true}
           onChange={(val) => setFormData((p) => ({ ...p, hasDeploymentAssistant: val }))}
         >
-          <Switch.Control><Switch.Thumb /></Switch.Control>
+          <Switch.Content>
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+          </Switch.Content>
         </Switch>
       </div>
 

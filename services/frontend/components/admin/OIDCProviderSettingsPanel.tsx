@@ -446,7 +446,9 @@ export function OIDCProviderSettingsPanel() {
                       <p className="text-xs text-muted">Steuert, ob dieser Provider auf der Login-Seite erscheint.</p>
                     </div>
                     <Switch isSelected={provider.enabled} onChange={(val) => updateProvider(provider.providerKey, { enabled: val })}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -458,7 +460,9 @@ export function OIDCProviderSettingsPanel() {
                       <p className="text-xs text-muted">Nur für Entwicklungs- oder Testumgebungen mit selbstsignierten Zertifikaten.</p>
                     </div>
                     <Switch isSelected={provider.insecure} onChange={(val) => updateProvider(provider.providerKey, { insecure: val })}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -470,7 +474,9 @@ export function OIDCProviderSettingsPanel() {
                       <p className="text-xs text-muted">Wenn aktiv, blendet die Login-Seite die E-Mail/Passwort-Anmeldung aus, sobald mindestens ein Provider das vorgibt.</p>
                     </div>
                     <Switch isSelected={provider.disableLocalAuth} onChange={(val) => updateProvider(provider.providerKey, { disableLocalAuth: val })}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -566,7 +572,9 @@ export function OIDCProviderSettingsPanel() {
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-semibold text-foreground">Provider aktiv</p>
                     <Switch isSelected={createDraft.enabled} onChange={(val) => setCreateDraft((prev) => ({ ...prev, enabled: val }))}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -575,7 +583,9 @@ export function OIDCProviderSettingsPanel() {
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-semibold text-foreground">TLS-Prüfung deaktivieren</p>
                     <Switch isSelected={createDraft.insecure} onChange={(val) => setCreateDraft((prev) => ({ ...prev, insecure: val }))}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -584,7 +594,9 @@ export function OIDCProviderSettingsPanel() {
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-semibold text-foreground">Lokale Anmeldung deaktivieren</p>
                     <Switch isSelected={createDraft.disableLocalAuth} onChange={(val) => setCreateDraft((prev) => ({ ...prev, disableLocalAuth: val }))}>
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>

@@ -461,7 +461,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   isSelected={settings.allowAppSubmissions}
                   onChange={(val) => save({ allowAppSubmissions: val }, 'submissions')}
                 >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content>
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch.Content>
                 </Switch>
               </div>
             </Surface>
@@ -485,7 +487,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   isSelected={settings.requireAuthForAppStore}
                   onChange={(val) => save({ requireAuthForAppStore: val }, 'requireAuthForAppStore')}
                 >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content>
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch.Content>
                 </Switch>
               </div>
             </Surface>
@@ -545,7 +549,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     isSelected={settings.showTopBanner}
                     onChange={(val) => save({ showTopBanner: val }, 'bannerToggle')}
                   >
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch.Content>
                   </Switch>
                 </div>
               </div>
@@ -595,7 +601,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     isSelected={settings.showFlagBar}
                     onChange={(val) => setSettings({ ...settings, showFlagBar: val })}
                   >
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch.Content>
                   </Switch>
                 </div>
                 <div className="md:col-span-2 grid gap-4 rounded-2xl border border-border/60 bg-surface-secondary/60 p-4">
@@ -1197,7 +1205,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                   isSelected={settings.enableLinkProbing}
                   onChange={(val) => setSettings({ ...settings, enableLinkProbing: val })}
                 >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content>
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch.Content>
                 </Switch>
               </div>
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
@@ -1387,7 +1397,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                               isSelected={provider.enabled}
                               onChange={(val) => updateGitLabProvider(provider.providerKey, { enabled: val })}
                             >
-                              <Switch.Control><Switch.Thumb /></Switch.Control>
+                              <Switch.Content>
+                                <Switch.Control><Switch.Thumb /></Switch.Control>
+                              </Switch.Content>
                             </Switch>
                           </div>
                         </div>
@@ -1402,7 +1414,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                               isSelected={provider.autoSyncEnabled}
                               onChange={(val) => updateGitLabProvider(provider.providerKey, { autoSyncEnabled: val })}
                             >
-                              <Switch.Control><Switch.Thumb /></Switch.Control>
+                              <Switch.Content>
+                                <Switch.Control><Switch.Thumb /></Switch.Control>
+                              </Switch.Content>
                             </Switch>
                           </div>
                         </div>
@@ -1443,7 +1457,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     isSelected={settings.aiEnabled}
                     onChange={(val) => save({ aiEnabled: val }, 'aiEnabled')}
                   >
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch.Content>
                   </Switch>
                 </div>
 
@@ -1459,7 +1475,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                     isSelected={settings.allowAnonymousAI}
                     onChange={(val) => save({ allowAnonymousAI: val }, 'anonymousAI')}
                   >
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch.Content>
                   </Switch>
                 </div>
 
@@ -1580,7 +1598,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       isSelected={newProvider.enabled}
                       onChange={(val) => setNewProvider((prev) => ({ ...prev, enabled: val }))}
                     >
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -1595,7 +1615,9 @@ export function AdminSettingsWorkspace({ title, description, sections }: AdminSe
                       isSelected={newProvider.autoSyncEnabled}
                       onChange={(val) => setNewProvider((prev) => ({ ...prev, autoSyncEnabled: val }))}
                     >
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>

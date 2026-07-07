@@ -479,7 +479,9 @@ export default function BackupsPage() {
 							<div className="space-y-2">
 								<p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">Exportmodus</p>
 								<Switch isSelected={isFullMode} onChange={setIsFullMode}>
-									<Switch.Control><Switch.Thumb /></Switch.Control>
+									<Switch.Content>
+										<Switch.Control><Switch.Thumb /></Switch.Control>
+									</Switch.Content>
 								</Switch>
 								<p className="text-sm text-muted">
 									{isFullMode ? 'Vollständiger Modus mit sensiblen Secrets.' : 'Sicherer Modus ohne Passwort-Hashes und Token-Secrets.'}

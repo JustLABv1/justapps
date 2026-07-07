@@ -159,10 +159,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Favorisierte Apps</Label>
             </Switch.Content>
           </Switch>
@@ -178,10 +178,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Zuletzt angesehene Apps</Label>
             </Switch.Content>
           </Switch>
@@ -197,10 +197,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Eigene und verwaltete Apps</Label>
             </Switch.Content>
           </Switch>

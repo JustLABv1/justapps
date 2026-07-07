@@ -1623,7 +1623,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                       isSelected={formData.isReuse || false}
                       onChange={(value) => setFormData((previous) => ({ ...previous, isReuse: value }))}
                     >
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                   <textarea
@@ -1644,7 +1646,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                       isSelected={formData.hasDeploymentAssistant ?? true}
                       onChange={(value) => setFormData((previous) => ({ ...previous, hasDeploymentAssistant: value }))}
                     >
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
 
@@ -1819,7 +1823,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                       isSelected={formData.skipLinkProbe || false}
                       onChange={(val) => setFormData((previous) => ({ ...previous, skipLinkProbe: val }))}
                     >
-                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      <Switch.Content>
+                        <Switch.Control><Switch.Thumb /></Switch.Control>
+                      </Switch.Content>
                     </Switch>
                   </div>
                 </div>
@@ -1974,7 +1980,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                             isSelected={formData.isFeatured || false}
                             onChange={(value) => setFormData((previous) => ({ ...previous, isFeatured: value }))}
                           >
-                            <Switch.Control><Switch.Thumb /></Switch.Control>
+                            <Switch.Content>
+                              <Switch.Control><Switch.Thumb /></Switch.Control>
+                            </Switch.Content>
                           </Switch>
                         </div>
                       </div>
@@ -2713,7 +2721,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                 isSelected={formData.skipLinkProbe || false}
                 onChange={(val) => setFormData((p) => ({ ...p, skipLinkProbe: val }))}
               >
-                <Switch.Control><Switch.Thumb /></Switch.Control>
+                <Switch.Content>
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                </Switch.Content>
               </Switch>
             </div>
           </div>
@@ -2941,7 +2951,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-sm font-bold text-foreground">Nachnutzung</h3>
                 <Switch isSelected onChange={(val) => setFormData((p) => ({ ...p, isReuse: val }))}>
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content>
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch.Content>
                 </Switch>
               </div>
               <p className="text-sm text-muted mb-3">
@@ -2969,7 +2981,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
             </div>
           </div>
           <Switch isSelected={false} onChange={(val) => setFormData((p) => ({ ...p, isReuse: val }))}>
-            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.Content>
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+            </Switch.Content>
           </Switch>
         </div>
       )}
@@ -3115,7 +3129,9 @@ export function AppEditorForm({ initialApp, existingApps, initialFormData = null
                   isSelected={formData.isFeatured || false}
                   onChange={(val) => setFormData((p) => ({ ...p, isFeatured: val }))}
                 >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content>
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                  </Switch.Content>
                 </Switch>
               </div>
             )}
