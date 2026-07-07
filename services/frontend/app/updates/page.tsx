@@ -1,10 +1,19 @@
 "use client";
 
-import type { ReleaseInboxItem } from "@/config/apps";
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
+import type { ReleaseInboxItem } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useUpdates } from "@/context/UpdatesContext";
-import { Accordion, Button, Card, Chip, Label, Spinner, Switch, toast } from "@heroui/react";
+import {
+    Accordion,
+    Button,
+    Card,
+    Chip,
+    Label,
+    Spinner,
+    Switch,
+    toast,
+} from "@heroui/react";
 import { Bell, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -159,10 +168,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Favorisierte Apps</Label>
             </Switch.Content>
           </Switch>
@@ -178,10 +187,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Zuletzt angesehene Apps</Label>
             </Switch.Content>
           </Switch>
@@ -197,10 +206,10 @@ export default function UpdatesPage() {
               });
             }}
           >
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
             <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
               <Label>Eigene und verwaltete Apps</Label>
             </Switch.Content>
           </Switch>
