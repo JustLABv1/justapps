@@ -578,7 +578,9 @@ export function AppTable({
             <Table.Header>
               <Table.Column className="w-10 pr-0">
                 <Checkbox aria-label="Alle auf dieser Seite auswählen" slot="selection">
-                  <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                  <Checkbox.Content>
+                    <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                  </Checkbox.Content>
                 </Checkbox>
               </Table.Column>
               <Table.Column isRowHeader>App</Table.Column>
@@ -604,7 +606,9 @@ export function AppTable({
                   {/* Checkbox */}
                   <Table.Cell className="pr-0">
                     <Checkbox aria-label={`${app.name} auswählen`} slot="selection" variant="secondary">
-                      <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                      <Checkbox.Content>
+                        <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                      </Checkbox.Content>
                     </Checkbox>
                   </Table.Cell>
 

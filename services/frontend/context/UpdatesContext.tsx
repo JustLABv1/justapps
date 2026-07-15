@@ -89,17 +89,29 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   }, [user, token]);
 
   const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => {
-    const response = await fetchApi('/user/update-preferences', {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    });
-    if (!response.ok) {
-      return false;
+    const previousPreferences = preferences;
+
+    if (previousPreferences) {
+      setPreferences({ ...previousPreferences, ...patch });
     }
 
-    const data = await response.json() as UpdatePreferences;
-    setPreferences(data);
-    return true;
+    try {
+      const response = await fetchApi('/user/update-preferences', {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      });
+      if (!response.ok) {
+        setPreferences(previousPreferences);
+        return false;
+      }
+
+      const data = await response.json() as UpdatePreferences;
+      setPreferences(data);
+      return true;
+    } catch {
+      setPreferences(previousPreferences);
+      return false;
+    }
   };
 
   const markAsSeen = async (itemId: string) => {

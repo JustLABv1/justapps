@@ -5,7 +5,7 @@ import {
   DRAFT_STATUS,
   getAppStatusLabel,
 } from "@/lib/appStatus";
-import { Label, Radio, RadioGroup, Surface } from "@heroui/react";
+import { Radio, RadioGroup, Surface } from "@heroui/react";
 
 interface EditorStatusPickerProps {
   isDisabled?: boolean;
@@ -49,7 +49,7 @@ export function EditorStatusPicker({
 
       <RadioGroup
         aria-label="Status der App"
-        className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6"
+        className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(8.25rem,1fr))] gap-2"
         isDisabled={isDisabled}
         onChange={onChange}
         orientation="horizontal"
@@ -68,15 +68,15 @@ export function EditorStatusPicker({
             <Radio
               key={status}
               value={status}
-              className="group min-w-0 cursor-pointer rounded-xl border border-border bg-surface px-3 py-2 text-sm transition-[border-color,background-color,transform] duration-150 ease-out hover:border-accent/50 data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:text-foreground data-[disabled=true]:cursor-not-allowed"
+              className="group w-full min-w-0 cursor-pointer rounded-xl border border-border bg-surface px-3 py-2 text-sm transition-[border-color,background-color,transform] duration-150 ease-out hover:border-accent/50 data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:text-foreground data-[disabled=true]:cursor-not-allowed"
             >
-              <Radio.Control className="border-border group-data-[selected=true]:border-accent group-data-[selected=true]:bg-accent">
-                <Radio.Indicator />
-              </Radio.Control>
-              <Radio.Content className="min-w-0">
-                <Label className="truncate text-xs font-semibold">
+              <Radio.Content className="flex w-full min-w-0 flex-1 items-center gap-2">
+                <Radio.Control className="border-border group-data-[selected=true]:border-accent group-data-[selected=true]:bg-accent">
+                  <Radio.Indicator />
+                </Radio.Control>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">
                   {label}
-                </Label>
+                </span>
               </Radio.Content>
             </Radio>
           );
