@@ -2,6 +2,8 @@
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeploymentTab } from "@/components/editor/DeploymentTab";
+import { EditorActionBar } from "@/components/editor/EditorActionBar";
+import { EditorStatusPicker } from "@/components/editor/EditorStatusPicker";
 import { GitLabFormState, GitLabTab } from "@/components/editor/GitLabTab";
 import { LinkListEditor } from "@/components/editor/LinkListEditor";
 import { RelatedAppsTab } from "@/components/editor/RelatedAppsTab";
@@ -17,6 +19,7 @@ import { fetchApi, uploadFile } from "@/lib/api";
 import {
     DRAFT_STATUS,
     getAppStatusLabel,
+    getAppStatusMeta,
     isDraftStatus,
 } from "@/lib/appStatus";
 import { getImageAssetUrl, isImageAssetSource } from "@/lib/assets";
@@ -108,15 +111,6 @@ const ICON_OPTIONS = [
   { emoji: "🗂️", label: "Ordner" },
   { emoji: "🔍", label: "Suche" },
   { emoji: "🎓", label: "Bildung" },
-];
-
-const PREDEFINED_STATUSES = [
-  DRAFT_STATUS,
-  "POC",
-  "MVP",
-  "Sandbox",
-  "In Erprobung",
-  "Etabliert",
 ];
 
 const defaultGitLabFormState: GitLabFormState = {
@@ -594,7 +588,7 @@ export function AppEditorForm({
       : [];
 
   // ── Save ──
-  const handleSave = async () => {
+  const handleSave = async (navigateAfterSave = true) => {
     if (!profileReady) {
       const refreshed = await refreshUser();
       if (!refreshed) {
@@ -654,7 +648,7 @@ export function AppEditorForm({
           }).catch(() => null);
         }
         setInitialSnapshot(createSnapshot());
-        skipUnsavedWarningRef.current = true;
+        setLastAutoSave(new Date());
         setSaveSuccess(true);
         toast.success(
           isDraft
@@ -663,7 +657,12 @@ export function AppEditorForm({
               : "Der Entwurf wurde gespeichert."
             : "Die Änderungen wurden gespeichert.",
         );
-        setTimeout(() => router.push(backUrl), 1200);
+        if (navigateAfterSave) {
+          skipUnsavedWarningRef.current = true;
+          setTimeout(() => router.push(backUrl), 1200);
+        } else {
+          setTimeout(() => setSaveSuccess(false), 3000);
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         setSaveError(
@@ -1038,7 +1037,7 @@ export function AppEditorForm({
       id: "profile",
       phase: "Basisdaten",
       label: "Kurzprofil",
-      hint: "Status, Beschreibung und Schlagwörter",
+      hint: "Status, Beschreibung, Lizenz und Schlagwörter",
       icon: <CheckCircle2 className="w-4 h-4" />,
     },
     {
@@ -1193,8 +1192,8 @@ export function AppEditorForm({
         return [
           { label: "Status festgelegt", done: !!formData.status?.trim() },
           {
-            label: "Kurzbeschreibung für sichtbare App",
-            done: !requiresExpandedDetails || !!formData.description?.trim(),
+            label: "Kurzbeschreibung bei weitergehendem Status",
+            done: isDraft || !!formData.description?.trim(),
           },
           {
             label: "Schlagwörter optional",
@@ -1336,75 +1335,76 @@ export function AppEditorForm({
 
   if (isNew) {
     return (
-      <div className="max-w-6xl mx-auto pb-28">
-        <section className="relative overflow-hidden rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
+      <div className="max-w-6xl mx-auto pb-36 sm:pb-28">
+        <section className="rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
+          <div className="max-w-2xl space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
+              {isCopyFlow ? "App kopieren" : "Neue App erstellen"}
+            </p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {isCopyFlow
+                ? `Kopie von ${copySource.name} vorbereiten.`
+                : "Schritt für Schritt zum ersten Entwurf."}
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted">
+              {isCopyFlow
+                ? "Die Inhalte wurden übernommen. Prüfen Sie Name, vergeben Sie eine neue ID und passen Sie den Entwurf vor dem Speichern an."
+                : "Weniger Felder pro Schritt, gleicher Datenumfang am Ende."}
+            </p>
+          </div>
+
+        </section>
+
+        <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
           <div className="absolute inset-0 pointer-events-none opacity-60">
             <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-accent/15 blur-3xl animate-pulse" />
             <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-gov-gold/15 blur-3xl animate-pulse" />
           </div>
 
           <div className="relative z-10 flex flex-col gap-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="max-w-2xl space-y-1.5 animate-in fade-in slide-in-from-top-4 duration-500">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
-                  {isCopyFlow ? "App kopieren" : "Neue App erstellen"}
-                </p>
-                <h1 className="text-2xl font-bold text-foreground">
-                  {isCopyFlow
-                    ? `Kopie von ${copySource.name} vorbereiten.`
-                    : "Schritt für Schritt zum ersten Entwurf."}
-                </h1>
-                <p className="max-w-xl text-sm leading-relaxed text-muted">
-                  {isCopyFlow
-                    ? "Die Inhalte wurden übernommen. Prüfen Sie Name, vergeben Sie eine neue ID und passen Sie den Entwurf vor dem Speichern an."
-                    : "Weniger Felder pro Schritt, gleicher Datenumfang am Ende."}
-                </p>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[20rem] xl:max-w-sm xl:flex-1">
-                {["Basisdaten", "Erweiterte Angaben"].map((phase) => {
-                  const phaseSteps = createSteps.filter(
-                    (step) => step.phase === phase,
+            <div className="grid gap-2 sm:grid-cols-2">
+              {["Basisdaten", "Erweiterte Angaben"].map((phase) => {
+                const phaseSteps = createSteps.filter(
+                  (step) => step.phase === phase,
+                );
+                const phaseCompleted = phaseSteps.filter((step) => {
+                  const stepIndex = createSteps.findIndex(
+                    (entry) => entry.id === step.id,
                   );
-                  const phaseCompleted = phaseSteps.filter((step) => {
-                    const stepIndex = createSteps.findIndex(
-                      (entry) => entry.id === step.id,
-                    );
-                    return stepIndex >= 0 && isCreateStepCompleted(stepIndex);
-                  }).length;
-                  const isActivePhase = currentCreatePhase === phase;
+                  return stepIndex >= 0 && isCreateStepCompleted(stepIndex);
+                }).length;
+                const isActivePhase = currentCreatePhase === phase;
 
-                  return (
-                    <div
-                      key={phase}
-                      className={`rounded-2xl border px-3.5 py-3 transition-all duration-300 ${
-                        isActivePhase
-                          ? "border-accent/30 bg-accent/10 shadow-sm shadow-accent/10"
-                          : "border-border bg-surface/85"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
-                            Phase
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-foreground">
-                            {phase}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
-                          {phaseCompleted}/{phaseSteps.length}
-                        </span>
+                return (
+                  <div
+                    key={phase}
+                    className={`rounded-2xl border px-3.5 py-3 transition-all duration-300 ${
+                      isActivePhase
+                        ? "border-accent/30 bg-accent/10 shadow-sm shadow-accent/10"
+                        : "border-border bg-surface/85"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                          Phase
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {phase}
+                        </p>
                       </div>
-                      <p className="mt-2 text-[11px] leading-relaxed text-muted">
-                        {phase === "Basisdaten"
-                          ? "Identität und Kurzprofil zuerst."
-                          : "Technik, Links und Details danach."}
-                      </p>
+                      <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
+                        {phaseCompleted}/{phaseSteps.length}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                      {phase === "Basisdaten"
+                        ? "Identität und Kurzprofil zuerst."
+                        : "Technik, Links und Details danach."}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="-mx-1 overflow-x-auto pb-1">
@@ -1871,34 +1871,12 @@ export function AppEditorForm({
 
             {currentCreateStep === 1 && (
               <div className="space-y-6">
-                <div className="rounded-3xl border border-border bg-surface-secondary/45 p-5">
-                  <p className="text-sm font-semibold text-foreground">
-                    Status
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    Ein Entwurf braucht nur Name und ID. Sobald Sie einen
-                    weitergehenden Status setzen, wird eine Kurzbeschreibung
-                    erwartet.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {PREDEFINED_STATUSES.map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        onClick={() =>
-                          setFormData((previous) => ({ ...previous, status }))
-                        }
-                        className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
-                          (formData.status || DRAFT_STATUS) === status
-                            ? "border-accent bg-accent text-white shadow-sm"
-                            : "border-border bg-surface text-muted hover:border-accent/30 hover:text-foreground"
-                        }`}
-                      >
-                        {getAppStatusLabel(status) || status}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <EditorStatusPicker
+                  onChange={(status) =>
+                    setFormData((previous) => ({ ...previous, status }))
+                  }
+                  value={formData.status || DRAFT_STATUS}
+                />
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
                   <div className="rounded-3xl border border-border bg-surface p-5">
@@ -3203,117 +3181,137 @@ export function AppEditorForm({
           </aside>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface/95 shadow-lg backdrop-blur-sm">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              {hasUnsavedChanges && !saveError && !saveSuccess && (
-                <p className="mb-1 truncate text-xs text-muted">
-                  Ungespeicherte Änderungen. Erfasste Angaben:{" "}
-                  <span className="font-semibold">
-                    {requiredDoneCount}/{requiredItems.length}
-                  </span>
-                </p>
-              )}
-              {!canProceedCreateStep && !saveError && !saveSuccess && (
-                <p className="truncate text-xs text-muted">
-                  Ergänzen Sie die offenen Punkte in diesem Schritt, bevor Sie
-                  weitergehen.
-                </p>
-              )}
-              {!profileReady && !saveError && !saveSuccess && (
-                <p className="truncate text-xs text-muted">
-                  Ihr Benutzerprofil wird noch synchronisiert. Speichern ist
-                  möglich, sobald die Sitzung bestätigt ist.
-                </p>
-              )}
-              {saveError && (
-                <p className="truncate text-sm font-medium text-danger">
-                  {saveError}
-                </p>
-              )}
-              {saveSuccess && (
-                <span className="flex items-center gap-1 text-sm font-medium text-success">
-                  <CheckCircle2 className="w-4 h-4" /> Gespeichert!
-                </span>
-              )}
-              {lastAutoSave && !saveError && !saveSuccess && (
-                <p className="truncate text-xs text-muted">
-                  Auto-gespeichert um{" "}
-                  {lastAutoSave.toLocaleTimeString("de-DE", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              )}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => requestNavigation(backUrl)}
-                className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
+        <EditorActionBar
+          progressLabel={`Schritt ${currentCreateStep + 1} von ${createSteps.length}`}
+          statusColor={
+            getAppStatusMeta(formData.status || DRAFT_STATUS)?.color || "default"
+          }
+          statusLabel={
+            getAppStatusLabel(formData.status || DRAFT_STATUS) || "Entwurf"
+          }
+          actions={
+            <>
+              <Button
+                isIconOnly
+                aria-label="Abbrechen"
+                className="sm:hidden"
+                onPress={() => requestNavigation(backUrl)}
+                size="sm"
+                variant="tertiary"
+              >
+                <X className="size-4" />
+              </Button>
+              <Button
+                className="hidden sm:inline-flex"
+                onPress={() => requestNavigation(backUrl)}
+                size="sm"
+                variant="tertiary"
               >
                 Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={() =>
+              </Button>
+              <Button
+                isIconOnly
+                aria-label="Vorheriger Schritt"
+                className="sm:hidden"
+                isDisabled={currentCreateStep === 0}
+                onPress={() =>
                   setCurrentCreateStep((step) => Math.max(0, step - 1))
                 }
-                disabled={currentCreateStep === 0}
-                className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                size="sm"
+                variant="secondary"
               >
-                <ChevronLeft className="w-4 h-4" /> Zurück
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !canSave || !profileReady}
-                className="inline-flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent shadow-sm transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-50"
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                className="hidden sm:inline-flex"
+                isDisabled={currentCreateStep === 0}
+                onPress={() =>
+                  setCurrentCreateStep((step) => Math.max(0, step - 1))
+                }
+                size="sm"
+                variant="secondary"
               >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {saving ? "Speichert..." : "Entwurf speichern"}
-              </button>
-              {currentCreateStep < lastCreateStepIndex ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (canProceedCreateStep) {
-                      setCurrentCreateStep((step) =>
-                        Math.min(lastCreateStepIndex, step + 1),
-                      );
-                    }
-                  }}
-                  disabled={!canProceedCreateStep}
-                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                <ChevronLeft className="size-4" /> Zurück
+              </Button>
+              {currentCreateStep < lastCreateStepIndex && (
+                <Button
+                  isDisabled={saving || !canSave || !profileReady}
+                  isPending={saving}
+                  onPress={() => void handleSave(false)}
+                  size="sm"
+                  variant="secondary"
                 >
-                  Weiter <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !canSave || !profileReady}
-                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  {saving
-                    ? "Speichert..."
-                    : isDraft
-                      ? "Entwurf speichern"
-                      : "App speichern"}
-                </button>
+                  <Save className="size-4" />
+                  <span className="hidden sm:inline">Entwurf speichern</span>
+                  <span className="sm:hidden">Speichern</span>
+                </Button>
               )}
-            </div>
-          </div>
-        </div>
+              {currentCreateStep < lastCreateStepIndex ? (
+                <Button
+                  isDisabled={!canProceedCreateStep}
+                  onPress={() =>
+                    setCurrentCreateStep((step) =>
+                      Math.min(lastCreateStepIndex, step + 1),
+                    )
+                  }
+                  size="sm"
+                >
+                  Weiter <ChevronRight className="size-4" />
+                </Button>
+              ) : (
+                <Button
+                  isDisabled={saving || !canSave || !profileReady}
+                  isPending={saving}
+                  onPress={() => void handleSave()}
+                  size="sm"
+                >
+                  <Save className="size-4" />
+                  {isDraft ? "Entwurf speichern" : "App speichern"}
+                </Button>
+              )}
+            </>
+          }
+        >
+          {hasUnsavedChanges && !saveError && !saveSuccess && (
+            <p className="truncate text-xs text-muted">
+              Ungespeicherte Änderungen. Erfasste Angaben:{" "}
+              <span className="font-semibold">
+                {requiredDoneCount}/{requiredItems.length}
+              </span>
+            </p>
+          )}
+          {!canProceedCreateStep && !saveError && !saveSuccess && (
+            <p className="truncate text-xs text-muted">
+              Ergänzen Sie die offenen Punkte in diesem Schritt, bevor Sie
+              weitergehen.
+            </p>
+          )}
+          {!profileReady && !saveError && !saveSuccess && (
+            <p className="truncate text-xs text-muted">
+              Ihr Benutzerprofil wird noch synchronisiert. Speichern ist
+              möglich, sobald die Sitzung bestätigt ist.
+            </p>
+          )}
+          {saveError && (
+            <p className="truncate text-sm font-medium text-danger">
+              {saveError}
+            </p>
+          )}
+          {saveSuccess && (
+            <span className="flex items-center gap-1 text-sm font-medium text-success">
+              <CheckCircle2 className="size-4" /> Entwurf gespeichert.
+            </span>
+          )}
+          {lastAutoSave && !saveError && !saveSuccess && (
+            <p className="truncate text-xs text-muted">
+              Zuletzt gespeichert um{" "}
+              {lastAutoSave.toLocaleTimeString("de-DE", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+        </EditorActionBar>
 
         <ConfirmDialog
           confirmLabel="Seite verlassen"
@@ -3333,7 +3331,39 @@ export function AppEditorForm({
   // RENDER — mirrors /apps/[id] detail page layout exactly
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <div className="max-w-5xl mx-auto pb-20">
+    <div className="max-w-5xl mx-auto pb-36 sm:pb-28">
+      <section className="mb-4 rounded-3xl border border-border bg-surface-secondary p-5 shadow-sm md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
+              App bearbeiten
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-foreground">
+              {formData.name || "App bearbeiten"}
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              Änderungen werden über die feste Aktionsleiste gespeichert.
+            </p>
+          </div>
+          <Chip
+            color={
+              getAppStatusMeta(formData.status || DRAFT_STATUS)?.color ||
+              "default"
+            }
+            variant="soft"
+          >
+            {getAppStatusLabel(formData.status || DRAFT_STATUS) || "Entwurf"}
+          </Chip>
+        </div>
+        <div className="mt-4">
+          <EditorStatusPicker
+            onChange={(status) =>
+              setFormData((previous) => ({ ...previous, status }))
+            }
+            value={formData.status || DRAFT_STATUS}
+          />
+        </div>
+      </section>
       {isNew && (
         <section className="mb-6 rounded-3xl border border-border bg-surface p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -3399,7 +3429,7 @@ export function AppEditorForm({
       )}
 
       {/* ── Nav row (matches detail page) ── */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center">
         <button
           onClick={() => requestNavigation(backUrl)}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm"
@@ -3407,38 +3437,6 @@ export function AppEditorForm({
           <ChevronLeft className="w-4 h-4" />
           Zurück zur Übersicht
         </button>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => requestNavigation(backUrl)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-            >
-              Abbrechen
-            </button>
-            <div className="w-px h-4 bg-border mx-1" />
-            <button
-              onClick={handleSave}
-              disabled={saving || !canSave || !profileReady}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
-              {saving
-                ? "Speichert..."
-                : isDraft
-                  ? isNew
-                    ? "Entwurf speichern"
-                    : "Entwurf sichern"
-                  : isNew
-                    ? "App speichern"
-                    : "Speichern"}
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* ── App banner (editable, matches detail page position) ── */}
@@ -3731,40 +3729,6 @@ export function AppEditorForm({
                   </button>
                 </Chip>
               )}
-            </div>
-
-            {/* Status row — always-visible option buttons */}
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className="text-[10px] font-bold text-muted/60 uppercase tracking-wider shrink-0">
-                Status
-              </span>
-              <div className="flex flex-wrap gap-1.5 items-center">
-                {PREDEFINED_STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setFormData((p) => ({ ...p, status: s }))}
-                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all border ${
-                      (formData.status || (isNew ? DRAFT_STATUS : "")) === s
-                        ? "bg-accent text-white border-accent shadow-sm"
-                        : "bg-transparent border-border text-muted hover:border-accent/40 hover:text-foreground"
-                    }`}
-                  >
-                    {getAppStatusLabel(s) || s}
-                  </button>
-                ))}
-                {formData.status &&
-                  !PREDEFINED_STATUSES.includes(formData.status) && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData((p) => ({ ...p, status: "" }))}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold bg-accent text-white border border-accent shadow-sm"
-                    >
-                      {formData.status}
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-              </div>
             </div>
 
             {/* ID field (new only) */}
@@ -4671,92 +4635,79 @@ export function AppEditorForm({
         </span>
       </div>
 
-      {/* ── Sticky save bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-t border-border shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {hasUnsavedChanges && !saveError && !saveSuccess && (
-              <p className="text-xs text-muted truncate mb-1">
-                Ungespeicherte Änderungen. Erfasste Angaben:{" "}
-                <span className="font-semibold">
-                  {requiredDoneCount}/{requiredItems.length}
-                </span>
-              </p>
-            )}
-            {!canSave && !saveError && !saveSuccess && (
-              <p className="text-xs text-muted truncate">
-                Für einen Entwurf sind{" "}
-                <span className="font-semibold">Name</span> und{" "}
-                <span className="font-semibold">ID</span> nötig. Für Status
-                außer Entwurf zusätzlich{" "}
-                <span className="font-semibold">Kategorie</span> und{" "}
-                <span className="font-semibold">Kurzbeschreibung</span>.
-              </p>
-            )}
-            {!profileReady && !saveError && !saveSuccess && (
-              <p className="text-xs text-muted truncate">
-                Ihr Benutzerprofil wird noch synchronisiert. Sobald das Backend
-                die Sitzung bestätigt hat, können Sie speichern.
-              </p>
-            )}
-            {saveError && (
-              <p className="text-sm text-danger font-medium truncate">
-                {saveError}
-              </p>
-            )}
-            {saveSuccess && (
-              <span className="text-sm text-success flex items-center gap-1 font-medium">
-                <CheckCircle2 className="w-4 h-4" /> Gespeichert!
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-muted md:inline-flex">
-              Arbeitsstand:{" "}
-              {getAppStatusLabel(
-                formData.status || (isNew ? DRAFT_STATUS : ""),
-              ) || "Offen"}
-            </span>
-            {isNew && (
-              <button
-                type="button"
-                onClick={() =>
-                  setEditorMode((mode) =>
-                    mode === "basic" ? "advanced" : "basic",
-                  )
-                }
-                className="px-4 py-2 rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary border border-border transition-colors"
-              >
-                {editorMode === "basic" ? "Erweitert öffnen" : "Basisansicht"}
-              </button>
-            )}
-            <button
-              onClick={() => requestNavigation(backUrl)}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary border border-border transition-colors"
+      <EditorActionBar
+        statusColor={
+          getAppStatusMeta(formData.status || DRAFT_STATUS)?.color || "default"
+        }
+        statusLabel={
+          getAppStatusLabel(formData.status || DRAFT_STATUS) || "Entwurf"
+        }
+        actions={
+          <>
+            <Button
+              isIconOnly
+              aria-label="Abbrechen"
+              className="sm:hidden"
+              onPress={() => requestNavigation(backUrl)}
+              size="sm"
+              variant="tertiary"
+            >
+              <X className="size-4" />
+            </Button>
+            <Button
+              className="hidden sm:inline-flex"
+              onPress={() => requestNavigation(backUrl)}
+              size="sm"
+              variant="tertiary"
             >
               Abbrechen
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !canSave || !profileReady}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            </Button>
+            <Button
+              isDisabled={saving || !canSave || !profileReady}
+              isPending={saving}
+              onPress={() => void handleSave()}
+              size="sm"
             >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {saving
-                ? "Speichert..."
-                : isDraft
-                  ? "Entwurf speichern"
-                  : isNew
-                    ? "App speichern"
-                    : "Änderungen speichern"}
-            </button>
-          </div>
-        </div>
-      </div>
+              <Save className="size-4" />
+              {isDraft ? "Entwurf speichern" : "Änderungen speichern"}
+            </Button>
+          </>
+        }
+      >
+        {hasUnsavedChanges && !saveError && !saveSuccess && (
+          <p className="truncate text-xs text-muted">
+            Ungespeicherte Änderungen. Erfasste Angaben:{" "}
+            <span className="font-semibold">
+              {requiredDoneCount}/{requiredItems.length}
+            </span>
+          </p>
+        )}
+        {!canSave && !saveError && !saveSuccess && (
+          <p className="truncate text-xs text-muted">
+            Für einen Entwurf sind <span className="font-semibold">Name</span>
+            {" "}und <span className="font-semibold">ID</span> nötig. Für
+            Status außer Entwurf zusätzlich{" "}
+            <span className="font-semibold">Kategorie</span> und{" "}
+            <span className="font-semibold">Kurzbeschreibung</span>.
+          </p>
+        )}
+        {!profileReady && !saveError && !saveSuccess && (
+          <p className="truncate text-xs text-muted">
+            Ihr Benutzerprofil wird noch synchronisiert. Sobald das Backend die
+            Sitzung bestätigt hat, können Sie speichern.
+          </p>
+        )}
+        {saveError && (
+          <p className="truncate text-sm font-medium text-danger">
+            {saveError}
+          </p>
+        )}
+        {saveSuccess && (
+          <span className="flex items-center gap-1 text-sm font-medium text-success">
+            <CheckCircle2 className="size-4" /> Gespeichert!
+          </span>
+        )}
+      </EditorActionBar>
 
       <ConfirmDialog
         confirmLabel="Seite verlassen"

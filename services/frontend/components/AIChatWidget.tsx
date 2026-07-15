@@ -47,6 +47,7 @@ export function AIChatWidget() {
   const scopedAppId = useMemo(() => appIdFromPath(pathname), [pathname]);
   const guestMode = !user && allowsAnonymousAI(settings);
   const aiAccessible = canAccessAI(settings, !!user);
+  const isAppEditorRoute = /^\/(?:meine-apps|verwaltung\/(?:katalog\/)?apps)(?:\/new|\/[^/]+\/edit)$/.test(pathname);
 
   useEffect(() => {
     if (!isOpen || !aiAccessible || pathname === '/chat') return;
@@ -148,7 +149,13 @@ export function AIChatWidget() {
 
   return (
     <>
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+      <div
+        className={`fixed right-5 z-50 flex flex-col items-end gap-2 ${
+          isAppEditorRoute
+            ? "bottom-[calc(8rem+env(safe-area-inset-bottom))] sm:bottom-24"
+            : "bottom-5"
+        }`}
+      >
         <Tooltip delay={0}>
           <Tooltip.Trigger>
             <Button
