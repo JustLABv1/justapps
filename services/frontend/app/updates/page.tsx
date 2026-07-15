@@ -9,7 +9,6 @@ import {
     Button,
     Card,
     Chip,
-    Label,
     Spinner,
     Switch,
     toast,
@@ -172,7 +171,7 @@ export default function UpdatesPage() {
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <Label>Favorisierte Apps</Label>
+              Favorisierte Apps
             </Switch.Content>
           </Switch>
           <Switch
@@ -191,7 +190,7 @@ export default function UpdatesPage() {
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <Label>Zuletzt angesehene Apps</Label>
+              Zuletzt angesehene Apps
             </Switch.Content>
           </Switch>
           <Switch
@@ -210,7 +209,7 @@ export default function UpdatesPage() {
               <Switch.Control>
                 <Switch.Thumb />
               </Switch.Control>
-              <Label>Eigene und verwaltete Apps</Label>
+              Eigene und verwaltete Apps
             </Switch.Content>
           </Switch>
         </Card.Content>
