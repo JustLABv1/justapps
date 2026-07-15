@@ -40,9 +40,9 @@ type UserUpdatePreferences struct {
 	bun.BaseModel `bun:"table:user_update_preferences,alias:uup"`
 
 	UserID                 uuid.UUID `bun:"user_id,pk,type:uuid" json:"userId"`
-	NotifyFavoritedApps    bool      `bun:"notify_favorited_apps,notnull,default:true" json:"notifyFavoritedApps"`
-	NotifyRecentlyViewed   bool      `bun:"notify_recently_viewed_apps,notnull,default:true" json:"notifyRecentlyViewedApps"`
-	NotifyOwnedManagedApps bool      `bun:"notify_owned_managed_apps,notnull,default:true" json:"notifyOwnedManagedApps"`
+	NotifyFavoritedApps    bool      `bun:"notify_favorited_apps,notnull" json:"notifyFavoritedApps"`
+	NotifyRecentlyViewed   bool      `bun:"notify_recently_viewed_apps,notnull" json:"notifyRecentlyViewedApps"`
+	NotifyOwnedManagedApps bool      `bun:"notify_owned_managed_apps,notnull" json:"notifyOwnedManagedApps"`
 	CreatedAt              time.Time `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt              time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 }
