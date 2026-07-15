@@ -5,7 +5,7 @@ import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppCatalogFilters, AppConfig, AppUserSummary, SystemUser } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import { isDraftStatus, sortAppStatuses } from '@/lib/appStatus';
+import { APP_STATUS_OPTIONS, isDraftStatus, sortAppStatuses } from '@/lib/appStatus';
 import { Button, Modal, toast } from '@heroui/react';
 import { Check, Loader2, Plus, ShieldCheck, UserRoundCog } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -22,8 +22,6 @@ const FILTER_PARAM_KEYS: Array<keyof AppCatalogFilters> = [
   'locked',
   'visibility',
 ];
-
-const DEFAULT_STATUS_OPTIONS = ['Entwurf', 'POC', 'MVP', 'Sandbox', 'In Erprobung', 'Etabliert'];
 
 function readFilters(searchParams: ReturnType<typeof useSearchParams>): AppCatalogFilters {
   return {
@@ -75,7 +73,7 @@ function AppsContent() {
     [apps]
   );
   const statusOptions = useMemo(
-    () => sortAppStatuses(Array.from(new Set([...DEFAULT_STATUS_OPTIONS, ...apps.map((app) => app.status).filter(Boolean) as string[]]))),
+    () => sortAppStatuses(Array.from(new Set([...APP_STATUS_OPTIONS, ...apps.map((app) => app.status).filter(Boolean) as string[]]))),
     [apps]
   );
   const ownerOptions = useMemo(() => {

@@ -136,12 +136,18 @@ body {
 
 /* ── Page transition animation ── */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .page-enter {
-  animation: page-enter 0.22s ease-out both;
+  animation: page-enter 0.18s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation-duration: 0.1s;
+  }
 }
 
 @keyframes fadeSlideUp {

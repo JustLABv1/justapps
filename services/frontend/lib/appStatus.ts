@@ -2,6 +2,15 @@ export type AppStatusColor = 'default' | 'success' | 'accent' | 'warning';
 
 export const DRAFT_STATUS = 'Entwurf';
 
+export const APP_STATUS_OPTIONS = [
+  DRAFT_STATUS,
+  'POC',
+  'MVP',
+  'Sandbox',
+  'In Erprobung',
+  'Etabliert',
+] as const;
+
 type AppStatusMeta = {
   color: AppStatusColor;
   isDraft: boolean;
