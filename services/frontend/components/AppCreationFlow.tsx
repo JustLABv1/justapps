@@ -2,7 +2,7 @@
 
 import { EditorStatusPicker } from "@/components/editor/EditorStatusPicker";
 import { LinkListEditor } from "@/components/editor/LinkListEditor";
-import { AppConfig, GitLabIntegrationState, GitLabProviderSummary } from "@/config/apps";
+import { AppConfig, GitLabIntegrationState, GitLabProviderSummary, SystemUser } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi, uploadFile } from "@/lib/api";
@@ -16,6 +16,7 @@ import {
   ArrowLeft, ArrowRight, BookOpen, Boxes, Check, CircleHelp, FileText,
   FolderGit2, ImagePlus, Layers, Link2, PackageOpen, Pencil, Rocket,
   Sparkles, Tag, Upload, X,
+  UserPlus, UsersRound,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react
 const CATEGORIES = ["Verwaltung", "Kommunikation", "Infrastruktur", "Sicherheit", "Datenanalyse", "Dokumentenmanagement", "Projektmanagement", "Bürgerdienste", "Geodaten", "Finanzen", "Personal", "Bildung", "Gesundheit", "Umwelt", "Verkehr", "KI & Automatisierung"];
 const EMOJIS = ["🏛️", "📊", "💬", "🔐", "📅", "🚀", "🛠️", "📱", "🛡️", "⚙️", "📦", "📈", "🔑", "🏙️", "👥", "🗺️", "💰", "📝", "🌐", "🤖", "📧", "🗂️"];
 
-type SectionId = "repository" | "deployment" | "resources" | "banner" | "documentation" | "related";
+type SectionId = "repository" | "deployment" | "resources" | "banner" | "documentation" | "related" | "editors";
 type StepId = string;
 type Branches = Record<SectionId, boolean>;
 type Step = { id: StepId; title: string; description: string; section?: SectionId; optional?: boolean; icon: React.ReactNode };
@@ -83,7 +84,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const [branches, setBranches] = useState<Branches>(() => ({
     repository: !!initialFormData?.repositories?.length, deployment: !!initialFormData?.hasDeploymentAssistant,
     resources: !!(initialFormData?.liveDemos?.length || initialFormData?.repositories?.length || initialFormData?.customLinks?.length || initialFormData?.docsUrl),
-    banner: !!initialFormData?.bannerText, documentation: !!initialFormData?.markdownContent, related: false,
+    banner: !!initialFormData?.bannerText, documentation: !!initialFormData?.markdownContent, related: false, editors: false,
   }));
   const [currentId, setCurrentId] = useState<StepId>("name");
   const [attemptedNext, setAttemptedNext] = useState(false);
@@ -104,6 +105,10 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const [relatedSearch, setRelatedSearch] = useState("");
   const [groups, setGroups] = useState<{ id: string; name: string; description?: string }[]>([]);
   const [groupIds, setGroupIds] = useState<Set<string>>(new Set());
+  const [availableUsers, setAvailableUsers] = useState<SystemUser[]>([]);
+  const [editorIds, setEditorIds] = useState<Set<string>>(new Set(initialFormData?.editors?.map((editor) => editor.id) || []));
+  const [editorSearch, setEditorSearch] = useState("");
+  const [editorsWereSaved, setEditorsWereSaved] = useState(false);
   const iconInput = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -140,6 +145,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
     next.push({ id: "presentation", title: "Herausgeber und Technologien", description: "Hilf anderen, den Kontext und die technische Basis einzuordnen.", icon: <Boxes /> }, { id: "banner", title: "Soll ein Hinweis erscheinen?", description: "Optionaler Status- oder Warnhinweis auf der App-Seite.", section: "banner", optional: true, icon: <CircleHelp /> });
     if (branches.banner) next.push({ id: "banner-content", title: "Hinweis gestalten", description: "Wähle die Art und formuliere den Hinweis.", icon: <CircleHelp /> });
     fieldPairs.forEach((_, index) => next.push({ id: `details-${index}`, title: "Fachliche Details", description: "Ergänze nur die Angaben, die für diese App wichtig sind.", icon: <Layers /> }));
+    next.push({ id: "editors", title: "Weitere Bearbeiter hinzufügen?", description: "Du kannst anderen Personen die Bearbeitung dieser App erlauben.", section: "editors", optional: true, icon: <UsersRound /> });
+    if (branches.editors) next.push({ id: "editors-select", title: "Wer darf mitarbeiten?", description: "Wähle Personen aus, die diese App bearbeiten dürfen.", icon: <UserPlus /> });
     next.push({ id: "related", title: "Andere Apps verknüpfen?", description: "Optional kannst du passende Lösungen miteinander verbinden.", section: "related", optional: true, icon: <Link2 /> });
     if (branches.related) next.push({ id: "related-apps", title: "Verwandte Apps", description: "Wähle bestehende Apps aus dem Katalog aus.", icon: <Link2 /> });
     if (isAdmin) next.push({ id: "admin", title: "Sichtbarkeit verwalten", description: "Ordne die App Gruppen zu oder hebe sie hervor.", icon: <Sparkles /> });
@@ -157,12 +164,13 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   useEffect(() => { headingRef.current?.focus(); }, [currentId]);
   useEffect(() => { if (branches.repository) fetchApi("/settings/repository-providers/available").then((response) => response.ok ? response.json() : []).then((value) => setProviders(Array.isArray(value) ? value : [])).catch(() => {}); }, [branches.repository]);
   useEffect(() => { if (isAdmin) fetchApi("/app-groups").then((response) => response.ok ? response.json() : []).then((value) => setGroups(Array.isArray(value) ? value : [])).catch(() => {}); }, [isAdmin]);
+  useEffect(() => { if (branches.editors) fetchApi("/users").then((response) => response.ok ? response.json() : []).then((value) => { const users = Array.isArray(value) ? value : value.users || []; setAvailableUsers(users.filter((candidate: SystemUser) => !candidate.disabled && candidate.id !== user?.id)); }).catch(() => {}); }, [branches.editors, user?.id]);
 
   const payload = () => ({ ...formData, categories: formData.categories || [], techStack: formData.techStack || [], tags: formData.tags || [], customFields: formData.customFields || [], liveDemos: branches.resources ? links(formData.liveDemos) : [], repositories: (branches.resources || branches.repository) ? links(formData.repositories) : [], customLinks: branches.resources ? links(formData.customLinks) : [], markdownContent: branches.documentation ? formData.markdownContent || "" : "", bannerText: branches.banner ? formData.bannerText || "" : "", bannerType: branches.banner ? formData.bannerType : undefined, bannerTitle: branches.banner ? formData.bannerTitle || "" : "", bannerColor: branches.banner ? formData.bannerColor || "" : "", hasDeploymentAssistant: branches.deployment, showDocker: branches.deployment && formData.showDocker !== false, showCompose: branches.deployment && formData.showCompose !== false, showHelm: branches.deployment && formData.showHelm !== false, status: formData.status || DRAFT_STATUS });
 
   const save = async (final = false) => {
     if (!canCreateDraft) throw new Error("Bitte gib einen verfügbaren Namen und eine technische ID an.");
-    if (nonDraft && (!(formData.categories?.length) || !formData.description?.trim())) throw new Error("Für diesen Status sind Kategorie und Kurzbeschreibung erforderlich.");
+    if (final && nonDraft && (!(formData.categories?.length) || !formData.description?.trim())) throw new Error("Für diesen Status sind Kategorie und Kurzbeschreibung erforderlich.");
     if (!profileReady && !(await refreshUser())) throw new Error("Das Benutzerprofil ist noch nicht bereit.");
     setSaveState("saving"); setSaveError(null);
     const response = await fetchApi(draftId ? `/apps/${draftId}` : "/apps", { method: draftId ? "PUT" : "POST", body: JSON.stringify(payload()) });
@@ -200,6 +208,10 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const saveRepositoryConnection = async (id: string) => {
     const linked = await fetchApi(`/apps/${id}/repository`, { method: "PUT", body: JSON.stringify(repo) });
     if (!linked.ok) throw new Error("Repository-Verknüpfung konnte nicht gespeichert werden.");
+  };
+  const saveEditors = async (id: string, userIds = Array.from(editorIds)) => {
+    const response = await fetchApi(`/apps/${id}/editors`, { method: "PUT", body: JSON.stringify({ userIds }) });
+    if (!response.ok) throw new Error("Bearbeiter konnten nicht gespeichert werden.");
   };
   const hasResource = !!(formData.liveDemos?.some((item) => item.url?.trim()) || formData.repositories?.some((item) => item.url?.trim()) || formData.customLinks?.some((item) => item.url?.trim()) || formData.docsUrl?.trim());
   const hasDockerSetup = !!(formData.dockerRepo?.trim() || formData.customDockerCommand?.trim());
@@ -252,7 +264,9 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   };
   const move = async (direction: 1 | -1) => {
     if (direction === 1 && !validCurrent()) { setAttemptedNext(true); return; }
+    if (direction === 1 && current.id === "status" && nonDraft && !formData.categories?.length) { setCurrentId("categories"); setAttemptedNext(true); return; }
     if (direction === 1 && current.id === "name") { try { await save(); } catch { return; } }
+    if (direction === 1 && current.id === "editors-select") { try { await saveEditors(await save()); setEditorsWereSaved(true); } catch (error) { setSaveError(error instanceof Error ? error.message : "Bearbeiter konnten nicht gespeichert werden."); return; } }
     const target = steps[currentIndex + direction];
     if (target) { setCurrentId(target.id); setAttemptedNext(false); if (direction === 1 && returnToReview) { setReturnToReview(false); } }
   };
@@ -286,6 +300,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       case "presentation": return [formData.authority, formData.techStack?.join(", ")].filter(Boolean).join(" · ") || "Nicht ergänzt";
       case "banner": return branches.banner ? "Ja" : "Nein";
       case "banner-content": return formData.bannerText || "Nicht ergänzt";
+      case "editors": return branches.editors ? "Ja" : "Nein";
+      case "editors-select": return availableUsers.filter((candidate) => editorIds.has(candidate.id)).map((candidate) => candidate.username).join(", ") || "Keine ausgewählt";
       case "related": return branches.related ? "Ja" : "Nein";
       case "related-apps": return relatedApps.map((app) => app.name).join(", ") || "Nicht ergänzt";
       case "admin": return [groupIds.size ? `${groupIds.size} Gruppen` : "", formData.isFeatured ? "Ausgezeichnet" : ""].filter(Boolean).join(" · ") || "Nicht ergänzt";
@@ -318,6 +334,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       case "presentation": return <div className="space-y-5"><TextField onChange={(authority) => setFormData((previous) => ({ ...previous, authority }))}><Label>Herausgeber</Label><Input value={formData.authority || ""} placeholder="z. B. Stadtverwaltung" /></TextField><Label>Technologien</Label><div className="flex flex-wrap gap-2">{(formData.techStack || []).map((technology) => <Chip key={technology} variant="soft">{technology}<button type="button" onClick={() => setFormData((previous) => ({ ...previous, techStack: previous.techStack?.filter((value) => value !== technology) }))}><X className="ml-1 h-3 w-3" /></button></Chip>)}</div><div className="flex gap-2"><Input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="z. B. React" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); toggleList("techStack", tagInput); setTagInput(""); } }} /><Button variant="secondary" onPress={() => { toggleList("techStack", tagInput); setTagInput(""); }}>Hinzufügen</Button></div></div>;
       case "banner": return <SectionGate title="Hinweis" description="Zeige bei Bedarf einen Status-, Warn- oder Informationshinweis." enabled={branches.banner} onChange={(value) => setBranches((previous) => ({ ...previous, banner: value }))} icon={<CircleHelp className="h-5 w-5" />} />;
       case "banner-content": return <div className="space-y-5"><div className="space-y-2"><Label>Art des Hinweises</Label><Select aria-label="Art des Hinweises" selectedKey={formData.bannerType || "info"} onSelectionChange={(key) => setFormData((previous) => ({ ...previous, bannerType: String(key) as AppConfig["bannerType"] }))}><Select.Trigger className="h-12"><Select.Value /><Select.Indicator /></Select.Trigger><Select.Popover><ListBox><ListBox.Item id="info" textValue="Info">Info<ListBox.ItemIndicator /></ListBox.Item><ListBox.Item id="warning" textValue="Warnung">Warnung<ListBox.ItemIndicator /></ListBox.Item><ListBox.Item id="danger" textValue="Kritisch">Kritisch<ListBox.ItemIndicator /></ListBox.Item></ListBox></Select.Popover></Select></div><TextField onChange={(bannerTitle) => setFormData((previous) => ({ ...previous, bannerTitle }))}><Label>Überschrift</Label><Input value={formData.bannerTitle || ""} placeholder="Optional" /></TextField><TextField isRequired isInvalid={attemptedNext && !formData.bannerText?.trim()} onChange={(bannerText) => setFormData((previous) => ({ ...previous, bannerText }))}><Label>Hinweistext</Label><TextArea value={formData.bannerText || ""} /><FieldError>{attemptedNext && !formData.bannerText?.trim() ? "Der Hinweistext ist erforderlich." : undefined}</FieldError></TextField></div>;
+      case "editors": return <SectionGate title="Bearbeiter" description="Ausgewählte Personen können diese App bearbeiten, ohne die Eigentümerschaft zu übernehmen." enabled={branches.editors} onChange={(value) => setBranches((previous) => ({ ...previous, editors: value }))} icon={<UsersRound className="h-5 w-5" />} />;
+      case "editors-select": { const filteredUsers = availableUsers.filter((candidate) => !editorSearch.trim() || [candidate.username, candidate.email, candidate.role].filter(Boolean).some((value) => value!.toLowerCase().includes(editorSearch.trim().toLowerCase()))); const selectedUsers = availableUsers.filter((candidate) => editorIds.has(candidate.id)); const toggleEditor = (id: string) => setEditorIds((previous) => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; }); return <div className="space-y-5">{selectedUsers.length > 0 && <div className="space-y-2"><Label>Ausgewählt</Label><div className="flex flex-wrap gap-2">{selectedUsers.map((candidate) => <Chip key={candidate.id} variant="soft" color="accent" className="gap-1">{candidate.username}<button type="button" aria-label={`${candidate.username} entfernen`} onClick={() => toggleEditor(candidate.id)}><X className="h-3 w-3" /></button></Chip>)}</div></div>}<div className="space-y-2"><Label>Personen suchen</Label><Input className="w-full" value={editorSearch} onChange={(event) => setEditorSearch(event.target.value)} placeholder="Name oder E-Mail-Adresse" /></div><div className="overflow-hidden rounded-xl border border-border">{filteredUsers.slice(0, 10).map((candidate) => { const selected = editorIds.has(candidate.id); return <button key={candidate.id} type="button" onClick={() => toggleEditor(candidate.id)} className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-left last:border-b-0 ${selected ? "bg-accent/10" : "hover:bg-surface-secondary"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${selected ? "bg-accent text-accent-foreground" : "bg-surface-secondary text-muted"}`}>{candidate.username[0]?.toUpperCase() || "?"}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-foreground">{candidate.username}</span><span className="block truncate text-xs text-muted">{candidate.email}</span></span>{selected ? <Check className="h-4 w-4 text-accent" /> : <UserPlus className="h-4 w-4 text-muted" />}</button>; })}{filteredUsers.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted">Keine passenden Personen gefunden.</p>}</div></div>; }
       case "related": return <SectionGate title="Verwandte Apps" description="Verknüpfe die App mit bestehenden Lösungen im Katalog." enabled={branches.related} onChange={(value) => setBranches((previous) => ({ ...previous, related: value }))} icon={<Link2 className="h-5 w-5" />} />;
       case "related-apps": { const available = existingApps.filter((app) => !relatedApps.some((related) => related.id === app.id) && app.id !== draftId && (!relatedSearch || app.name.toLowerCase().includes(relatedSearch.toLowerCase()) || app.id.includes(relatedSearch))); return <div className="space-y-5">{relatedApps.length > 0 && <div className="space-y-2"><Label>Ausgewählte Apps</Label><div className="grid gap-2 sm:grid-cols-2">{relatedApps.map((app) => { const icon = getImageAssetUrl(app.icon); return <div key={app.id} className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface-secondary px-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface text-sm">{icon ? <Image src={icon} alt="" width={28} height={28} className="h-full w-full object-contain p-0.5" unoptimized /> : app.icon || "🏛️"}</span><span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span><Button isIconOnly size="sm" variant="secondary" aria-label={`${app.name} entfernen`} onPress={() => removeRelated(app.id)}><X className="h-4 w-4" /></Button></div>; })}</div></div>}<div className="space-y-2"><Label>App suchen und verknüpfen</Label><Input className="w-full" value={relatedSearch} onChange={(event) => setRelatedSearch(event.target.value)} placeholder="App-Name oder technische ID suchen" />{relatedSearch && <div className="overflow-hidden rounded-xl border border-border">{available.slice(0, 8).map((app) => <Button key={app.id} variant="ghost" fullWidth className="h-12 justify-between rounded-none border-b border-border last:border-b-0" onPress={() => addRelated(app)}>{app.name}<ArrowRight className="h-4 w-4" /></Button>)}{available.length === 0 && <p className="px-3 py-3 text-sm text-muted">Keine passende App gefunden.</p>}</div>}</div></div>; }
       case "admin": return <div className="space-y-5"><div className="space-y-2">{groups.map((group) => <div key={group.id} className="flex items-center justify-between rounded-2xl border border-border p-4"><div><p className="font-semibold">{group.name}</p><p className="text-xs text-muted">{group.description}</p></div><Switch isSelected={groupIds.has(group.id)} onChange={(value) => setGroupIds((previous) => { const next = new Set(previous); if (value) next.add(group.id); else next.delete(group.id); return next; })}><Switch.Control><Switch.Thumb /></Switch.Control></Switch></div>)}</div><div className="flex items-center justify-between rounded-2xl border border-border p-4"><div><p className="font-semibold">Ausgezeichnet</p><p className="text-sm text-muted">Auf der Startseite hervorheben.</p></div><Switch isSelected={!!formData.isFeatured} onChange={(isFeatured) => setFormData((previous) => ({ ...previous, isFeatured }))}><Switch.Control><Switch.Thumb /></Switch.Control></Switch></div></div>;
@@ -328,7 +346,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
     }
   };
 
-  const finish = async () => { if (validationIssues().length) { setAttemptedNext(true); return; } try { const id = await save(); if (branches.repository) await saveRepositoryConnection(id); for (const groupId of groupIds) await fetchApi(`/app-groups/${groupId}/members`, { method: "POST", body: JSON.stringify({ appId: id }) }); await save(true); } catch (error) { const message = error instanceof Error ? error.message : "Die App konnte nicht erstellt werden."; setSaveError(message); toast.danger(message); } };
+  const finish = async () => { if (validationIssues().length) { setAttemptedNext(true); return; } try { const id = await save(); if (branches.repository) await saveRepositoryConnection(id); if (branches.editors || editorsWereSaved) await saveEditors(id, branches.editors ? Array.from(editorIds) : []); for (const groupId of groupIds) await fetchApi(`/app-groups/${groupId}/members`, { method: "POST", body: JSON.stringify({ appId: id }) }); await save(true); } catch (error) { const message = error instanceof Error ? error.message : "Die App konnte nicht erstellt werden."; setSaveError(message); toast.danger(message); } };
   const requestExit = () => {
     if ((saveState === "saving" || saveState === "error") && !window.confirm("Der Entwurf wird noch gespeichert. Möchtest du die Erstellung wirklich verlassen?")) return;
     router.push(backUrl);
