@@ -33,6 +33,7 @@ function appIdFromPath(pathname: string): string | undefined {
 export function AIChatWidget() {
   const { user } = useAuth();
   const { settings } = useSettings();
+  const storeName = settings.storeName || 'JustApps';
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -181,7 +182,7 @@ export function AIChatWidget() {
                   <Sparkles className="h-5 w-5" />
                 </Modal.Icon>
                 <div className="min-w-0">
-                  <Modal.Heading>JustApps AI</Modal.Heading>
+                  <Modal.Heading>{storeName} AI</Modal.Heading>
                   <p className="text-xs text-muted">
                     {scopedAppId ? 'App-Kontext aktiv' : guestMode ? 'Gastmodus mit lokalem Verlauf' : 'Persönlicher Verlauf'}
                   </p>

@@ -6,12 +6,12 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Input, Pagination, TextField } from "@heroui/react";
-import { ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, X } from "lucide-react";
+import { Button, Input, TextField } from "@heroui/react";
+import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
 import { AppCardSkeleton } from "./AppCardSkeleton";
 
@@ -42,11 +42,11 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[] } | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [pagination, setPagination] = useState({ key: paginationKey, page: 1 });
+  const [visibleAppsState, setVisibleAppsState] = useState({ key: paginationKey, count: PAGE_SIZE });
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
   const recentApps = useSyncExternalStore(subscribeToRecentlyViewed, getRecentlyViewed, () => emptyRecentlyViewed);
-  const currentPage = pagination.key === paginationKey ? pagination.page : 1;
   const serverFilterKey = useMemo(() => JSON.stringify({
     q: searchQuery,
     category: selectedCategory,
@@ -92,19 +92,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
     const qs = params.toString();
     router.replace(qs ? `/?${qs}` : '/', { scroll: false });
   }, [router, searchParams]);
-  const setCurrentPage = useCallback((nextPage: number | ((page: number) => number)) => {
-    setPagination((previous) => {
-      const previousPage = previous.key === paginationKey ? previous.page : 1;
-      const resolvedPage = typeof nextPage === 'function'
-        ? nextPage(previousPage)
-        : nextPage;
-
-      return {
-        key: paginationKey,
-        page: resolvedPage,
-      };
-    });
-  }, [paginationKey]);
 
   const setSelectedCategory = useCallback((v: string | null) => updateParam('category', v), [updateParam]);
   const setSelectedStatus = useCallback((v: string | null) => updateParam('status', v), [updateParam]);
@@ -159,6 +146,26 @@ export function AppGrid({ initialApps }: AppGridProps) {
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
   const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || showFavoritesOnly;
+
+  const visibleAppsKey = `${paginationKey}|${serverResults ? serverFilterKey : 'initial'}`;
+  const visibleCount = visibleAppsState.key === visibleAppsKey ? visibleAppsState.count : PAGE_SIZE;
+  const hasMoreApps = visibleCount < filteredApps.length;
+  const loadMoreApps = useCallback(() => {
+    setVisibleAppsState((current) => {
+      const previousCount = current.key === visibleAppsKey ? current.count : PAGE_SIZE;
+      return { key: visibleAppsKey, count: Math.min(previousCount + PAGE_SIZE, filteredApps.length) };
+    });
+  }, [filteredApps.length, visibleAppsKey]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasMoreApps || serverLoading) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMoreApps();
+    }, { rootMargin: '320px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMoreApps, loadMoreApps, serverLoading]);
 
   const hasReuseApps = useMemo(() => initialApps.some(app => app.isReuse), [initialApps]);
 
@@ -528,11 +535,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       )}
 
       {(() => {
-        const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
-        const safePage = Math.min(currentPage, Math.max(1, totalPages));
-        const from = filteredApps.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-        const to = Math.min(safePage * PAGE_SIZE, filteredApps.length);
-        const paginatedApps = filteredApps.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+        const visibleApps = filteredApps.slice(0, visibleCount);
 
         return (
           <>
@@ -540,10 +543,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
               <p className="text-sm font-medium text-muted">
                 {serverLoading ? (
                   <span className="text-muted">Suche läuft...</span>
-                ) : totalPages > 1 ? (
-                  <><span className="text-foreground font-bold">{from}–{to}</span> von <span className="text-foreground font-bold">{filteredApps.length}</span> Apps &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
                 ) : (
-                  <><span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} gefunden &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
                 )}
               </p>
               {hasActiveFilters && (
@@ -568,7 +569,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
                   </div>
                 ))
               ) : (
-                paginatedApps.map((app) => (
+                visibleApps.map((app) => (
                   <div key={app.id} className="break-inside-avoid mb-5">
                     <AppCard app={app} />
                   </div>
@@ -595,62 +596,17 @@ export function AppGrid({ initialApps }: AppGridProps) {
               </div>
             )}
 
-            {!serverLoading && totalPages > 1 && (
-              <div className="flex justify-center pb-8">
-                <Pagination aria-label="Seitennavigation">
-                  <Pagination.Content>
-                    <Pagination.Item>
-                      <Pagination.Previous
-                        onPress={() => { setCurrentPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        isDisabled={safePage === 1}
-                        aria-label="Vorherige Seite"
-                      >
-                        <Pagination.PreviousIcon />
-                      </Pagination.Previous>
-                    </Pagination.Item>
-
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        if (totalPages <= 7) return true;
-                        if (page === 1 || page === totalPages) return true;
-                        if (Math.abs(page - safePage) <= 1) return true;
-                        return false;
-                      })
-                      .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
-                        if (idx > 0 && (page as number) - (arr[idx - 1] as number) > 1) {
-                          acc.push('ellipsis');
-                        }
-                        acc.push(page);
-                        return acc;
-                      }, [])
-                      .map((item, idx) =>
-                        item === 'ellipsis' ? (
-                          <Pagination.Item key={`ellipsis-${idx}`}>
-                            <Pagination.Ellipsis />
-                          </Pagination.Item>
-                        ) : (
-                          <Pagination.Item key={item}>
-                            <Pagination.Link
-                              isActive={item === safePage}
-                              onPress={() => { setCurrentPage(item as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                            >
-                              {item}
-                            </Pagination.Link>
-                          </Pagination.Item>
-                        )
-                      )}
-
-                    <Pagination.Item>
-                      <Pagination.Next
-                        onPress={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        isDisabled={safePage === totalPages}
-                        aria-label="Nächste Seite"
-                      >
-                        <Pagination.NextIcon />
-                      </Pagination.Next>
-                    </Pagination.Item>
-                  </Pagination.Content>
-                </Pagination>
+            {!serverLoading && hasMoreApps && (
+              <div ref={loadMoreRef} className="flex flex-col items-center gap-3 pb-8 pt-2" aria-live="polite">
+                <span className="text-sm text-muted">Weitere Apps werden geladen, sobald Sie weiter scrollen.</span>
+                <Button variant="secondary" onPress={loadMoreApps}>
+                  Weitere Apps laden
+                </Button>
+              </div>
+            )}
+            {!serverLoading && filteredApps.length > 0 && !hasMoreApps && visibleApps.length > PAGE_SIZE && (
+              <div className="flex items-center justify-center gap-2 pb-8 pt-2 text-sm text-muted" aria-live="polite">
+                <Loader2 className="h-4 w-4 text-success" /> Alle {filteredApps.length} Apps geladen
               </div>
             )}
           </>

@@ -9,6 +9,8 @@ import {
     Button,
     Card,
     Chip,
+    Dropdown,
+    Input,
     toast
 } from '@heroui/react';
 import {
@@ -16,8 +18,10 @@ import {
     Copy,
     ExternalLink,
     Lock,
+    MoreHorizontal,
     Pencil,
     Plus,
+    Search,
     ShieldCheck,
     Trash2,
     UsersRound
@@ -67,6 +71,7 @@ function MyAppsContent() {
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [query, setQuery] = useState('');
 
   // Auth check
   useEffect(() => {
@@ -221,6 +226,11 @@ function MyAppsContent() {
     if (editId) router.replace(`/meine-apps/${editId}/edit`);
   }, [searchParams, router]);
 
+  const visibleApps = apps.filter((app) => {
+    const search = query.trim().toLowerCase();
+    return !search || [app.name, app.id, app.description, ...(app.categories || [])].some((value) => value?.toLowerCase().includes(search));
+  });
+
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
       <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
@@ -245,26 +255,24 @@ function MyAppsContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 pb-8 md:pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="pb-10">
+      <header className="flex flex-col gap-6 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">Meine Apps</h1>
-          <p className="text-muted">Verwalten Sie Ihre eigenen und freigegebenen Applikationen im JustApps.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Arbeitsbereich</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Meine Apps</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">Verwalten Sie Ihre eigenen Apps und Lösungen, für die Sie freigegeben sind.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onPress={() => router.push('/')} className="font-bold gap-2">
-            <ChevronLeft className="w-4 h-4" />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onPress={() => router.push('/')}>
+            <ChevronLeft className="h-4 w-4" />
             Zum Store
           </Button>
-          <Button
-            onPress={handleCreateApp}
-            isDisabled={user.role !== 'admin' && (!user.canSubmitApps || !settings.allowAppSubmissions)}
-          >
-            <Plus className="w-6 h-6" />
+          <Button onPress={handleCreateApp} isDisabled={user.role !== 'admin' && (!user.canSubmitApps || !settings.allowAppSubmissions)}>
+            <Plus className="h-4 w-4" />
             Neue App
           </Button>
         </div>
-      </div>
+      </header>
 
       {error && (
         <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
@@ -294,12 +302,17 @@ function MyAppsContent() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4">
+        <Card variant="default" className="overflow-hidden border-border shadow-sm">
+          <div className="relative flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div><h2 className="font-semibold text-foreground">Apps</h2><p className="text-sm text-muted">{loading ? 'Wird geladen …' : `${visibleApps.length} ${visibleApps.length === 1 ? 'App' : 'Apps'}`}</p></div>
+            <div className="absolute right-5 top-1/2 w-80 -translate-y-1/2"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
+          </div>
+          <div className="divide-y divide-border">
           {loading ? (
             [...Array(3)].map((_, i) => <MyAppsCardSkeleton key={i} />)
           ) : (
             <>
-              {apps.map((app) => {
+              {visibleApps.map((app) => {
                 const statusMeta = getAppStatusMeta(app.status);
                 const iconSrc = getImageAssetUrl(app.icon);
                 const permissions = getAppPermissions(app);
@@ -307,9 +320,8 @@ function MyAppsContent() {
                 const canDelete = permissions.canDelete && !app.isLocked;
                 const canCopy = user.role === 'admin' || app.ownerId === user.id;
                 return (
-                  <Card key={app.id} variant="default" className="hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group">
-                    <div className="flex flex-col md:flex-row items-center p-5 gap-6">
-                      <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-surface-secondary to-surface border border-border flex items-center justify-center text-3xl shadow-sm flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                  <article key={app.id} className="group flex flex-col gap-4 px-4 py-5 transition-colors duration-200 ease-out hover:bg-surface-secondary/45 sm:px-5 lg:flex-row lg:items-center">
+                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface-secondary text-2xl shadow-sm">
                         {iconSrc ? (
                           <Image src={iconSrc} alt={app.name} fill className="object-contain w-full h-full p-2" unoptimized />
                         ) : (
@@ -317,22 +329,22 @@ function MyAppsContent() {
                         )}
                       </div>
 
-                      <div className="flex-grow text-center md:text-left">
-                        <div className="flex items-center justify-center md:justify-start gap-2 mb-1.5 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
-                          {app.categories?.slice(0, 3).map(cat => (
+                          {app.categories?.slice(0, 2).map(cat => (
                             <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
                           ))}
-                          {(app.categories?.length || 0) > 3 && (
-                            <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 3}</Chip>
+                          {(app.categories?.length || 0) > 2 && (
+                            <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 2}</Chip>
                           )}
                         </div>
 
-                        <div className="text-sm text-muted line-clamp-2 mb-3 max-w-3xl">
+                        <div className="mt-1.5 max-w-3xl text-sm text-muted line-clamp-2">
                           {app.description || <span className="italic opacity-50">Keine Beschreibung</span>}
                         </div>
 
-                        <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
                             <span className="opacity-50">ID:</span> {app.id}
                           </span>
@@ -359,49 +371,43 @@ function MyAppsContent() {
                         </div>
                       </div>
 
-                      <div className="flex flex-row md:flex-col gap-2 flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
-                        <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
-                          <ExternalLink className="w-4 h-4 text-muted" />
-                          Ansehen
+                      <div className="flex shrink-0 items-center gap-2 lg:justify-end">
+                        <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)}>
+                          <ExternalLink className="h-4 w-4" />
+                          Öffnen
                         </Button>
-                        {canCopy && (
-                          <Button size="sm" variant="secondary" onPress={() => void handleCopyApp(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
-                            <Copy className="w-4 h-4 text-muted" />
-                            Kopieren
-                          </Button>
-                        )}
                         <Button
                           size="sm" variant="secondary"
                           onPress={() => handleEditApp(app)}
                           isDisabled={!canEdit}
-                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={!canEdit ? 'opacity-50 cursor-not-allowed' : ''}
                         >
-                          <Pencil className="w-4 h-4 text-muted" />
+                          <Pencil className="h-4 w-4" />
                           Bearbeiten
                         </Button>
-                        {permissions.canManageEditors && (
-                          <Button size="sm" variant="secondary" onPress={() => handleManageEditors(app)} className="font-bold gap-2 flex-1 md:flex-none justify-start">
-                            <UsersRound className="w-4 h-4 text-muted" />
-                            Bearbeiter
+                        <Dropdown>
+                          <Button isIconOnly size="sm" variant="secondary" aria-label={`Weitere Aktionen für ${app.name}`}>
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          size="sm" variant="danger-soft"
-                          onPress={() => handleDeleteApp(app)}
-                          isDisabled={!canDelete}
-                          className={`font-bold gap-2 flex-1 md:flex-none justify-start ${!canDelete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Löschen
-                        </Button>
+                          <Dropdown.Popover>
+                            <Dropdown.Menu aria-label={`Aktionen für ${app.name}`} onAction={(key) => {
+                              if (key === 'copy') void handleCopyApp(app);
+                              if (key === 'editors') handleManageEditors(app);
+                              if (key === 'delete') handleDeleteApp(app);
+                            }}>
+                              {canCopy && <Dropdown.Item id="copy" textValue="Kopieren"><div className="flex items-center gap-2"><Copy className="h-4 w-4" />Kopieren</div></Dropdown.Item>}
+                              {permissions.canManageEditors && <Dropdown.Item id="editors" textValue="Bearbeiter verwalten"><div className="flex items-center gap-2"><UsersRound className="h-4 w-4" />Bearbeiter verwalten</div></Dropdown.Item>}
+                              <Dropdown.Item id="delete" textValue="Löschen" isDisabled={!canDelete} className="text-danger"><div className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Löschen</div></Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown.Popover>
+                        </Dropdown>
                       </div>
-                    </div>
-                  </Card>
+                  </article>
                 );
               })}
 
               {apps.length === 0 && (
-                <div className="py-20 text-center bg-surface-secondary rounded-2xl border-2 border-dashed border-border px-4">
+                <div className="py-20 text-center bg-surface-secondary px-4">
                   <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen oder freigegebenen Apps.</p>
                   {(user.canSubmitApps || user.role === 'admin') ? (
                     <Button variant="ghost" onPress={handleCreateApp}>Erste App erstellen</Button>
@@ -410,9 +416,13 @@ function MyAppsContent() {
                   )}
                 </div>
               )}
+              {apps.length > 0 && visibleApps.length === 0 && (
+                <div className="py-16 text-center"><p className="font-medium text-foreground">Keine Apps gefunden</p><p className="mt-1 text-sm text-muted">Passen Sie den Suchbegriff an.</p></div>
+              )}
             </>
           )}
-        </div>
+          </div>
+        </Card>
       </div>
 
       <ConfirmDialog
