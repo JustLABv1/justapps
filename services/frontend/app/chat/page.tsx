@@ -365,7 +365,7 @@ function ChatPageContent() {
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
               <Bot className="h-3.5 w-3.5" />
             </div>
-            <span className="truncate text-sm font-semibold text-foreground">JustApps AI</span>
+            <span className="truncate text-sm font-semibold text-foreground">{settings.storeName || 'JustApps'} AI</span>
           </div>
           <Button
             isIconOnly
