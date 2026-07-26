@@ -1,6 +1,6 @@
 'use client';
 
-import { AppEditorForm } from '@/components/AppEditorForm';
+import { AppCreationFlow } from '@/components/AppCreationFlow';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { prepareAppCopyDraft } from '@/lib/appCopy';
@@ -94,7 +94,7 @@ function NewAppContent() {
     );
   }
 
-  return <AppEditorForm initialApp={null} initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} />;
+  return <AppCreationFlow initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} />;
 }
 
 export default function NewAppPage() {
