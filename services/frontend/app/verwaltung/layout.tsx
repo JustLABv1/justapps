@@ -11,6 +11,7 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const isCreationRoute = pathname === '/verwaltung/apps/new' || pathname === '/verwaltung/katalog/apps/new';
 
   useEffect(() => {
     if (!loading) {
@@ -32,6 +33,10 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
   );
 
   if (!user || user.role !== 'admin') return null;
+
+  if (isCreationRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="relative left-1/2 w-screen max-w-[1720px] -translate-x-1/2 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
