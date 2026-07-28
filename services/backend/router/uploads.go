@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterUploads(v1 *gin.RouterGroup, db *bun.DB, dataPath string) {
-	// Admin-only upload endpoint (requires auth)
+	// Authenticated users can upload app logos.
 	v1.POST("/upload/logo", middlewares.Auth(db), func(c *gin.Context) {
 		upload.UploadLogo(c, dataPath)
 	})

@@ -134,7 +134,8 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		}
 	}
 
-	// App-group reads follow app-store visibility; writes require admin.
+	// App-group reads follow app-store visibility. App submitters can create
+	// groups and add their own apps; admins retain full group management.
 	groupsGroup := router.Group("/app-groups")
 	{
 		groupsGroup.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) {
@@ -144,23 +145,28 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			apps.GetGroupMembers(c, db)
 		})
 
+		groupsSubmitterGroup := groupsGroup.Group("")
+		groupsSubmitterGroup.Use(middlewares.Auth(db))
+		{
+			groupsSubmitterGroup.POST("", func(c *gin.Context) {
+				apps.CreateGroup(c, db)
+			})
+			groupsSubmitterGroup.POST("/:groupId/members", func(c *gin.Context) {
+				apps.AddGroupMember(c, db)
+			})
+			groupsSubmitterGroup.DELETE("/:groupId/members/:appId", func(c *gin.Context) {
+				apps.RemoveGroupMember(c, db)
+			})
+		}
+
 		groupsAdminGroup := groupsGroup.Group("")
 		groupsAdminGroup.Use(middlewares.Admin(db))
 		{
-			groupsAdminGroup.POST("", func(c *gin.Context) {
-				apps.CreateGroup(c, db)
-			})
 			groupsAdminGroup.PUT("/:groupId", func(c *gin.Context) {
 				apps.UpdateGroup(c, db)
 			})
 			groupsAdminGroup.DELETE("/:groupId", func(c *gin.Context) {
 				apps.DeleteGroup(c, db)
-			})
-			groupsAdminGroup.POST("/:groupId/members", func(c *gin.Context) {
-				apps.AddGroupMember(c, db)
-			})
-			groupsAdminGroup.DELETE("/:groupId/members/:appId", func(c *gin.Context) {
-				apps.RemoveGroupMember(c, db)
 			})
 		}
 	}

@@ -229,7 +229,7 @@ Supported provider types include `openai`, `azure-openai`, `anthropic`, `gemini`
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/upload/logo` | User | Upload an app logo, returns URL |
+| `POST` | `/upload/logo` | Authenticated user | Upload an app logo, returns URL |
 
 Accepted formats: `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`. Maximum size: 5 MB.
 

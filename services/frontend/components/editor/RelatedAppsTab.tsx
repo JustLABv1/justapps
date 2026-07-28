@@ -20,7 +20,7 @@ interface AppGroup {
 
 interface RelatedAppsTabProps {
   showDraftHint?: boolean;
-  isAdmin: boolean;
+  canManageGroups: boolean;
   relatedApps: RelatedApp[];
   groups: AppGroup[];
   appGroupIds: Set<string>;
@@ -39,7 +39,7 @@ interface RelatedAppsTabProps {
 
 export function RelatedAppsTab({
   showDraftHint = false,
-  isAdmin,
+  canManageGroups,
   relatedApps,
   groups,
   appGroupIds,
@@ -65,7 +65,7 @@ export function RelatedAppsTab({
       )}
 
       {/* Current group memberships */}
-      {isAdmin && appGroupIds.size > 0 && (
+      {canManageGroups && appGroupIds.size > 0 && (
         <div className="flex flex-wrap gap-2">
           {groups
             .filter((g) => appGroupIds.has(g.id))
@@ -196,8 +196,8 @@ export function RelatedAppsTab({
         )}
       </div>
 
-      {/* Groups management (admin only) */}
-      {isAdmin && (
+      {/* App submitters can manage groups for their own apps. */}
+      {canManageGroups && (
         <div className="space-y-4 pt-6 border-t border-border">
           <div className="flex items-center gap-2">
             <Grip className="w-4 h-4 text-accent" />
