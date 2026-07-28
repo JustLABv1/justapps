@@ -2,6 +2,7 @@ package apps
 
 import (
 	"errors"
+	"fmt"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 	"strings"
@@ -151,6 +152,10 @@ func ListGroups(c *gin.Context, db *bun.DB) {
 
 // CreateGroup creates a new app group.
 func CreateGroup(c *gin.Context, db *bun.DB) {
+	if _, ok := groupSubmittingUser(c, db); !ok {
+		return
+	}
+
 	var body struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
@@ -265,6 +270,11 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 
 // AddGroupMember adds one or more apps to a group.
 func AddGroupMember(c *gin.Context, db *bun.DB) {
+	user, ok := groupSubmittingUser(c, db)
+	if !ok {
+		return
+	}
+
 	groupID := c.Param("groupId")
 
 	parsedGroupID, err := uuid.Parse(groupID)
@@ -317,11 +327,12 @@ func AddGroupMember(c *gin.Context, db *bun.DB) {
 	}
 
 	type appIDRow struct {
-		ID string `bun:"id"`
+		ID      string    `bun:"id"`
+		OwnerID uuid.UUID `bun:"owner_id"`
 	}
 
 	var existingApps []appIDRow
-	err = db.NewSelect().TableExpr("apps").Column("id").Where("id IN (?)", bun.In(uniqueAppIDs)).Scan(c, &existingApps)
+	err = db.NewSelect().TableExpr("apps").Column("id", "owner_id").Where("id IN (?)", bun.In(uniqueAppIDs)).Scan(c, &existingApps)
 	if err != nil {
 		httperror.InternalServerError(c, "Error validating apps", err)
 		return
@@ -341,6 +352,14 @@ func AddGroupMember(c *gin.Context, db *bun.DB) {
 
 		httperror.StatusNotFound(c, "One or more apps not found", errors.New(strings.Join(missingAppIDs, ", ")))
 		return
+	}
+	if user.Role != "admin" {
+		for _, app := range existingApps {
+			if app.OwnerID != user.ID {
+				httperror.Forbidden(c, "You can only add your own apps to groups", errors.New("app is not owned by user"))
+				return
+			}
+		}
 	}
 
 	members := make([]models.AppGroupMember, 0, len(uniqueAppIDs))
@@ -365,10 +384,57 @@ func AddGroupMember(c *gin.Context, db *bun.DB) {
 	c.JSON(201, gin.H{"message": message, "count": len(uniqueAppIDs)})
 }
 
+// groupSubmittingUser verifies that the authenticated user may submit apps.
+// Admins may manage all memberships; standard users are restricted to their own apps.
+func groupSubmittingUser(c *gin.Context, db *bun.DB) (models.Users, bool) {
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		httperror.Unauthorized(c, "User ID not found in context", errors.New("unauthorized"))
+		return models.Users{}, false
+	}
+
+	userID, ok := userIDValue.(uuid.UUID)
+	if !ok {
+		var err error
+		userID, err = uuid.Parse(fmt.Sprint(userIDValue))
+		if err != nil {
+			httperror.InternalServerError(c, "Invalid User ID format", err)
+			return models.Users{}, false
+		}
+	}
+
+	var user models.Users
+	if err := db.NewSelect().Model(&user).Where("id = ?", userID).Scan(c); err != nil {
+		httperror.InternalServerError(c, "Error checking user permissions", err)
+		return models.Users{}, false
+	}
+	if user.Role != "admin" && !user.CanSubmitApps {
+		httperror.Forbidden(c, "You are not allowed to submit apps", errors.New("submission disabled for user"))
+		return models.Users{}, false
+	}
+
+	return user, true
+}
+
 // RemoveGroupMember removes an app from a group.
 func RemoveGroupMember(c *gin.Context, db *bun.DB) {
 	groupID := c.Param("groupId")
 	appID := c.Param("appId")
+	user, ok := groupSubmittingUser(c, db)
+	if !ok {
+		return
+	}
+	if user.Role != "admin" {
+		var app models.Apps
+		if err := db.NewSelect().Model(&app).Column("owner_id").Where("id = ?", appID).Scan(c); err != nil {
+			httperror.StatusNotFound(c, "App not found", err)
+			return
+		}
+		if app.OwnerID != user.ID {
+			httperror.Forbidden(c, "You can only remove your own apps from groups", errors.New("app is not owned by user"))
+			return
+		}
+	}
 
 	_, err := db.NewDelete().TableExpr("app_group_members").
 		Where("app_group_id = ?::uuid AND app_id = ?", groupID, appID).

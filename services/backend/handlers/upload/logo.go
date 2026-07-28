@@ -27,15 +27,9 @@ var allowedMIME = map[string]string{
 	"image/vnd.microsoft.icon": ".ico",
 }
 
-// UploadLogo handles logo file uploads (admin only).
+// UploadLogo handles logo file uploads for authenticated users.
 // Saves the file to <dataPath>/uploads/ and returns its public path.
 func UploadLogo(c *gin.Context, dataPath string) {
-	role := c.GetString("role")
-	if role != "admin" {
-		httperror.Forbidden(c, "Only admins can upload files", errors.New("admin role required"))
-		return
-	}
-
 	if err := c.Request.ParseMultipartForm(maxUploadSize + 1*1024*1024); err != nil {
 		httperror.StatusBadRequest(c, "Request too large or not multipart", err)
 		return

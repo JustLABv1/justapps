@@ -201,6 +201,7 @@ export function AppEditorForm({
   const initialEditorValues = initialFormData ?? initialApp;
   const isCopyFlow = isNew && !!copySource;
   const isAdmin = user?.role === "admin";
+	const canManageGroups = isAdmin || !!user?.canSubmitApps;
   const isOwner = !!user?.id && initialApp?.ownerId === user.id;
   const canManageAppStructure = isNew || isAdmin || isOwner;
   const backUrl = isAdmin ? "/verwaltung/katalog/apps" : "/meine-apps";
@@ -348,13 +349,13 @@ export function AppEditorForm({
 
   // Load groups
   useEffect(() => {
-    if (isAdmin) {
+    if (canManageGroups) {
       fetchApi("/app-groups")
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setGroups(Array.isArray(data) ? data : []))
         .catch(() => {});
     }
-  }, [isAdmin]);
+  }, [canManageGroups]);
 
   useEffect(() => {
     if (!isNew || currentCreateStep !== 2) return;
@@ -732,19 +733,21 @@ export function AppEditorForm({
       const appId = await ensureEditableAppId();
       const inGroup = appGroupIds.has(groupId);
       if (inGroup) {
-        await fetchApi(`/app-groups/${groupId}/members/${appId}`, {
+        const response = await fetchApi(`/app-groups/${groupId}/members/${appId}`, {
           method: "DELETE",
         });
+			if (!response.ok) throw new Error("Gruppe konnte nicht aktualisiert werden.");
         setAppGroupIds((prev) => {
           const s = new Set(prev);
           s.delete(groupId);
           return s;
         });
       } else {
-        await fetchApi(`/app-groups/${groupId}/members`, {
+        const response = await fetchApi(`/app-groups/${groupId}/members`, {
           method: "POST",
           body: JSON.stringify({ appId }),
         });
+			if (!response.ok) throw new Error("Gruppe konnte nicht aktualisiert werden.");
         setAppGroupIds((prev) => new Set([...prev, groupId]));
       }
     } catch (error) {
@@ -767,8 +770,19 @@ export function AppEditorForm({
       if (res.ok) {
         const group = await res.json();
         setGroups((prev) => [...prev, group]);
+			const appId = await ensureEditableAppId();
+			const memberResponse = await fetchApi(`/app-groups/${group.id}/members`, {
+				method: "POST",
+				body: JSON.stringify({ appId }),
+			});
+			if (!memberResponse.ok) throw new Error("Gruppe konnte nicht zugeordnet werden.");
+			setAppGroupIds((prev) => new Set([...prev, group.id]));
         setNewGroupName("");
-      }
+		} else {
+			throw new Error("Gruppe konnte nicht erstellt werden.");
+		}
+	} catch (error) {
+		toast.danger(error instanceof Error ? error.message : "Gruppe konnte nicht erstellt werden.");
     } finally {
       setCreatingGroup(false);
     }
@@ -2997,7 +3011,7 @@ export function AppEditorForm({
 
                   <RelatedAppsTab
                     showDraftHint={!effectiveAppId}
-                    isAdmin={isAdmin}
+                    canManageGroups={canManageGroups}
                     relatedApps={relatedApps}
                     groups={groups}
                     appGroupIds={appGroupIds}
@@ -4595,7 +4609,7 @@ export function AppEditorForm({
                 <Tabs.Panel id="related">
                   <RelatedAppsTab
                     showDraftHint={false}
-                    isAdmin={isAdmin}
+                    canManageGroups={canManageGroups}
                     relatedApps={relatedApps}
                     groups={groups}
                     appGroupIds={appGroupIds}
