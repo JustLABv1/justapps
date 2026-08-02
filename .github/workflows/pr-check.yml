@@ -8,10 +8,45 @@ on:
       - '.dockerignore'
       - 'Dockerfile'
       - 'services/**'
+      - '.github/workflows/pr-check.yml'
 
 jobs:
+  changes:
+    name: Detect changed components
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend_image: ${{ steps.filter.outputs.frontend_image }}
+      backend_image: ${{ steps.filter.outputs.backend_image }}
+      combined_image: ${{ steps.filter.outputs.combined_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Detect changed components
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'services/frontend/**'
+              - '.github/workflows/pr-check.yml'
+            backend:
+              - 'services/backend/**'
+              - '.github/workflows/pr-check.yml'
+            frontend_image:
+              - 'services/frontend/Dockerfile'
+            backend_image:
+              - 'services/backend/Dockerfile'
+            combined_image:
+              - 'Dockerfile'
+              - '.dockerignore'
+
   build-frontend:
     name: Build Frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -60,6 +95,8 @@ jobs:
 
   build-backend:
     name: Build Backend
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -83,3 +120,63 @@ jobs:
 
       - name: Build
         run: CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend .
+
+  build-frontend-image:
+    name: Build Frontend Docker Image
+    needs: changes
+    if: needs.changes.outputs.frontend_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: services/frontend
+          file: services/frontend/Dockerfile
+          push: false
+
+  build-backend-image:
+    name: Build Backend Docker Image
+    needs: changes
+    if: needs.changes.outputs.backend_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: services/backend
+          file: services/backend/Dockerfile
+          push: false
+
+  build-combined-image:
+    name: Build Combined Docker Image
+    needs: changes
+    if: needs.changes.outputs.combined_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false

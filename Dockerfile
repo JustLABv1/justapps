@@ -1,39 +1,31 @@
-FROM node:26.5.0-alpine AS base
+FROM reg.mini.dev/node:v26.5.1-dev AS base
+USER root
 
 # Stage 1: Build the frontend
-FROM base AS frontend-builder
+FROM reg.mini.dev/node:v26.5.1-dev AS frontend-builder
+USER root
 WORKDIR /app/frontend
 
-RUN npm install -g pnpm@10.33.4
+RUN npm install -g pnpm
 
-COPY services/frontend/package.json services/frontend/pnpm-lock.yaml ./
-COPY services/frontend/pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY services/frontend/package.json services/frontend/pnpm-lock.yaml services/frontend/pnpm-workspace.yaml ./
+RUN pnpm install
 
 COPY services/frontend/ ./
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV GENERATE_SOURCEMAP=false
-ENV NEXT_LINT_DISABLED=1
-ENV NEXT_TYPECHECK_DISABLED=1
-ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 RUN pnpm run build
 
-# Stage 2: Build the backend
-FROM golang:1.26-alpine AS backend-builder
+# Stage 3: Build the backend
+FROM reg.mini.dev/go:v1.26.5 AS backend-builder
 WORKDIR /app/backend
-
-ENV GOCACHE=/tmp/go-cache
-ENV GOPATH=/go
-ENV HOME=/tmp
-
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
 COPY services/backend/ ./
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 
-# Stage 3: Final image
+# Stage 4: Create the final image
 FROM base AS runner
 WORKDIR /app
 
@@ -43,17 +35,23 @@ RUN apk add --upgrade --no-cache \
     libcrypto3 \
     libssl3
 
+# Create user and group
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
+# Copy the backend binary
+COPY --from=backend-builder /app/backend/justapps-backend /app/justapps-backend
+
+# Copy the frontend build
+COPY --from=frontend-builder /app/frontend/public /app/public
+
+# Set the correct permission for prerender cache
 RUN mkdir .next \
     && chown nextjs:nodejs .next
 
+# Automatically leverage output traces to reduce image size
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
-COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/public /app/public
-
-COPY --from=backend-builder /app/backend/justapps-backend /app/justapps-backend
 
 RUN chown -R nextjs:nodejs /app
 
