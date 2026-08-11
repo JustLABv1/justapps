@@ -23,5 +23,7 @@ const formatter = {
 export default createI18nMiddleware({ ...i18n, format: formatter });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|justapps-logo.svg).*)",
+  ],
 };
