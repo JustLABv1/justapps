@@ -30,7 +30,7 @@ const UpdatesContext = createContext<UpdatesContextType>({
 });
 
 export function UpdatesProvider({ children }: { children: React.ReactNode }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [totalUnread, setTotalUnread] = useState(0);
   const [appUnreadCounts, setAppUnreadCounts] = useState<Record<string, number>>({});
   const [preferences, setPreferences] = useState<UpdatePreferences | null>(null);
@@ -44,7 +44,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshSummary = async () => {
-    if (!user || !token) return;
+    if (!user) return;
     try {
       const response = await fetchApi('/user/updates/summary', { cache: 'no-store' });
       if (!response.ok) return;
@@ -57,7 +57,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshPreferences = async () => {
-    if (!user || !token) return;
+    if (!user) return;
     const response = await fetchApi('/user/update-preferences', { cache: 'no-store' });
     if (!response.ok) return;
     const data = await response.json() as UpdatePreferences;
@@ -74,10 +74,6 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    if (!token) {
-      return;
-    }
-
     const timeoutId = window.setTimeout(() => {
       void Promise.all([refreshSummary(), refreshPreferences()]);
     }, 0);
@@ -86,7 +82,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
       window.clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token]);
+  }, [user]);
 
   const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => {
     const previousPreferences = preferences;

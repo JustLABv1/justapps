@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"net/http"
+	"strings"
 
 	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
@@ -12,7 +13,7 @@ import (
 )
 
 func RefreshToken(context *gin.Context, db *bun.DB) {
-	token := context.GetHeader("Authorization")
+	token := auth.TokenFromRequest(context)
 	newToken, expiresAt, err := auth.RefreshToken(token)
 	if err != nil {
 		if err.Error() == "token is not close to expiration" {
@@ -38,11 +39,18 @@ func RefreshToken(context *gin.Context, db *bun.DB) {
 
 	// update the expired time in tokens table
 	_, err = db.NewUpdate().Model(&models.Tokens{}).Set("expires_at = ?, key = ?", expiresAt, newToken).
-		Where("token = ?", token).Exec(context)
+		Where("key = ?", auth.CleanToken(token)).Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error updating token expiration time", err)
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"result": "success", "token": newToken, "expires_at": expiresAt, "user": user})
+	auth.SetSessionCookie(context, newToken, expiresAt)
+	response := gin.H{"result": "success", "expires_at": expiresAt, "user": user}
+	// Keep explicit bearer-token refresh usable for API clients without making
+	// browser clients handle the JWT in JavaScript.
+	if strings.TrimSpace(context.GetHeader("Authorization")) != "" {
+		response["token"] = newToken
+	}
+	context.JSON(http.StatusOK, response)
 }

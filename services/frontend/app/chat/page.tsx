@@ -1,6 +1,8 @@
 'use client';
 
 import { AppStoreGate } from '@/components/AppStoreGate';
+import { AIMessageActions } from '@/components/AIMessageActions';
+import { AISourceList } from '@/components/AISourceList';
 import { ChatMarkdown } from '@/components/ChatMarkdown';
 import { GroupIcon } from '@/components/GroupIcon';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +16,7 @@ import {
     listAIConversations,
     listAIProviders,
     listPublicAIProviders,
+    setAIMessageFeedback,
     sendAIMessage,
     sendPublicAIMessage,
 } from '@/lib/ai';
@@ -351,6 +354,18 @@ function ChatPageContent() {
 
   const canSend = Boolean(draft.trim()) && !sending && providers.length > 0;
 
+  const handleMessageFeedback = async (messageId: string, feedback: 'positive' | 'negative' | '') => {
+    if (guestMode || messageId.startsWith('local-')) return;
+    try {
+      const savedFeedback = await setAIMessageFeedback(messageId, feedback);
+      setMessages((current) => current.map((message) => (
+        message.id === messageId ? { ...message, feedback: savedFeedback } : message
+      )));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Feedback konnte nicht gespeichert werden.');
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 w-full flex-col overflow-hidden bg-surface">
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -565,17 +580,13 @@ function ChatPageContent() {
                         <div className="text-sm leading-relaxed text-foreground">
                           <ChatMarkdown content={message.content} />
                         </div>
-                        {message.sources && message.sources.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {message.sources.slice(0, 5).map((source) => (
-                              <span
-                                key={`${source.chunkId}-${source.sourceId}`}
-                                className="rounded-full border border-border bg-surface px-2.5 py-0.5 text-[11px] font-medium text-muted"
-                              >
-                                {source.appName || source.title}
-                              </span>
-                            ))}
-                          </div>
+                        {message.sources && message.sources.length > 0 && <AISourceList sources={message.sources} />}
+                        {!guestMode && !message.id.startsWith('local-') && (
+                          <AIMessageActions
+                            content={message.content}
+                            feedback={message.feedback}
+                            onFeedback={(feedback) => void handleMessageFeedback(message.id, feedback)}
+                          />
                         )}
                       </div>
                     </div>

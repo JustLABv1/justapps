@@ -1,0 +1,204 @@
+{
+  "nodes": [
+    {
+      "id": "services_frontend_app_icon_app_icon",
+      "label": "App Icon",
+      "file_type": "image",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_bg_squircle",
+      "label": "Squircle Background",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_app_grid_layer",
+      "label": "App Grid Layer",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_app_shadow",
+      "label": "App Shadow",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_prefers_color_scheme",
+      "label": "Prefers-Color-Scheme Adaptation",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_cyan_blue",
+      "label": "Cyan-Blue Gradient",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_purple_pink",
+      "label": "Purple-Pink Gradient",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_green_teal",
+      "label": "Green-Teal Gradient",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "services_frontend_app_icon_yellow_red",
+      "label": "Yellow-Red Gradient",
+      "file_type": "concept",
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "services_frontend_app_icon_app_icon",
+      "target": "services_frontend_app_icon_bg_squircle",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_icon",
+      "target": "services_frontend_app_icon_app_grid_layer",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_icon",
+      "target": "services_frontend_app_icon_app_shadow",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_bg_squircle",
+      "target": "services_frontend_app_icon_prefers_color_scheme",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_grid_layer",
+      "target": "services_frontend_app_icon_cyan_blue",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_grid_layer",
+      "target": "services_frontend_app_icon_purple_pink",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_grid_layer",
+      "target": "services_frontend_app_icon_green_teal",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "services_frontend_app_icon_app_grid_layer",
+      "target": "services_frontend_app_icon_yellow_red",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "app_grid_gradient_palette",
+      "label": "App Grid Gradient Palette",
+      "nodes": [
+        "services_frontend_app_icon_app_grid_layer",
+        "services_frontend_app_icon_cyan_blue",
+        "services_frontend_app_icon_purple_pink",
+        "services_frontend_app_icon_green_teal",
+        "services_frontend_app_icon_yellow_red"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/Volumes/Storage/projects/justlab/justapps/services/frontend/app/icon.svg"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

@@ -40,11 +40,6 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="relative left-1/2 w-screen max-w-[1720px] -translate-x-1/2 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-      <div className="mb-8 flex flex-col gap-1">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Verwaltung</h1>
-        <p className="text-sm text-muted">Plattformverwaltung nach Domänen statt Einzelfunktionen.</p>
-      </div>
-
       <Surface className="mb-10 border border-border/60 bg-surface/80 p-2 shadow-sm">
         <nav className="flex flex-wrap gap-2" aria-label="Navigation der Verwaltung">
           {adminNavLinks.map((link) => {

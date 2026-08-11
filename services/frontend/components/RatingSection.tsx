@@ -65,8 +65,6 @@ export function RatingSection({ appId }: { appId: string }) {
        const res = await fetchApi(`/apps/${appId}/ratings`, {
         method: 'POST',
         body: JSON.stringify({
-          userId: user.id,
-          username: user.username,
           rating: userRating,
           comment: comment
         })

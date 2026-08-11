@@ -6,7 +6,7 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Input, TextField } from "@heroui/react";
+import { Button, Input, ListBox, Select, TextField } from "@heroui/react";
 import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
@@ -30,18 +30,22 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const selectedStatus = searchParams.get('status');
   const selectedType = searchParams.get('type');
   const selectedGroup = searchParams.get('group');
-  const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedGroup);
+  const selectedSort = searchParams.get('sort') ?? '';
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly);
   const paginationKey = [
     searchQuery,
     selectedCategory ?? '',
     selectedStatus ?? '',
     selectedType ?? '',
     selectedGroup ?? '',
+    selectedSort,
+    showFavoritesOnly ? 'favorites' : '',
   ].join('|');
 
   const [showFilters, setShowFilters] = useState(false);
-  const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[] } | null>(null);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[]; page: number; total: number; hasMore: boolean } | null>(null);
+  const [serverPageLoading, setServerPageLoading] = useState(false);
   const [visibleAppsState, setVisibleAppsState] = useState({ key: paginationKey, count: PAGE_SIZE });
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +55,11 @@ export function AppGrid({ initialApps }: AppGridProps) {
     q: searchQuery,
     category: selectedCategory,
     status: selectedStatus,
+    type: selectedType,
     group: selectedGroup,
-  }), [searchQuery, selectedCategory, selectedStatus, selectedGroup]);
+    sort: selectedSort,
+    favorite: showFavoritesOnly,
+  }), [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly]);
   const serverResults = hasServerFilter && serverResponse?.key === serverFilterKey
     ? serverResponse.apps
     : null;
@@ -68,19 +75,32 @@ export function AppGrid({ initialApps }: AppGridProps) {
         if (searchQuery) params.set('q', searchQuery);
         if (selectedCategory) params.set('category', selectedCategory);
         if (selectedStatus) params.set('status', selectedStatus);
+        if (selectedType) params.set('type', selectedType);
         if (selectedGroup) params.set('group', selectedGroup);
-        const res = await fetchApi(`/apps?${params.toString()}`);
+        if (selectedSort) params.set('sort', selectedSort);
+        if (showFavoritesOnly) params.set('favorite', 'me');
+        params.set('page', '1');
+        params.set('pageSize', String(PAGE_SIZE));
+        const res = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
+          const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
           setServerResponse({
             key: serverFilterKey,
-            apps: Array.isArray(data) ? data : [],
+            apps: items,
+            page: typeof data.page === 'number' ? data.page : 1,
+            total: typeof data.total === 'number' ? data.total : items.length,
+            hasMore: data.hasMore === true,
           });
+        } else {
+          setServerResponse({ key: serverFilterKey, apps: [], page: 1, total: 0, hasMore: false });
         }
-      } catch { /* silent */ }
+      } catch {
+        setServerResponse({ key: serverFilterKey, apps: [], page: 1, total: 0, hasMore: false });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedGroup, serverFilterKey]);
+  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly, serverFilterKey]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -97,6 +117,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const setSelectedStatus = useCallback((v: string | null) => updateParam('status', v), [updateParam]);
   const setSelectedType = useCallback((v: string | null) => updateParam('type', v), [updateParam]);
   const setSelectedGroup = useCallback((v: string | null) => updateParam('group', v), [updateParam]);
+  const setSelectedSort = useCallback((v: string | null) => updateParam('sort', v && v !== 'default' ? v : null), [updateParam]);
   const commitSearch = useCallback((v: string) => updateParam('q', v || null), [updateParam]);
 
   const categories = useMemo(() => {
@@ -145,17 +166,56 @@ export function AppGrid({ initialApps }: AppGridProps) {
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || showFavoritesOnly;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly;
 
   const visibleAppsKey = `${paginationKey}|${serverResults ? serverFilterKey : 'initial'}`;
-  const visibleCount = visibleAppsState.key === visibleAppsKey ? visibleAppsState.count : PAGE_SIZE;
-  const hasMoreApps = visibleCount < filteredApps.length;
-  const loadMoreApps = useCallback(() => {
+  const visibleCount = hasServerFilter
+    ? filteredApps.length
+    : (visibleAppsState.key === visibleAppsKey ? visibleAppsState.count : PAGE_SIZE);
+  const hasMoreApps = hasServerFilter
+    ? Boolean(serverResponse?.hasMore)
+    : visibleCount < filteredApps.length;
+  const loadMoreApps = useCallback(async () => {
+    if (hasServerFilter) {
+      const current = serverResponse;
+      if (!current || !current.hasMore || serverPageLoading) return;
+
+      setServerPageLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('q', searchQuery);
+        if (selectedCategory) params.set('category', selectedCategory);
+        if (selectedStatus) params.set('status', selectedStatus);
+        if (selectedType) params.set('type', selectedType);
+        if (selectedGroup) params.set('group', selectedGroup);
+        if (selectedSort) params.set('sort', selectedSort);
+        if (showFavoritesOnly) params.set('favorite', 'me');
+        params.set('page', String(current.page + 1));
+        params.set('pageSize', String(PAGE_SIZE));
+        const response = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+        setServerResponse((previous) => previous && previous.key === serverFilterKey
+          ? {
+              ...previous,
+              apps: [...previous.apps, ...items],
+              page: typeof data.page === 'number' ? data.page : current.page + 1,
+              total: typeof data.total === 'number' ? data.total : previous.total,
+              hasMore: data.hasMore === true,
+            }
+          : previous);
+      } finally {
+        setServerPageLoading(false);
+      }
+      return;
+    }
+
     setVisibleAppsState((current) => {
       const previousCount = current.key === visibleAppsKey ? current.count : PAGE_SIZE;
       return { key: visibleAppsKey, count: Math.min(previousCount + PAGE_SIZE, filteredApps.length) };
     });
-  }, [filteredApps.length, visibleAppsKey]);
+  }, [filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -233,6 +293,14 @@ export function AppGrid({ initialApps }: AppGridProps) {
       });
     }
 
+    if (selectedSort) {
+      filters.push({
+        key: 'sort',
+        label: `Sortierung: ${selectedSort === 'rating' ? 'Beste Bewertung' : selectedSort === 'updated' ? 'Zuletzt aktualisiert' : selectedSort === 'status' ? 'Status' : 'Name'}`,
+        clear: () => setSelectedSort(null),
+      });
+    }
+
     if (showFavoritesOnly) {
       filters.push({
         key: 'favorites',
@@ -242,7 +310,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     }
 
     return filters;
-  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedStatus, setSelectedType, showFavoritesOnly]);
+  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedSort, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedSort, setSelectedStatus, setSelectedType, showFavoritesOnly]);
 
   const filterSummary = useMemo(() => {
     const summary = [];
@@ -380,6 +448,41 @@ export function AppGrid({ initialApps }: AppGridProps) {
 
         {showFilters && (
           <div className="grid gap-4 border-t border-border/50 pt-4 lg:grid-cols-2">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted">Sortierung</span>
+              <Select
+                aria-label="Apps sortieren"
+                selectedKey={selectedSort || 'default'}
+                onSelectionChange={(key) => setSelectedSort(String(key))}
+                className="w-full"
+              >
+                <Select.Trigger className="bg-field-background">
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="default" textValue="Standard">
+                      Standard
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="rating" textValue="Beste Bewertung">
+                      Beste Bewertung
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="updated" textValue="Zuletzt aktualisiert">
+                      Zuletzt aktualisiert
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="status" textValue="Status">
+                      Status
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+
             <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted">Kategorien</span>
@@ -544,7 +647,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
                 {serverLoading ? (
                   <span className="text-muted">Suche läuft...</span>
                 ) : (
-                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{filteredApps.length}</span> {filteredApps.length === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length}</span> {(hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length) === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
                 )}
               </p>
               {hasActiveFilters && (

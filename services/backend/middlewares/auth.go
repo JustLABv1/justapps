@@ -15,7 +15,7 @@ import (
 
 func Auth(db *bun.DB) gin.HandlerFunc {
 	return func(context *gin.Context) {
-		tokenString := context.GetHeader("Authorization")
+		tokenString := auth.TokenFromRequest(context)
 		if tokenString == "" {
 			httperror.Unauthorized(context, "Request does not contain an access token", errors.New("request does not contain an access token"))
 			return

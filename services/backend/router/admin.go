@@ -31,6 +31,9 @@ func Admin(router *gin.RouterGroup, db *bun.DB) {
 		admin.GET("/stats", func(c *gin.Context) {
 			admins.GetStats(c, db)
 		})
+		admin.GET("/health", func(c *gin.Context) {
+			admins.GetHealth(c, db)
+		})
 		admin.GET("/audit", func(c *gin.Context) {
 			admins.GetAudit(c, db)
 		})

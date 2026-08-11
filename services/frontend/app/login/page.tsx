@@ -28,12 +28,11 @@ function readSafeCallbackUrl(): string {
 
 function readOIDCResult() {
   if (typeof window === 'undefined') {
-    return { token: null as string | null, error: null as string | null };
+    return { error: null as string | null };
   }
 
   const params = new URLSearchParams(window.location.search);
   return {
-    token: params.get('oidc_token'),
     error: params.get('oidc_error'),
   };
 }
@@ -52,7 +51,7 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     const oidcResult = readOIDCResult();
-    if (user && !oidcResult.token && !oidcResult.error) {
+    if (user && !oidcResult.error) {
       router.push(readSafeCallbackUrl());
     }
   }, [user, router]);
@@ -96,54 +95,6 @@ export default function LoginPage() {
     };
   }, []);
 
-  React.useEffect(() => {
-    const { token, error: oidcError } = readOIDCResult();
-    if (!token && !oidcError) {
-      return;
-    }
-
-    if (oidcError) {
-      return;
-    }
-
-    if (!token) {
-      return;
-    }
-
-    const backendToken = token;
-
-    let active = true;
-    (async () => {
-      try {
-        const response = await fetchApi('/user/', {
-          headers: {
-            Authorization: `Bearer ${backendToken}`,
-          },
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.user) {
-          if (active) {
-            setError((data as { message?: string }).message || 'OIDC-Anmeldung fehlgeschlagen.');
-          }
-          return;
-        }
-
-        if (active) {
-          login(backendToken, data.user);
-          router.replace(readSafeCallbackUrl());
-        }
-      } catch {
-        if (active) {
-          setError('OIDC-Anmeldung fehlgeschlagen.');
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [login, router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -155,7 +106,7 @@ export default function LoginPage() {
       });
       const data = await response.json();
       if (response.ok) {
-        login(data.token, data.user);
+        login(data.user);
         router.push(readSafeCallbackUrl());
       } else {
         setError(data.message || 'Anmeldung fehlgeschlagen');

@@ -21,7 +21,10 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 	if len(config.CORS.AllowedOrigins) > 0 {
 		corsConfig.AllowOrigins = config.CORS.AllowedOrigins
 	} else {
-		corsConfig.AllowOrigins = []string{"*"}
+		// Credentialed requests cannot use the wildcard origin. Keep local
+		// development working while requiring deployments with a separate
+		// frontend origin to configure BACKEND_CORS_ALLOWED_ORIGINS explicitly.
+		corsConfig.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
 	}
 	corsConfig.AllowMethods = []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"}
 	corsConfig.AllowHeaders = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type"}

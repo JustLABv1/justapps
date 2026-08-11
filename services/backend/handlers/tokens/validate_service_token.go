@@ -13,7 +13,7 @@ import (
 )
 
 func ValidateServiceToken(context *gin.Context, db *bun.DB) {
-	token := context.GetHeader("Authorization")
+	token := auth.TokenFromRequest(context)
 
 	var key models.Tokens
 	err := db.NewSelect().Model(&key).Where("key = ?", auth.CleanToken(token)).Scan(context)

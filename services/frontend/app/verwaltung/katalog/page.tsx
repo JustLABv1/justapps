@@ -1,5 +1,5 @@
 import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { ExternalLink, Layers, Layers2, SortAsc } from 'lucide-react';
+import { Activity, ExternalLink, Layers, Layers2, SortAsc } from 'lucide-react';
 
 export default function VerwaltungKatalogPage() {
   return (
@@ -34,6 +34,13 @@ export default function VerwaltungKatalogPage() {
           description: 'Konfigurieren Sie Standards für Sortierung, Pinning und Link-Prüfung im Katalog.',
           icon: SortAsc,
           note: 'Reihenfolge und Regeln',
+        },
+        {
+          href: '/verwaltung/katalog/gesundheit',
+          title: 'App-Gesundheit',
+          description: 'Erkennen Sie defekte Live-Links, fehlerhafte Repository-Syncs, verwaiste Apps und veraltete Katalogeinträge.',
+          icon: Activity,
+          note: 'Betrieb und Verantwortung',
         },
       ]}
     />

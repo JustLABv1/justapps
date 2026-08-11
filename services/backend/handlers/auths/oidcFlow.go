@@ -211,14 +211,14 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	sessionToken, _, err := authfunc.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)
+	sessionToken, expiresAt, err := authfunc.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)
 	if err != nil {
 		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Sitzung konnte nicht erstellt werden")
 		return
 	}
 
+	authfunc.SetSessionCookie(c, sessionToken, expiresAt)
 	values := url.Values{}
-	values.Set("oidc_token", sessionToken)
 	values.Set("callbackUrl", sanitizeCallbackURL(stateClaims.CallbackURL))
 	values.Set("oidc_provider", provider.Key)
 	c.Redirect(http.StatusFound, buildLoginRedirectURL(stateClaims.FrontendOrigin, values))
@@ -418,6 +418,9 @@ func sanitizeOriginURL(value string) string {
 }
 
 func resolveFrontendOrigin(c *gin.Context) string {
+	if value := sanitizeOriginURL(c.Query("frontendOrigin")); value != "" {
+		return value
+	}
 	if value := sanitizeOriginURL(c.GetHeader("X-Frontend-Origin")); value != "" {
 		return value
 	}

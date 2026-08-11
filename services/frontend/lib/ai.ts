@@ -55,6 +55,7 @@ export interface AIMessage {
   responseTokens?: number;
   sources?: AIMessageSource[];
   error?: string;
+  feedback?: 'positive' | 'negative' | '';
   createdAt: string;
 }
 
@@ -172,6 +173,18 @@ export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): 
   });
   if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
   return response.json();
+}
+
+export type AIMessageFeedback = 'positive' | 'negative' | '';
+
+export async function setAIMessageFeedback(id: string, feedback: AIMessageFeedback): Promise<AIMessageFeedback> {
+  const response = await fetchApi(`/ai/messages/${encodeURIComponent(id)}/feedback`, {
+    method: 'PUT',
+    body: JSON.stringify({ feedback }),
+  });
+  if (!response.ok) throw await parseError(response, 'Feedback konnte nicht gespeichert werden.');
+  const data = await response.json() as { feedback?: AIMessageFeedback };
+  return data.feedback === 'positive' || data.feedback === 'negative' ? data.feedback : '';
 }
 
 export async function listAIProviderSettings(): Promise<AIProviderAdminSettings[]> {

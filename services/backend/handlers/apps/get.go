@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"justapps-backend/functions/httperror"
@@ -38,7 +39,9 @@ func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
 var allowedSortFields = map[string]string{
 	"name":       "name",
 	"rating_avg": "rating_avg",
+	"rating":     "rating_avg",
 	"updated_at": "updated_at",
+	"updated":    "updated_at",
 	"status":     "status",
 }
 
@@ -68,6 +71,11 @@ var allowedSyncStatusFilters = map[string]struct{}{
 var allowedVisibilityFilters = map[string]struct{}{
 	"draft":     {},
 	"published": {},
+}
+
+var allowedTypeFilters = map[string]struct{}{
+	"reuse":   {},
+	"install": {},
 }
 
 type appEditorSummaryRow struct {
@@ -213,12 +221,22 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	_ = db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c)
 
 	sortField := "name"
-	if f, ok := allowedSortFields[settings.AppSortField]; ok {
-		sortField = f
-	}
+	requestedSort := normalizeFilterValue(c.Query("sort"))
 	sortDir := "ASC"
-	if settings.AppSortDirection == "desc" {
-		sortDir = "DESC"
+	if requestedSort != "" {
+		if f, ok := allowedSortFields[requestedSort]; ok {
+			sortField = f
+		}
+		if requestedSort == "rating" || requestedSort == "updated" {
+			sortDir = "DESC"
+		}
+	} else {
+		if f, ok := allowedSortFields[settings.AppSortField]; ok {
+			sortField = f
+		}
+		if settings.AppSortDirection == "desc" {
+			sortDir = "DESC"
+		}
 	}
 
 	apps := make([]models.Apps, 0)
@@ -227,6 +245,18 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	techStack := c.Query("techStack")
 	statusFilter := c.Query("status")
 	groupID := c.Query("group")
+	typeFilter := normalizeFilterValue(c.Query("type"))
+	favoriteFilter := normalizeFilterValue(c.Query("favorite"))
+	if typeFilter != "" {
+		if _, ok := allowedTypeFilters[typeFilter]; !ok {
+			httperror.StatusBadRequest(c, "Invalid value for type", errors.New("type must be reuse or install"))
+			return
+		}
+	}
+	if favoriteFilter != "" && favoriteFilter != "me" {
+		httperror.StatusBadRequest(c, "Invalid value for favorite", errors.New("favorite must be me"))
+		return
+	}
 	ownerIDFilter, hasOwnerIDFilter, err := parseOptionalUUIDFilter("ownerId", c.Query("ownerId"))
 	if err != nil {
 		httperror.StatusBadRequest(c, err.Error(), err)
@@ -254,13 +284,21 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		Model(&apps).
 		Relation("Owner").
 		OrderExpr("is_featured DESC").
-		OrderExpr(fmt.Sprintf("%s %s", sortField, sortDir))
+		OrderExpr(fmt.Sprintf("a.%s %s", sortField, sortDir)).
+		OrderExpr("a.id ASC")
 
 	if q != "" {
 		pattern := "%" + strings.ToLower(q) + "%"
 		query = query.Where(
-			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ?",
-			pattern, pattern,
+			`LOWER(COALESCE(a.name, '')) LIKE ? OR
+			 LOWER(COALESCE(a.description, '')) LIKE ? OR
+			 LOWER(COALESCE(a.license, '')) LIKE ? OR
+			 LOWER(COALESCE(array_to_string(a.categories, ' '), '')) LIKE ? OR
+			 LOWER(COALESCE(array_to_string(a.tech_stack, ' '), '')) LIKE ? OR
+			 LOWER(COALESCE(array_to_string(a.tags, ' '), '')) LIKE ? OR
+			 LOWER(COALESCE(array_to_string(a.collections, ' '), '')) LIKE ? OR
+			 LOWER(COALESCE(a.custom_fields::text, '')) LIKE ?`,
+			pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern,
 		)
 	}
 
@@ -280,6 +318,20 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		query = query.
 			Join("JOIN app_group_members agm ON agm.app_id = a.id").
 			Where("agm.app_group_id::text = ?", groupID)
+	}
+
+	switch typeFilter {
+	case "reuse":
+		query = query.Where("a.is_reuse = true")
+	case "install":
+		query = query.Where("a.has_deployment_assistant = true")
+	}
+	if favoriteFilter == "me" {
+		if !hasViewer {
+			query = query.Where("1 = 0")
+		} else {
+			query = query.Where("EXISTS (SELECT 1 FROM user_favorites uf WHERE uf.app_id = a.id AND uf.user_id = ?)", viewerID)
+		}
 	}
 
 	if hasOwnerIDFilter {
@@ -319,6 +371,47 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 	if c.Query("editable") == "me" && hasViewer {
 		query = query.Where("a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+	}
+
+	// Apply the same draft visibility rule in SQL as canViewApp so paginated
+	// totals and pages do not contain entries that will later be discarded.
+	if viewerRole != "admin" {
+		if hasViewer {
+			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') OR a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+		} else {
+			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')")
+		}
+	}
+
+	paginationRequested := c.Query("page") != "" || c.Query("pageSize") != ""
+	page := 1
+	pageSize := 24
+	if paginationRequested {
+		var parseErr error
+		if value := strings.TrimSpace(c.Query("page")); value != "" {
+			page, parseErr = strconv.Atoi(value)
+			if parseErr != nil || page < 1 {
+				httperror.StatusBadRequest(c, "Invalid page", errors.New("page must be a positive integer"))
+				return
+			}
+		}
+		if value := strings.TrimSpace(c.Query("pageSize")); value != "" {
+			pageSize, parseErr = strconv.Atoi(value)
+			if parseErr != nil || pageSize < 1 || pageSize > 100 {
+				httperror.StatusBadRequest(c, "Invalid pageSize", errors.New("pageSize must be between 1 and 100"))
+				return
+			}
+		}
+	}
+
+	total := 0
+	if paginationRequested {
+		total, err = query.Count(c)
+		if err != nil {
+			httperror.InternalServerError(c, "Error counting apps", err)
+			return
+		}
+		query = query.Limit(pageSize).Offset((page - 1) * pageSize)
 	}
 
 	err = query.Scan(c)
@@ -362,7 +455,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 
 	// Move pinned apps to the front (in configured order), then featured, then rest
-	if len(settings.PinnedApps) > 0 {
+	if !paginationRequested && len(settings.PinnedApps) > 0 {
 		pinnedIdx := make(map[string]int, len(settings.PinnedApps))
 		for i, id := range settings.PinnedApps {
 			pinnedIdx[id] = i
@@ -447,6 +540,17 @@ func GetApps(c *gin.Context, db *bun.DB) {
 				apps[i].GitLabSync = summary
 			}
 		}
+	}
+
+	if paginationRequested {
+		c.JSON(200, gin.H{
+			"items":    apps,
+			"page":     page,
+			"pageSize": pageSize,
+			"total":    total,
+			"hasMore":  page*pageSize < total,
+		})
+		return
 	}
 
 	c.JSON(200, apps)

@@ -9,7 +9,6 @@ const oidcConfigured = Boolean(oidcClientId && oidcClientSecret && oidcIssuer);
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
-    accessToken?: string;
     idToken?: string;
     error?: string;
     user: {
@@ -22,12 +21,12 @@ declare module "next-auth" {
 }
 
 /**
- * Exchange an OIDC ID token for a long-lived backend-issued JWT.
- * This avoids relying on provider refresh token semantics:
- * the upstream token is only used ONCE at login time, then discarded.
+ * Exchange an OIDC ID token for a long-lived backend-issued session.
+ * The backend JWT is never exposed through the browser session; the
+ * encrypted NextAuth session retains the upstream ID token only so the
+ * browser can complete the HttpOnly-cookie exchange.
  */
 async function exchangeForBackendToken(oidcIdToken: string): Promise<{
-  token: string;
   expiresAt: number;
   user: { id: string; email: string; username: string; role: string; authType: string; canSubmitApps: boolean };
 } | null> {
@@ -95,7 +94,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (exchangeResult) {
             console.log("Backend token exchange successful, session valid for 8 hours.");
-            token.accessToken = exchangeResult.token;
+            // The backend token is deliberately not exposed through the
+            // browser session. AuthContext performs a browser-side exchange
+            // so the backend can set its HttpOnly session cookie.
+            token.idToken = oidcIdToken;
             token.backendTokenExpiresAt = exchangeResult.expiresAt * 1000; // ms
             token.role = exchangeResult.user.role;
             token.email = exchangeResult.user.email;
@@ -134,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }: { session: any; token: any }) {
       if (session.user) {
-        session.accessToken = token.accessToken;
+        session.idToken = token.idToken;
         session.error = token.error;
         session.user.role = token.role || session.user.role || "user";
         session.user.id = token.id || session.user.id;

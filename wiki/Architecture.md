@@ -92,8 +92,8 @@ The schema is managed via versioned migrations in `services/backend/database/mig
 ### Local Auth
 
 ```
-Browser → POST /auth/login → Backend validates credentials → Issues JWT
-Frontend stores JWT → Sends as Bearer token on API requests
+Browser → POST /auth/login → Backend validates credentials → Sets HttpOnly session cookie
+Frontend sends credentialed API requests → Backend reads the cookie and derives the user
 ```
 
 ### OIDC (Provider-Key Flow)
@@ -102,9 +102,9 @@ Frontend stores JWT → Sends as Bearer token on API requests
 Browser → GET /auth/oidc/providers → Show available provider buttons
 Browser → GET /auth/oidc/:key/start (backend)
 Backend redirects to IdP and handles callback at /auth/oidc/:key/callback
-Backend validates ID token, upserts user, issues JustApps JWT
-Backend redirects to frontend /login?oidc_token=...
-Frontend validates token via GET /user/ and stores session
+Backend validates ID token, upserts user, issues a JustApps session
+Backend sets the HttpOnly `justapps_session` cookie and redirects to frontend `/login`
+Frontend loads the profile via GET /user/
 ```
 
 ---
@@ -113,7 +113,7 @@ Frontend validates token via GET /user/ and stores session
 
 Every protected route passes through the auth middleware (`middlewares/auth.go`):
 
-1. Extract `Authorization: Bearer <token>` header
+1. Extract `Authorization: Bearer <token>` for API clients, otherwise read the HttpOnly `justapps_session` cookie
 2. Attempt backend-issued OIDC session token validation
 3. Fall back to raw OIDC token validation
 4. Fall back to local JWT validation
