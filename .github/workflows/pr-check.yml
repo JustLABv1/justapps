@@ -16,8 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
+      docs: ${{ steps.filter.outputs.docs }}
       backend: ${{ steps.filter.outputs.backend }}
       frontend_image: ${{ steps.filter.outputs.frontend_image }}
+      docs_image: ${{ steps.filter.outputs.docs_image }}
       backend_image: ${{ steps.filter.outputs.backend_image }}
       combined_image: ${{ steps.filter.outputs.combined_image }}
     steps:
@@ -32,16 +34,22 @@ jobs:
             frontend:
               - 'services/frontend/**'
               - '.github/workflows/pr-check.yml'
+            docs:
+              - 'services/docs/**'
+              - '.github/workflows/pr-check.yml'
             backend:
               - 'services/backend/**'
               - '.github/workflows/pr-check.yml'
             frontend_image:
               - 'services/frontend/Dockerfile'
+            docs_image:
+              - 'services/docs/Dockerfile'
             backend_image:
               - 'services/backend/Dockerfile'
             combined_image:
               - 'Dockerfile'
               - '.dockerignore'
+              - 'services/docs/**'
 
   build-frontend:
     name: Build Frontend
@@ -121,6 +129,43 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend .
 
+  build-docs:
+    name: Build Documentation
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/docs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24.19.0"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and validate links
+        run: |
+          pnpm lint
+          pnpm check:links
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
   build-frontend-image:
     name: Build Frontend Docker Image
     needs: changes
@@ -159,6 +204,26 @@ jobs:
         with:
           context: services/backend
           file: services/backend/Dockerfile
+          push: false
+
+  build-docs-image:
+    name: Build Documentation Docker Image
+    needs: changes
+    if: needs.changes.outputs.docs_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: services/docs
+          file: services/docs/Dockerfile
           push: false
 
   build-combined-image:

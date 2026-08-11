@@ -62,6 +62,17 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Resolve the documentation image tag. Defaults to docs-<Chart.appVersion>.
+*/}}
+{{- define "justapps.docs.imageTag" -}}
+{{- if .Values.docs.image.tag }}
+{{- .Values.docs.image.tag }}
+{{- else }}
+{{- printf "docs-%s" .Chart.AppVersion }}
+{{- end }}
+{{- end }}
+
+{{/*
 Resolve the Kubernetes Secret name for a credential.
 Expected input: dict "root" . "ref" "<credential>"
 */}}

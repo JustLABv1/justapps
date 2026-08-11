@@ -1,0 +1,153 @@
+---
+title: Docker und Docker Compose
+description: JustApps mit PostgreSQL, den Anwendungsdiensten und dem optionalen Edge-Proxy auf einem Host installieren.
+---
+
+Docker Compose ist der einfachste produktionsnahe Installationsweg für eine VM oder einen einzelnen Server. Der Stack enthält PostgreSQL, das Go-Backend, das Next.js-Frontend, den Fumadocs-Service und optional einen NGINX-Edge-Proxy.
+
+## Voraussetzungen
+
+- Docker Engine mit Compose-Plugin,
+- ein Hostname und ein TLS-Proxy für eine öffentliche Installation,
+- persistenter Speicher für PostgreSQL und Uploads,
+- ein sicherer Wert für jedes `replace-with-*`- oder `change-me`-Secret.
+
+## Standard-Stack starten
+
+```bash
+git clone https://github.com/JustLABv1/justapps.git
+cd justapps/deploy/compose
+cp .env.example .env
+```
+
+Bearbeite `.env` vor dem ersten Start. Ersetze mindestens:
+
+```dotenv
+POSTGRES_PASSWORD=eindeutiges-datenbank-passwort
+BACKEND_JWT_SECRET=langes-zufaelliges-secret
+BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET=anderes-langes-zufaelliges-secret
+AUTH_SECRET=drittes-langes-zufaelliges-secret
+AUTH_URL=https://apps.example.org
+NEXT_PUBLIC_API_URL=https://apps.example.org/api/v1
+```
+
+Starte anschließend die Dienste:
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+Die Compose-Datei verwendet standardmäßig veröffentlichte Images:
+
+| Dienst     | Standard-Image-Tag   | Zweck                                   |
+| ---------- | -------------------- | --------------------------------------- |
+| `postgres` | `postgres:18-alpine` | PostgreSQL-Datenbank                    |
+| `backend`  | `backend`            | REST-API, Migrationen und Scheduler     |
+| `frontend` | `frontend`           | JustApps-Webanwendung                   |
+| `docs`     | `docs`               | Fumadocs-Dokumentation                  |
+| `nginx`    | `nginx:1.31-alpine`  | Optionaler Reverse Proxy für einen Host |
+
+Das Backend wartet auf einen gesunden PostgreSQL-Dienst. Datenbankmigrationen laufen beim Backend-Start automatisch.
+
+## URLs und Ports
+
+Ohne das Edge-Profil sind die Standard-Bindings nur lokal erreichbar:
+
+| Dienst             | URL                                   |
+| ------------------ | ------------------------------------- |
+| Frontend           | `http://localhost:3000`               |
+| Backend-Health/API | `http://localhost:8080/api/v1/health` |
+| Dokumentation      | `http://localhost:3001/docs`          |
+| PostgreSQL         | Nur im internen Compose-Netzwerk      |
+
+Das Frontend schreibt `/docs` außerdem auf den Dokumentationsdienst um; im Standard-Stack funktioniert daher `http://localhost:3000/docs`.
+
+## Ein öffentlicher Hostname
+
+Der optionale NGINX-Dienst routet alle öffentlichen Pfade über einen internen Endpunkt:
+
+```bash
+docker compose --profile edge up -d
+```
+
+Setze `PUBLIC_HOST` auf den Hostnamen, den der externe TLS-Terminierer verwendet. NGINX lauscht selbst auf Port `80`; TLS sollte in Coolify, Traefik, Caddy oder einem anderen vertrauenswürdigen Proxy beendet werden, der an den Edge-Container weiterleitet.
+
+| Pfad       | Upstream      |
+| ---------- | ------------- |
+| `/`        | Frontend      |
+| `/api/v1/` | Backend       |
+| `/metrics` | Backend       |
+| `/docs`    | Dokumentation |
+
+Wenn bereits ein Reverse Proxy diese Pfade routet, aktiviere das `edge`-Profil nicht. Leite `/` an Frontend `3000`, `/api/v1/` und `/metrics` an Backend `8080` sowie `/docs` an Docs `3001` weiter.
+
+## Compose-Umgebungsvariablen
+
+| Variable                                        | Standardwert                   | Was zu ändern ist                                                     |
+| ----------------------------------------------- | ------------------------------ | --------------------------------------------------------------------- |
+| `JUSTAPPS_BACKEND_IMAGE_TAG`                    | `backend`                      | Release oder Digest festschreiben                                     |
+| `JUSTAPPS_FRONTEND_IMAGE_TAG`                   | `frontend`                     | Release oder Digest festschreiben                                     |
+| `JUSTAPPS_DOCS_IMAGE_TAG`                       | `docs`                         | Release oder Digest festschreiben                                     |
+| `POSTGRES_DB`                                   | `justapps`                     | Datenbankname                                                         |
+| `POSTGRES_USER`                                 | `justapps`                     | Datenbankbenutzer                                                     |
+| `POSTGRES_PASSWORD`                             | `justapps`                     | Immer ersetzen                                                        |
+| `BACKEND_JWT_SECRET`                            | `change-me`                    | Immer ersetzen                                                        |
+| `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` | `change-me`                    | Immer ersetzen; für verschlüsselte Provider-Zugangsdaten erforderlich |
+| `AUTH_SECRET`                                   | `change-me`                    | Immer ersetzen                                                        |
+| `AUTH_URL`                                      | `http://localhost:3000`        | Öffentliche Frontend-URL                                              |
+| `NEXT_PUBLIC_API_URL`                           | `http://localhost:8080/api/v1` | Öffentliche API-URL                                                   |
+| `INTERNAL_API_URL`                              | `http://backend:8080/api/v1`   | Interne API-URL                                                       |
+| `DOCS_INTERNAL_URL`                             | `http://docs:3000`             | Interne Docs-URL für Frontend-Rewrites                                |
+| `FRONTEND_PORT` / `BACKEND_PORT`                | `3000` / `8080`                | Host-Port-Bindings                                                    |
+| `DOCS_PORT`                                     | `3001`                         | Direkter Docs-Host-Port                                               |
+| `PUBLIC_HOST`                                   | `apps.justlab.app`             | Hostname des Edge-Proxys                                              |
+
+OIDC-, Repository- und AI-Provider werden nach dem Start in der Verwaltung konfiguriert. Das Verschlüsselungs-Secret muss bereits beim Backend-Start verfügbar sein.
+
+## Erster Administrator
+
+Wenn OIDC deaktiviert ist, öffne das Frontend und registriere den ersten lokalen Benutzer. Das erste lokale Konto erhält die Rolle `admin`. Konfiguriere danach sofort die Authentifizierung und ändere die Deployment-Secrets, bevor du weitere Benutzer einlädst. Siehe [Authentifizierung](../authentication).
+
+## Persistenz und Betrieb
+
+Der Stack erzeugt zwei benannte Volumes:
+
+- `postgres-data` für PostgreSQL;
+- `uploads-data` für Logos, Favicon und weitere Uploads.
+
+Nützliche Befehle:
+
+```bash
+docker compose logs -f
+docker compose pull
+docker compose up -d
+docker compose ps
+docker compose down
+```
+
+Verwende `docker compose down -v` nur, wenn Datenbank- und Upload-Volumes absichtlich entfernt werden sollen.
+
+## Einzelnes Monolith-Image
+
+Das Root-`Dockerfile` baut Frontend, Dokumentation und Backend in ein Image. Nutze es, wenn PostgreSQL separat betrieben wird:
+
+```bash
+docker build -t justapps:local .
+docker run -d \
+  --name justapps \
+  -p 3000:3000 \
+  -p 8080:8080 \
+  -v /etc/justapps:/etc/justapps:ro \
+  -v justapps-data:/app/data \
+  -e BACKEND_DATABASE_SERVER=host.docker.internal \
+  -e BACKEND_DATABASE_PASSWORD='ersetzen' \
+  -e BACKEND_JWT_SECRET='ersetzen' \
+  -e BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET='ersetzen' \
+  -e AUTH_SECRET='ersetzen' \
+  ghcr.io/JustLABv1/justapps:latest
+```
+
+Die Backend-Konfiguration muss nach `/etc/justapps/config.yaml` gemountet werden. Der Monolith startet den Docs-Server intern und das Frontend macht `/docs` über Port `3000` verfügbar; mappe Port `3001` nur für direkten Dokumentationszugriff.
+
+Alle Backend- und Frontend-Variablen stehen unter [Laufzeitkonfiguration und Secrets](../configuration).

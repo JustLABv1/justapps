@@ -1,0 +1,112 @@
+---
+title: Plattform konfigurieren
+description: Governance, Startseite, Branding, Katalogverhalten und Detailfelder in der JustApps-Verwaltung.
+---
+
+Die Plattform-Einstellungen definieren, wie sich der JustApps-Katalog für alle Besucher und angemeldeten Personen verhält. Öffne die Bereiche über **Verwaltung → Plattform** oder direkt:
+
+- [Regeln und Freigaben](/verwaltung/plattform/governance)
+- [Startseite](/verwaltung/plattform/startseite)
+- [Erscheinungsbild](/verwaltung/plattform/branding)
+- [Kataloginhalte und Verhalten](/verwaltung/einstellungen)
+
+Änderungen werden pro Abschnitt gespeichert. Für die meisten Felder reicht der Speichern-Button im jeweiligen Abschnitt; nach dem Speichern lädt die öffentliche Oberfläche die neuen Werte über `/api/v1/settings` neu.
+
+## Regeln und Zugriff
+
+### App-Einreichungen
+
+Unter **Regeln und Freigaben** steuert **App-Einreichungen erlauben**, ob normale Benutzer neue Apps vorschlagen dürfen. Das ist eine globale Freigabe. Zusätzlich kann ein Administrator bei einzelnen Benutzern die Berechtigung **Apps einreichen** in [Benutzerverwaltung](/verwaltung/benutzer) ein- oder ausschalten.
+
+Eine ausgeschaltete globale Einstellung verhindert Einreichungen unabhängig von der individuellen Benutzerberechtigung. Die Einstellung wirkt nicht rückwirkend auf vorhandene Apps.
+
+### App Store nur für angemeldete Nutzer
+
+Unter **Plattform → Zugriffsschutz** schaltet **App Store nur für angemeldete Nutzer** den öffentlichen Zugriff auf Katalog, App-Details und Gruppen ab. Besucher werden zur Anmeldung weitergeleitet. Aktiviere diese Option erst, wenn mindestens ein funktionierender Anmeldeweg eingerichtet und getestet ist.
+
+Die Identitätsanbieter selbst werden unter [Authentifizierung](/admin/authentication) konfiguriert. Die Einstellung ersetzt keine Authentifizierung am Reverse Proxy und schützt keine separat betriebenen Live-Demos.
+
+## Startseite
+
+Unter [Startseite](/verwaltung/plattform/startseite) pflegst du die sichtbare Einstiegsseite des Katalogs.
+
+### Top-Banner
+
+| Feld            | Wirkung                                                                               |
+| --------------- | ------------------------------------------------------------------------------------- |
+| **Status**      | Blendet den Banner ein oder aus.                                                      |
+| **Banner-Text** | Der öffentlich sichtbare Hinweis.                                                     |
+| **Typ**         | `Info`, `Warnung` oder `Kritisch`; steuert die semantische und visuelle Hervorhebung. |
+
+Nutze den Banner für zeitlich begrenzte Wartungsfenster, wichtige Betriebsinformationen oder Hinweise auf eingeschränkte Verfügbarkeit. Für app-spezifische Hinweise verwende dagegen den [Hinweis im App-Editor](/app-creators/content-and-metadata#statushinweise).
+
+### Hero und Footer
+
+| Feld                         | Wirkung                                             |
+| ---------------------------- | --------------------------------------------------- |
+| **Hero Badge**               | Kurze Kennzeichnung oberhalb des Haupttitels.       |
+| **Hero Titel**               | Hauptüberschrift der Startseite.                    |
+| **Hero Untertitel**          | Erläuternder Text unter dem Titel.                  |
+| **Footer Text**              | Freier Beschreibungstext im Footer.                 |
+| **Farbbalken oben anzeigen** | Zeigt den schmalen Farbbalken am oberen Seitenrand. |
+
+Für den oberen Balken und den Hero-Titel stehen Presets zur Verfügung. Wähle **Benutzerdefiniert**, um die einzelnen Farben als CSS-Farbwerte, zum Beispiel `#004B76`, zu setzen. Die Vorschau zeigt unmittelbar, wie die Palette wirkt. Achte bei eigenen Farben auf ausreichenden Kontrast für Text und Statusfarben.
+
+## Erscheinungsbild und Branding
+
+Unter [Erscheinungsbild](/verwaltung/plattform/branding) kannst du die Plattform an deine Organisation anpassen:
+
+| Feld                   | Hinweise                                                     |
+| ---------------------- | ------------------------------------------------------------ |
+| **Store-Name**         | Name des Katalogs in Navigation, Metadaten und Seitentiteln. |
+| **Store-Beschreibung** | Kurze öffentliche Beschreibung der Plattform.                |
+| **Akzentfarbe**        | Primäre Farbe für Links, Aktionen und Hervorhebungen.        |
+| **Logo**               | Logo für den hellen Hintergrund. Upload oder Asset-URL.      |
+| **Logo dunkel**        | Alternative für dunkle Flächen oder den Dark Mode.           |
+| **Favicon**            | Browser-Tab- und Lesezeichen-Icon.                           |
+
+Uploads werden als JustApps-Assets gespeichert. Bei externen URLs muss die URL aus dem Browser und aus allen von dir unterstützten Netzwerken erreichbar sein. Verwende beim Logo ein ausreichend großes, transparentes Bild und teste helle und dunkle Oberfläche, bevor du die Änderung veröffentlichst.
+
+## Kataloginhalte
+
+Unter **Verwaltung → Katalog → Inhalte** konfigurierst du die Felder, die App-Ersteller bei einer App ausfüllen können. Jedes Detailfeld besteht aus:
+
+- einem technischen **Schlüssel** (`key`), der innerhalb der Plattform eindeutig bleiben sollte,
+- einer sichtbaren **Bezeichnung** (`label`),
+- optional einem **Icon**.
+
+Die voreingestellten Felder sind Themenfeld (`focus`), Anwendungstyp (`app_type`), Anwendungsfall (`use_case`), Visualisierung (`visualization`), Deployment (`deployment`), Infrastruktur (`infrastructure`), Datenbasis (`database`), Übertragbarkeit (`transferability`), Behörde (`authority`), Ansprechpartner (`contact_person`) und Sonstiges (`additional_info`).
+
+Du kannst Felder hinzufügen, neu beschriften, per Pfeil sortieren oder entfernen. Änderungen an einem `key` sollten mit Bedacht erfolgen: Bestehende Apps speichern ihre Werte unter diesem Schlüssel. Wenn du eine Bezeichnung ändern möchtest, behalte den Schlüssel bei. Entferne ein Feld nur, wenn die vorhandenen Werte nicht mehr gebraucht werden oder vorher migriert wurden.
+
+## Katalogverhalten
+
+Unter **Verwaltung → Katalog → App-Verhalten** stehen folgende Optionen zur Verfügung:
+
+### Standardsortierung
+
+- **Name**
+- **Bewertung**
+- **Zuletzt aktualisiert**
+- **Status**
+
+Die Richtung kann auf- oder absteigend sein. Die Sortierung ist nur der Standard für den Katalog; Benutzer können in Ansichten mit eigener Sortierung davon abweichen.
+
+### Angepinnte Apps
+
+Trage technische App-IDs ein, um Apps unabhängig von der Sortierung oben anzuzeigen. Die Reihenfolge in der Liste ist die Reihenfolge auf der Startseite. Entferne IDs gelöschter Apps, damit keine veralteten Einträge gepflegt werden.
+
+### Link-Status-Prüfung
+
+Wenn **Status-Prüfung aktivieren** eingeschaltet ist, prüft JustApps die Erreichbarkeit von Live-Demo-Links serverseitig und zeigt einen Statusindikator. Einzelne Apps können die Prüfung deaktivieren, etwa wenn der Link nur hinter einer zusätzlichen Anmeldung erreichbar ist. Ein Probe-Ergebnis beweist nicht, dass die Anwendung fachlich korrekt funktioniert.
+
+## Speichern und Betrieb
+
+Die Plattformwerte liegen in der Datenbank in den `platform_settings`. Sie gehören deshalb in deine [Backups](/admin/security#backups) und müssen bei einem Wechsel der Datenbank mitgenommen werden. Ein Export der Umgebungsvariablen oder Helm-Secrets allein enthält diese UI-Einstellungen nicht.
+
+Nach einer Änderung prüfe:
+
+1. die Startseite als nicht angemeldeter und als angemeldeter Benutzer,
+2. mindestens eine App-Detailseite und die Katalogsortierung,
+3. Logo, Favicon und Farben in hellem und dunklem Farbschema,
+4. ob Banner- und Footer-Links auf mobilen Geräten funktionieren.

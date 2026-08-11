@@ -1,0 +1,97 @@
+---
+title: GitLab-Integration
+description: GitLab-Provider konfigurieren, Projekte mit Apps verknüpfen und synchronisierte Änderungen prüfen.
+---
+
+> **Hinweis:** Repository-Sync unterstützt inzwischen GitLab und GitHub einschließlich GitHub Enterprise. Der providerneutrale Ablauf steht unter [Repository-Synchronisation](/admin/integrations/repository-sync). Diese Seite behält GitLab-spezifische Begriffe und Legacy-Beispiele für bestehende Installationen.
+
+JustApps kann eine oder mehrere GitLab-Instanzen verbinden und Projektmetadaten automatisch in den App-Katalog übernehmen. Dadurch bleiben Einträge ohne manuelle Pflege aktuell.
+
+## Ablauf
+
+1. Ein Administrator konfiguriert einen **GitLab-Provider** mit Instanz-URL und Zugriffstoken.
+2. Das Backend fragt die GitLab-API regelmäßig über einen **Scheduler** ab.
+3. Verknüpfte GitLab-Projekte werden mit Name, Beschreibung, Topics und Links synchronisiert.
+4. Synchronisierte Apps landen in einer **Freigabewarteschlange** und werden erst nach Prüfung öffentlich.
+
+## Einrichtung
+
+### 1. GitLab-Zugriffstoken erstellen
+
+Erstelle in der GitLab-Instanz unter **Benutzereinstellungen → Zugriffstoken** oder als Projekt-/Gruppentoken einen Token mit dem Scope `read_api` und kopiere ihn.
+
+### 2. Provider anlegen
+
+Öffne in der JustApps-Verwaltung [Repository-Provider](/verwaltung/integrationen/repository-providers), wähle **Einstellungen → GitLab-Provider** und klicke auf **Provider hinzufügen**. Fülle aus:
+
+- **Name:** Anzeigename, zum Beispiel `Internes GitLab`;
+- **URL:** GitLab-Instanz, zum Beispiel `https://gitlab.example.com`;
+- **Zugriffstoken:** Token aus Schritt 1;
+- **Synchronisationsintervall:** Abfrageintervall in Minuten.
+
+Alternativ über die API:
+
+```http
+POST /api/v1/admin/gitlab/providers
+Authorization: Bearer <admin-jwt>
+Content-Type: application/json
+
+{
+  "name": "Internes GitLab",
+  "url": "https://gitlab.example.com",
+  "access_token": "glpat-xxxx",
+  "sync_interval_minutes": 60
+}
+```
+
+### 3. App mit GitLab-Projekt verknüpfen
+
+Automatisch bei der Synchronisation oder manuell:
+
+```http
+POST /api/v1/admin/gitlab/providers/:provider_id/link
+Authorization: Bearer <admin-jwt>
+Content-Type: application/json
+
+{
+  "app_id": "uuid-of-app",
+  "gitlab_project_id": 12345
+}
+```
+
+### 4. Manuelle Synchronisation starten
+
+```bash
+POST /api/v1/admin/gitlab/providers/:id/sync
+```
+
+Alternativ **Jetzt synchronisieren** in der Verwaltung auswählen.
+
+## Freigabeprozess
+
+Synchronisierte Apps werden nicht automatisch veröffentlicht. Sie erscheinen in der **Freigabewarteschlange**:
+
+- **Freigeben** veröffentlicht die App im Katalog;
+- **Ablehnen** verwirft den synchronisierten Eintrag;
+- **Ausstehend** ist der Zustand direkt nach der Synchronisation.
+
+So gelangen keine ungeprüften oder unerwünschten Projekte in den Katalog.
+
+## Datenbanktabellen
+
+| Tabelle            | Zweck                                             |
+| ------------------ | ------------------------------------------------- |
+| `gitlab_providers` | Provider-Zugangsdaten und Sync-Einstellungen      |
+| `gitlab_app_links` | Zuordnung von JustApps-Apps zu GitLab-Projekt-IDs |
+
+Relevante Migrationen sind `31_add_gitlab_app_links.go`, `32_add_gitlab_provider_settings.go` und `33_add_gitlab_sync_approval_fields.go`.
+
+## Quellcode
+
+| Datei                                        | Zweck                                     |
+| -------------------------------------------- | ----------------------------------------- |
+| `functions/integrations/gitlab/client.go`    | GitLab-REST-API-Client                    |
+| `functions/integrations/gitlab/providers.go` | Provider-CRUD-Logik                       |
+| `functions/integrations/gitlab/scheduler.go` | Hintergrund-Scheduler                     |
+| `functions/integrations/gitlab/service.go`   | App-Verknüpfung und Synchronisationslogik |
+| `pkg/models/gitlab.go`                       | Datenbankmodelle                          |

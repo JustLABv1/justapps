@@ -1,0 +1,58 @@
+---
+title: Workflow and publication
+description: Follow the JustApps app editor from the first idea to a reviewed publication.
+---
+
+The app editor guides you through a variable workflow. Optional sections appear when enabled. Review the summary and return to any step before creating the app.
+
+## 1. Name and technical ID
+
+Enter a clear name. JustApps generates a technical ID that you can edit. The ID is used in URLs, API calls, repository links, and pins, so keep it short, stable, lowercase, and free of organization- or version-specific details.
+
+Change the ID after publication only after checking the impact on links and integrations.
+
+## 2. Logo and discoverability
+
+Choose an emoji, image URL, or uploaded logo, then select categories. Choose at least one category describing the business purpose rather than only the implementation technology.
+
+Set the lifecycle status next:
+
+- **Entwurf** for content not ready for publication;
+- **POC**, **MVP**, or **Sandbox** for early stages;
+- **In Erprobung** for limited practical use;
+- **Etabliert** for a reliably introduced solution.
+
+## 3. Description, license, and tags
+
+Explain the value in a few sentences. License and tags help classification and search. Use tags sparingly and consistently; synonyms and version numbers make search noisy.
+
+## 4. Optionally connect a repository
+
+When a repository provider is available, connect a provider and project path. Branch or ref and README, Helm, and Compose paths are optional. The link can be synchronized later and approved by the owner or an administrator. See [AI and repositories](/app-creators/ai-and-repositories).
+
+## 5. Reuse and deployment
+
+Describe whether and under which conditions other teams may reuse the app. When installation guidance is useful, enable it and choose at least one path: Docker, Docker Compose, or Helm. The method-specific details appear in the app entry; requirements are described in [Deployment guides](/app-creators/deployment-guides).
+
+## 6. Links, publisher, and notices
+
+Link live demos, source code, resources, and external documentation separately. Add publisher, technical basis, and configured detail fields. An optional status notice can be marked as info, warning, or critical.
+
+## 7. Collaboration, relations, and documentation
+
+Add editors, groups, and related apps when useful. Administrators can feature an app on the home page. Optional Markdown documentation is useful for architecture, operation, data flows, and known limitations.
+
+## 8. Review and save
+
+Review the summary. The editor flags missing requirements, including:
+
+- name or technical ID;
+- category and description for a non-draft;
+- repository provider and project path when repository linking is enabled;
+- reuse requirements when reuse is enabled;
+- at least one deployment path and its details;
+- at least one link when resources are enabled;
+- notice text when a notice is enabled;
+- Markdown content when documentation is enabled.
+
+Creation first saves the app and then optional links, editors, and groups. After saving, inspect the public detail page and sign out if necessary to test visitor visibility.

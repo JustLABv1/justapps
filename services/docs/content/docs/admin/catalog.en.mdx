@@ -1,0 +1,88 @@
+---
+title: Manage the catalog
+description: Administer apps, groups, content, ownership, and day-to-day catalog operations.
+---
+
+The catalog is split into work areas under [Verwaltung → Katalog](/verwaltung/katalog). Use catalog administration for editorial and operational tasks; owners usually maintain their own app content through the regular app editor.
+
+## Apps
+
+The [app list](/verwaltung/katalog/apps) supports search and filters for:
+
+- name or technical ID;
+- status;
+- category;
+- owner;
+- assigned editors;
+- repository synchronization status;
+- **Featured**;
+- locked entries;
+- visibility.
+
+Administrators can create, edit, copy, delete, bulk-delete, lock, unlock, transfer ownership, and manage editors for apps. Deletion is permanent; use an [encrypted backup export](/admin/security#backups) before larger cleanups.
+
+### Status and publication
+
+JustApps uses these app statuses:
+
+| Status          | Typical purpose                                                        |
+| --------------- | ---------------------------------------------------------------------- |
+| **Draft**       | Content is still being prepared and is not a finished solution.        |
+| **POC**         | Proof of concept; technical or business feasibility is being assessed. |
+| **MVP**         | First usable version with limited scope.                               |
+| **Sandbox**     | Test or experimental environment.                                      |
+| **In trial**    | Used with real users or in a limited context.                          |
+| **Established** | Reliably documented for its intended use.                              |
+
+For every status except **Draft**, the editor requires at least one category and a description. Publish an app only when owner, audience, live access, license, source code, and installation guidance are clear enough.
+
+### Locking, transferring, and featuring
+
+- **Lock** prevents normal editing without deleting the entry. Unlock only for a planned update.
+- **Transfer owner** changes the responsible person. Check editors and repository links afterward.
+- **Manage editors** grants selected users edit rights without transferring ownership.
+- **Featured** highlights an app on the home page. Use platform pins for a fixed order and Featured for editorial emphasis.
+
+## Groups
+
+Under [Groups](/verwaltung/katalog/gruppen), organize apps by topic or organizational unit. A group has:
+
+- a name;
+- a description;
+- an optional group icon;
+- a set of apps or memberships.
+
+Administrators can create groups, upload icons, assign apps, and edit memberships in bulk. Use stable, understandable names such as `Digital administration` or `Data and analytics`. Avoid groups that only duplicate the current project status; use app statuses and banners for that.
+
+## Content and detail fields
+
+[Catalog content](/verwaltung/katalog/inhalte) shows the configured detail fields. Their order and labels are maintained centrally in [platform settings](/admin/platform#catalog-content). If a field no longer applies, first clarify whether stored values need to be archived or migrated.
+
+For every non-private app, editorially answer at least:
+
+- What problem does the app solve, and for whom?
+- How can someone start or try it?
+- Where are the source code and documentation?
+- Which data, permissions, and external services does it need?
+- Who owns operation and updates?
+
+The detailed creator checklist is in [Content and metadata](/app-creators/content-and-metadata).
+
+## Health
+
+[App health](/verwaltung/katalog/gesundheit) collects operational signals:
+
+- reachability of live links;
+- repository synchronization and sync errors;
+- outdated documentation;
+- apps without an owner.
+
+The filter distinguishes **Healthy**, **Needs attention**, and **Critical**. For problems, open the app details first, check paths and ownership, then retry repository synchronization if appropriate. Health Copilot can summarize signals; its suggestions do not replace technical verification.
+
+## AI Catalog Steward
+
+When AI is enabled and a default provider is configured, [Catalog Steward](/verwaltung/katalog) can check catalog entries for missing or contradictory information. Treat the result as an editorial suggestion. Verify any statement about security, privacy, licensing, or operational maturity with the app team before accepting it.
+
+## Permissions and ownership
+
+Administrators can manage all catalog areas. App owners and assigned editors can maintain their approved content; global settings, users, backups, and other administrative areas remain restricted to admins. When a team changes, transfer ownership and document the handover in the app content or audit log.

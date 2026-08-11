@@ -13,6 +13,7 @@ import {
 import {
   Bell,
   Bot,
+  BookOpen,
   ChevronDown,
   Layers,
   Layers2,
@@ -94,6 +95,12 @@ export function Navigation() {
 
   const regularNavLinks = [
     { href: "/", label: "Apps", icon: Layers, active: pathname === "/" },
+    {
+      href: "/docs",
+      label: "Dokumentation",
+      icon: BookOpen,
+      active: pathname === "/docs" || pathname.startsWith("/docs/"),
+    },
     {
       href: "/gruppen",
       label: "Gruppen",

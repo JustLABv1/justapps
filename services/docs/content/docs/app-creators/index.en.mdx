@@ -1,0 +1,52 @@
+---
+title: Create apps
+description: Guide for teams describing, deploying, and maintaining apps in the JustApps catalog.
+---
+
+This section is for app owners, developers, subject-matter experts, and editors who publish or maintain a solution in the JustApps catalog. The goal is more than a complete record: another person should be able to understand, try, and operate the app safely.
+
+## The complete path
+
+| Phase          | What you do                                                   | Guide                                                                    |
+| -------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 1. Prepare     | Clarify audience, ownership, source code, and operating model | [Workflow and publication](/app-creators/workflow)                       |
+| 2. Describe    | Enter name, value, status, categories, license, and links     | [Content and metadata](/app-creators/content-and-metadata)               |
+| 3. Deploy      | Document Docker, Compose, or Helm with reproducible details   | [Deployment guides](/app-creators/deployment-guides)                     |
+| 4. Accelerate  | Review and adopt an AI suggestion or repository import        | [AI and repositories](/app-creators/ai-and-repositories)                 |
+| 5. Collaborate | Maintain editors, groups, related apps, and ownership         | [Collaboration and lifecycle](/app-creators/collaboration-and-lifecycle) |
+
+The usual entry point is **Meine Apps → Neue App**. Administrators can also use [Verwaltung → Katalog → App hinzufügen](/verwaltung/katalog/apps/new).
+
+## Before creating the app
+
+Have these details ready:
+
+- an understandable name and stable technical ID;
+- a short, honest description of the value;
+- at least one suitable category;
+- status, audience, owner, and contact;
+- license and source-code link;
+- a working demo or production link, if available;
+- requirements such as databases, Secrets, external services, and permissions;
+- reproducible start or installation steps.
+
+If the app is not ready for use, choose **Entwurf**, **POC**, or **Sandbox** instead of presenting it as established. A clearly marked unfinished entry is more useful than a finished-looking guide that cannot be started.
+
+## Good app entries
+
+A good entry quickly answers:
+
+1. What problem does the app solve?
+2. Who may or should use it?
+3. What data does it process?
+4. How can I test it?
+5. How do I install and update it?
+6. Who can answer questions and who is responsible?
+
+The editor fields are the structured core. Add optional Markdown documentation when useful, but avoid contradictory duplicates in multiple places.
+
+## Visibility and review
+
+An app can be saved as a draft and continued later. For non-draft statuses, JustApps requires at least one category and a description. Depending on platform rules, submissions may first be reviewed by an administrator.
+
+When handing over an app, update owner, editors, repository link, deployment variants, and contact together so the catalog entry stays aligned with actual responsibility.

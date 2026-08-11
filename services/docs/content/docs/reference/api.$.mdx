@@ -1,0 +1,259 @@
+---
+title: API reference
+description: Explore the JustApps REST API, authentication levels, and response formats.
+---
+
+Base URL: `/api/v1`
+
+The Prometheus scrape endpoint is exposed separately at `/metrics` and is not part of the `/api/v1` namespace.
+
+**Auth levels:**
+
+- `—` — public, no token required
+- `User` — valid JWT required
+- `Owner` — JWT required; caller must own the resource
+- `Admin` — JWT required; caller must have the `admin` role
+
+---
+
+## Health
+
+| Method | Path      | Auth | Description               |
+| ------ | --------- | ---- | ------------------------- |
+| `GET`  | `/health` | —    | Returns `{"status":"ok"}` |
+
+---
+
+## Metrics
+
+| Method | Path       | Auth | Description                                                            |
+| ------ | ---------- | ---- | ---------------------------------------------------------------------- |
+| `GET`  | `/metrics` | —    | Returns Prometheus/OpenMetrics text for catalog and functional metrics |
+
+The `/metrics` endpoint is intentionally public and emits cluster-global metrics derived from the database and audit log.
+
+It includes:
+
+- catalog snapshots such as app, user, rating, favorite, and AI conversation/message counts
+- per-app low-cardinality series keyed by `app_id`
+- cumulative functional counters derived from audit operations such as app lifecycle, GitLab sync, rating, favorite, AI chat, and local login events
+
+It intentionally excludes per-process Go runtime, memory, and HTTP request metrics so the public scrape remains correct behind load balancing and multiple backend replicas.
+
+---
+
+## Apps
+
+| Method   | Path        | Auth  | Description         |
+| -------- | ----------- | ----- | ------------------- |
+| `GET`    | `/apps`     | —     | List all apps       |
+| `GET`    | `/apps/:id` | —     | Get app details     |
+| `POST`   | `/apps`     | User  | Create a new app    |
+| `PUT`    | `/apps/:id` | Owner | Update app metadata |
+| `DELETE` | `/apps/:id` | Owner | Delete an app       |
+
+### App Fields (create / update)
+
+Common fields accepted in the request body:
+
+| Field         | Type     | Description                                  |
+| ------------- | -------- | -------------------------------------------- |
+| `name`        | string   | Display name                                 |
+| `description` | string   | Markdown description                         |
+| `category`    | string   | Category label                               |
+| `tech_stack`  | string[] | Technologies used                            |
+| `logo_url`    | string   | URL to the app logo                          |
+| `status`      | string   | `active` \| `deprecated` \| `beta`           |
+| `version`     | string   | Current version string                       |
+| `deployments` | object[] | Deployment instructions (docker, helm, etc.) |
+| `links`       | object[] | Custom external links                        |
+| `tags`        | string[] | Searchable tags                              |
+
+---
+
+## Ratings
+
+| Method   | Path                | Auth | Description               |
+| -------- | ------------------- | ---- | ------------------------- |
+| `GET`    | `/apps/:id/ratings` | —    | List ratings for an app   |
+| `POST`   | `/apps/:id/ratings` | User | Submit or update a rating |
+| `DELETE` | `/apps/:id/ratings` | User | Delete own rating         |
+
+### Rating Body
+
+```json
+{
+  "score": 4,
+  "comment": "Great tool!"
+}
+```
+
+`score` is an integer 1–5.
+
+---
+
+## Favorites
+
+| Method   | Path                  | Auth | Description           |
+| -------- | --------------------- | ---- | --------------------- |
+| `GET`    | `/users/me/favorites` | User | List favorited apps   |
+| `POST`   | `/apps/:id/favorite`  | User | Add app to favorites  |
+| `DELETE` | `/apps/:id/favorite`  | User | Remove from favorites |
+
+---
+
+## Authentication
+
+| Method | Path                       | Auth | Description                                          |
+| ------ | -------------------------- | ---- | ---------------------------------------------------- |
+| `POST` | `/auth/register`           | —    | Register a local account                             |
+| `POST` | `/auth/login`              | —    | Login, returns JWT                                   |
+| `GET`  | `/auth/oidc/providers`     | —    | List enabled OIDC providers (public summaries)       |
+| `GET`  | `/auth/oidc/:key/start`    | —    | Start backend-managed OIDC login flow for a provider |
+| `GET`  | `/auth/oidc/:key/callback` | —    | OIDC callback endpoint used by identity provider     |
+
+`POST /auth/oidc/exchange` is a legacy endpoint and not part of the recommended multi-provider flow.
+
+### Login Body
+
+```json
+{
+  "username": "user@example.com",
+  "password": "your-password"
+}
+```
+
+### Login Response
+
+```json
+{
+  "token": "<jwt>",
+  "user": { "id": "...", "username": "...", "is_admin": false }
+}
+```
+
+---
+
+## Platform Settings
+
+| Method | Path        | Auth  | Description                                      |
+| ------ | ----------- | ----- | ------------------------------------------------ |
+| `GET`  | `/settings` | —     | Get platform settings (branding, banner, footer) |
+| `PUT`  | `/settings` | Admin | Update platform settings                         |
+
+### Selected Platform Settings Fields
+
+The `/settings` payload includes branding fields that are intentionally public because the frontend reads them without authentication.
+
+| Field             | Type     | Description                                                                     |
+| ----------------- | -------- | ------------------------------------------------------------------------------- |
+| `showFlagBar`     | boolean  | Shows or hides the thin color bar at the top of the page                        |
+| `topBarPreset`    | string   | Selected preset for the top color bar, e.g. `deutschland`, `justapps`, `custom` |
+| `topBarColors`    | string[] | Custom top-bar colors used when `topBarPreset` is `custom`                      |
+| `heroTitle`       | string   | Main title text on the homepage                                                 |
+| `heroTitlePreset` | string   | Selected color preset for the hero-title gradient                               |
+| `heroTitleColors` | string[] | Custom gradient colors used when `heroTitlePreset` is `custom`                  |
+
+Do not store secrets in platform settings. The `/settings` endpoint is public by design.
+
+---
+
+## AI Chat
+
+| Method   | Path                                         | Auth  | Description                                        |
+| -------- | -------------------------------------------- | ----- | -------------------------------------------------- |
+| `GET`    | `/ai/providers`                              | User  | List enabled AI providers available for chat       |
+| `GET`    | `/ai/conversations`                          | User  | List own AI chat conversations                     |
+| `POST`   | `/ai/conversations`                          | User  | Create a chat conversation                         |
+| `GET`    | `/ai/conversations/:id`                      | User  | Get one own conversation with messages             |
+| `DELETE` | `/ai/conversations/:id`                      | User  | Delete one own conversation                        |
+| `POST`   | `/ai/chat`                                   | User  | Send a message and create a conversation if needed |
+| `POST`   | `/ai/conversations/:conversationId/messages` | User  | Send a message in an existing conversation         |
+| `POST`   | `/ai/knowledge/reindex`                      | Admin | Rebuild the app knowledge index                    |
+
+### AI Provider Settings
+
+| Method   | Path                               | Auth  | Description                                                    |
+| -------- | ---------------------------------- | ----- | -------------------------------------------------------------- |
+| `GET`    | `/settings/ai-providers/available` | User  | List enabled AI providers for authenticated settings consumers |
+| `GET`    | `/settings/ai-providers`           | Admin | List AI provider settings without secrets                      |
+| `POST`   | `/settings/ai-providers`           | Admin | Create an AI provider                                          |
+| `PUT`    | `/settings/ai-providers/:key`      | Admin | Update an AI provider or rotate its token                      |
+| `DELETE` | `/settings/ai-providers/:key`      | Admin | Delete an AI provider                                          |
+| `POST`   | `/settings/ai-providers/:key/test` | Admin | Test an AI provider connection                                 |
+
+Supported provider types include `openai`, `azure-openai`, `anthropic`, `gemini`, `mistral`, `cohere`, `openrouter`, `together`, `openai-compatible`, `vllm`, `ollama` and `lmstudio`.
+
+### OIDC Provider Settings
+
+| Method   | Path                                 | Auth  | Description                                              |
+| -------- | ------------------------------------ | ----- | -------------------------------------------------------- |
+| `GET`    | `/settings/oidc-providers/available` | —     | List enabled OIDC providers for public frontend settings |
+| `GET`    | `/settings/oidc-providers`           | Admin | List OIDC providers for admin management                 |
+| `POST`   | `/settings/oidc-providers`           | Admin | Create an OIDC provider                                  |
+| `PUT`    | `/settings/oidc-providers/:key`      | Admin | Update an OIDC provider and optionally rotate secret     |
+| `DELETE` | `/settings/oidc-providers/:key`      | Admin | Delete an OIDC provider                                  |
+
+---
+
+## Admin — Users
+
+| Method   | Path                     | Auth  | Description                      |
+| -------- | ------------------------ | ----- | -------------------------------- |
+| `GET`    | `/admin/users`           | Admin | List all users                   |
+| `POST`   | `/admin/users`           | Admin | Create a local user              |
+| `PUT`    | `/admin/users/:id`       | Admin | Update a user                    |
+| `PUT`    | `/admin/users/:id/state` | Admin | Enable or disable a user account |
+| `DELETE` | `/admin/users/:id`       | Admin | Delete a user                    |
+
+---
+
+## Admin — Apps
+
+| Method | Path                 | Auth  | Description                        |
+| ------ | -------------------- | ----- | ---------------------------------- |
+| `GET`  | `/admin/apps`        | Admin | List all apps (including unlisted) |
+| `POST` | `/admin/apps/import` | Admin | Bulk import apps from JSON         |
+| `GET`  | `/admin/apps/export` | Admin | Export all apps to JSON            |
+
+---
+
+## GitLab Integration
+
+| Method   | Path                               | Auth  | Description                      |
+| -------- | ---------------------------------- | ----- | -------------------------------- |
+| `GET`    | `/admin/gitlab/providers`          | Admin | List configured GitLab providers |
+| `POST`   | `/admin/gitlab/providers`          | Admin | Add a GitLab provider            |
+| `PUT`    | `/admin/gitlab/providers/:id`      | Admin | Update provider settings         |
+| `DELETE` | `/admin/gitlab/providers/:id`      | Admin | Remove a provider                |
+| `POST`   | `/admin/gitlab/providers/:id/sync` | Admin | Trigger manual sync              |
+
+---
+
+## File Uploads
+
+| Method | Path           | Auth               | Description                     |
+| ------ | -------------- | ------------------ | ------------------------------- |
+| `POST` | `/upload/logo` | Authenticated user | Upload an app logo, returns URL |
+
+Accepted formats: `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`. Maximum size: 5 MB.
+
+---
+
+## Error Responses
+
+All errors follow this structure:
+
+```json
+{
+  "error": "human-readable message"
+}
+```
+
+| Status | Meaning                        |
+| ------ | ------------------------------ |
+| `400`  | Bad request / validation error |
+| `401`  | Missing or invalid token       |
+| `403`  | Insufficient permissions       |
+| `404`  | Resource not found             |
+| `500`  | Internal server error          |

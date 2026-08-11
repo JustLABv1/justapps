@@ -47,21 +47,18 @@ docker pull ghcr.io/JustLABv1/justapps:latest
 
 ## Documentation
 
-Full documentation is in the [project wiki](https://github.com/JustLABv1/justapps/wiki):
+The Fumadocs site is served at `/docs` alongside JustApps. After deployment, open
+`https://<your-justapps-host>/docs`; the hosted public instance is available at
+[apps.justlab.app/docs](https://apps.justlab.app/docs).
 
-| Page | Description |
-|------|-------------|
-| [Getting Started](https://github.com/JustLABv1/justapps/wiki/Getting-Started) | Install and run locally or via Docker |
-| [Configuration](https://github.com/JustLABv1/justapps/wiki/Configuration) | Backend and frontend config reference |
-| [Authentication](https://github.com/JustLABv1/justapps/wiki/Authentication) | Keycloak / OIDC setup |
-| [Docker](https://github.com/JustLABv1/justapps/wiki/Docker) | Docker and Docker Compose deployment |
-| [Kubernetes / Helm](https://github.com/JustLABv1/justapps/wiki/Kubernetes) | Helm chart deployment |
-| [API Reference](https://github.com/JustLABv1/justapps/wiki/API-Reference) | REST API endpoints |
-| [Architecture](https://github.com/JustLABv1/justapps/wiki/Architecture) | System overview and data flow |
-| [Repository Sync](https://github.com/JustLABv1/justapps/wiki/Repository-Sync) | Sync apps from GitLab and GitHub |
-| [AI Chat](https://github.com/JustLABv1/justapps/wiki/AI-Chat) | Configure AI providers and app knowledge retrieval |
-| [Admin Guide](https://github.com/JustLABv1/justapps/wiki/Admin-Guide) | Manage users and platform settings |
-| [Contributing](https://github.com/JustLABv1/justapps/wiki/Contributing) | Branching, commit style, PR workflow |
+Documentation source lives in [`services/docs/`](services/docs/), and the main guides are:
+
+- [Admin documentation](https://apps.justlab.app/docs/admin)
+- [First installation and bootstrap](https://apps.justlab.app/docs/admin/getting-started)
+- [Docker and Docker Compose](https://apps.justlab.app/docs/admin/deployment/docker-compose)
+- [Kubernetes and Helm](https://apps.justlab.app/docs/admin/deployment/helm)
+- [App-creator documentation](https://apps.justlab.app/docs/app-creators)
+- [API reference](https://apps.justlab.app/docs/reference/api)
 
 ## License
 

@@ -1,0 +1,25 @@
+---
+title: Integrations and AI
+description: Connect identity providers, source repositories and AI services to JustApps.
+---
+
+Integration settings are stored in PostgreSQL and managed after the base deployment is healthy. The encryption secret from the deployment layer must remain stable across restarts, upgrades and restores.
+
+## Available integrations
+
+| Integration                      | Admin page                                       | Documentation                                          |
+| -------------------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| OIDC identity providers          | `/verwaltung/integrationen/auth`                 | [Authentication](/admin/authentication)                |
+| GitLab and GitHub providers      | `/verwaltung/integrationen/repository-providers` | [Repository sync](/admin/integrations/repository-sync) |
+| Synchronisation and approvals    | `/verwaltung/integrationen/repository-sync`      | [Repository sync](/admin/integrations/repository-sync) |
+| AI providers and knowledge index | `/verwaltung/integrationen/ai`                   | [AI assistant](/admin/integrations/ai)                 |
+
+## Safe rollout order
+
+1. Configure the provider-encryption secret in Compose or Helm.
+2. Add a provider with the smallest useful permissions.
+3. Use the provider test or a non-production app link.
+4. Check logs, sync status and access boundaries.
+5. Rotate the token through the admin UI when required.
+
+Provider credentials are not public frontend settings. Do not paste them into app Markdown, repository files or screenshots.

@@ -1,0 +1,78 @@
+---
+title: Deployment-Anleitungen
+description: Reproduzierbare Docker-, Docker-Compose- und Helm-Hinweise für einzelne Apps dokumentieren.
+---
+
+Die Deployment-Hilfe im App-Editor ist eine kompakte, app-spezifische Installationskarte. Sie ersetzt keine vollständige Betriebsdokumentation, sollte aber eine erfahrene Person ohne Rückfragen zum ersten erfolgreichen Start führen.
+
+## Einen Installationsweg auswählen
+
+Aktiviere **Installationshilfe anbieten** und wähle die tatsächlich unterstützten Wege:
+
+- **Docker** für ein einzelnes Image oder einen direkten Startbefehl,
+- **Docker Compose** für mehrere Dienste und die dafür benötigte Konfiguration,
+- **Helm** für Kubernetes beziehungsweise eine OCI- oder Chart-Installation.
+
+Wähle keinen Weg nur, weil er theoretisch möglich ist. Ein sichtbarer Weg ist eine Zusage an die Nutzer des Katalogs.
+
+## Docker
+
+Für Docker kannst du ein Image, ein `docker run`-Kommando und einen zusätzlichen Hinweis angeben. Dokumentiere mindestens:
+
+- vollständigen Image-Namen und einen stabilen Tag oder Digest,
+- benötigte Ports,
+- Volumes und Schreibpfade,
+- Umgebungsvariablen ohne echte Secret-Werte,
+- externe Abhängigkeiten,
+- Healthcheck oder erwarteten Bereitschaftszustand.
+
+Ein gutes Beispiel verwendet Platzhalter wie `${APP_SECRET}` und erklärt, wo der Wert sicher gesetzt wird. Vermeide `latest`, wenn reproduzierbare Rollbacks wichtig sind.
+
+## Docker Compose
+
+Für Compose ist das Setup-Feld verpflichtend. Füge einen vollständigen, minimalen Dienstausschnitt oder einen Verweis auf die kanonische Datei ein. Ergänze:
+
+- welche Variablen in `.env` gesetzt werden müssen,
+- welche Services gestartet werden,
+- welche Ports nach außen veröffentlicht werden,
+- welche Volumes persistent sind,
+- wie Datenbankmigration und Update funktionieren,
+- wie Logs und Healthchecks geprüft werden.
+
+Wenn die Compose-Datei im Repository liegt, verknüpfe das Repository und nenne den genauen Pfad. Halte das Snippet synchron mit der Datei; ein veraltetes Beispiel ist gefährlicher als kein Beispiel.
+
+## Helm
+
+Für Helm brauchst du ein Chart-Repository oder ein Helm-Kommando. Füge außerdem, soweit relevant, eine passende `values.yaml` beziehungsweise die wichtigsten Overrides hinzu:
+
+- Namespace und Release-Name,
+- Image und Version,
+- Ingress-Host und TLS,
+- Datenbank und persistente Volumes,
+- Ressourcen und Autoscaling,
+- Secrets über Secret-Referenzen,
+- notwendige externe Dienste.
+
+Zeige keine produktiven Zugangsdaten in `values.yaml`. Verweise auf einen bestehenden Kubernetes Secret, External Secrets oder deine Secret-Management-Lösung. Ein Beispiel für die JustApps-Plattform selbst findest du unter [Helm-Installation für Administratoren](/admin/deployment/helm).
+
+## Hinweise, die jede Methode braucht
+
+Ein Installationsweg sollte zusätzlich klären:
+
+1. Welche Version oder welcher Commit ist vorgesehen?
+2. Welche Voraussetzungen müssen vorab bereitstehen?
+3. Welche Konfiguration ist zwingend und welche optional?
+4. Wie wird der erste Admin oder die erste Anmeldung eingerichtet?
+5. Wie prüft man, dass die App gesund läuft?
+6. Wie werden Updates, Backups und Rollbacks durchgeführt?
+
+## Sicherheits- und Betriebsqualität
+
+- Verwende keine echten Secrets, Tokens oder privaten URLs in Katalogtexten.
+- Weise auf erforderliche Least-Privilege-Berechtigungen hin.
+- Beschreibe Datenhaltung und Backup-Anforderungen.
+- Nenne inkompatible Versionen und bekannte Migrationsschritte.
+- Gib einen Testbefehl an, der einen echten Bereitschaftszustand prüft.
+- Kennzeichne Demo-, Entwicklungs- und Produktionswerte eindeutig.
+
+Nach jeder Änderung an einer Deployment-Anleitung solltest du den Start in einer sauberen Umgebung testen. Prüfe außerdem die sichtbare App-Detailseite, damit Code, Anleitung und Katalogstatus zusammenpassen.

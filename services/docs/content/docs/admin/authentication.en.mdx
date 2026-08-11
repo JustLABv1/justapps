@@ -1,0 +1,102 @@
+---
+title: Authentication and access
+description: Configure local accounts, OIDC providers, admin roles, and public access policy.
+---
+
+JustApps supports local username/password accounts and backend-managed OpenID Connect (OIDC). They can coexist. OIDC provider records are stored in PostgreSQL and managed from the admin UI at `/verwaltung/integrationen/auth`.
+
+## Choose an access model
+
+| Model | User source            | Admin mapping                                                                      |
+| ----- | ---------------------- | ---------------------------------------------------------------------------------- |
+| Local | JustApps PostgreSQL    | The first local registration becomes `admin`; later users are assigned by an admin |
+| OIDC  | Your identity provider | The configured Admin group/role claim maps users to `admin`                        |
+| Mixed | Both                   | Useful during rollout; disable local access after OIDC is verified                 |
+
+The platform setting **App Store nur für angemeldete Nutzer** (`requireAuthForAppStore`) can additionally require a login before visitors can browse the catalog, App details, or groups.
+
+## Local authentication
+
+For a new installation with OIDC disabled:
+
+1. Open `/register`.
+2. Create the first user.
+3. Confirm that the account has the `admin` role.
+4. Configure the platform and invite or create additional users from `/verwaltung/sicherheit/benutzer`.
+
+The first local user is only special during bootstrap. Do not rely on registration for ongoing administration. After OIDC is working, set `disableRegistration` in the legacy fallback or manage account access through your identity provider.
+
+## Configure an OIDC provider in the UI
+
+Open **Verwaltung → Integrationen → Authentifizierung** and create a provider. The provider key is a stable identifier used in callback URLs and cannot be changed after creation.
+
+| Field                     | Required                             | Guidance                                                      |
+| ------------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| Provider key              | Yes                                  | Lowercase stable identifier such as `keycloak-main`           |
+| Label                     | Yes                                  | Human-readable name shown on the login page                   |
+| Issuer URL                | Yes                                  | Exact issuer URL for the realm or tenant                      |
+| Client ID                 | Yes                                  | Confidential OIDC client registered in the IdP                |
+| Client secret             | Yes                                  | Stored encrypted; never returned after saving                 |
+| Admin group / role        | Yes for admin mapping                | The group or role claim that grants the JustApps `admin` role |
+| Scopes                    | Usually `openid`, `profile`, `email` | One per line or comma-separated                               |
+| Provider active           | —                                    | Controls whether the provider appears on the login page       |
+| TLS verification disabled | No                                   | Development only for self-signed certificates                 |
+| Local login disabled      | No                                   | Hides local email/password login when enabled by a provider   |
+
+Client secrets are encrypted with the deployment-layer `repository_provider_encryption.secret` / `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`. Set that secret before creating providers and preserve it across upgrades and restores.
+
+## Keycloak setup
+
+In Keycloak or another OIDC provider:
+
+1. Create or select a realm.
+2. Create a confidential OIDC client.
+3. Add the callback URL for the public backend origin:
+
+   ```text
+   https://apps.example.org/api/v1/auth/oidc/<provider-key>/callback
+   ```
+
+4. Add the frontend origin to the client Web Origins / allowed origins.
+5. Create the admin group or role and assign it to administrators.
+6. Ensure the group or role is included in the ID token or user-info response.
+7. Add the issuer, client ID, secret, admin group, and scopes in JustApps.
+8. Test login in a private browser window before disabling local login.
+
+For Keycloak sessions that need persistent refresh behavior, include `offline_access` when your realm policy allows it and verify the resulting session in Keycloak.
+
+## Legacy single-provider fallback
+
+The backend still accepts a single provider through `config.yaml` or `BACKEND_*` variables. This is useful for compatibility but is not the recommended multi-provider configuration:
+
+```yaml
+oidc:
+  enabled: true
+  issuer: https://id.example.org/realms/justapps
+  client_id: justapps
+  admin_group: admin
+  insecure: false
+  disable_local_auth: false
+  disable_registration: false
+```
+
+The matching variables are `BACKEND_OIDC_ENABLED`, `BACKEND_OIDC_ISSUER`, `BACKEND_OIDC_CLIENT_ID`, `BACKEND_OIDC_ADMIN_GROUP`, `BACKEND_OIDC_INSECURE`, `BACKEND_OIDC_DISABLE_LOCAL_AUTH`, and `BACKEND_OIDC_DISABLE_REGISTRATION`.
+
+## Access checks after setup
+
+- Log in with an ordinary user and confirm that admin pages are not accessible.
+- Log in with an OIDC user who is in the configured admin group and confirm the `admin` role.
+- Remove the admin group from a test identity and verify that it no longer receives administrative access.
+- If the catalog should be private, enable the platform login requirement.
+- If registration should be closed, disable registration after your initial accounts exist.
+
+## Troubleshooting
+
+| Symptom                     | Check                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Provider is not shown       | It is active, has a saved secret, and has a complete issuer/client configuration                                          |
+| Callback fails              | The callback URL uses the public backend origin and exact provider key                                                    |
+| TLS or discovery fails      | The pod/container trusts the IdP CA; use the [custom CA](./deployment/helm#ingress-and-custom-cas) option for private CAs |
+| User is not an admin        | The claim contains the configured group/role name and the provider mapping is exact                                       |
+| Local login disappeared     | An OIDC provider has **Local login disabled**; re-enable it on the provider or use OIDC                                   |
+| Browser reports CORS errors | Add the exact frontend origin to `cors.allowed_origins`                                                                   |

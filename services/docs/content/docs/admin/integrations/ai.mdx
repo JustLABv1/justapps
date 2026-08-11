@@ -1,0 +1,107 @@
+---
+title: AI-Assistent
+description: JustApps-AI-Provider, Wissensabruf, Datenschutz und Backups konfigurieren.
+---
+
+JustApps enthält einen authentifizierten AI-Chat, der Fragen zu Katalog-Apps, Deployment-Varianten, synchronisierten README-Inhalten, Helm-Values, Compose-Dateien, Tags und Beschreibungen beantworten kann.
+
+Der Chat steht als globales schwebendes Widget für angemeldete Benutzer, als eigene `/chat`-Seite und kontextbezogen auf App-Detailseiten zur Verfügung.
+
+## Provider
+
+Administratoren konfigurieren Provider unter [**Verwaltung → Integrationen → AI**](/verwaltung/integrationen/ai). Unterstützte Typen sind:
+
+| Typ                 | Hinweise                                                 |
+| ------------------- | -------------------------------------------------------- |
+| `openai`            | OpenAI Chat Completions API                              |
+| `azure-openai`      | Azure-OpenAI-Deployment-Endpunkt                         |
+| `anthropic`         | Claude Messages API                                      |
+| `gemini`            | Google-Gemini-generateContent-API                        |
+| `mistral`           | Mistral-Chat-API                                         |
+| `cohere`            | Cohere-Chat-API                                          |
+| `openrouter`        | OpenAI-kompatible OpenRouter-API                         |
+| `together`          | OpenAI-kompatible Together-API                           |
+| `openai-compatible` | Beliebiger OpenAI-kompatibler Endpunkt                   |
+| `vllm`              | Lokaler oder gehosteter OpenAI-kompatibler vLLM-Endpunkt |
+| `ollama`            | Lokaler Ollama-Endpunkt `/api/chat`                      |
+| `lmstudio`          | OpenAI-kompatibler lokaler LM-Studio-Endpunkt            |
+
+Tokens werden vor der Speicherung verschlüsselt. Das Backend-Secret `repository_provider_encryption.secret` beziehungsweise `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` schützt auch AI-Provider-Tokens.
+
+## AI-Zugriff und Provider-Felder
+
+Der Abschnitt **AI-Zugriff** steuert das Feature unabhängig von den gespeicherten Providern:
+
+| Einstellung                      | Wirkung                                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **AI-Funktion aktivieren**       | Aktiviert oder deaktiviert Chat, Widget und zugehörige API-Endpunkte global; Provider bleiben gespeichert.                                                   |
+| **Anonymen AI-Zugriff erlauben** | Erlaubt nicht angemeldeten Besuchern Chat und Widget; deren Verlauf bleibt nur im Browser. Die Option ist bei global deaktivierter AI ebenfalls deaktiviert. |
+
+Das Formular eines Providers enthält:
+
+| Feld                   | Zweck                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| **Provider-Schlüssel** | Stabile interne Kennung wie `openai-main` oder `ollama-local`                                   |
+| **Provider-Typ**       | Adapter und Anfrageformat                                                                       |
+| **Bezeichnung**        | Anzeigename für Chat-Benutzer                                                                   |
+| **Base URL**           | Provider- oder Model-Server-Endpunkt; in Containern keinen unerreichbaren `localhost` verwenden |
+| **API-Pfad**           | Optionaler Pfad für kompatible Endpunkte                                                        |
+| **Chat-Modell**        | An den Provider gesendete Modellkennung                                                         |
+| **API-Version**        | Optionale Version, etwa bei Azure OpenAI                                                        |
+| **Organisation**       | Optionale Organisation oder Tenant-Kennung                                                      |
+| **API-Key**            | Schreibgeschütztes Secret; kann ersetzt oder gelöscht werden                                    |
+| **Temperatur**         | Antwortvarianz; für Katalogfragen meist `0.1–0.3` sinnvoll                                      |
+| **Aktiv**              | Macht den Provider auswählbar                                                                   |
+| **Standard**           | Verwendet den Provider für neue Chats                                                           |
+
+Verwende nach dem Speichern **Test**. Ein erfolgreicher Verbindungstest bestätigt nur Endpunkt und Zugangsdaten, nicht Modellqualität, Datenresidenz oder rechtliche Eignung.
+
+## Beispiele für lokale Provider
+
+### vLLM
+
+| Feld        | Beispiel                                                                     |
+| ----------- | ---------------------------------------------------------------------------- |
+| Typ         | `vllm`                                                                       |
+| Base URL    | `http://localhost:8000/v1`                                                   |
+| Chat-Modell | bereitgestellter Modellname, zum Beispiel `meta-llama/Llama-3.1-8B-Instruct` |
+| API-Key     | je nach vLLM-Server optional                                                 |
+
+### Ollama
+
+| Feld        | Beispiel                 |
+| ----------- | ------------------------ |
+| Typ         | `ollama`                 |
+| Base URL    | `http://localhost:11434` |
+| Chat-Modell | `llama3.1`               |
+| API-Key     | leer lassen              |
+
+In Docker oder Kubernetes bezeichnet `localhost` den Backend-Container beziehungsweise Pod. Verwende für lokale Model-Server einen erreichbaren Service-DNS-Namen oder eine Host-Gateway-Adresse.
+
+## Wissensindex
+
+JustApps erzeugt AI-Wissens-Chunks aus App-Metadaten und synchronisierten Repository-Inhalten. Der Index kann enthalten:
+
+- App-Namen, Zusammenfassungen, Kategorien, Tags und benutzerdefinierte Felder;
+- README-Markdown aus Repository-Sync;
+- Helm-Values, Compose-Dateien und Deployment-Befehle;
+- App-Links, Versionsinformationen und Changelog-Inhalte.
+
+Der Index wird bei App-Erstellung, Änderung oder Löschung sowie nach einem neuen Repository-Snapshot automatisch aktualisiert. Administratoren können ihn unter [**Verwaltung → Integrationen → AI**](/verwaltung/integrationen/ai) manuell neu aufbauen.
+
+Wissens-Chunks sind abgeleitete Daten und nicht Teil von Backups. Nach einem Restore muss der Index manuell neu aufgebaut werden, wenn Apps wiederhergestellt wurden.
+
+## Datenschutz und Zugriff
+
+Der AI-Chat benötigt grundsätzlich einen angemeldeten Benutzer. Der Abruf respektiert die Sichtbarkeit: Entwürfe werden nur für Administratoren oder ihre Owner berücksichtigt. Provider-API-Keys werden nach dem Speichern nie an das Frontend zurückgegeben.
+
+## Backups
+
+Backup-Exporte enthalten zwei AI-Abschnitte:
+
+| Abschnitt         | Inhalt                                                    |
+| ----------------- | --------------------------------------------------------- |
+| `aiProviders`     | Provider-Einstellungen und verschlüsseltes Token-Material |
+| `aiConversations` | Chat-Verläufe und gespeicherte Nachrichten                |
+
+`aiConversations` kann Benutzerprompts und Assistentenantworten enthalten. Behandle Backup-Dateien daher als vertraulich, auch wenn `.jabackup`-Exporte mit einer Passphrase verschlüsselt sind.

@@ -1,0 +1,71 @@
+---
+title: Security and operations
+description: Manage users, tokens, audit records, and encrypted backups in JustApps administration.
+---
+
+Administrative security features are under [Verwaltung → Sicherheit](/verwaltung/sicherheit). They complement the infrastructure controls in [Configuration](/admin/configuration) and [Authentication](/admin/authentication); they do not replace network segmentation or secure Secret management.
+
+## Users
+
+Under [Users](/verwaltung/sicherheit/benutzer), administrators can manage local accounts:
+
+| Field    | Meaning                                   |
+| -------- | ----------------------------------------- |
+| Username | Unique display name and login identifier. |
+| Email    | Contact and login address.                |
+| Password | Only when creating a local account.       |
+| Role     | `Benutzer` or `Administrator`.            |
+
+For each account, administrators can also disable or re-enable access, toggle **Apps einreichen**, edit the user, or permanently delete the account.
+
+Disable an account first when blocking access is sufficient. Deletion is permanent and can affect ownership and audit relationships. For SSO users, the identity provider remains authoritative; the local JustApps permission still controls role and app-submission access.
+
+## API tokens and sessions
+
+Under [Tokens](/verwaltung/sicherheit/tokens), inspect active, expired, and disabled API tokens and sessions. The list includes type, description, user ID, creation date, expiration date, and status.
+
+**Revoke** invalidates a token immediately. Use it during rotation, after compromised credentials, when users leave, or when an integration fails. Tokens are not replaced by a restart; revoke or issue them deliberately.
+
+## Audit log
+
+The [audit log](/verwaltung/sicherheit/audit) records administrative actions. Search by operation and user and navigate through the entries page by page. Recorded operations include:
+
+- `app.create`, `app.update`, `app.delete`;
+- `user.create`, `user.update`, `user.delete`;
+- `user.enable`, `user.disable`;
+- `settings.update`.
+
+Use the log for change evidence and investigating unexpected changes. It does not replace database, reverse-proxy, or identity-provider logs; retain all sources required for compliance together with an appropriate retention period.
+
+## Backups
+
+[Backup management](/verwaltung/sicherheit/backups) can export and import selected data areas with encryption. Available areas include:
+
+- apps, groups, and relations;
+- users and platform settings;
+- repository and AI providers;
+- repository-link state;
+- AI chats;
+- tokens, favorites, ratings, and audit data;
+- uploaded assets.
+
+### Export
+
+There are safe backups without password hashes and token secrets as well as a full backup containing sensitive data. The export passphrase must be at least 12 characters. Keep it separate from the backup file; JustApps cannot recover a lost passphrase.
+
+### Import
+
+Import only a trusted `.jabackup` file. Choose **Zusammenführen** to preserve existing data and apply backup data. **Ersetzen** is a restore operation and requires a current counter-backup, a tested maintenance window, and a rollback strategy. Replace import is available only when all data areas are selected.
+
+Large files are uploaded in chunks and processed server-side. Wait for completion and then review import statistics and warnings. Test a restore regularly in a separate environment, not only after an outage.
+
+### What else to back up
+
+The database contains UI configuration and metadata. Depending on the installation, also back up:
+
+- the upload volume or `BACKEND_DATA_PATH`;
+- the Secret source for JWT, auth, repository encryption, and database credentials;
+- Helm or Compose values and the image tags in use;
+- external identity-provider and AI-provider configuration.
+
+A UI backup containing sensitive areas is itself a secret. Limit access, encrypt it in transit, and delete copies after the retention period.

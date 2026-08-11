@@ -1,0 +1,97 @@
+---
+title: Repository-Synchronisation
+description: App-Metadaten und Deployment-Inhalte aus GitLab- und GitHub-Repositories synchronisieren.
+---
+
+JustApps kann einen oder mehrere Repository-Provider verbinden und Projektmetadaten, README-Inhalte sowie ausgewählte Dateien (Helm-Values, Compose) automatisch in den App-Katalog übernehmen. So bleiben App-Einträge ohne manuelle Doppelpflege aktuell.
+
+Die Synchronisations-Engine unterstützt **GitLab** (gitlab.com oder selbst gehostet) und **GitHub** (github.com oder GitHub Enterprise Server). Provider-Zugangsdaten werden von Administratoren verwaltet und ausschließlich serverseitig gespeichert.
+
+## Ablauf
+
+1. Der Operator hinterlegt `repository_provider_encryption.secret` oder `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`.
+2. Ein Administrator legt unter [**Verwaltung → Integrationen → Repository-Provider**](/verwaltung/integrationen/repository-providers) einen oder mehrere Provider an (Instanz-URL, Token und Typ).
+3. Ein App-Owner verknüpft im App-Editor im Tab **Repository** eine App mit einem Projekt.
+4. Der Backend-Scheduler oder eine manuelle Aktion ruft die Provider-API auf und speichert einen Snapshot.
+5. Bei Konflikten mit manuellen Änderungen wartet der Snapshot auf eine ausdrückliche Freigabe.
+
+## Provider konfigurieren
+
+Provider-Definitionen liegen in der Datenbank und werden in den [Repository-Provider-Einstellungen](/verwaltung/integrationen/repository-providers) verwaltet:
+
+| Feld                     | Beschreibung                                                                      | Beispiel                        |
+| ------------------------ | --------------------------------------------------------------------------------- | ------------------------------- |
+| `key`                    | Stabile interne Kennung                                                           | `internal-gitlab`, `github-com` |
+| `type`                   | Implementierung: `gitlab` (Standard) oder `github`                                | `github`                        |
+| `label`                  | Anzeigename in der Oberfläche                                                     | `Internes GitLab`               |
+| `baseUrl`                | Basis-URL; Standard ist `https://gitlab.com` beziehungsweise `https://github.com` | `https://gitlab.example.org`    |
+| `token`                  | Zugangstoken des Providers                                                        | PAT oder Fine-grained Token     |
+| `enabled`                | Ob der Provider aktiv ist                                                         | `true`                          |
+| `autoSyncEnabled`        | Ob verknüpfte Apps automatisch synchronisiert werden                              | `true`                          |
+| `namespaceAllowlist`     | Optionale erlaubte Namespace- oder `owner/repo`-Präfixe                           | `["my-team", "infra/platform"]` |
+| `syncIntervalMinutes`    | Intervall des Schedulers                                                          | `15`                            |
+| `defaultReadmePath`      | Standardpfad der README                                                           | `README.md`                     |
+| `defaultHelmValuesPath`  | Standardpfad der Helm-Values                                                      | `chart/values.yaml`             |
+| `defaultComposeFilePath` | Standardpfad der Compose-Datei                                                    | `docker-compose.yml`            |
+
+`key` und `type` sind nach dem Anlegen unveränderlich. Tokens werden vor der Speicherung verschlüsselt und können in derselben Einstellungsseite rotiert oder gelöscht werden.
+
+### GitHub Enterprise Server
+
+Lege einen Provider mit `type: github` an und zeige `baseUrl` auf den GHE-Host:
+
+- `key`: `ghe-internal`
+- `type`: `github`
+- `baseUrl`: `https://ghe.example.org`
+- `label`: `GHE`
+
+Der Adapter verwendet für GHE automatisch `<baseUrl>/api/v3` und für `github.com` `https://api.github.com`.
+
+### Tokens
+
+- **GitLab:** Projekt-, Gruppen- oder persönlicher Zugriffstoken mit `read_api` und `read_repository`.
+- **GitHub:** klassischer Personal Access Token mit `repo` oder Fine-grained Token mit `Contents: Read`, `Metadata: Read` und für Organisations-Repositories `Administration: Read`.
+
+## App verknüpfen
+
+1. Öffne den App-Editor und wechsle zum Tab **Repository**.
+2. Wähle einen Provider, gib bei GitLab `group/project` oder bei GitHub `owner/repo` sowie optional Branch und Dateipfade ein.
+3. Speichere die Verknüpfung und klicke auf **Synchronisieren**.
+4. Das Backend liest Metadaten, README, Lizenz, Topics sowie konfigurierte Helm- oder Compose-Dateien und speichert sie als aktiven Snapshot.
+5. Spätere manuelle Änderungen an synchronisierten Feldern setzen die Verknüpfung gegebenenfalls auf **Freigabe ausstehend**. Der Owner oder ein Administrator kann den nächsten Snapshot freigeben.
+
+## API-Endpunkte
+
+Die providerneutralen Routen sind stabil; Legacy-Aliase unter `/gitlab` bleiben aus Kompatibilitätsgründen erhalten.
+
+| Operation                                  | Endpunkt                                          |
+| ------------------------------------------ | ------------------------------------------------- |
+| Verfügbare Provider (angemeldete Benutzer) | `GET /v1/settings/repository-providers/available` |
+| Provider auflisten (Admin)                 | `GET /v1/settings/repository-providers`           |
+| Provider anlegen (Admin)                   | `POST /v1/settings/repository-providers`          |
+| Provider aktualisieren (Admin)             | `PUT /v1/settings/repository-providers/:key`      |
+| Provider löschen (Admin)                   | `DELETE /v1/settings/repository-providers/:key`   |
+| App-Integration abrufen                    | `GET /v1/apps/:id/repository`                     |
+| App-Verknüpfung speichern                  | `PUT /v1/apps/:id/repository`                     |
+| Synchronisation starten                    | `POST /v1/apps/:id/repository/sync`               |
+| Ausstehende Änderung freigeben             | `POST /v1/apps/:id/repository/approve`            |
+| Verknüpfung entfernen                      | `DELETE /v1/apps/:id/repository`                  |
+
+Jede `/repository*`-Route antwortet aus Kompatibilitätsgründen auch auf dem entsprechenden `/gitlab*`-Pfad.
+
+## Datenbanktabellen
+
+| Tabelle                    | Zweck                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `gitlab_provider_settings` | Provider-Register mit Typ, Label, Basis-URL, verschlüsselten Token-Metadaten, Allowlists und Sync-Einstellungen |
+| `gitlab_app_links`         | Verknüpfung einer JustApps-App mit einem Repository-Projekt; `provider_type` speichert den verwendeten Adapter  |
+
+Die Tabellennamen werden in einer späteren Migration providerneutral. Bis dahin behalten sie zur Erhaltung bestehender Daten den historischen Präfix `gitlab_`.
+
+## Backups
+
+Backup-Exporte verwenden die Abschnitte `repositoryProviders` und `repositoryAppLinks`. Beim Import werden aus Kompatibilitätsgründen weiterhin `gitLabProviders` und `gitLabAppLinks` akzeptiert.
+
+## Freigabeverhalten
+
+Eine Freigabe ist nur erneut erforderlich, wenn ein von der Synchronisation verwaltetes Feld (Beschreibung, Lizenz, README, Topics, Helm-Values, Compose-Datei oder Repository-Links) vom zuletzt angewendeten Snapshot abweicht. Änderungen an unabhängigen Feldern blockieren die nächste automatische Synchronisation nicht.

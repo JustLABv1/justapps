@@ -17,6 +17,21 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm run build
 
+# Stage 2: Build the documentation service
+FROM reg.mini.dev/node:v26.5.1-dev AS docs-builder
+USER root
+WORKDIR /app/docs
+
+RUN npm install -g pnpm
+
+COPY services/docs/package.json services/docs/pnpm-lock.yaml services/docs/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY services/docs/ ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm run build
+
 # Stage 3: Build the backend
 FROM reg.mini.dev/go:v1.26.5 AS backend-builder
 WORKDIR /app/backend
@@ -53,6 +68,12 @@ RUN mkdir .next \
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
 
+# Copy the documentation standalone server into its own directory so it can
+# run beside the frontend process on an internal port.
+COPY --from=docs-builder --chown=nextjs:nodejs /app/docs/public /app/docs/public
+COPY --from=docs-builder --chown=nextjs:nodejs /app/docs/.next/standalone /app/docs/
+COPY --from=docs-builder --chown=nextjs:nodejs /app/docs/.next/static /app/docs/.next/static
+
 RUN chown -R nextjs:nodejs /app
 
 RUN mkdir -p /etc/justapps \
@@ -65,10 +86,10 @@ ENV NODE_ENV=production
 
 VOLUME [ "/etc/justapps", "/app/data" ]
 
-EXPOSE 8080 3000
+EXPOSE 8080 3000 3001
 
 USER nextjs
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
-CMD ["sh", "-c", "./justapps-backend --config /etc/justapps/config.yaml & node /app/server.js"]
+CMD ["sh", "-c", "./justapps-backend --config /etc/justapps/config.yaml & PORT=3001 HOSTNAME=0.0.0.0 node /app/docs/server.js & node /app/server.js"]

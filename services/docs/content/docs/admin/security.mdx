@@ -1,0 +1,75 @@
+---
+title: Sicherheit und Betrieb
+description: Benutzer, Tokens, Audit-Protokoll und verschlüsselte Backups in der JustApps-Verwaltung.
+---
+
+Die administrativen Sicherheitsfunktionen findest du unter [Verwaltung → Sicherheit](/verwaltung/sicherheit). Sie ergänzen die Infrastrukturmaßnahmen aus [Konfiguration](/admin/configuration) und [Authentifizierung](/admin/authentication); sie ersetzen weder Netzwerksegmentierung noch sichere Secret-Verwaltung.
+
+## Benutzer
+
+Unter [Benutzer](/verwaltung/sicherheit/benutzer) können Administratoren lokale Konten verwalten. Beim Anlegen stehen folgende Felder zur Verfügung:
+
+| Feld         | Bedeutung                                  |
+| ------------ | ------------------------------------------ |
+| Benutzername | Eindeutiger Anzeigename und Login-Kennung. |
+| E-Mail       | Kontakt- und Login-Adresse.                |
+| Passwort     | Nur beim Anlegen eines lokalen Kontos.     |
+| Rolle        | `Benutzer` oder `Administrator`.           |
+
+Zusätzlich kann pro Konto:
+
+- der Zugang deaktiviert oder wieder aktiviert werden,
+- **Apps einreichen** ein- oder ausgeschaltet werden,
+- der Benutzer bearbeitet oder dauerhaft gelöscht werden.
+
+Deaktiviere Konten zuerst, wenn eine Sperrung ausreicht. Löschen ist dauerhaft und kann Ownership- oder Audit-Zusammenhänge beeinflussen. Für SSO-Benutzer bleibt die Identität im Identity Provider die führende Quelle; die lokale JustApps-Berechtigung steuert trotzdem Rolle und App-Einreichung.
+
+## API-Tokens und Sitzungen
+
+Unter [Tokens](/verwaltung/sicherheit/tokens) siehst du aktive, abgelaufene und deaktivierte API-Tokens und Sitzungen. Die Liste enthält Typ, Beschreibung, Benutzer-ID, Erstellungsdatum, Ablaufdatum und Status.
+
+Mit **Widerrufen** wird ein Token sofort ungültig. Nutze den Widerruf bei Rotation, kompromittierten Zugangsdaten, ausgeschiedenen Benutzern und fehlgeschlagenen Integrationen. Tokens werden nicht durch einen Neustart ersetzt; sie müssen gezielt widerrufen oder neu ausgestellt werden.
+
+## Audit-Protokoll
+
+Das [Audit-Protokoll](/verwaltung/sicherheit/audit) zeichnet administrative Aktionen auf. Du kannst nach Operation und Benutzer suchen und seitenweise durch die Einträge navigieren. Zu den protokollierten Operationen gehören unter anderem:
+
+- `app.create`, `app.update`, `app.delete`,
+- `user.create`, `user.update`, `user.delete`,
+- `user.enable`, `user.disable`,
+- `settings.update`.
+
+Nutze das Protokoll für Änderungsnachweise und die Untersuchung unerwarteter Änderungen. Es ist kein Ersatz für Datenbank-, Reverse-Proxy- oder Identity-Provider-Logs; bewahre alle für deine Compliance benötigten Logquellen gemeinsam und mit einer passenden Aufbewahrungsfrist auf.
+
+## Backups
+
+Die [Backup-Verwaltung](/verwaltung/sicherheit/backups) kann ausgewählte Datenbereiche verschlüsselt exportieren und wieder importieren. Wählbare Bereiche umfassen unter anderem:
+
+- Apps, Gruppen und Relationen,
+- Benutzer und Plattform-Einstellungen,
+- Repository- und AI-Provider,
+- Repository-Linkstatus,
+- AI-Chats,
+- Tokens, Favoriten, Ratings und Audit-Daten,
+- hochgeladene Assets.
+
+### Export
+
+Es gibt sichere Backups ohne Passwort-Hashes und Token-Secrets sowie ein vollständiges Backup mit sensiblen Daten. Die Export-Passphrase muss mindestens 12 Zeichen lang sein. Bewahre sie getrennt von der Backup-Datei auf; JustApps kann eine verlorene Passphrase nicht wiederherstellen.
+
+### Import
+
+Importiere nur eine vertrauenswürdige `.jabackup`-Datei. Wähle **Zusammenführen**, wenn vorhandene Daten erhalten bleiben und nur die Backup-Daten angewendet werden sollen. **Ersetzen** ist eine Wiederherstellungsoperation und sollte nur mit einem aktuellen Gegenbackup, einem getesteten Wartungsfenster und einer klaren Rückfallstrategie verwendet werden. Ein Replace-Import ist nur möglich, wenn alle Datenbereiche ausgewählt sind.
+
+Große Dateien werden in Teilstücken hochgeladen und serverseitig verarbeitet. Warte auf den Abschluss und prüfe anschließend die Importstatistiken und Warnungen. Teste einen Restore regelmäßig in einer getrennten Umgebung, nicht erst nach einem Ausfall.
+
+### Was zusätzlich gesichert werden muss
+
+Die Datenbank enthält UI-Konfiguration und Metadaten. Zusätzlich solltest du je nach Installation sichern:
+
+- das Upload-Volume beziehungsweise `BACKEND_DATA_PATH`,
+- die Secret-Quelle für JWT, Auth, Repository-Verschlüsselung und Datenbank,
+- Helm- oder Compose-Werte und die verwendeten Image-Tags,
+- externe Identity-Provider- und AI-Provider-Konfiguration.
+
+Ein UI-Backup mit sensiblen Bereichen ist selbst ein Geheimnis. Begrenze Zugriff, verschlüssele es während der Übertragung und lösche nicht mehr benötigte Kopien nach deiner Aufbewahrungsfrist.

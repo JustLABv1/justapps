@@ -1,0 +1,121 @@
+---
+title: Runtime configuration and secrets
+description: Configure the backend, frontend, database, URLs, CORS, and encryption required before using JustApps.
+---
+
+JustApps has two configuration layers:
+
+1. **Deployment configuration** is read by the backend or frontend process at startup. It contains connection details, URLs, and secrets.
+2. **Platform configuration** is stored in PostgreSQL and managed from the admin UI. It contains catalog policy, branding, providers, and operational settings. See [Platform settings](./platform), [Catalog management](./catalog), and [Integrations and AI](./integrations).
+
+Keep the first layer in environment variables, Kubernetes Secrets, or a secret manager. Do not commit production credentials to `config.yaml`, `.env`, or `values.yaml`.
+
+## Backend configuration file
+
+The backend reads `/etc/justapps/config.yaml` in container deployments. From source, pass `--config services/backend/config/config.yaml` or another explicit path.
+
+```yaml
+log_level: info # debug | info | warn | error
+port: 8080
+data_path: /app/data
+
+database:
+  driver: postgres
+  server: postgres
+  port: 5432
+  name: justapps
+  user: justapps
+  password: replace-me
+
+jwt:
+  secret: replace-with-a-long-random-secret
+
+# Optional legacy single-provider fallback. The recommended multi-provider
+# setup is managed from Verwaltung -> Integrationen -> Authentifizierung.
+oidc:
+  enabled: false
+  issuer: https://id.example.org/realms/justapps
+  client_id: justapps
+  admin_group: admin
+  insecure: false
+  disable_local_auth: false
+  disable_registration: false
+
+# Required even when repository sync and AI are not enabled yet. It encrypts
+# provider credentials stored in PostgreSQL.
+repository_provider_encryption:
+  secret: replace-with-a-long-random-secret
+
+cors:
+  allowed_origins:
+    - https://apps.example.org
+```
+
+The repository-provider encryption secret is required during backend startup. The same secret protects repository-provider tokens, AI provider API keys, and OIDC client secrets stored by the admin UI. Losing it makes those stored credentials undecryptable.
+
+## Backend environment overrides
+
+The backend uses the `BACKEND_` prefix and maps nested YAML keys to uppercase underscore-separated names:
+
+| Config key                              | Environment variable                            | Notes                                                                   |
+| --------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `log_level`                             | `BACKEND_LOG_LEVEL`                             | `debug`, `info`, `warn`, or `error`                                     |
+| `port`                                  | `BACKEND_PORT`                                  | Internal HTTP port; Compose and Helm set this for the selected topology |
+| `data_path`                             | `BACKEND_DATA_PATH`                             | Uploaded assets and backend data                                        |
+| `database.server`                       | `BACKEND_DATABASE_SERVER`                       | PostgreSQL hostname or service name                                     |
+| `database.port`                         | `BACKEND_DATABASE_PORT`                         | PostgreSQL port                                                         |
+| `database.name`                         | `BACKEND_DATABASE_NAME`                         | Database name                                                           |
+| `database.user`                         | `BACKEND_DATABASE_USER`                         | Database user                                                           |
+| `database.password`                     | `BACKEND_DATABASE_PASSWORD`                     | Keep in a Secret                                                        |
+| `jwt.secret`                            | `BACKEND_JWT_SECRET`                            | Signs local-auth sessions and tokens                                    |
+| `repository_provider_encryption.secret` | `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` | Required credential-encryption key                                      |
+| `cors.allowed_origins`                  | `BACKEND_CORS_ALLOWED_ORIGINS`                  | Comma-separated browser origins                                         |
+| `oidc.enabled`                          | `BACKEND_OIDC_ENABLED`                          | Legacy single-provider fallback                                         |
+| `oidc.issuer`                           | `BACKEND_OIDC_ISSUER`                           | Legacy single-provider fallback                                         |
+| `oidc.client_id`                        | `BACKEND_OIDC_CLIENT_ID`                        | Legacy single-provider fallback                                         |
+| `oidc.admin_group`                      | `BACKEND_OIDC_ADMIN_GROUP`                      | Legacy single-provider fallback                                         |
+| `oidc.insecure`                         | `BACKEND_OIDC_INSECURE`                         | Avoid in production                                                     |
+| `oidc.disable_local_auth`               | `BACKEND_OIDC_DISABLE_LOCAL_AUTH`               | Legacy fallback policy                                                  |
+| `oidc.disable_registration`             | `BACKEND_OIDC_DISABLE_REGISTRATION`             | Legacy fallback policy                                                  |
+
+The repository encryption secret, JWT secret, database password, and OIDC secret should be long, random values. Generate separate values even though they are all supplied through the deployment layer.
+
+```bash
+openssl rand -base64 32
+```
+
+## Frontend configuration
+
+The frontend needs the public API and its own session secret. In a split deployment, it also needs the internal documentation URL for the `/docs` rewrite.
+
+| Variable              | Example                           | Purpose                                    |
+| --------------------- | --------------------------------- | ------------------------------------------ |
+| `NEXT_PUBLIC_API_URL` | `https://apps.example.org/api/v1` | Browser-visible API base URL               |
+| `INTERNAL_API_URL`    | `http://backend:8080/api/v1`      | Server-side frontend-to-backend URL        |
+| `AUTH_SECRET`         | random secret                     | Next.js/Auth.js session encryption         |
+| `AUTH_URL`            | `https://apps.example.org`        | Canonical frontend URL                     |
+| `DOCS_INTERNAL_URL`   | `http://docs:3000`                | Documentation service in split deployments |
+
+When the frontend and API use different origins, add the exact frontend origin to `cors.allowed_origins`. Include the scheme and port where applicable; do not use `*` for credentialed browser sessions.
+
+## Configuration precedence
+
+- Compose mounts `deploy/compose/backend.config.yaml` and injects deployment-specific values through environment variables.
+- Helm renders the backend ConfigMap from `values.yaml` and injects secrets using the configured Secret references.
+- Environment variables override values read from the backend YAML file.
+- Platform settings are stored in PostgreSQL and are changed through `PUT /api/v1/settings` by admins.
+
+Restart the affected service after changing a startup environment variable. Platform settings saved in the admin UI take effect without rebuilding the image.
+
+## Secret checklist
+
+Before a production rollout, provide:
+
+- a unique PostgreSQL password;
+- `BACKEND_JWT_SECRET`;
+- `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`;
+- `AUTH_SECRET`;
+- TLS credentials at the reverse proxy or ingress;
+- OIDC client secrets and provider API tokens only through the admin UI or a protected backup.
+
+For Kubernetes, use [Helm secret references](./deployment/helm#secret-management-and-persistence). For Compose, use `deploy/compose/.env` with file permissions restricted to the operator account.

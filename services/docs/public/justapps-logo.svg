@@ -1,0 +1,56 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <defs>
+    <!-- Vibrant Modern Gradients -->
+    <linearGradient id="cyan-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <linearGradient id="purple-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+    <linearGradient id="yellow-red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+    <linearGradient id="green-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#14B8A6" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow for floating effect -->
+    <filter id="app-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+
+    <!-- Native dark/light mode handling for standard img/favicon use -->
+    <style>
+      .bg-squircle {
+        fill: #FFFFFF;
+      }
+      @media (prefers-color-scheme: dark) {
+        .bg-squircle {
+          fill: #0B1120;
+        }
+      }
+    </style>
+  </defs>
+
+  <!-- Base App Store Background (Squircle) -->
+  <rect x="16" y="16" width="480" height="480" rx="112" class="bg-squircle" />
+
+  <!-- The App Grid Layer -->
+  <g filter="url(#app-shadow)">
+    <!-- Top Left (Blue/Cyan) -->
+    <rect x="116" y="116" width="124" height="124" rx="40" fill="url(#cyan-blue)" />
+    
+    <!-- Top Right (Purple/Pink) -->
+    <rect x="272" y="116" width="124" height="124" rx="40" fill="url(#purple-pink)" />
+    
+    <!-- Bottom Left (Green/Teal) -->
+    <rect x="116" y="272" width="124" height="124" rx="40" fill="url(#green-teal)" />
+    
+    <!-- Bottom Right (Yellow/Red - A little offset circle to emphasize variety in apps) -->
+    <circle cx="334" cy="334" r="62" fill="url(#yellow-red)" />
+  </g>
+</svg>

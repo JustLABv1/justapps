@@ -1,0 +1,54 @@
+---
+title: Collaboration and lifecycle
+description: Maintain ownership, editors, groups, updates, and long-term app quality.
+---
+
+An app entry is a maintained product artifact. Agree on an owner and maintenance path before marking it established.
+
+## Owner and editors
+
+The owner is responsible for content and contact. Editors can update selected apps without taking ownership. Add editors when several people regularly contribute and remove them when teams change.
+
+During a handover:
+
+1. update the owner;
+2. review editors and groups;
+3. check repository access and provider links;
+4. update the contact and support path;
+5. confirm deployment, backup, and migration responsibilities.
+
+## Groups and related apps
+
+Groups support business navigation. Related apps show alternatives, complementary tools, or dependencies. Link only relationships that help readers and explain them in the description when needed.
+
+## Status as lifecycle
+
+Update the status as usage changes. An app should not remain **MVP** or **In Erprobung** forever after becoming established; conversely, a maintenance end or critical dependency should be visible as a regression.
+
+Status changes should be reflected in documentation:
+
+- **POC/MVP:** state goals and known gaps;
+- **Sandbox:** clearly label test data and non-production use;
+- **In Erprobung:** name the pilot scope and feedback path;
+- **Etabliert:** document update, backup, and support models.
+
+## Updates and changelog
+
+For each relevant version, update at least description, deployment values, prerequisites, and links. When a repository is connected, review synchronized changes and approve them deliberately. Larger changes can be made in the editor or through the version/changelog feature; review AI changelog suggestions like any other proposal.
+
+## Health and regular review
+
+Review the entry after a release and on a fixed schedule:
+
+- live demo and external links;
+- repository sync and current paths;
+- documentation age;
+- owner and contact;
+- visible warnings;
+- startup of the documented Docker, Compose, or Helm variant.
+
+Administrators see summarized signals under [App health](/verwaltung/katalog/gesundheit). The global link check can be disabled for protected demos, but the owner remains responsible for accuracy.
+
+## Locking and archiving
+
+An administrator can lock an app when it must not be changed temporarily. Do not delete an app merely because development has stopped: update its status and notices and document whether it is still operated or only archived. Export or otherwise archive content before deletion.

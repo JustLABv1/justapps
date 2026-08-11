@@ -1,0 +1,4 @@
+{
+  "title": "JustApps bereitstellen",
+  "pages": ["index", "docker-compose", "helm"]
+}

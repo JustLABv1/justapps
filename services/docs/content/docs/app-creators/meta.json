@@ -1,0 +1,11 @@
+{
+  "title": "Für App-Ersteller",
+  "pages": [
+    "index",
+    "workflow",
+    "content-and-metadata",
+    "deployment-guides",
+    "ai-and-repositories",
+    "collaboration-and-lifecycle"
+  ]
+}

@@ -1,0 +1,62 @@
+---
+title: Administer JustApps
+description: Deploy JustApps, configure the platform, and operate the App catalog.
+---
+
+This section is for the people who run a JustApps instance. It covers the infrastructure installation, the first administrator, and every major area of the **Verwaltung** (admin UI).
+
+## Recommended order
+
+1. [Deploy JustApps](./deployment) with Docker Compose on one host or Helm on Kubernetes.
+2. [Complete the first login](./getting-started) and confirm that the first local account has the `admin` role.
+3. [Set runtime configuration and secrets](./configuration) before exposing the instance publicly.
+4. [Configure authentication](./authentication), either local accounts, OIDC, or both.
+5. Configure the platform and catalog from `/verwaltung`.
+6. Add integrations, backups, and operational checks before inviting App creators.
+
+## Admin UI map
+
+| Area                    | What it controls                                                                             | Main pages                            |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Platform                | Submission policy, login requirement, start page, branding, detail-field schema              | [Platform settings](./platform)       |
+| Catalog                 | Apps, groups, custom content fields, sort order, pinned Apps, link probing, catalog health   | [Catalog management](./catalog)       |
+| Integrations            | Repository providers, sync approval, OIDC providers, AI providers and the AI knowledge index | [Integrations and AI](./integrations) |
+| Security and operations | Users, roles, API tokens, audit events, backups and restore                                  | [Security and operations](./security) |
+
+The navigation in the application mirrors these areas:
+
+```text
+/verwaltung
+├── plattform
+├── katalog
+├── integrationen
+└── sicherheit
+```
+
+## What belongs in infrastructure configuration?
+
+Keep secrets and connection details that are required before the backend starts in the deployment environment:
+
+- PostgreSQL connection and password
+- JWT signing secret
+- repository-provider encryption secret
+- frontend `AUTH_SECRET` and public URLs
+- CORS origins when the browser and API use different origins
+- optional legacy single-provider OIDC fallback values
+
+Use the admin UI for values that are part of the catalog or that can be changed without redeploying:
+
+- branding, start-page copy, banner and footer links
+- submission and login policy
+- App detail-field schema and catalog sorting
+- repository and AI providers
+- users, App ownership, groups and operational workflows
+
+## Before opening the instance to users
+
+- Replace every `change-me` and `replace-with-*` value.
+- Persist PostgreSQL data and uploaded assets.
+- Put TLS and a trusted hostname in front of the application.
+- Configure CORS for the exact frontend origin when needed.
+- Create or reference the encryption secret before configuring repository or AI providers.
+- Create a backup and verify that a restore can be performed.

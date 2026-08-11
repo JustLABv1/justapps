@@ -13,6 +13,9 @@ database:
 jwt:
   secret: change-me
 
+repository_provider_encryption:
+  secret: change-me
+
 gitlab:
   providers: []
 

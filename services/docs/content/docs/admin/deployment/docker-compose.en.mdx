@@ -1,0 +1,155 @@
+---
+title: Docker and Docker Compose
+description: Install JustApps on one host with PostgreSQL, the application services, and the optional edge proxy.
+---
+
+Docker Compose is the simplest production-shaped installation for a VM or a single server. The stack contains PostgreSQL, the Go backend, the Next.js frontend, the Fumadocs service, and an optional NGINX edge proxy.
+
+## Prerequisites
+
+- Docker Engine with the Compose plugin
+- a hostname and TLS proxy for a public installation
+- persistent storage for PostgreSQL and uploaded assets
+- a secure value for every `replace-with-*` or `change-me` secret
+
+## Start the standard stack
+
+```bash
+git clone https://github.com/JustLABv1/justapps.git
+cd justapps/deploy/compose
+cp .env.example .env
+```
+
+Edit `.env` before the first start. At minimum, replace:
+
+```dotenv
+POSTGRES_PASSWORD=use-a-unique-database-password
+BACKEND_JWT_SECRET=use-a-long-random-secret
+BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET=use-another-long-random-secret
+AUTH_SECRET=use-a-third-long-random-secret
+AUTH_URL=https://apps.example.org
+NEXT_PUBLIC_API_URL=https://apps.example.org/api/v1
+```
+
+Then start the services:
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+The Compose file uses released images by default:
+
+| Service    | Default image tag    | Purpose                            |
+| ---------- | -------------------- | ---------------------------------- |
+| `postgres` | `postgres:18-alpine` | PostgreSQL database                |
+| `backend`  | `backend`            | REST API, migrations, schedulers   |
+| `frontend` | `frontend`           | JustApps web application           |
+| `docs`     | `docs`               | Fumadocs documentation             |
+| `nginx`    | `nginx:1.31-alpine`  | Optional single-host reverse proxy |
+
+The backend waits for PostgreSQL health before starting. Database migrations run automatically during backend startup.
+
+## URLs and ports
+
+Without the edge profile, the default bindings are local-only:
+
+| Service            | URL                                   |
+| ------------------ | ------------------------------------- |
+| Frontend           | `http://localhost:3000`               |
+| Backend health/API | `http://localhost:8080/api/v1/health` |
+| Documentation      | `http://localhost:3001/docs`          |
+| PostgreSQL         | internal Compose network only         |
+
+The frontend also rewrites `/docs` to the documentation service, so `http://localhost:3000/docs` works in the standard stack.
+
+## One public hostname
+
+The optional NGINX service routes all public paths through one internal endpoint:
+
+```bash
+docker compose --profile edge up -d
+```
+
+Set `PUBLIC_HOST` to the hostname used by the external TLS terminator. NGINX itself listens on port `80`; terminate TLS in Coolify, Traefik, Caddy, or another trusted proxy and forward traffic to the edge container.
+
+The routes are:
+
+| Path       | Upstream      |
+| ---------- | ------------- |
+| `/`        | frontend      |
+| `/api/v1/` | backend       |
+| `/metrics` | backend       |
+| `/docs`    | documentation |
+
+If another reverse proxy already routes these paths, do not run the `edge` profile. Proxy `/` to frontend `3000`, `/api/v1/` and `/metrics` to backend `8080`, and `/docs` to docs `3001`.
+
+## Compose environment reference
+
+| Variable                                        | Default                        | What to change                                              |
+| ----------------------------------------------- | ------------------------------ | ----------------------------------------------------------- |
+| `JUSTAPPS_BACKEND_IMAGE_TAG`                    | `backend`                      | Pin a release or digest                                     |
+| `JUSTAPPS_FRONTEND_IMAGE_TAG`                   | `frontend`                     | Pin a release or digest                                     |
+| `JUSTAPPS_DOCS_IMAGE_TAG`                       | `docs`                         | Pin a release or digest                                     |
+| `POSTGRES_DB`                                   | `justapps`                     | Database name                                               |
+| `POSTGRES_USER`                                 | `justapps`                     | Database user                                               |
+| `POSTGRES_PASSWORD`                             | `justapps`                     | Always replace                                              |
+| `BACKEND_JWT_SECRET`                            | `change-me`                    | Always replace                                              |
+| `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` | `change-me`                    | Always replace; required for encrypted provider credentials |
+| `AUTH_SECRET`                                   | `change-me`                    | Always replace                                              |
+| `AUTH_URL`                                      | `http://localhost:3000`        | Public frontend URL                                         |
+| `NEXT_PUBLIC_API_URL`                           | `http://localhost:8080/api/v1` | Public API URL                                              |
+| `INTERNAL_API_URL`                              | `http://backend:8080/api/v1`   | Internal API URL                                            |
+| `DOCS_INTERNAL_URL`                             | `http://docs:3000`             | Internal docs URL used by frontend rewrites                 |
+| `FRONTEND_PORT` / `BACKEND_PORT`                | `3000` / `8080`                | Host port bindings                                          |
+| `DOCS_PORT`                                     | `3001`                         | Direct docs host port                                       |
+| `PUBLIC_HOST`                                   | `apps.justlab.app`             | Edge proxy hostname                                         |
+
+OIDC providers, repository providers, and AI providers are configured after startup in the admin UI. The encryption secret must already be available when the backend starts.
+
+## First administrator
+
+With OIDC disabled, open the frontend and register the first local user. The first local account receives the `admin` role. Immediately configure authentication and change the deployment secrets before inviting other users. See [Authentication](../authentication).
+
+## Persistence and operations
+
+The stack creates two named volumes:
+
+- `postgres-data` for PostgreSQL;
+- `uploads-data` for uploaded logos, favicons, and other assets.
+
+Useful commands:
+
+```bash
+docker compose logs -f
+docker compose pull
+docker compose up -d
+docker compose ps
+docker compose down
+```
+
+Do not use `docker compose down -v` unless you intentionally want to remove the database and uploads volumes.
+
+## Single monolith image
+
+The root `Dockerfile` builds frontend, documentation, and backend into one image. Use it when you manage PostgreSQL separately:
+
+```bash
+docker build -t justapps:local .
+docker run -d \
+  --name justapps \
+  -p 3000:3000 \
+  -p 8080:8080 \
+  -v /etc/justapps:/etc/justapps:ro \
+  -v justapps-data:/app/data \
+  -e BACKEND_DATABASE_SERVER=host.docker.internal \
+  -e BACKEND_DATABASE_PASSWORD='replace-me' \
+  -e BACKEND_JWT_SECRET='replace-me' \
+  -e BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET='replace-me' \
+  -e AUTH_SECRET='replace-me' \
+  ghcr.io/JustLABv1/justapps:latest
+```
+
+The backend config must be mounted at `/etc/justapps/config.yaml`. The monolith starts the docs server internally and the frontend rewrite makes `/docs` available through port `3000`; map port `3001` as well only when direct documentation access is needed.
+
+For all backend and frontend variables, see [Runtime configuration and secrets](../configuration).
