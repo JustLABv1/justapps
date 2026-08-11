@@ -58,6 +58,9 @@ config:
 
 ## Monolith configuration (single container includes frontend + backend)
 monolith:
+  # Optional Kubernetes DeploymentStrategy. Leave empty to use Kubernetes defaults.
+  # Example: {type: Recreate}
+  strategy: {}
   image:
     repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
@@ -79,6 +82,9 @@ monolith:
 ## Microservices configuration (separate backend + frontend)
 backend:
   replicaCount: 1
+  # Optional Kubernetes DeploymentStrategy. Leave empty to use Kubernetes defaults.
+  # Example: {type: Recreate}
+  strategy: {}
   image:
     repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
@@ -97,6 +103,9 @@ backend:
 
 frontend:
   replicaCount: 1
+  # Optional Kubernetes DeploymentStrategy. Leave empty to use Kubernetes defaults.
+  # Example: {type: Recreate}
+  strategy: {}
   image:
     repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
@@ -121,6 +130,9 @@ frontend:
 ## Documentation service (used in microservices mode; monolith embeds docs)
 docs:
   replicaCount: 1
+  # Optional Kubernetes DeploymentStrategy. Leave empty to use Kubernetes defaults.
+  # Example: {type: Recreate}
+  strategy: {}
   image:
     repository: ghcr.io/justlabv1/justapps
     pullPolicy: IfNotPresent
