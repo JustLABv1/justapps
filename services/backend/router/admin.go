@@ -2,6 +2,7 @@ package router
 
 import (
 	"justapps-backend/handlers/admins"
+	appHandlers "justapps-backend/handlers/apps"
 	"justapps-backend/middlewares"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,12 @@ func Admin(router *gin.RouterGroup, db *bun.DB) {
 		// stats & audit
 		admin.GET("/stats", func(c *gin.Context) {
 			admins.GetStats(c, db)
+		})
+		admin.GET("/health", func(c *gin.Context) {
+			admins.GetHealth(c, db)
+		})
+		admin.POST("/catalog/steward", func(c *gin.Context) {
+			appHandlers.RunCatalogSteward(c, db)
 		})
 		admin.GET("/audit", func(c *gin.Context) {
 			admins.GetAudit(c, db)

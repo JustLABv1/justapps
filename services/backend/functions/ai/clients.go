@@ -50,6 +50,19 @@ func (provider *httpChatProvider) Validate(ctx context.Context) error {
 }
 
 func (provider *httpChatProvider) Chat(ctx context.Context, req ChatRequest) (ChatResponse, error) {
+	response, err := provider.chat(ctx, req)
+	if err != nil && req.JSONMode && isJSONModeUnsupportedError(err) {
+		// JSON mode is an optional provider capability. Keep custom and older
+		// compatible endpoints usable when they reject the native hint; the
+		// caller still receives the strict JSON prompt and parser validation.
+		retryRequest := req
+		retryRequest.JSONMode = false
+		return provider.chat(ctx, retryRequest)
+	}
+	return response, err
+}
+
+func (provider *httpChatProvider) chat(ctx context.Context, req ChatRequest) (ChatResponse, error) {
 	switch NormalizeProviderType(provider.runtime.Type) {
 	case ProviderTypeOpenAI, ProviderTypeOpenAICompatible, ProviderTypeVLLM, ProviderTypeOpenRouter, ProviderTypeLMStudio, ProviderTypeTogether:
 		return provider.chatOpenAICompatible(ctx, req)
@@ -72,10 +85,11 @@ func (provider *httpChatProvider) Chat(ctx context.Context, req ChatRequest) (Ch
 
 func (provider *httpChatProvider) chatOpenAICompatible(ctx context.Context, req ChatRequest) (ChatResponse, error) {
 	type openAIRequest struct {
-		Model       string                `json:"model"`
-		Messages    []providerTextMessage `json:"messages"`
-		Temperature float64               `json:"temperature,omitempty"`
-		MaxTokens   int                   `json:"max_tokens,omitempty"`
+		Model          string                `json:"model"`
+		Messages       []providerTextMessage `json:"messages"`
+		Temperature    float64               `json:"temperature,omitempty"`
+		MaxTokens      int                   `json:"max_tokens,omitempty"`
+		ResponseFormat map[string]string     `json:"response_format,omitempty"`
 	}
 	type openAIResponse struct {
 		Model   string `json:"model"`
@@ -97,6 +111,9 @@ func (provider *httpChatProvider) chatOpenAICompatible(ctx context.Context, req 
 		Messages:    convertOpenAIMessages(req.Messages),
 		Temperature: provider.requestTemperature(req),
 		MaxTokens:   provider.requestMaxOutputTokens(req),
+	}
+	if req.JSONMode {
+		body.ResponseFormat = map[string]string{"type": "json_object"}
 	}
 	endpoint := provider.endpoint("/chat/completions")
 	request, err := provider.newJSONRequest(ctx, http.MethodPost, endpoint, body)
@@ -134,11 +151,15 @@ func (provider *httpChatProvider) chatAzureOpenAI(ctx context.Context, req ChatR
 		apiVersion = "2024-10-21"
 	}
 	endpoint := fmt.Sprintf("/openai/deployments/%s/chat/completions?api-version=%s", deployment, url.QueryEscape(apiVersion))
-	request, err := provider.newJSONRequest(ctx, http.MethodPost, provider.endpoint(endpoint), map[string]any{
+	body := map[string]any{
 		"messages":    convertOpenAIMessages(req.Messages),
 		"temperature": provider.requestTemperature(req),
 		"max_tokens":  provider.requestMaxOutputTokens(req),
-	})
+	}
+	if req.JSONMode {
+		body["response_format"] = map[string]string{"type": "json_object"}
+	}
+	request, err := provider.newJSONRequest(ctx, http.MethodPost, provider.endpoint(endpoint), body)
 	if err != nil {
 		return ChatResponse{}, err
 	}
@@ -235,12 +256,16 @@ func (provider *httpChatProvider) chatGemini(ctx context.Context, req ChatReques
 		}
 		requestURL += separator + "key=" + url.QueryEscape(provider.runtime.Token)
 	}
+	generationConfig := map[string]any{
+		"temperature":     provider.requestTemperature(req),
+		"maxOutputTokens": provider.requestMaxOutputTokens(req),
+	}
+	if req.JSONMode {
+		generationConfig["responseMimeType"] = "application/json"
+	}
 	body := map[string]any{
-		"contents": convertGeminiMessages(req.Messages),
-		"generationConfig": map[string]any{
-			"temperature":     provider.requestTemperature(req),
-			"maxOutputTokens": provider.requestMaxOutputTokens(req),
-		},
+		"contents":         convertGeminiMessages(req.Messages),
+		"generationConfig": generationConfig,
 	}
 	request, err := provider.newJSONRequest(ctx, http.MethodPost, requestURL, body)
 	if err != nil {
@@ -345,7 +370,7 @@ func (provider *httpChatProvider) chatCohere(ctx context.Context, req ChatReques
 }
 
 func (provider *httpChatProvider) chatOllama(ctx context.Context, req ChatRequest) (ChatResponse, error) {
-	request, err := provider.newJSONRequest(ctx, http.MethodPost, provider.endpoint("/api/chat"), map[string]any{
+	body := map[string]any{
 		"model":    provider.requestModel(req),
 		"messages": convertOpenAIMessages(req.Messages),
 		"stream":   false,
@@ -353,7 +378,11 @@ func (provider *httpChatProvider) chatOllama(ctx context.Context, req ChatReques
 			"temperature": provider.requestTemperature(req),
 			"num_predict": provider.requestMaxOutputTokens(req),
 		},
-	})
+	}
+	if req.JSONMode {
+		body["format"] = "json"
+	}
+	request, err := provider.newJSONRequest(ctx, http.MethodPost, provider.endpoint("/api/chat"), body)
 	if err != nil {
 		return ChatResponse{}, err
 	}
@@ -426,6 +455,26 @@ func (provider *httpChatProvider) setBearerAuth(request *http.Request) {
 	if strings.TrimSpace(provider.runtime.Token) != "" {
 		request.Header.Set("Authorization", "Bearer "+provider.runtime.Token)
 	}
+}
+
+func isJSONModeUnsupportedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	for _, marker := range []string{
+		"response_format",
+		"responseformat",
+		"responsemimetype",
+		"response mime type",
+		"json_object",
+		"json mode",
+	} {
+		if strings.Contains(message, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func (provider *httpChatProvider) doJSON(request *http.Request, target any) error {

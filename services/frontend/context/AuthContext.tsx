@@ -1,9 +1,10 @@
 'use client';
 
 import { getApiUrl } from '@/lib/apiUrl';
+import { fetchApi } from '@/lib/api';
 import { toast } from '@heroui/react';
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -16,112 +17,22 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  /** Kept for API compatibility; browser sessions no longer expose a JWT. */
   token: string | null;
   loading: boolean;
   profileReady: boolean;
   profileError: string | null;
-  login: (token: string, userData: User) => void;
+  login: (userData: User) => void;
   logout: (options?: LogoutOptions) => void;
   oidcLogin: (providerKey?: string, callbackUrl?: string) => void;
   refreshUser: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const AUTH_STORAGE_EVENT = 'auth:storage-change';
 const LOGIN_PATH = '/login';
 
 interface LogoutOptions {
   preserveCurrentUrl?: boolean;
-}
-
-interface LocalAuthSession {
-  user: User | null;
-  token: string | null;
-}
-
-const emptyLocalAuthSession: LocalAuthSession = {
-  user: null,
-  token: null,
-};
-
-let cachedLocalAuthToken: string | null = null;
-let cachedLocalAuthUserRaw: string | null = null;
-let cachedLocalAuthSession: LocalAuthSession = emptyLocalAuthSession;
-
-function readStoredAuthSession(): LocalAuthSession {
-  if (typeof window === 'undefined') {
-    return emptyLocalAuthSession;
-  }
-
-  const token = localStorage.getItem('token');
-  const userRaw = localStorage.getItem('user');
-
-  if (token === cachedLocalAuthToken && userRaw === cachedLocalAuthUserRaw) {
-    return cachedLocalAuthSession;
-  }
-
-  if (!token || !userRaw) {
-    cachedLocalAuthToken = token;
-    cachedLocalAuthUserRaw = userRaw;
-    cachedLocalAuthSession = emptyLocalAuthSession;
-    return cachedLocalAuthSession;
-  }
-
-  try {
-    const user = JSON.parse(userRaw) as User;
-    cachedLocalAuthToken = token;
-    cachedLocalAuthUserRaw = userRaw;
-    cachedLocalAuthSession = { user, token };
-    return cachedLocalAuthSession;
-  } catch {
-    cachedLocalAuthToken = token;
-    cachedLocalAuthUserRaw = userRaw;
-    cachedLocalAuthSession = emptyLocalAuthSession;
-    return cachedLocalAuthSession;
-  }
-}
-
-function notifyStoredAuthSessionChange() {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.dispatchEvent(new Event(AUTH_STORAGE_EVENT));
-}
-
-function writeStoredAuthSession(token: string, user: User) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const userRaw = JSON.stringify(user);
-  if (localStorage.getItem('token') === token && localStorage.getItem('user') === userRaw) {
-    return;
-  }
-
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', userRaw);
-  cachedLocalAuthToken = token;
-  cachedLocalAuthUserRaw = userRaw;
-  cachedLocalAuthSession = { user, token };
-  notifyStoredAuthSessionChange();
-}
-
-function clearStoredAuthSession() {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const hadStoredSession = localStorage.getItem('token') !== null || localStorage.getItem('user') !== null;
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  cachedLocalAuthToken = null;
-  cachedLocalAuthUserRaw = null;
-  cachedLocalAuthSession = emptyLocalAuthSession;
-
-  if (hadStoredSession) {
-    notifyStoredAuthSessionChange();
-  }
 }
 
 function getCurrentCallbackUrl() {
@@ -158,49 +69,36 @@ function redirectToLogin(path: string) {
   window.location.assign(path);
 }
 
-function subscribeToStoredAuthSession(onStoreChange: () => void) {
-  if (typeof window === 'undefined') {
-    return () => {};
-  }
-
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key === 'token' || event.key === 'user') {
-      onStoreChange();
-    }
-  };
-
-  window.addEventListener('storage', handleStorage);
-  window.addEventListener(AUTH_STORAGE_EVENT, onStoreChange);
-
-  return () => {
-    window.removeEventListener('storage', handleStorage);
-    window.removeEventListener(AUTH_STORAGE_EVENT, onStoreChange);
-  };
+function clearLegacyAuthStorage() {
+  if (typeof window === 'undefined') return;
+  // Remove sessions written by versions that stored backend JWTs in
+  // localStorage. The active session is now established through the cookie.
+  window.localStorage.removeItem('token');
+  window.localStorage.removeItem('user');
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const localSession = useSyncExternalStore(
-    subscribeToStoredAuthSession,
-    readStoredAuthSession,
-    () => emptyLocalAuthSession,
-  );
+  const [cookieUser, setCookieUser] = useState<User | null>(null);
+  const [cookieProfileReady, setCookieProfileReady] = useState(false);
   const [fetchedUser, setFetchedUser] = useState<User | null>(null);
-  const [fetchedUserToken, setFetchedUserToken] = useState<string | null>(null);
   const [authenticatedProfileReady, setAuthenticatedProfileReady] = useState(false);
-  const [authenticatedProfileError, setAuthenticatedProfileError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const hasShownSessionExpiredNoticeRef = useRef(false);
   const delayedLogoutTimeoutRef = useRef<number | null>(null);
 
-  // Derive the active user and token immediately from session if available
+  useEffect(() => {
+    clearLegacyAuthStorage();
+  }, []);
+
   const s = session as {
     user?: { id?: string; name?: string; email?: string; role?: string; authType?: string; canSubmitApps?: boolean };
+    /** Upstream OIDC ID token, used once to establish the backend cookie. */
     idToken?: string;
-    accessToken?: string;
     error?: string;
   } | null;
-  const oidcToken = status === 'authenticated' ? (s?.idToken || s?.accessToken || null) : null;
 
+  const oidcIdToken = status === 'authenticated' ? (s?.idToken || null) : null;
   const oidcUser = status !== 'authenticated' || !s?.user
     ? null
     : {
@@ -211,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authType: s.user.authType,
         canSubmitApps: s.user.canSubmitApps,
       };
-  const oidcUserKey = oidcUser ? JSON.stringify(oidcUser) : null;
 
   const logout = useCallback((options?: LogoutOptions) => {
     if (delayedLogoutTimeoutRef.current !== null) {
@@ -221,11 +118,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loginRedirectPath = getLoginRedirectPath(options?.preserveCurrentUrl);
     hasShownSessionExpiredNoticeRef.current = false;
-    clearStoredAuthSession();
+    setCookieUser(null);
+    setCookieProfileReady(false);
     setFetchedUser(null);
-    setFetchedUserToken(null);
     setAuthenticatedProfileReady(false);
-    setAuthenticatedProfileError(null);
+    setProfileError(null);
+    clearLegacyAuthStorage();
+
+    void fetchApi('/auth/logout', { method: 'POST' }).catch(() => {});
+
     if (status === 'authenticated') {
       void nextAuthSignOut({ redirect: false, callbackUrl: loginRedirectPath })
         .catch((error) => {
@@ -254,161 +155,126 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timeoutId = window.setTimeout(() => {
       if (s.error === 'RefreshAccessTokenError' || s.error === 'SessionExpired') {
-        console.warn('Session expired or refresh failed, scheduling logout...');
         notifySessionExpiredThenLogout();
       }
 
       if (s.error === 'ExchangeFailed') {
-        // Backend exchange failed on login — sign out of next-auth and prompt re-auth
-        console.warn('Backend token exchange failed during OIDC login, re-authenticating...');
-        nextAuthSignOut({ callbackUrl: '/login' });
+        void nextAuthSignOut({ callbackUrl: '/login' });
       }
     }, 0);
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    return () => window.clearTimeout(timeoutId);
   }, [notifySessionExpiredThenLogout, s?.error]);
 
-  useEffect(() => {
-    return () => {
-      if (delayedLogoutTimeoutRef.current !== null) {
-        window.clearTimeout(delayedLogoutTimeoutRef.current);
-      }
-    };
+  useEffect(() => () => {
+    if (delayedLogoutTimeoutRef.current !== null) {
+      window.clearTimeout(delayedLogoutTimeoutRef.current);
+    }
   }, []);
 
-  const user = fetchedUser && fetchedUserToken === oidcToken
-    ? fetchedUser
-    : status === 'authenticated'
-      ? oidcUser
-      : status === 'unauthenticated'
-        ? localSession.user
-        : null;
-
-  const token = status === 'authenticated'
-    ? oidcToken
-    : status === 'unauthenticated'
-      ? localSession.token
-      : null;
-
   const refreshUser = useCallback(async () => {
-    if (status !== 'authenticated') {
-      return !!localSession.token && !!localSession.user;
-    }
-
-    if (!token) {
-      setFetchedUser(null);
-      setFetchedUserToken(null);
-      setAuthenticatedProfileReady(false);
-      setAuthenticatedProfileError('Backend-Sitzung fehlt. Bitte erneut anmelden.');
+    if (status === 'loading') {
       return false;
     }
 
-    setFetchedUser(null);
-    setFetchedUserToken(null);
-    setAuthenticatedProfileReady(false);
-    setAuthenticatedProfileError(null);
+    setProfileError(null);
+    if (status === 'authenticated') {
+      setFetchedUser(null);
+      setAuthenticatedProfileReady(false);
 
-    try {
-      const { fetchApi } = await import('@/lib/api');
-      
-      // Explicitly pass the current token in headers to avoid race conditions 
-      // where localStorage hasn't been updated yet by the other useEffect
-      const response = await fetchApi('/user/', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.status === 401) {
-        console.warn('Backend rejected token, scheduling logout...');
-        notifySessionExpiredThenLogout();
+      if (!oidcIdToken) {
+        setProfileError('Backend-Sitzung fehlt. Bitte erneut anmelden.');
         return false;
       }
 
+      try {
+        // The exchange response sets the backend JWT as an HttpOnly cookie;
+        // the backend JWT itself never enters localStorage or the public auth context.
+        const exchangeResponse = await fetchApi('/auth/oidc/exchange', {
+          method: 'POST',
+          body: JSON.stringify({ id_token: oidcIdToken }),
+        });
+        if (!exchangeResponse.ok) {
+          const errorBody = await exchangeResponse.json().catch(() => ({}));
+          setProfileError((errorBody as { message?: string }).message || 'OIDC-Anmeldung konnte nicht mit dem Backend verbunden werden.');
+          return false;
+        }
+
+        const response = await fetchApi('/user/', { cache: 'no-store' });
+        if (response.status === 401) {
+          notifySessionExpiredThenLogout();
+          return false;
+        }
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          setProfileError((errorBody as { message?: string }).message || 'Benutzerprofil konnte nicht geladen werden.');
+          return false;
+        }
+
+        const data = await response.json() as { user?: User };
+        if (!data.user) {
+          setProfileError('Benutzerprofil konnte nicht geladen werden.');
+          return false;
+        }
+
+        setFetchedUser(data.user);
+        setAuthenticatedProfileReady(true);
+        return true;
+      } catch (error) {
+        setProfileError(error instanceof Error ? error.message : 'Benutzerprofil konnte nicht geladen werden.');
+        return false;
+      }
+    }
+
+    // Local and dynamic OIDC sessions are resolved entirely through the
+    // HttpOnly cookie. A 401 simply means that no browser session exists.
+    setCookieProfileReady(false);
+    try {
+      const response = await fetchApi('/user/', { cache: 'no-store' });
+      if (response.status === 401) {
+        setCookieUser(null);
+        setCookieProfileReady(true);
+        return false;
+      }
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        const message = (errorBody as { message?: string }).message || 'Benutzerprofil konnte nicht geladen werden.';
-        setFetchedUser(null);
-        setFetchedUserToken(null);
-        setAuthenticatedProfileError(message);
+        setProfileError((errorBody as { message?: string }).message || 'Benutzerprofil konnte nicht geladen werden.');
+        setCookieProfileReady(true);
         return false;
       }
 
-      const data = await response.json();
-      if (!data.user) {
-        setFetchedUser(null);
-        setFetchedUserToken(null);
-        setAuthenticatedProfileError('Benutzerprofil konnte nicht geladen werden.');
-        return false;
-      }
-
-      setFetchedUser(data.user);
-      setFetchedUserToken(token);
-      setAuthenticatedProfileReady(true);
-      return true;
+      const data = await response.json() as { user?: User };
+      setCookieUser(data.user || null);
+      setCookieProfileReady(true);
+      return !!data.user;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Benutzerprofil konnte nicht geladen werden.';
-      console.error('Failed to validate token and fetch user:', error);
-      setFetchedUser(null);
-      setFetchedUserToken(null);
-      setAuthenticatedProfileError(message);
+      setProfileError(error instanceof Error ? error.message : 'Benutzerprofil konnte nicht geladen werden.');
+      setCookieProfileReady(true);
       return false;
     }
-  }, [localSession.token, localSession.user, notifySessionExpiredThenLogout, status, token]);
+  }, [notifySessionExpiredThenLogout, oidcIdToken, status]);
 
-  // Sync token to localStorage when OIDC session changes manually to avoid race conditions
   useEffect(() => {
-    if (status !== 'authenticated' || !oidcToken || !oidcUserKey) {
-      return;
-    }
-
-    // Keep localStorage aligned with active OIDC session even if another
-    // consumer cleared token/user while next-auth still reports authenticated.
-    const storedUserKey = localSession.user ? JSON.stringify(localSession.user) : null;
-    if (localSession.token !== oidcToken || storedUserKey !== oidcUserKey) {
-      writeStoredAuthSession(oidcToken, JSON.parse(oidcUserKey) as User);
-    }
-  }, [localSession.token, localSession.user, oidcToken, oidcUserKey, status]);
-
-  // Fetch user data on mount or when the backend token changes.
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void refreshUser();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    if (status === 'loading') return;
+    const timeoutId = window.setTimeout(() => void refreshUser(), 0);
+    return () => window.clearTimeout(timeoutId);
   }, [refreshUser, status]);
 
-  const login = useCallback((nextToken: string, userData: User) => {
+  const login = useCallback((userData: User) => {
     if (delayedLogoutTimeoutRef.current !== null) {
       window.clearTimeout(delayedLogoutTimeoutRef.current);
       delayedLogoutTimeoutRef.current = null;
     }
     hasShownSessionExpiredNoticeRef.current = false;
-    writeStoredAuthSession(nextToken, userData);
-    setFetchedUser(null);
-    setFetchedUserToken(null);
-    setAuthenticatedProfileReady(false);
-    setAuthenticatedProfileError(null);
+    setCookieUser(userData);
+    setCookieProfileReady(true);
+    setProfileError(null);
   }, []);
 
   useEffect(() => {
-    const handleUnauthorized = () => {
-      notifySessionExpiredThenLogout();
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('auth:unauthorized', handleUnauthorized);
-      return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-    }
+    const handleUnauthorized = () => notifySessionExpiredThenLogout();
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, [notifySessionExpiredThenLogout]);
 
   const oidcLogin = useCallback((providerKey?: string, callbackUrl?: string) => {
@@ -416,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const apiBase = getApiUrl();
       const params = new URLSearchParams();
       params.set('callbackUrl', callbackUrl || '/');
+      params.set('frontendOrigin', window.location.origin);
       window.location.href = `${apiBase}/auth/oidc/${encodeURIComponent(providerKey)}/start?${params.toString()}`;
       return;
     }
@@ -423,18 +290,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nextAuthSignIn('oidc', { callbackUrl: callbackUrl || '/' });
   }, []);
 
-  const profileReady = status === 'authenticated'
-    ? authenticatedProfileReady
-    : status === 'unauthenticated'
-      ? !!localSession.token && !!localSession.user
-      : false;
-  const profileError = status === 'authenticated' ? authenticatedProfileError : null;
-
-  // Keep privileged UI in loading state until the backend confirms the authenticated user.
-  const isLoading = status === 'loading' || (status === 'authenticated' && !profileReady && !profileError);
+  const user = status === 'authenticated' ? (fetchedUser || oidcUser) : cookieUser;
+  const profileReady = status === 'authenticated' ? authenticatedProfileReady : status === 'unauthenticated' && cookieProfileReady;
+  const isLoading = status === 'loading' || !profileReady && !profileError;
 
   return (
-    <AuthContext.Provider value={{ user, token, loading: isLoading, profileReady, profileError, login, logout, oidcLogin, refreshUser }}>
+    <AuthContext.Provider value={{
+      user,
+      token: null,
+      loading: isLoading,
+      profileReady,
+      profileError,
+      login,
+      logout,
+      oidcLogin,
+      refreshUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );

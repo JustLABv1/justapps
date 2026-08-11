@@ -104,6 +104,7 @@ type AIMessage struct {
 	ResponseTokens int               `bun:"response_tokens,notnull,default:0" json:"responseTokens"`
 	Sources        []AIMessageSource `bun:"sources,type:jsonb,notnull,default:'[]'" json:"sources"`
 	Error          string            `bun:"error,notnull,default:''" json:"error"`
+	Feedback       string            `bun:"feedback,notnull,default:''" json:"feedback,omitempty"`
 	CreatedAt      time.Time         `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 }
 

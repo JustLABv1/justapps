@@ -37,11 +37,13 @@ Runtime behavior:
 
 - Login page fetches providers from `GET /api/v1/auth/oidc/providers`
 - Clicking a provider redirects to `GET /api/v1/auth/oidc/:key/start`
-- Backend handles callback and returns to frontend `/login` with `oidc_token`
+- Backend handles the callback and sets the `justapps_session` HttpOnly cookie before returning to `/login`
 
 Required frontend auth env vars:
 
 - `AUTH_SECRET`: A random secret for NextAuth sessions (e.g., `openssl rand -base64 32`)
+
+For a frontend hosted on a different origin, configure the exact frontend URL in the backend `cors.allowed_origins` / `BACKEND_CORS_ALLOWED_ORIGINS` setting so credentialed cookie requests are accepted.
 
 `AUTH_OIDC_*` values are legacy and not required for the new provider-key flow.
 
@@ -54,4 +56,3 @@ The "Users" tab allows admins to:
 - Edit user details (Role, Username, Email)
 - Disable/Enable user accounts
 - Delete users
-

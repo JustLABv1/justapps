@@ -1,4 +1,5 @@
 import { fetchApi } from './api';
+import type { AppLink, GitLabSyncSnapshot } from '@/config/apps';
 
 export interface AIProviderSummary {
   key: string;
@@ -55,6 +56,7 @@ export interface AIMessage {
   responseTokens?: number;
   sources?: AIMessageSource[];
   error?: string;
+  feedback?: 'positive' | 'negative' | '';
   createdAt: string;
 }
 
@@ -81,6 +83,101 @@ export interface AISendMessagePayload {
   message: string;
   appId?: string;
   providerKey?: string;
+}
+
+export interface ChangelogSuggestion {
+  title: string;
+  summary: string;
+  changelog: string;
+}
+
+export interface HealthCopilotIssue {
+  code: string;
+  title: string;
+  explanation: string;
+  evidence: string;
+  actions: string[];
+}
+
+export interface HealthCopilotSuggestion {
+  appId: string;
+  name: string;
+  summary: string;
+  priority: 'low' | 'medium' | 'high' | string;
+  issues: HealthCopilotIssue[];
+}
+
+export interface AppCreationSuggestion {
+  name: string;
+  id: string;
+  description: string;
+  categories: string[];
+  tags: string[];
+  techStack: string[];
+  license: string;
+  isReuse: boolean;
+  reuseRequirements: string;
+  markdownContent: string;
+  dockerRepo: string;
+  customDockerCommand: string;
+  customComposeCommand: string;
+  helmRepo: string;
+  customHelmCommand: string;
+  customHelmValues: string;
+  missingFields: string[];
+  notes: string[];
+}
+
+export interface AppCreationRepositoryScan {
+  providerKey: string;
+  providerType: string;
+  providerLabel: string;
+  projectPath: string;
+  branch: string;
+  readmePath: string;
+  helmValuesPath: string;
+  composeFilePath: string;
+  status: string;
+  warnings: string[];
+}
+
+export interface AppCreationSuggestionResponse extends AppCreationSuggestion {
+  repositorySnapshot?: GitLabSyncSnapshot;
+  repositoryScan?: AppCreationRepositoryScan;
+}
+
+export interface AppCreationSuggestionPayload {
+  brief?: string;
+  name?: string;
+  description?: string;
+  markdownContent?: string;
+  scanRepository?: boolean;
+  repository?: {
+    providerKey?: string;
+    projectPath?: string;
+    branch?: string;
+    readmePath?: string;
+    helmValuesPath?: string;
+    composeFilePath?: string;
+    readmeContent?: string;
+    topics?: string[];
+    helmValuesContent?: string;
+    composeFileContent?: string;
+  };
+}
+
+export interface ChangelogSuggestionPayload {
+  appId?: string;
+  name: string;
+  version?: string;
+  currentChangelog?: string;
+  description?: string;
+  license?: string;
+  markdownContent?: string;
+  customHelmValues?: string;
+  customComposeCommand?: string;
+  tags?: string[];
+  repositories?: AppLink[];
 }
 
 export interface PublicAIHistoryMessage {
@@ -165,6 +262,61 @@ export async function sendAIMessage(payload: AISendMessagePayload): Promise<AISe
   return response.json();
 }
 
+export async function suggestChangelog(payload: ChangelogSuggestionPayload): Promise<ChangelogSuggestion> {
+  const response = await fetchApi('/apps/changelog/suggest', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Changelog konnte nicht erzeugt werden.');
+  return response.json() as Promise<ChangelogSuggestion>;
+}
+
+export async function explainAppHealth(appId: string): Promise<HealthCopilotSuggestion> {
+  const response = await fetchApi(`/apps/${encodeURIComponent(appId)}/health/copilot`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Erklärung konnte nicht erzeugt werden.');
+  return response.json() as Promise<HealthCopilotSuggestion>;
+}
+
+export async function suggestAppCreation(payload: AppCreationSuggestionPayload): Promise<AppCreationSuggestionResponse> {
+  const response = await fetchApi('/apps/creation/suggest', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-App-Vorschlag konnte nicht erzeugt werden.');
+  return response.json() as Promise<AppCreationSuggestionResponse>;
+}
+
+export interface CatalogStewardFinding {
+  appId: string;
+  appName: string;
+  kind: string;
+  severity: 'low' | 'medium' | 'high' | string;
+  title: string;
+  summary: string;
+  evidence: string[];
+  suggestions: string[];
+  relatedAppIds: string[];
+}
+
+export interface CatalogStewardReport {
+  generatedAt: string;
+  appsScanned: number;
+  summary: string;
+  findings: CatalogStewardFinding[];
+}
+
+export async function runCatalogSteward(): Promise<CatalogStewardReport> {
+  const response = await fetchApi('/admin/catalog/steward', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Katalogprüfung konnte nicht erzeugt werden.');
+  return response.json() as Promise<CatalogStewardReport>;
+}
+
 export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {
   const response = await fetchApi('/ai/public/chat', {
     method: 'POST',
@@ -172,6 +324,18 @@ export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): 
   });
   if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
   return response.json();
+}
+
+export type AIMessageFeedback = 'positive' | 'negative' | '';
+
+export async function setAIMessageFeedback(id: string, feedback: AIMessageFeedback): Promise<AIMessageFeedback> {
+  const response = await fetchApi(`/ai/messages/${encodeURIComponent(id)}/feedback`, {
+    method: 'PUT',
+    body: JSON.stringify({ feedback }),
+  });
+  if (!response.ok) throw await parseError(response, 'Feedback konnte nicht gespeichert werden.');
+  const data = await response.json() as { feedback?: AIMessageFeedback };
+  return data.feedback === 'positive' || data.feedback === 'negative' ? data.feedback : '';
 }
 
 export async function listAIProviderSettings(): Promise<AIProviderAdminSettings[]> {

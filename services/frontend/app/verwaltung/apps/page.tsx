@@ -3,6 +3,7 @@
 import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { CatalogStewardPanel } from '@/components/admin/CatalogStewardPanel';
 import { AppCatalogFilters, AppConfig, AppUserSummary, SystemUser } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { APP_STATUS_OPTIONS, isDraftStatus, sortAppStatuses } from '@/lib/appStatus';
@@ -317,6 +318,8 @@ function AppsContent() {
           <Button size="sm" variant="secondary" onPress={loadApps} className="h-8">Wiederholen</Button>
         </div>
       )}
+
+      <CatalogStewardPanel />
 
       <AppTable
         apps={apps}

@@ -1,11 +1,14 @@
 package apps
 
 import (
+	"errors"
 	"fmt"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,7 +23,38 @@ func AddRating(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		httperror.Unauthorized(c, "Auth required", errors.New("authenticated user missing"))
+		return
+	}
+	var userID string
+	switch value := userIDValue.(type) {
+	case uuid.UUID:
+		userID = value.String()
+	case string:
+		userID = strings.TrimSpace(value)
+	}
+	if userID == "" || userID == uuid.Nil.String() {
+		httperror.Unauthorized(c, "Auth required", errors.New("authenticated user missing"))
+		return
+	}
+	if rating.Rating < 1 || rating.Rating > 5 {
+		httperror.StatusBadRequest(c, "Rating must be between 1 and 5", errors.New("rating out of range"))
+		return
+	}
+	if len([]rune(rating.Comment)) > 2000 {
+		httperror.StatusBadRequest(c, "Comment is too long", errors.New("comment too long"))
+		return
+	}
+
 	rating.AppID = appID
+	// Never accept identity fields from the browser. The authenticated
+	// middleware is the source of truth for ownership and audit attribution.
+	rating.UserID = userID
+	rating.Username = strings.TrimSpace(c.GetString("username"))
+	rating.ID = uuid.Nil
+	rating.CreatedAt = time.Time{}
 
 	// Check if user already rated this app
 	exists, err := db.NewSelect().

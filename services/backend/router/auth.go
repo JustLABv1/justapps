@@ -14,6 +14,9 @@ func Auth(router *gin.RouterGroup, db *bun.DB) {
 		auth.POST("/login", func(c *gin.Context) {
 			tokens.GenerateTokenUser(db, c)
 		})
+		auth.POST("/logout", func(c *gin.Context) {
+			tokens.Logout(c, db)
+		})
 		auth.POST("/register", func(c *gin.Context) {
 			auths.RegisterUser(c, db)
 		})

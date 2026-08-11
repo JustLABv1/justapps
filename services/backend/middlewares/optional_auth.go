@@ -13,7 +13,7 @@ import (
 
 func OptionalAuth(db *bun.DB) gin.HandlerFunc {
 	return func(context *gin.Context) {
-		tokenString := context.GetHeader("Authorization")
+		tokenString := auth.TokenFromRequest(context)
 		if tokenString == "" {
 			context.Next()
 			return

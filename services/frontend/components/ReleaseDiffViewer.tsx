@@ -31,8 +31,8 @@ function tokenizeLine(line: string, language: string) {
     if (match) {
       return (
         <>
-          <span className="text-sky-300">{match[1]}</span>
-          <span className="text-amber-200">{match[2]}</span>
+          <span className="text-accent">{match[1]}</span>
+          <span className="text-warning-foreground dark:text-warning">{match[2]}</span>
         </>
       );
     }
@@ -41,8 +41,8 @@ function tokenizeLine(line: string, language: string) {
       const rest = line.slice(line.indexOf('- ') + 2);
       return (
         <>
-          <span className="text-violet-300">{prefix}</span>
-          <span className="text-amber-200">{rest}</span>
+          <span className="text-accent">{prefix}</span>
+          <span className="text-warning-foreground dark:text-warning">{rest}</span>
         </>
       );
     }
@@ -50,13 +50,13 @@ function tokenizeLine(line: string, language: string) {
 
   if (language === 'markdown') {
     if (line.startsWith('#')) {
-      return <span className="text-sky-300 font-semibold">{line}</span>;
+      return <span className="font-semibold text-accent">{line}</span>;
     }
     if (line.trimStart().startsWith('- ') || line.trimStart().startsWith('* ')) {
-      return <span className="text-violet-300">{line}</span>;
+      return <span className="text-accent">{line}</span>;
     }
     if (line.startsWith('```')) {
-      return <span className="text-emerald-300">{line}</span>;
+      return <span className="text-success-foreground dark:text-success">{line}</span>;
     }
   }
 
@@ -66,10 +66,18 @@ function tokenizeLine(line: string, language: string) {
 function renderDiffLine(line: DiffLine, language: string) {
   const marker = line.kind === 'context' ? ' ' : line.text.slice(0, 1);
   const content = line.kind === 'context' ? line.text : line.text.slice(1);
+  const markerClass =
+    line.kind === 'add'
+      ? 'font-bold text-success-foreground dark:text-success'
+      : line.kind === 'remove'
+        ? 'font-bold text-danger'
+        : line.kind === 'meta'
+          ? 'text-accent'
+          : 'text-muted';
 
   return (
     <>
-      <span className="select-none text-muted">{marker}</span>
+      <span className={`select-none ${markerClass}`}>{marker}</span>
       {tokenizeLine(content, language)}
     </>
   );
@@ -106,11 +114,11 @@ function collapseLines(lines: DiffLine[]) {
 function getDiffClasses(kind: DiffLine['kind']) {
   switch (kind) {
     case 'add':
-      return 'bg-success/10 text-success';
+      return 'border-s-2 border-success/60 bg-success/10 text-success-foreground dark:text-success';
     case 'remove':
-      return 'bg-danger/10 text-danger';
+      return 'border-s-2 border-danger/60 bg-danger/10 text-danger';
     case 'meta':
-      return 'bg-accent/10 text-accent';
+      return 'border-s-2 border-accent/60 bg-accent/10 text-accent';
     default:
       return 'text-foreground';
   }
@@ -143,16 +151,16 @@ function SideBySideView({ detail }: { detail: ReleaseChangeDetail }) {
           <div className="px-3 py-2">Nachher</div>
         </div>
         <div className="grid grid-cols-2">
-          <div className="border-r border-border bg-danger/5">
+          <div className="border-r border-danger/20 bg-danger/5">
             {rows.map((row, index) => (
-              <div key={`before-${index}`} className="border-t border-border/60 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
+              <div key={`before-${index}`} className="border-t border-danger/15 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {tokenizeLine(row.before, detail.language)}
               </div>
             ))}
           </div>
           <div className="bg-success/5">
             {rows.map((row, index) => (
-              <div key={`after-${index}`} className="border-t border-border/60 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
+              <div key={`after-${index}`} className="border-t border-success/15 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {tokenizeLine(row.after, detail.language)}
               </div>
             ))}
@@ -233,4 +241,3 @@ export function ReleaseDiffViewer({ detail }: { detail: ReleaseChangeDetail }) {
     </Card>
   );
 }
-

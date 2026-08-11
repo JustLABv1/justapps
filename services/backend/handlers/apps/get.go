@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
+	"justapps-backend/config"
+	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -34,11 +37,35 @@ func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
 	return uuid.Nil, role, false
 }
 
+func appendUniqueSearchTerms(existing []string, values []string) []string {
+	seen := make(map[string]struct{}, len(existing)+len(values))
+	for _, value := range existing {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value != "" {
+			seen[value] = struct{}{}
+		}
+	}
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		existing = append(existing, value)
+	}
+	return existing
+}
+
 // allowedSortFields maps frontend-safe field names to DB column names.
 var allowedSortFields = map[string]string{
 	"name":       "name",
 	"rating_avg": "rating_avg",
+	"rating":     "rating_avg",
 	"updated_at": "updated_at",
+	"updated":    "updated_at",
 	"status":     "status",
 }
 
@@ -68,6 +95,11 @@ var allowedSyncStatusFilters = map[string]struct{}{
 var allowedVisibilityFilters = map[string]struct{}{
 	"draft":     {},
 	"published": {},
+}
+
+var allowedTypeFilters = map[string]struct{}{
+	"reuse":   {},
+	"install": {},
 }
 
 type appEditorSummaryRow struct {
@@ -213,20 +245,57 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	_ = db.NewSelect().Model(&settings).Where("id = ?", "default").Scan(c)
 
 	sortField := "name"
-	if f, ok := allowedSortFields[settings.AppSortField]; ok {
-		sortField = f
-	}
+	requestedSort := normalizeFilterValue(c.Query("sort"))
 	sortDir := "ASC"
-	if settings.AppSortDirection == "desc" {
-		sortDir = "DESC"
+	if requestedSort != "" {
+		if f, ok := allowedSortFields[requestedSort]; ok {
+			sortField = f
+		}
+		if requestedSort == "rating" || requestedSort == "updated" {
+			sortDir = "DESC"
+		}
+	} else {
+		if f, ok := allowedSortFields[settings.AppSortField]; ok {
+			sortField = f
+		}
+		if settings.AppSortDirection == "desc" {
+			sortDir = "DESC"
+		}
 	}
 
 	apps := make([]models.Apps, 0)
 	q := c.Query("q")
+	semanticRequested := strings.EqualFold(strings.TrimSpace(c.Query("semantic")), "true") && strings.TrimSpace(q) != ""
+	semanticMode := false
+	searchIntent := ""
+	searchTerms := []string{}
+	if strings.TrimSpace(q) != "" {
+		if semanticRequested {
+			plan, planErr := aifunc.ExpandSearchQuery(c.Request.Context(), db, config.Config, aifunc.SearchExpansionInput{Query: q})
+			if planErr == nil {
+				semanticMode = true
+				searchIntent = plan.Intent
+				searchTerms = append(searchTerms, plan.Terms...)
+			}
+		}
+		searchTerms = appendUniqueSearchTerms(searchTerms, aifunc.SearchTerms(q))
+	}
 	category := c.Query("category")
 	techStack := c.Query("techStack")
 	statusFilter := c.Query("status")
 	groupID := c.Query("group")
+	typeFilter := normalizeFilterValue(c.Query("type"))
+	favoriteFilter := normalizeFilterValue(c.Query("favorite"))
+	if typeFilter != "" {
+		if _, ok := allowedTypeFilters[typeFilter]; !ok {
+			httperror.StatusBadRequest(c, "Invalid value for type", errors.New("type must be reuse or install"))
+			return
+		}
+	}
+	if favoriteFilter != "" && favoriteFilter != "me" {
+		httperror.StatusBadRequest(c, "Invalid value for favorite", errors.New("favorite must be me"))
+		return
+	}
 	ownerIDFilter, hasOwnerIDFilter, err := parseOptionalUUIDFilter("ownerId", c.Query("ownerId"))
 	if err != nil {
 		httperror.StatusBadRequest(c, err.Error(), err)
@@ -254,14 +323,33 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		Model(&apps).
 		Relation("Owner").
 		OrderExpr("is_featured DESC").
-		OrderExpr(fmt.Sprintf("%s %s", sortField, sortDir))
+		OrderExpr(fmt.Sprintf("a.%s %s", sortField, sortDir)).
+		OrderExpr("a.id ASC")
 
-	if q != "" {
-		pattern := "%" + strings.ToLower(q) + "%"
-		query = query.Where(
-			"LOWER(a.name) LIKE ? OR LOWER(a.description) LIKE ?",
-			pattern, pattern,
-		)
+	if len(searchTerms) > 0 {
+		searchText := `LOWER(CONCAT_WS(' ',
+			COALESCE(a.name, ''),
+			COALESCE(a.description, ''),
+			COALESCE(a.license, ''),
+			COALESCE(array_to_string(a.categories, ' '), ''),
+			COALESCE(array_to_string(a.tech_stack, ' '), ''),
+			COALESCE(array_to_string(a.tags, ' '), ''),
+			COALESCE(array_to_string(a.collections, ' '), ''),
+			COALESCE(a.custom_fields::text, ''),
+			COALESCE(a.markdown_content, ''),
+			COALESCE(a.custom_docker_command, ''),
+			COALESCE(a.custom_compose_command, ''),
+			COALESCE(a.custom_helm_command, ''),
+			COALESCE(a.reuse_requirements, '')
+		))`
+		clauses := make([]string, 0, len(searchTerms))
+		args := make([]interface{}, 0, len(searchTerms)*2)
+		for _, term := range searchTerms {
+			pattern := "%" + strings.ToLower(term) + "%"
+			clauses = append(clauses, "("+searchText+" LIKE ? OR EXISTS (SELECT 1 FROM ai_knowledge_chunks kc WHERE kc.app_id = a.id AND LOWER(COALESCE(kc.search_text, '')) LIKE ?))")
+			args = append(args, pattern, pattern)
+		}
+		query = query.Where("("+strings.Join(clauses, " OR ")+")", args...)
 	}
 
 	if category != "" {
@@ -280,6 +368,20 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		query = query.
 			Join("JOIN app_group_members agm ON agm.app_id = a.id").
 			Where("agm.app_group_id::text = ?", groupID)
+	}
+
+	switch typeFilter {
+	case "reuse":
+		query = query.Where("a.is_reuse = true")
+	case "install":
+		query = query.Where("a.has_deployment_assistant = true")
+	}
+	if favoriteFilter == "me" {
+		if !hasViewer {
+			query = query.Where("1 = 0")
+		} else {
+			query = query.Where("EXISTS (SELECT 1 FROM user_favorites uf WHERE uf.app_id = a.id AND uf.user_id = ?)", viewerID)
+		}
 	}
 
 	if hasOwnerIDFilter {
@@ -319,6 +421,47 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 	if c.Query("editable") == "me" && hasViewer {
 		query = query.Where("a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+	}
+
+	// Apply the same draft visibility rule in SQL as canViewApp so paginated
+	// totals and pages do not contain entries that will later be discarded.
+	if viewerRole != "admin" {
+		if hasViewer {
+			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') OR a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+		} else {
+			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')")
+		}
+	}
+
+	paginationRequested := c.Query("page") != "" || c.Query("pageSize") != ""
+	page := 1
+	pageSize := 24
+	if paginationRequested {
+		var parseErr error
+		if value := strings.TrimSpace(c.Query("page")); value != "" {
+			page, parseErr = strconv.Atoi(value)
+			if parseErr != nil || page < 1 {
+				httperror.StatusBadRequest(c, "Invalid page", errors.New("page must be a positive integer"))
+				return
+			}
+		}
+		if value := strings.TrimSpace(c.Query("pageSize")); value != "" {
+			pageSize, parseErr = strconv.Atoi(value)
+			if parseErr != nil || pageSize < 1 || pageSize > 100 {
+				httperror.StatusBadRequest(c, "Invalid pageSize", errors.New("pageSize must be between 1 and 100"))
+				return
+			}
+		}
+	}
+
+	total := 0
+	if paginationRequested {
+		total, err = query.Count(c)
+		if err != nil {
+			httperror.InternalServerError(c, "Error counting apps", err)
+			return
+		}
+		query = query.Limit(pageSize).Offset((page - 1) * pageSize)
 	}
 
 	err = query.Scan(c)
@@ -362,7 +505,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	}
 
 	// Move pinned apps to the front (in configured order), then featured, then rest
-	if len(settings.PinnedApps) > 0 {
+	if !paginationRequested && len(settings.PinnedApps) > 0 {
 		pinnedIdx := make(map[string]int, len(settings.PinnedApps))
 		for i, id := range settings.PinnedApps {
 			pinnedIdx[id] = i
@@ -447,6 +590,19 @@ func GetApps(c *gin.Context, db *bun.DB) {
 				apps[i].GitLabSync = summary
 			}
 		}
+	}
+
+	if paginationRequested {
+		c.JSON(200, gin.H{
+			"items":                apps,
+			"page":                 page,
+			"pageSize":             pageSize,
+			"total":                total,
+			"hasMore":              page*pageSize < total,
+			"searchMode":           map[bool]string{true: "semantic", false: "lexical"}[semanticMode],
+			"searchInterpretation": searchIntent,
+		})
+		return
 	}
 
 	c.JSON(200, apps)

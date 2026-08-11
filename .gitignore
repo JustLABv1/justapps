@@ -75,3 +75,10 @@ csv-files/
 .local/
 .superpowers
 docs/superpowers
+
+# Graphify local/cache state
+/graphify-out/.graphify_python
+/graphify-out/.graphify_root
+/graphify-out/.graphify_detect.json
+/graphify-out/cost.json
+/graphify-out/cache/

@@ -19,7 +19,6 @@ type oidcExchangeRequest struct {
 }
 
 type oidcExchangeResponse struct {
-	Token     string           `json:"token"`
 	ExpiresAt int64            `json:"expiresAt"`
 	User      oidcExchangeUser `json:"user"`
 }
@@ -33,12 +32,13 @@ type oidcExchangeUser struct {
 	CanSubmitApps bool      `json:"canSubmitApps"`
 }
 
-// OIDCExchange validates a Keycloak ID token and returns a long-lived
-// backend-issued JWT. This eliminates the need for Keycloak refresh tokens.
+// OIDCExchange validates a Keycloak ID token and establishes a long-lived
+// backend-issued session in an HttpOnly cookie. This eliminates the need for
+// Keycloak refresh tokens in the browser.
 //
 // POST /api/v1/auth/oidc/exchange
 // Body: { "id_token": "<keycloak_id_token>" }
-// Response: { "token": "<backend_jwt>", "expiresAt": 1234567890, "user": {...} }
+// Response: { "expiresAt": 1234567890, "user": {...} }
 func OIDCExchange(c *gin.Context, db *bun.DB) {
 	var req oidcExchangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -154,6 +154,7 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Failed to create session token", err)
 		return
 	}
+	auth.SetSessionCookie(c, sessionToken, expiresAt)
 
 	log.WithFields(log.Fields{
 		"email":    user.Email,
@@ -162,7 +163,6 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 	}).Info("OIDC Exchange: Session token issued successfully")
 
 	c.JSON(http.StatusOK, oidcExchangeResponse{
-		Token:     sessionToken,
 		ExpiresAt: expiresAt,
 		User: oidcExchangeUser{
 			ID:            user.ID,

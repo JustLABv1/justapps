@@ -12,7 +12,7 @@ import (
 )
 
 func ValidateToken(context *gin.Context, db *bun.DB) {
-	token := context.GetHeader("Authorization")
+	token := auth.TokenFromRequest(context)
 	err := auth.ValidateToken(token)
 	if err != nil {
 		httperror.Unauthorized(context, "Token is invalid", err)

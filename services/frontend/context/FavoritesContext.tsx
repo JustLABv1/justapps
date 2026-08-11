@@ -17,7 +17,7 @@ const FavoritesContext = createContext<FavoritesContextType>({
 });
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -30,18 +30,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!token) {
-      return;
-    }
-
     async function load() {
       setIsLoaded(false);
       try {
-        const res = await fetchApi('/user/favorites', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetchApi('/user/favorites');
         const data: { app_ids?: string[] } | null = res.ok ? await res.json() : null;
         setFavorites(new Set(data?.app_ids ?? []));
         setIsLoaded(true);
@@ -50,7 +42,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       }
     }
     load();
-  }, [user, token]);
+  }, [user]);
 
   const toggle = useCallback(async (appId: string) => {
     const isFav = favorites.has(appId);

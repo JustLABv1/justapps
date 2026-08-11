@@ -33,6 +33,9 @@ func RegisterAI(group *gin.RouterGroup, db *bun.DB) {
 		aiGroup.POST("/conversations/:conversationId/messages", func(c *gin.Context) {
 			aihandlers.SendMessage(c, db)
 		})
+		aiGroup.PUT("/messages/:id/feedback", func(c *gin.Context) {
+			aihandlers.SetMessageFeedback(c, db)
+		})
 	}
 
 	publicAIGroup := group.Group("/ai/public")

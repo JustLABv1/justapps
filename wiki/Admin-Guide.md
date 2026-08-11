@@ -91,7 +91,7 @@ The chat uses app metadata and repository-synced content such as README, Helm va
 
 ## API Admin Endpoints
 
-All admin endpoints require a valid JWT with the admin role:
+All admin endpoints require an authenticated admin session. Browser requests use the HttpOnly `justapps_session` cookie; external API clients may use a bearer token:
 
 ```
 Authorization: Bearer <admin-jwt>

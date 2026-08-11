@@ -76,6 +76,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		httperror.InternalServerError(context, "Error writing token to db", err)
 		return
 	}
+	auth.SetSessionCookie(context, tokenString, ExpiresAt)
 
 	// Update last_login_at; failure is non-fatal — login must not be blocked.
 	now := time.Now()
@@ -104,5 +105,5 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		CanSubmitApps:  user.CanSubmitApps,
 	}
 
-	context.JSON(http.StatusOK, gin.H{"token": tokenString, "user": userResponse, "expires_at": ExpiresAt})
+	context.JSON(http.StatusOK, gin.H{"user": userResponse, "expires_at": ExpiresAt})
 }

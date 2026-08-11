@@ -11,6 +11,7 @@ import (
 	appupdates "justapps-backend/functions/appupdates"
 	"justapps-backend/pkg/models"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 )
 
@@ -69,6 +70,8 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 	link.LastManualChangeAt = time.Time{}
 	link.LastSyncStatus = result.Status
 	appContentChanged := false
+	var release *models.AppRelease
+	var syncedApp models.Apps
 
 	err = db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
@@ -90,9 +93,12 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 				return err
 			}
 
-			if _, err := appupdates.CreateReleaseForAppSync(ctx, tx, previousApp, app); err != nil {
-				return err
+			createdRelease, createErr := appupdates.CreateReleaseForAppSync(ctx, tx, previousApp, app)
+			release = createdRelease
+			if createErr != nil {
+				return createErr
 			}
+			syncedApp = app
 		}
 
 		_, err := tx.NewUpdate().
@@ -106,6 +112,7 @@ func SyncAndPersist(ctx context.Context, db *bun.DB, provider ProviderRuntime, l
 		return err
 	}
 	if appContentChanged {
+		enrichReleaseWithAI(ctx, db, release, syncedApp)
 		return aifunc.ReindexApp(ctx, db, link.AppID)
 	}
 	return nil
@@ -126,12 +133,15 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 	link.LastSyncError = ""
 	link.UpdatedAt = now
 	appContentChanged := false
+	var release *models.AppRelease
+	var syncedApp models.Apps
 
 	err := db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		var app models.Apps
 		if err := tx.NewSelect().Model(&app).Where("id = ?", link.AppID).Scan(ctx); err != nil {
 			return err
 		}
+		previousApp := app
 
 		appContentChanged = snapshotChangesAppContent(app, provider.Label, link.Snapshot)
 		if appContentChanged {
@@ -145,6 +155,13 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 				Exec(ctx); err != nil {
 				return err
 			}
+
+			createdRelease, createErr := appupdates.CreateReleaseForAppSync(ctx, tx, previousApp, app)
+			release = createdRelease
+			if createErr != nil {
+				return createErr
+			}
+			syncedApp = app
 		}
 
 		_, err := tx.NewUpdate().
@@ -158,6 +175,7 @@ func ApprovePendingSync(ctx context.Context, db *bun.DB, provider ProviderRuntim
 		return err
 	}
 	if appContentChanged {
+		enrichReleaseWithAI(ctx, db, release, syncedApp)
 		return aifunc.ReindexApp(ctx, db, link.AppID)
 	}
 	return nil
@@ -169,6 +187,53 @@ func MarkManualChangePendingApproval(ctx context.Context, db *bun.DB, appID stri
 
 func MarkManualChangePendingApprovalForApp(ctx context.Context, db *bun.DB, app models.Apps) error {
 	return nil
+}
+
+func enrichReleaseWithAI(ctx context.Context, db *bun.DB, release *models.AppRelease, app models.Apps) {
+	if release == nil || strings.TrimSpace(app.ID) == "" {
+		return
+	}
+
+	suggestion, err := aifunc.GenerateChangelog(ctx, db, config.Config, aifunc.ChangelogGenerationInput{
+		AppName:           app.Name,
+		Version:           release.Version,
+		ExistingChangelog: release.Summary,
+		ChangedAreas:      release.ChangedAreas,
+		Changes:           release.ChangeDetails,
+		Language:          "Deutsch",
+	})
+	if err != nil {
+		if errors.Is(err, aifunc.ErrAIDisabled) || errors.Is(err, aifunc.ErrAINoProvider) {
+			log.WithError(err).Debug("Repository sync: AI changelog generation skipped")
+		} else {
+			log.WithError(err).WithField("appId", app.ID).Warn("Repository sync: AI changelog generation failed; keeping fallback summary")
+		}
+		return
+	}
+
+	if _, err := db.NewUpdate().
+		Model((*models.AppRelease)(nil)).
+		Set("title = ?", suggestion.Title).
+		Set("summary = ?", suggestion.Summary).
+		Where("id = ?", release.ID).
+		Exec(ctx); err != nil {
+		log.WithError(err).WithField("releaseId", release.ID).Warn("Repository sync: AI release text could not be saved")
+		return
+	}
+
+	if _, err := db.NewUpdate().
+		Model((*models.Apps)(nil)).
+		Set("changelog = ?", suggestion.Changelog).
+		Where("id = ?", app.ID).
+		Exec(ctx); err != nil {
+		log.WithError(err).WithField("appId", app.ID).Warn("Repository sync: AI changelog could not be saved")
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"appId":     app.ID,
+		"releaseId": release.ID,
+	}).Info("Repository sync: AI changelog generated")
 }
 
 func snapshotHasContent(snapshot models.GitLabSyncSnapshot) bool {

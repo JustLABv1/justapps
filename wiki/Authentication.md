@@ -65,8 +65,8 @@ OIDC login flow:
 2. User clicks a provider button on `/login`.
 3. Frontend redirects to `GET /api/v1/auth/oidc/:key/start`.
 4. Backend handles provider redirect and callback.
-5. Backend issues a JustApps JWT and redirects back to frontend `/login` with `oidc_token`.
-6. Frontend validates the token with `GET /api/v1/user/` and stores session.
+5. Backend issues a JustApps session and sets it as the HttpOnly `justapps_session` cookie before redirecting back to frontend `/login`.
+6. Frontend calls `GET /api/v1/user/` with credentials; the backend derives the session from the cookie.
 
 PKCE is enabled in the backend-managed flow.
 
@@ -107,7 +107,7 @@ AUTH_URL=https://your-domain.com
 When OIDC is disabled (or alongside OIDC), users can register and log in with a username and password:
 
 - `POST /api/v1/auth/register` — create a new local account
-- `POST /api/v1/auth/login` — returns a JWT
+- `POST /api/v1/auth/login` — sets an HttpOnly `justapps_session` cookie
 
 The first local user created through registration is automatically assigned the `admin` role.
 
