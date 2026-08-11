@@ -1,4 +1,5 @@
 import { fetchApi } from './api';
+import type { AppLink } from '@/config/apps';
 
 export interface AIProviderSummary {
   key: string;
@@ -84,6 +85,26 @@ export interface AISendMessagePayload {
   providerKey?: string;
 }
 
+export interface ChangelogSuggestion {
+  title: string;
+  summary: string;
+  changelog: string;
+}
+
+export interface ChangelogSuggestionPayload {
+  appId?: string;
+  name: string;
+  version?: string;
+  currentChangelog?: string;
+  description?: string;
+  license?: string;
+  markdownContent?: string;
+  customHelmValues?: string;
+  customComposeCommand?: string;
+  tags?: string[];
+  repositories?: AppLink[];
+}
+
 export interface PublicAIHistoryMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -164,6 +185,15 @@ export async function sendAIMessage(payload: AISendMessagePayload): Promise<AISe
   });
   if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
   return response.json();
+}
+
+export async function suggestChangelog(payload: ChangelogSuggestionPayload): Promise<ChangelogSuggestion> {
+  const response = await fetchApi('/apps/changelog/suggest', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Changelog konnte nicht erzeugt werden.');
+  return response.json() as Promise<ChangelogSuggestion>;
 }
 
 export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {

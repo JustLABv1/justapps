@@ -89,6 +89,19 @@ func CreateReleaseForAppSync(ctx context.Context, tx bun.Tx, previousApp, update
 	return release, nil
 }
 
+// ClassifyChangedAreas exposes the same release classification used by
+// repository sync for manual AI changelog previews.
+func ClassifyChangedAreas(previousApp, updatedApp models.Apps) []string {
+	return classifyChangedAreas(previousApp, updatedApp)
+}
+
+// BuildChangeDetails exposes the same structured diff used by persisted
+// releases, so manual and repository-generated changelogs describe the same
+// underlying changes.
+func BuildChangeDetails(previousApp, updatedApp models.Apps) []models.ReleaseChangeDetail {
+	return buildChangeDetails(previousApp, updatedApp)
+}
+
 func classifyChangedAreas(previousApp, updatedApp models.Apps) []string {
 	areas := make([]string, 0, 3)
 

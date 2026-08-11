@@ -8,57 +8,61 @@ import { GitLabFormState, GitLabTab } from "@/components/editor/GitLabTab";
 import { LinkListEditor } from "@/components/editor/LinkListEditor";
 import { RelatedAppsTab } from "@/components/editor/RelatedAppsTab";
 import {
-    AppConfig,
-    AppField,
-    GitLabIntegrationState,
-    GitLabProviderSummary,
+  AppConfig,
+  AppField,
+  GitLabIntegrationState,
+  GitLabProviderSummary,
 } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi, uploadFile } from "@/lib/api";
+import { suggestChangelog, type ChangelogSuggestion } from "@/lib/ai";
 import {
-    DRAFT_STATUS,
-    getAppStatusLabel,
-    getAppStatusMeta,
-    isDraftStatus,
+  DRAFT_STATUS,
+  getAppStatusLabel,
+  getAppStatusMeta,
+  isDraftStatus,
 } from "@/lib/appStatus";
 import { getImageAssetUrl, isImageAssetSource } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import {
-    Button,
-    Chip,
-    Input,
-    Label,
-    Switch,
-    Tabs,
-    TextArea,
-    TextField,
-    toast,
+  Alert,
+  Button,
+  Chip,
+  Input,
+  Label,
+  Modal,
+  Switch,
+  Tabs,
+  TextArea,
+  TextField,
+  toast,
 } from "@heroui/react";
 import {
-    BookOpen,
-    Check,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    CloudDownload,
-    ExternalLink,
-    GitBranch,
-    Info,
-    Layers,
-    Link2,
-    Loader2,
-    Pencil,
-    Plus,
-    Save,
-    Scale,
-    Server,
-    Share2,
-    Star,
-    Tag,
-    Terminal,
-    Upload,
-    X,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CloudDownload,
+  ExternalLink,
+  GitBranch,
+  Info,
+  Layers,
+  Link2,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Scale,
+  Server,
+  Share2,
+  Star,
+  Sparkles,
+  Tag,
+  Terminal,
+  Upload,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -121,6 +125,112 @@ const defaultGitLabFormState: GitLabFormState = {
   helmValuesPath: "",
   composeFilePath: "",
 };
+
+interface ChangelogSuggestionModalProps {
+  isOpen: boolean;
+  suggestion: ChangelogSuggestion | null;
+  onOpenChange: (open: boolean) => void;
+  onChange: (patch: Partial<ChangelogSuggestion>) => void;
+  onApply: () => void;
+}
+
+function ChangelogSuggestionModal({
+  isOpen,
+  suggestion,
+  onOpenChange,
+  onChange,
+  onApply,
+}: ChangelogSuggestionModalProps) {
+  return (
+    <Modal>
+      <Modal.Backdrop
+        isOpen={isOpen && !!suggestion}
+        onOpenChange={onOpenChange}
+      >
+        <Modal.Container>
+          <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Icon className="bg-accent/10 text-accent">
+                <Sparkles className="size-5" />
+              </Modal.Icon>
+              <Modal.Heading>AI-Changelog-Vorschlag</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="space-y-4">
+              <Alert status="accent">
+                <Alert.Indicator>
+                  <Sparkles className="size-4" />
+                </Alert.Indicator>
+                <Alert.Content>
+                  <Alert.Title>Bitte vor dem Übernehmen prüfen</Alert.Title>
+                  <Alert.Description>
+                    Der Vorschlag basiert auf den erkannten Änderungen und kann
+                    direkt bearbeitet werden. Die AI speichert ihn nicht
+                    automatisch.
+                  </Alert.Description>
+                </Alert.Content>
+              </Alert>
+
+              {suggestion && (
+                <>
+                  <TextField
+                    onChange={(value) => onChange({ title: value })}
+                  >
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                      Titel
+                    </Label>
+                    <Input
+                      value={suggestion.title}
+                      className="bg-field-background text-sm"
+                    />
+                  </TextField>
+
+                  <TextField
+                    onChange={(value) => onChange({ summary: value })}
+                  >
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                      Zusammenfassung
+                    </Label>
+                    <TextArea
+                      value={suggestion.summary}
+                      className="min-h-24 bg-field-background text-sm"
+                    />
+                  </TextField>
+
+                  <TextField
+                    onChange={(value) => onChange({ changelog: value })}
+                  >
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                      Changelog (Markdown)
+                    </Label>
+                    <TextArea
+                      value={suggestion.changelog}
+                      className="min-h-64 bg-field-background font-mono text-sm"
+                    />
+                  </TextField>
+                </>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                variant="secondary"
+                onPress={() => onOpenChange(false)}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                onPress={onApply}
+                isDisabled={!suggestion?.changelog.trim()}
+              >
+                Changelog übernehmen
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
+  );
+}
 
 function normalizeGitLabFormState(
   integration: GitLabIntegrationState | null,
@@ -251,6 +361,11 @@ export function AppEditorForm({
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(
     null,
   );
+  const [generatingChangelog, setGeneratingChangelog] = useState(false);
+  const [changelogSuggestionOpen, setChangelogSuggestionOpen] =
+    useState(false);
+  const [changelogSuggestion, setChangelogSuggestion] =
+    useState<ChangelogSuggestion | null>(null);
 
   // ── Related apps ──
   const [relatedApps, setRelatedApps] = useState<
@@ -576,6 +691,47 @@ export function AppEditorForm({
     setLastAutoSave(new Date());
 
     return createdApp.id;
+  };
+
+  const handleGenerateChangelog = async () => {
+    if (generatingChangelog) return;
+
+    setGeneratingChangelog(true);
+    try {
+      const suggestion = await suggestChangelog({
+        appId: getEffectiveAppId() || undefined,
+        name: formData.name || "",
+        version: formData.version || "",
+        currentChangelog: formData.changelog || "",
+        description: formData.description || "",
+        license: formData.license || "",
+        markdownContent: formData.markdownContent || "",
+        customHelmValues: formData.customHelmValues || "",
+        customComposeCommand: formData.customComposeCommand || "",
+        tags: formData.tags || [],
+        repositories: sanitizeLinks(formData.repositories),
+      });
+      setChangelogSuggestion(suggestion);
+      setChangelogSuggestionOpen(true);
+    } catch (error) {
+      toast.danger(
+        error instanceof Error
+          ? error.message
+          : "AI-Changelog konnte nicht erzeugt werden.",
+      );
+    } finally {
+      setGeneratingChangelog(false);
+    }
+  };
+
+  const handleApplyChangelogSuggestion = () => {
+    if (!changelogSuggestion) return;
+    setFormData((previous) => ({
+      ...previous,
+      changelog: changelogSuggestion.changelog,
+    }));
+    setChangelogSuggestionOpen(false);
+    toast.success("AI-Changelog als Entwurf übernommen.");
   };
 
   const repositories =
@@ -2999,6 +3155,68 @@ export function AppEditorForm({
                 </TextField>
 
                 <div className="rounded-3xl border border-border bg-surface p-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Versionierung und Changelog
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Lassen Sie sich aus den bisherigen Angaben einen
+                        bearbeitbaren Changelog-Vorschlag erstellen.
+                      </p>
+                    </div>
+                    {settings.aiEnabled !== false && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => void handleGenerateChangelog()}
+                        isDisabled={generatingChangelog}
+                        isPending={generatingChangelog}
+                      >
+                        <Sparkles className="size-4" />
+                        Mit AI erstellen
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <TextField
+                      onChange={(value) =>
+                        setFormData((previous) => ({
+                          ...previous,
+                          version: value,
+                        }))
+                      }
+                    >
+                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                        Version
+                      </Label>
+                      <Input
+                        value={formData.version || ""}
+                        placeholder="z. B. 1.0.0"
+                        className="bg-field-background text-sm font-mono"
+                      />
+                    </TextField>
+                    <TextField
+                      onChange={(value) =>
+                        setFormData((previous) => ({
+                          ...previous,
+                          changelog: value,
+                        }))
+                      }
+                    >
+                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                        Changelog
+                      </Label>
+                      <TextArea
+                        value={formData.changelog || ""}
+                        placeholder="## 1.0.0\n- Erste veröffentlichte Version"
+                        className="min-h-40 bg-field-background font-mono text-sm"
+                      />
+                    </TextField>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-surface p-5">
                   <div className="mb-4">
                     <p className="text-sm font-semibold text-foreground">
                       Verwandte Apps und Gruppen
@@ -3336,6 +3554,18 @@ export function AppEditorForm({
             if (!open) setPendingNavigation(null);
           }}
           title="Ungespeicherte Änderungen verwerfen?"
+        />
+
+        <ChangelogSuggestionModal
+          isOpen={changelogSuggestionOpen}
+          suggestion={changelogSuggestion}
+          onOpenChange={setChangelogSuggestionOpen}
+          onChange={(patch) =>
+            setChangelogSuggestion((previous) =>
+              previous ? { ...previous, ...patch } : previous,
+            )
+          }
+          onApply={handleApplyChangelogSuggestion}
         />
       </div>
     );
@@ -4408,9 +4638,23 @@ export function AppEditorForm({
 
                 {/* Versionierung */}
                 <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                    <Tag className="w-3.5 h-3.5" /> Versionierung
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5" /> Versionierung
+                    </span>
+                    {settings.aiEnabled !== false && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => void handleGenerateChangelog()}
+                        isDisabled={generatingChangelog}
+                        isPending={generatingChangelog}
+                      >
+                        <Sparkles className="size-4" />
+                        Mit AI erstellen
+                      </Button>
+                    )}
+                  </div>
                   <TextField
                     onChange={(val) =>
                       setFormData((p) => ({ ...p, version: val }))
@@ -4732,6 +4976,18 @@ export function AppEditorForm({
           if (!open) setPendingNavigation(null);
         }}
         title="Ungespeicherte Änderungen verwerfen?"
+      />
+
+      <ChangelogSuggestionModal
+        isOpen={changelogSuggestionOpen}
+        suggestion={changelogSuggestion}
+        onOpenChange={setChangelogSuggestionOpen}
+        onChange={(patch) =>
+          setChangelogSuggestion((previous) =>
+            previous ? { ...previous, ...patch } : previous,
+          )
+        }
+        onApply={handleApplyChangelogSuggestion}
       />
     </div>
   );
