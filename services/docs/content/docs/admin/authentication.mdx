@@ -1,0 +1,102 @@
+---
+title: Authentifizierung und Zugriff
+description: Lokale Konten, OIDC-Provider, Administratorrollen und öffentlichen Zugriff konfigurieren.
+---
+
+JustApps unterstützt lokale Benutzername-/Passwort-Konten und backendverwaltetes OpenID Connect (OIDC). Beide Varianten können parallel betrieben werden. OIDC-Provider werden in PostgreSQL gespeichert und unter `/verwaltung/integrationen/auth` verwaltet.
+
+## Zugriffsmodell auswählen
+
+| Modell   | Quelle der Benutzer    | Zuordnung von Administratoren                                                             |
+| -------- | ---------------------- | ----------------------------------------------------------------------------------------- |
+| Lokal    | JustApps-PostgreSQL    | Die erste lokale Registrierung wird `admin`; spätere Benutzer weist ein Administrator zu  |
+| OIDC     | Dein Identity Provider | Der konfigurierte Admin-Gruppen- oder Rollen-Claim ergibt die JustApps-Rolle `admin`      |
+| Gemischt | Beide Quellen          | Für die Einführung geeignet; lokalen Zugriff nach erfolgreicher OIDC-Prüfung deaktivieren |
+
+Die Plattform-Einstellung **App Store nur für angemeldete Nutzer** (`requireAuthForAppStore`) kann zusätzlich eine Anmeldung verlangen, bevor Besucher Katalog, App-Details oder Gruppen sehen.
+
+## Lokale Authentifizierung
+
+Für eine neue Installation ohne OIDC:
+
+1. Öffne `/register`.
+2. Lege den ersten Benutzer an.
+3. Prüfe, dass das Konto die Rolle `admin` besitzt.
+4. Konfiguriere die Plattform und verwalte weitere Benutzer unter `/verwaltung/sicherheit/benutzer`.
+
+Der erste lokale Benutzer ist nur beim Bootstrap besonders. Verlasse dich für die dauerhafte Administration nicht auf die Registrierung. Wenn OIDC funktioniert, setze im Legacy-Fallback `disableRegistration` oder steuere den Kontozugriff über deinen Identity Provider.
+
+## OIDC-Provider in der Verwaltung konfigurieren
+
+Öffne **Verwaltung → Integrationen → Authentifizierung** und lege einen Provider an. Der Provider-Schlüssel ist eine stabile Kennung für Callback-URLs und kann nach dem Anlegen nicht geändert werden.
+
+| Feld                         | Erforderlich                       | Empfehlung                                                              |
+| ---------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| Provider-Schlüssel           | Ja                                 | Kleinschreibbarer stabiler Wert wie `keycloak-main`                     |
+| Bezeichnung                  | Ja                                 | Verständlicher Name auf der Anmeldeseite                                |
+| Issuer-URL                   | Ja                                 | Exakte Issuer-URL des Realms oder Tenants                               |
+| Client-ID                    | Ja                                 | Confidential-OIDC-Client im Identity Provider                           |
+| Client-Secret                | Ja                                 | Verschlüsselt gespeichert und nach dem Speichern nicht zurückgegeben    |
+| Admin-Gruppe / -Rolle        | Für Admin-Zuordnung                | Gruppen- oder Rollen-Claim, der die JustApps-Rolle `admin` verleiht     |
+| Scopes                       | Meist `openid`, `profile`, `email` | Je einer pro Zeile oder durch Komma getrennt                            |
+| Provider aktiv               | —                                  | Steuert, ob der Provider auf der Anmeldeseite erscheint                 |
+| TLS-Prüfung deaktiviert      | Nein                               | Nur für selbstsignierte Zertifikate in der Entwicklung                  |
+| Lokale Anmeldung deaktiviert | Nein                               | Verbirgt lokale E-Mail-/Passwort-Anmeldung, wenn ein Provider aktiv ist |
+
+Client-Secrets werden mit `repository_provider_encryption.secret` beziehungsweise `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` aus der Deployment-Konfiguration verschlüsselt. Setze dieses Secret vor dem Anlegen eines Providers und bewahre es bei Upgrades und Restores unverändert auf.
+
+## Keycloak einrichten
+
+In Keycloak oder einem anderen OIDC-Provider:
+
+1. Lege einen Realm an oder wähle einen bestehenden aus.
+2. Erstelle einen vertraulichen OIDC-Client.
+3. Ergänze die Callback-URL der öffentlichen Backend-Origin:
+
+   ```text
+   https://apps.example.org/api/v1/auth/oidc/<provider-key>/callback
+   ```
+
+4. Ergänze die Frontend-Origin unter Web Origins beziehungsweise erlaubten Origins.
+5. Lege die Admin-Gruppe oder -Rolle an und weise sie Administratoren zu.
+6. Stelle sicher, dass Gruppe oder Rolle im ID-Token oder in der Userinfo enthalten ist.
+7. Trage Issuer, Client-ID, Secret, Admin-Gruppe und Scopes in JustApps ein.
+8. Teste die Anmeldung in einem privaten Browserfenster, bevor du lokale Anmeldung deaktivierst.
+
+Für Keycloak-Sitzungen mit dauerhaftem Refresh-Verhalten kann `offline_access` sinnvoll sein, sofern es die Realm-Richtlinie erlaubt. Prüfe die resultierende Sitzung anschließend in Keycloak.
+
+## Legacy-Fallback für einen einzelnen Provider
+
+Das Backend akzeptiert weiterhin einen einzelnen Provider über `config.yaml` oder `BACKEND_*`-Variablen. Das ist für Kompatibilität gedacht, aber nicht die empfohlene Konfiguration mehrerer Provider:
+
+```yaml
+oidc:
+  enabled: true
+  issuer: https://id.example.org/realms/justapps
+  client_id: justapps
+  admin_group: admin
+  insecure: false
+  disable_local_auth: false
+  disable_registration: false
+```
+
+Die zugehörigen Variablen sind `BACKEND_OIDC_ENABLED`, `BACKEND_OIDC_ISSUER`, `BACKEND_OIDC_CLIENT_ID`, `BACKEND_OIDC_ADMIN_GROUP`, `BACKEND_OIDC_INSECURE`, `BACKEND_OIDC_DISABLE_LOCAL_AUTH` und `BACKEND_OIDC_DISABLE_REGISTRATION`.
+
+## Zugriff nach der Einrichtung prüfen
+
+- Melde dich als normaler Benutzer an und prüfe, dass Verwaltungsseiten nicht erreichbar sind.
+- Melde dich mit einem OIDC-Benutzer aus der konfigurierten Admin-Gruppe an und prüfe die Rolle `admin`.
+- Entferne die Admin-Gruppe aus einer Testidentität und stelle sicher, dass der administrative Zugriff entfällt.
+- Aktiviere die Plattform-Anmeldepflicht, wenn der Katalog privat sein soll.
+- Deaktiviere die Registrierung, sobald die initialen Konten eingerichtet sind.
+
+## Fehlerbehebung
+
+| Problem                           | Prüfung                                                                                                                                             |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider wird nicht angezeigt     | Er ist aktiv, besitzt ein gespeichertes Secret und eine vollständige Issuer-/Client-Konfiguration                                                   |
+| Callback schlägt fehl             | Die Callback-URL verwendet die öffentliche Backend-Origin und den exakten Provider-Schlüssel                                                        |
+| TLS oder Discovery schlägt fehl   | Container oder Pod vertraut der CA des Identity Providers; für private CAs die Option [Eigene CAs](./deployment/helm#ingress-and-custom-cas) nutzen |
+| Benutzer ist kein Administrator   | Der Claim enthält exakt den konfigurierten Gruppen- oder Rollennamen                                                                                |
+| Lokale Anmeldung ist verschwunden | Ein OIDC-Provider deaktiviert sie; Option am Provider wieder aktivieren oder OIDC verwenden                                                         |
+| Browser meldet CORS-Fehler        | Exakte Frontend-Origin in `cors.allowed_origins` ergänzen                                                                                           |

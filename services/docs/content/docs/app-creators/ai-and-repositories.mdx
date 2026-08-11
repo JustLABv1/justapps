@@ -1,0 +1,77 @@
+---
+title: AI und Repositories
+description: AI-Vorschläge, Repository-Import und Synchronisation sicher für die App-Erstellung nutzen.
+---
+
+JustApps kann die Erstellung mit AI beschleunigen und Daten aus einem verbundenen Repository übernehmen. Beide Funktionen erzeugen Vorschläge oder Snapshots, keine automatische fachliche Freigabe. Du bleibst für die Richtigkeit des App-Eintrags verantwortlich.
+
+## AI-Funktionen im Katalog
+
+Je nach Plattformkonfiguration stehen unter anderem diese Funktionen zur Verfügung:
+
+- globaler AI-Chat oder eine eigene Chat-Seite für Fragen zu Apps, Deployment-Wegen und Kataloginhalten,
+- kontextbezogener Chat auf einer App-Detailseite, der die aktuelle App bevorzugt berücksichtigt,
+- AI-gestützte App-Erstellung aus einer Kurzbeschreibung oder einem Repository-Scan,
+- AI-Vorschläge für Changelogs bei der Pflege einer App,
+- Hinweise des Health Copilot und Catalog Steward zu fehlenden oder widersprüchlichen Angaben.
+
+Die Antworten werden aus dem Katalog-Wissensindex abgeleitet. Dieser kann Beschreibungen, Kategorien, Detailfelder, README-Inhalte, Compose- und Helm-Dateien, Links und Changelog-Informationen enthalten. AI ist dabei eine Hilfe zum Finden und Formulieren, keine Sicherheitsprüfung, Lizenzentscheidung und kein Beweis für eine funktionierende Installation.
+
+Trage fehlende Fakten selbst nach und kennzeichne Unsicherheit. Lass das Modell niemals Owner, Datenklassifizierung, Produktionsreife oder Compliance-Aussagen erfinden.
+
+## AI-App-Erstellungsassistent
+
+Im ersten Schritt des App-Editors kannst du entweder eine kurze Beschreibung eingeben oder ein Repository analysieren lassen. Der Assistent kann unter anderem Name, technische ID, Beschreibung, Kategorien, Tags, Lizenz, Tech-Stack, Nachnutzungsangaben und Deployment-Felder vorschlagen.
+
+Der Vorschlag wird zunächst als Vorschau angezeigt. Er wird nicht automatisch gespeichert. Übernimm ihn erst, nachdem du mindestens diese Punkte geprüft hast:
+
+- Ist die Beschreibung aus den Quellen belegt?
+- Sind Kategorie und Status realistisch?
+- Wurden Demo- und Quellcode-Links richtig erkannt?
+- Stimmen Image, Compose- und Helm-Pfade?
+- Fehlen Datenschutz-, Berechtigungs- oder Betriebsangaben?
+- Wurden keine Secrets oder vertraulichen Inhalte übernommen?
+
+Wenn kein AI-Provider konfiguriert oder aktiv ist, steht der Assistent nicht vollständig zur Verfügung. Administratoren konfigurieren Provider und Zugriff unter [AI-Verwaltung](/admin/integrations/ai).
+
+## Repository-Scan
+
+Aktiviere im AI-Dialog **Repository mit analysieren**, wähle einen verfügbaren Provider und trage den Projektpfad ein. Optional kannst du Branch oder Ref sowie diese Pfade angeben:
+
+- README-Datei,
+- Helm-Values-Datei,
+- Docker-Compose-Datei.
+
+Der Scan liest Projektmetadaten, README und die angegebenen Deployment-Dateien. Warnings des Assistenten sind Prüfpunkte, keine Fehler, die du einfach wegklicken solltest.
+
+## Repository verbinden
+
+Eine dauerhafte Verbindung wird im optionalen Repository-Schritt des Editors angelegt. Dafür brauchst du:
+
+- einen aktivierten Repository-Provider,
+- einen gültigen Projektpfad (`group/project` bei GitLab oder `owner/repo` bei GitHub),
+- optional Branch und Datei-Pfade.
+
+Nach dem Speichern kannst du synchronisieren. Die provider-neutrale Betriebsdokumentation steht unter [Repository Sync für Administratoren](/admin/integrations/repository-sync).
+
+## Snapshot und Freigabe
+
+JustApps speichert einen Snapshot der synchronisierten Werte. Je nach Feld können README, Beschreibung, Lizenz, Topics, Helm-Values, Compose-Datei und Repository-Links in den Katalog übernommen werden. Wenn du solche Felder manuell änderst, kann der nächste Sync eine Freigabe verlangen.
+
+Prüfe vor dem Anwenden:
+
+1. den Branch oder Ref,
+2. den Snapshot-Zeitpunkt,
+3. die tatsächlich gefundenen Dateien,
+4. Unterschiede zu deinen manuellen Katalogangaben,
+5. sensible Inhalte oder interne URLs.
+
+Löse Konflikte bewusst. Der Repository-Stand ist nicht automatisch fachlich oder sicherheitstechnisch aktueller als die veröffentlichte Dokumentation.
+
+## Praktische Grenzen
+
+- Ein AI-Modell kann aus README-Texten falsche Betriebsreife ableiten.
+- Ein Repository-Scan beweist keine funktionierende Installation.
+- Private Provider müssen aus dem Backend erreichbar sein; Browser-Erreichbarkeit allein genügt nicht.
+- API-Tokens werden serverseitig verschlüsselt, dürfen aber nicht in Markdown oder Compose-Beispielen landen.
+- Änderungen an Pfaden oder Branches müssen im App-Eintrag nachgezogen werden.

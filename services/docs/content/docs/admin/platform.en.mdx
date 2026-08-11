@@ -1,0 +1,112 @@
+---
+title: Configure the platform
+description: Configure governance, home page, branding, catalog behavior, and detail fields in JustApps administration.
+---
+
+Platform settings define how the JustApps catalog behaves for visitors and signed-in users. Open them through **Verwaltung → Plattform** or directly:
+
+- [Rules and approvals](/verwaltung/plattform/governance)
+- [Home page](/verwaltung/plattform/startseite)
+- [Appearance](/verwaltung/plattform/branding)
+- [Catalog content and behavior](/verwaltung/einstellungen)
+
+Settings are saved per section. After saving, the public UI reloads the new values through `/api/v1/settings`.
+
+## Rules and access
+
+### App submissions
+
+Under **Rules and approvals**, **App-Einreichungen erlauben** controls whether ordinary users may propose new apps. This is a global permission; administrators can additionally toggle **Apps einreichen** for individual users in [User management](/verwaltung/benutzer).
+
+A disabled global setting blocks submissions regardless of individual permissions. It does not change existing apps retroactively.
+
+### App Store for signed-in users only
+
+Under **Plattform → Zugriffsschutz**, **App Store nur für angemeldete Nutzer** disables public access to the catalog, app details, and groups. Visitors are redirected to sign in. Enable it only after at least one working authentication path has been configured and tested.
+
+Identity providers are configured under [Authentication](/admin/authentication). This setting does not replace reverse-proxy authentication and does not protect separately operated live demos.
+
+## Home page
+
+Under [Home page](/verwaltung/plattform/startseite), maintain the catalog landing page.
+
+### Top banner
+
+| Field           | Effect                                                                   |
+| --------------- | ------------------------------------------------------------------------ |
+| **Status**      | Shows or hides the banner.                                               |
+| **Banner-Text** | Publicly visible notice.                                                 |
+| **Typ**         | `Info`, `Warnung`, or `Kritisch`; controls semantic and visual emphasis. |
+
+Use the banner for temporary maintenance windows, important operational information, or limited availability. For app-specific notices, use the [notice in the app editor](/app-creators/content-and-metadata#status-notices).
+
+### Hero and footer
+
+| Field                        | Effect                                             |
+| ---------------------------- | -------------------------------------------------- |
+| **Hero Badge**               | Short label above the main title.                  |
+| **Hero Titel**               | Main home-page heading.                            |
+| **Hero Untertitel**          | Explanatory text below the title.                  |
+| **Footer Text**              | Free description in the footer.                    |
+| **Farbbalken oben anzeigen** | Shows the narrow color bar at the top of the page. |
+
+Presets are available for the top bar and hero title. Choose **Benutzerdefiniert** to enter CSS color values such as `#004B76`. Check contrast for text and status colors on light and dark surfaces.
+
+## Appearance and branding
+
+Under [Appearance](/verwaltung/plattform/branding), adapt the platform to your organization:
+
+| Field                  | Guidance                                               |
+| ---------------------- | ------------------------------------------------------ |
+| **Store-Name**         | Catalog name in navigation, metadata, and page titles. |
+| **Store-Beschreibung** | Short public description of the platform.              |
+| **Akzentfarbe**        | Primary color for links, actions, and highlights.      |
+| **Logo**               | Logo for light backgrounds; upload or asset URL.       |
+| **Logo dunkel**        | Alternative for dark surfaces or dark mode.            |
+| **Favicon**            | Browser-tab and bookmark icon.                         |
+
+Uploads are stored as JustApps assets. External URLs must be reachable from browsers and all networks you support. Use a sufficiently large transparent logo and test both color schemes before publishing.
+
+## Catalog content
+
+Under **Verwaltung → Katalog → Inhalte**, configure the fields app creators can fill in. Each detail field has:
+
+- a technical **key** (`key`) that should remain unique;
+- a visible **label** (`label`);
+- an optional **icon**.
+
+Default fields include focus (`focus`), app type (`app_type`), use case (`use_case`), visualization (`visualization`), deployment (`deployment`), infrastructure (`infrastructure`), database (`database`), transferability (`transferability`), authority (`authority`), contact person (`contact_person`), and additional information (`additional_info`).
+
+You can add fields, relabel them, reorder them, or remove them. Treat key changes carefully: existing apps store their values under that key. Keep the key when changing only a label. Remove a field only after its values are no longer needed or have been migrated.
+
+## Catalog behavior
+
+Under **Verwaltung → Katalog → App-Verhalten**, configure:
+
+### Default sorting
+
+- **Name**
+- **Bewertung**
+- **Zuletzt aktualisiert**
+- **Status**
+
+The direction can be ascending or descending. This is only the catalog default; users can choose a different sort order in their views.
+
+### Pinned apps
+
+Enter technical app IDs to show apps at the top regardless of sorting. Their order is the order on the home page. Remove IDs of deleted apps to avoid maintaining stale entries.
+
+### Link status checks
+
+When **Status-Prüfung aktivieren** is enabled, JustApps checks live-demo links server-side and shows a status indicator. Individual apps can disable the check when a link requires an additional login. A successful probe does not prove that the application works correctly.
+
+## Saving and operations
+
+Platform values are stored in `platform_settings`. Include them in [backups](/admin/security#backups); an environment-variable export or Helm Secret alone does not contain UI settings.
+
+After a change, check:
+
+1. the home page as a signed-out and signed-in user;
+2. at least one app detail page and catalog sorting;
+3. logo, favicon, and colors in light and dark themes;
+4. banner and footer links on mobile devices.

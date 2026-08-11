@@ -118,6 +118,26 @@ frontend:
       cpu: 100m
       memory: 128Mi
 
+## Documentation service (used in microservices mode; monolith embeds docs)
+docs:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/justlabv1/justapps
+    pullPolicy: IfNotPresent
+    # Defaults to docs-<Chart.appVersion> when left empty.
+    tag: ""
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  extraEnv: []
+
 ## Ingress configuration
 ingress:
   enabled: true
@@ -136,6 +156,9 @@ ingress:
         - path: /metrics
           pathType: Prefix
           backend: true
+        - path: /docs
+          pathType: Prefix
+          docs: true
   tls: []
 
 ## Uploads / file persistence

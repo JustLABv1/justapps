@@ -1,0 +1,214 @@
+---
+title: Kubernetes und Helm
+description: JustApps mit Helm-Chart, Ingress, persistentem Speicher und externen Secrets bereitstellen.
+---
+
+Das Chart unter [`charts/justapps/`](https://github.com/JustLABv1/justapps/tree/main/charts/justapps) unterstützt einen Monolith- und einen getrennten Microservices-Betrieb. Beide Modi stellen dieselben Anwendungspfade bereit, einschließlich `/docs`.
+
+## Voraussetzungen
+
+- Kubernetes mit Ingress-Controller oder einer anderen Möglichkeit, das Frontend zu veröffentlichen;
+- Helm 3 oder neuer;
+- PostgreSQL, entweder durch das Chart oder extern betrieben;
+- persistenter Speicher für PostgreSQL und Uploads;
+- ein Kubernetes-Secret oder eine Vault-Integration für Datenbank-, JWT-, Frontend- und Provider-Verschlüsselungs-Zugangsdaten.
+
+## Aus einem Checkout installieren
+
+```bash
+git clone https://github.com/JustLABv1/justapps.git
+cd justapps
+helm lint charts/justapps
+helm install justapps ./charts/justapps \
+  --namespace justapps \
+  --create-namespace \
+  -f my-values.yaml
+```
+
+Wenn ein Chart-Release verfügbar ist, kannst du aus der OCI-Registry installieren:
+
+```bash
+helm registry login ghcr.io -u <github-user> --password-stdin
+helm install justapps oci://ghcr.io/justlabv1/charts/justapps \
+  --version <chart-version> \
+  --namespace justapps \
+  --create-namespace \
+  -f my-values.yaml
+```
+
+Prüfe die Standardwerte vor Änderungen:
+
+```bash
+helm show values oci://ghcr.io/justlabv1/charts/justapps --version <chart-version>
+helm template justapps ./charts/justapps -f my-values.yaml
+```
+
+## Deployment-Modi
+
+Setze `deploymentMode` auf einen dieser Werte:
+
+| Modus           | Workloads                                            | Geeignet, wenn                                                          |
+| --------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| `monolith`      | Ein Deployment mit Frontend, Docs und Backend        | Ein kleiner Betriebs-Footprint gewünscht ist                            |
+| `microservices` | Getrennte Deployments für Backend, Frontend und Docs | Unabhängige Skalierung oder getrennte Zuständigkeiten erforderlich sind |
+
+Im Monolith-Modus wird `/docs` vom Docs-Prozess im Anwendungspod bedient. Im Microservices-Modus erstellt das Chart ein Docs-Deployment und einen Service und setzt `DOCS_INTERNAL_URL` auf diesen Service.
+
+## Minimale Produktionswerte
+
+Das folgende Beispiel ist ein Ausgangspunkt. Lasse Zugangsdaten in der Datei leer, wenn externe Secret-Referenzen verwendet werden:
+
+```yaml
+deploymentMode: monolith
+
+config:
+  logLevel: info
+  database:
+    server: postgres.example.internal
+    port: 5432
+    name: justapps
+    user: justapps
+    password: ""
+  jwtSecret: ""
+  repositoryProviderEncryption:
+    secret: ""
+  cors:
+    allowedOrigins:
+      - https://apps.example.org
+
+monolith:
+  image:
+    repository: ghcr.io/justlabv1/justapps
+    tag: "1.8.0-beta.1"
+  service:
+    type: ClusterIP
+    port: 80
+
+frontend:
+  env:
+    apiUrl: https://apps.example.org/api/v1
+    nextauthUrl: https://apps.example.org
+    authSecret: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: apps.example.org
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api/v1
+          pathType: Prefix
+          backend: true
+        - path: /metrics
+          pathType: Prefix
+          backend: true
+        - path: /docs
+          pathType: Prefix
+          docs: true
+
+uploads:
+  persistence:
+    enabled: true
+    size: 5Gi
+
+postgresql:
+  enabled: false
+```
+
+Die `monolith`, `backend`, `frontend` und `docs`-Image-Abschnitte können unabhängig überschrieben werden. Im Microservices-Modus setze `backend.image.tag`, `frontend.image.tag` und `docs.image.tag`; bleibt der Docs-Tag leer, wird standardmäßig `docs-<chart appVersion>` verwendet.
+
+## Secret-Verwaltung und Persistenz
+
+Das Chart benötigt diese Zugangsdaten:
+
+| Zugangsdaten                     | Secret-Referenz                                           | Verwendet von                                   |
+| -------------------------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| Datenbankpasswort                | `secrets.refs.databasePassword` oder `postgresqlPassword` | Backend oder gebündeltes PostgreSQL             |
+| JWT-Secret                       | `secrets.refs.jwtSecret`                                  | Backend-Sitzungen und Tokens                    |
+| Provider-Verschlüsselungs-Secret | `secrets.refs.repositoryProviderEncryptionSecret`         | Repository-, AI- und OIDC-Secrets in PostgreSQL |
+| Frontend-Auth-Secret             | `secrets.refs.frontendAuthSecret`                         | Verschlüsselung der Frontend-Sitzung            |
+
+### Externe Secret-Referenzen
+
+```yaml
+secrets:
+  create: false
+  refs:
+    databasePassword:
+      name: justapps-database
+      key: password
+    jwtSecret:
+      name: justapps-backend
+      key: jwt-secret
+    repositoryProviderEncryptionSecret:
+      name: justapps-backend
+      key: provider-encryption-secret
+    frontendAuthSecret:
+      name: justapps-frontend
+      key: auth-secret
+```
+
+Wenn `name` leer ist, fällt das Chart zuerst auf `secrets.existingSecret` und danach auf den vom Chart erzeugten Secret-Namen zurück. Die referenzierten Schlüssel müssen vorhanden sein, bevor die Workloads starten.
+
+### Vom Chart verwaltetes Secret
+
+Für Nichtproduktions- oder kontrollierte Umgebungen kann das Chart ein Secret aus Values erzeugen:
+
+```yaml
+secrets:
+  create: true
+config:
+  database:
+    password: ersetzen
+  jwtSecret: ersetzen
+  repositoryProviderEncryption:
+    secret: ersetzen
+frontend:
+  env:
+    authSecret: ersetzen
+```
+
+Für Produktion ist ein externes Secret oder Vault vorzuziehen, damit Zugangsdaten nicht in Helm-Release-Values erscheinen.
+
+Aktiviere `postgresql.enabled` nur, wenn der gebündelte PostgreSQL-Workload geeignet ist. Andernfalls zeige `config.database.server` auf deinen verwalteten PostgreSQL-Service. Aktiviere `uploads.persistence.enabled`, damit Logos und Favicons beim Austausch von Pods erhalten bleiben.
+
+## Ingress und eigene CAs
+
+Der Ingress muss `/`, `/api/v1`, `/metrics` und `/docs` routen. Ergänze TLS über `ingress.tls` und die für deinen Ingress-Controller erforderlichen Annotationen.
+
+Für GitLab, GitHub Enterprise, OIDC oder AI-Dienste mit privater CA kannst du ein Zertifikat in die Workloads mounten:
+
+```yaml
+customCA:
+  enabled: true
+  name: justapps-root-ca
+  secret: true
+  mountPath: /etc/ssl/certs/extra-ca.crt
+```
+
+Secret oder ConfigMap muss einen Schlüssel `ca.crt` enthalten. Verwende `secret: false` für eine ConfigMap.
+
+## Upgrade und Rollback
+
+```bash
+helm upgrade justapps ./charts/justapps \
+  --namespace justapps \
+  -f my-values.yaml
+
+helm history justapps --namespace justapps
+helm rollback justapps <revision> --namespace justapps
+```
+
+Datenbankmigrationen laufen automatisch beim Backend-Start. Erstelle vor dem Upgrade ein Backup und prüfe, dass die neuen Pods bereit werden, bevor du das vorherige Release entfernst.
+
+## Deinstallation
+
+```bash
+helm uninstall justapps --namespace justapps
+```
+
+PVCs werden nicht automatisch gelöscht. Prüfe und entferne sie separat nur dann, wenn Datenbank- oder Upload-Daten absichtlich gelöscht werden sollen.
+
+Für die Konfiguration nach dem Deployment fahre mit [Laufzeitkonfiguration und Secrets](../configuration) fort.

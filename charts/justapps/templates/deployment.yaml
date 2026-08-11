@@ -287,6 +287,8 @@ spec:
           env:
             - name: NEXT_PUBLIC_API_URL
               value: {{ .Values.frontend.env.apiUrl | quote }}
+            - name: DOCS_INTERNAL_URL
+              value: {{ printf "http://%s-docs:%d" (include "justapps.fullname" .) (.Values.docs.service.port | int) | quote }}
             - name: NEXTAUTH_URL
               value: {{ .Values.frontend.env.nextauthUrl | quote }}
             - name: AUTH_URL
@@ -331,4 +333,59 @@ spec:
             name: {{ .Values.customCA.name }}
           {{- end }}
       {{- end }}
+---
+# Microservices Mode - Documentation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justapps.fullname" . }}-docs
+  labels:
+    {{- include "justapps.labels" . | nindent 4 }}
+    app.kubernetes.io/component: docs
+spec:
+  replicas: {{ .Values.docs.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "justapps.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: docs
+  template:
+    metadata:
+      labels:
+        {{- include "justapps.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: docs
+    spec:
+      serviceAccountName: {{ include "justapps.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: docs
+          image: "{{ .Values.docs.image.repository }}:{{ include "justapps.docs.imageTag" . }}"
+          imagePullPolicy: {{ .Values.docs.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          {{- with .Values.docs.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          {{- with .Values.docs.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 {{- end }}

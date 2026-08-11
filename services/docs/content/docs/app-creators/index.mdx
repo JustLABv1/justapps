@@ -1,0 +1,52 @@
+---
+title: Apps erstellen
+description: Leitfaden für Teams, die Apps im JustApps-Katalog beschreiben, bereitstellen und aktuell halten.
+---
+
+Dieser Bereich richtet sich an App-Owner, Entwickler, Fachverantwortliche und Bearbeiter, die eine Lösung im JustApps-Katalog veröffentlichen oder pflegen. Ziel ist nicht nur ein vollständiger Datensatz, sondern ein Eintrag, mit dem eine andere Person die App sicher einordnen, ausprobieren und betreiben kann.
+
+## Der komplette Weg
+
+| Phase               | Was du tust                                                          | Anleitung                                                                    |
+| ------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1. Vorbereiten      | Zielgruppe, Verantwortlichkeit, Quellcode und Betriebsweg klären     | [Workflow und Veröffentlichung](/app-creators/workflow)                      |
+| 2. Beschreiben      | Name, Nutzen, Status, Kategorien, Lizenz und Links eintragen         | [Inhalte und Metadaten](/app-creators/content-and-metadata)                  |
+| 3. Bereitstellen    | Docker, Compose oder Helm mit reproduzierbaren Angaben dokumentieren | [Deployment-Anleitungen](/app-creators/deployment-guides)                    |
+| 4. Beschleunigen    | AI-Vorschlag oder Repository-Import prüfen und übernehmen            | [AI und Repositories](/app-creators/ai-and-repositories)                     |
+| 5. Zusammenarbeiten | Bearbeiter, Gruppen, verwandte Apps und Owner pflegen                | [Zusammenarbeit und Lebenszyklus](/app-creators/collaboration-and-lifecycle) |
+
+Der normale Einstieg ist **Meine Apps → Neue App**. Administratoren können zusätzlich über [Verwaltung → Katalog → App hinzufügen](/verwaltung/katalog/apps/new) arbeiten.
+
+## Vor dem Anlegen
+
+Halte diese Informationen bereit:
+
+- einen verständlichen Namen und eine stabile technische ID,
+- eine kurze, ehrliche Beschreibung des Nutzens,
+- mindestens eine passende Kategorie,
+- Status, Zielgruppe, Owner und Kontakt,
+- Lizenz und Quellcode-Link,
+- einen funktionierenden Demo- oder Produktiv-Link, falls vorhanden,
+- Voraussetzungen wie Datenbanken, Secrets, externe Dienste und Berechtigungen,
+- reproduzierbare Start- oder Installationsschritte.
+
+Wenn die App noch nicht einsatzbereit ist, verwende **Entwurf**, **POC** oder **Sandbox** statt sie als etabliert darzustellen. Ein gut markierter unfertiger Eintrag ist hilfreicher als eine scheinbar fertige, aber nicht startbare Anleitung.
+
+## Gute App-Einträge
+
+Ein guter Eintrag beantwortet schnell:
+
+1. Welches Problem löst die App?
+2. Wer darf oder sollte sie verwenden?
+3. Welche Daten verarbeitet sie?
+4. Wie kann ich sie testen?
+5. Wie installiere und aktualisiere ich sie?
+6. Wer hilft bei Fragen und wer trägt die Verantwortung?
+
+Die Felder im Editor sind der strukturierte Kern. Ergänze sie bei Bedarf mit der optionalen Markdown-Dokumentation, aber wiederhole nicht widersprüchliche Informationen an mehreren Stellen.
+
+## Sichtbarkeit und Prüfung
+
+Eine App kann als Entwurf gespeichert und später weiterbearbeitet werden. Für nicht-draft Status verlangt JustApps mindestens eine Kategorie und eine Beschreibung. Je nach Plattformregeln können Einreichungen zunächst durch einen Administrator geprüft werden.
+
+Wenn du eine App übergibst, aktualisiere Owner, Bearbeiter, Repository-Link, Deployment-Varianten und Kontakt gemeinsam. So bleiben Katalogeintrag und tatsächliche Verantwortung synchron.

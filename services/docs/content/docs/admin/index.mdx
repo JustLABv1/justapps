@@ -1,0 +1,62 @@
+---
+title: JustApps administrieren
+description: JustApps bereitstellen, die Plattform konfigurieren und den App-Katalog betreiben.
+---
+
+Dieser Bereich richtet sich an Personen, die eine JustApps-Instanz betreiben. Er umfasst die Infrastrukturinstallation, den ersten Administrator und alle wichtigen Bereiche der **Verwaltung**.
+
+## Empfohlene Reihenfolge
+
+1. [JustApps bereitstellen](./deployment) – Docker Compose auf einem Host oder Helm in Kubernetes.
+2. [Erste Anmeldung durchführen](./getting-started) und prüfen, dass das erste lokale Konto die Rolle `admin` hat.
+3. [Laufzeitkonfiguration und Secrets setzen](./configuration), bevor die Instanz öffentlich erreichbar ist.
+4. [Authentifizierung konfigurieren](./authentication) – lokale Konten, OIDC oder beides.
+5. Plattform und Katalog unter `/verwaltung` einrichten.
+6. Integrationen, Backups und Betriebskontrollen konfigurieren, bevor App-Ersteller eingeladen werden.
+
+## Übersicht der Admin-Oberfläche
+
+| Bereich                | Zuständig für                                                         | Hauptdokumentation                     |
+| ---------------------- | --------------------------------------------------------------------- | -------------------------------------- |
+| Plattform              | Einreichungsregeln, Zugriff, Startseite, Branding und Detailfelder    | [Plattform konfigurieren](./platform)  |
+| Katalog                | Apps, Gruppen, Inhalte, Sortierung, Pins, Link-Prüfung und Gesundheit | [Katalog verwalten](./catalog)         |
+| Integrationen          | Repository-, OIDC- und AI-Provider sowie Synchronisation              | [Integrationen und AI](./integrations) |
+| Sicherheit und Betrieb | Benutzer, Tokens, Audit, Backups und Restore                          | [Sicherheit und Betrieb](./security)   |
+
+Die Navigation in der Anwendung spiegelt diese Bereiche wider:
+
+```text
+/verwaltung
+├── plattform
+├── katalog
+├── integrationen
+└── sicherheit
+```
+
+## Was gehört in die Infrastrukturkonfiguration?
+
+Halte Geheimnisse und Verbindungsdaten, die vor dem Backend-Start benötigt werden, in der Deployment-Umgebung:
+
+- PostgreSQL-Verbindung und Passwort,
+- JWT-Signing-Secret,
+- Verschlüsselungs-Secret für Provider,
+- `AUTH_SECRET` und öffentliche Frontend-URLs,
+- CORS-Ursprünge, wenn Browser und API unterschiedliche Origins verwenden,
+- optionale Legacy-Werte für einen einzelnen OIDC-Provider.
+
+Verwende die Admin-Oberfläche für Werte, die zum Katalog gehören oder ohne Redeployment geändert werden können:
+
+- Branding, Startseitentexte, Banner und Footer-Links,
+- Einreichungs- und Zugriffsregeln,
+- Schema der App-Detailfelder und Katalogsortierung,
+- Repository- und AI-Provider,
+- Benutzer, Ownership, Gruppen und Betriebsabläufe.
+
+## Vor der Freischaltung
+
+- Jeden Wert `change-me` und `replace-with-*` ersetzen.
+- PostgreSQL-Daten und Uploads persistent speichern.
+- TLS und einen vertrauenswürdigen Hostnamen vorschalten.
+- Bei Bedarf CORS auf die exakte Frontend-Origin begrenzen.
+- Das Provider-Verschlüsselungs-Secret vor dem Anlegen von Integrationen setzen.
+- Ein Backup erstellen und einen Restore testen.

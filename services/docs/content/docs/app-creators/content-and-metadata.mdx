@@ -1,0 +1,86 @@
+---
+title: Inhalte und Metadaten
+description: Welche Angaben eine App verständlich, auffindbar und verantwortbar machen.
+---
+
+Strukturierte Metadaten sind die Grundlage für Katalogsuche, AI-Wissensbasis, Gruppen und Gesundheitsprüfungen. Schreibe für Personen, die die App nicht kennen und in wenigen Minuten entscheiden müssen, ob sie relevant ist.
+
+## Pflichtnahe Kernangaben
+
+### Name und technische ID
+
+Der Name darf fachlich und lesbar sein. Die technische ID sollte dauerhaft stabil bleiben. Vermeide `v2`, Teamnamen oder Umgebungsnamen, wenn diese nicht wirklich Teil der Identität sind.
+
+### Beschreibung
+
+Erkläre zuerst den Nutzen, dann den Kontext. Eine gute Kurzbeschreibung nennt Zielgruppe, Hauptaufgabe und wichtigsten Mehrwert. Vermeide reine Technologieformulierungen wie „React-App mit REST API“, wenn daraus nicht hervorgeht, was die App leistet.
+
+### Kategorien, Lizenz und Tags
+
+Wähle mindestens eine fachlich passende Kategorie. Setze eine realistische Lizenz und verwende Tags für Suchbegriffe, Datenarten oder etablierte Technologien. Schreibe Tags in einer einheitlichen Sprache und Schreibweise.
+
+## Technischer und organisatorischer Kontext
+
+Fülle die Felder für Herausgeber, Behörde, Ansprechpartner und Tech-Stack aus, sofern sie für die Plattform eingeblendet sind. Der Tech-Stack sollte die tatsächlich benötigten Hauptkomponenten nennen, nicht jede transitive Bibliothek.
+
+Dokumentiere außerdem:
+
+- Datenbank, Dateispeicher und externe APIs,
+- Authentifizierung und benötigte Rollen,
+- Secrets und Konfigurationswerte,
+- Netzwerkzugriffe und ausgehende Verbindungen,
+- Backup-, Update- und Monitoring-Verantwortung.
+
+## Konfigurierte Detailfelder
+
+Administratoren können zusätzliche Detailfelder definieren. Die sichtbaren Felder hängen deshalb von der jeweiligen JustApps-Instanz ab. Fülle jedes angebotene Feld konkret aus. Wenn eine Angabe nicht zutrifft, schreibe lieber `nicht erforderlich` oder `nicht bekannt` mit einer Zuständigkeit als ein scheinbar plausibles Platzhalterwort.
+
+## Links
+
+Trenne die Linktypen:
+
+- **Live-Demos** führen direkt zu einer laufenden Anwendung.
+- **Repositories** zeigen Quellcode oder den verbundenen Projektpfad.
+- **Ressourcen** verweisen auf weiterführende interne oder externe Inhalte.
+- **Externe Dokumentation** ist die kanonische ausführliche Anleitung außerhalb des Katalogs.
+
+Teste jeden Link mit einem Benutzer ohne Sonderrechte. Wenn eine Demo nur hinter Authentifizierung funktioniert, beschreibe das sichtbar und deaktiviere gegebenenfalls die globale oder app-spezifische Link-Status-Prüfung.
+
+## Nachnutzung
+
+Wenn andere Teams die App verwenden dürfen, nenne Voraussetzungen und Grenzen. Dazu gehören beispielsweise:
+
+- benötigte Infrastruktur und Mindestressourcen,
+- erforderliche Lizenzen oder Freigaben,
+- Daten- und Mandantentrennung,
+- Konfiguration und Secrets,
+- Support- und Betriebsmodell,
+- nicht unterstützte Szenarien.
+
+Behandle „Open Source“ nicht automatisch als „ohne Aufwand nachnutzbar“. Eine ehrliche Grenze verhindert Fehlinstallationen.
+
+## Statushinweise
+
+### Statushinweise
+
+Ein App-Hinweis kann `Info`, `Warnung` oder `Kritisch` sein und optional eine Überschrift enthalten. Verwende ihn für aktuelle, app-spezifische Einschränkungen wie:
+
+- Demo ist nur werktags erreichbar,
+- Migration auf neue Infrastruktur läuft,
+- bekannte Datenlücke in einer POC-Version.
+
+Entferne oder aktualisiere Hinweise nach Ablauf. Dauerhafte Betriebsinformationen gehören in Beschreibung oder Dokumentation.
+
+## Markdown-Dokumentation
+
+Die optionale Markdown-Dokumentation ist der richtige Ort für:
+
+- Ziel und Architektur,
+- lokale Entwicklung,
+- Konfiguration und Beispielwerte,
+- Bedienung und typische Abläufe,
+- Datenflüsse und Berechtigungen,
+- bekannte Einschränkungen,
+- Release- und Migrationshinweise.
+
+Verwende Überschriften, kurze Absätze und kopierbare Beispiele. Schreibe keine echten Tokens, Passwörter oder personenbezogenen Testdaten in den Eintrag.

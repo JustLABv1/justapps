@@ -1,0 +1,121 @@
+---
+title: Laufzeitkonfiguration und Secrets
+description: Backend, Frontend, Datenbank, URLs, CORS und Verschlüsselung vor der Nutzung von JustApps konfigurieren.
+---
+
+JustApps hat zwei Konfigurationsebenen:
+
+1. **Deployment-Konfiguration** wird beim Start vom Backend oder Frontend gelesen. Sie enthält Verbindungen, URLs und Secrets.
+2. **Plattform-Konfiguration** wird in PostgreSQL gespeichert und in der Verwaltung gepflegt. Sie enthält Katalogregeln, Branding, Provider und Betriebseinstellungen. Siehe [Plattform konfigurieren](./platform), [Katalog verwalten](./catalog) und [Integrationen und AI](./integrations).
+
+Halte die erste Ebene in Umgebungsvariablen, Kubernetes-Secrets oder einem Secret-Manager. Produktionszugangsdaten gehören nicht in `config.yaml`, `.env` oder `values.yaml`.
+
+## Backend-Konfigurationsdatei
+
+In Container-Deployments liest das Backend `/etc/justapps/config.yaml`. Aus dem Quellcode kannst du mit `--config services/backend/config/config.yaml` oder einem anderen expliziten Pfad starten.
+
+```yaml
+log_level: info # debug | info | warn | error
+port: 8080
+data_path: /app/data
+
+database:
+  driver: postgres
+  server: postgres
+  port: 5432
+  name: justapps
+  user: justapps
+  password: ersetzen
+
+jwt:
+  secret: durch-langes-zufaelliges-secret-ersetzen
+
+# Optionaler Legacy-Fallback für einen einzelnen Provider. Die empfohlene
+# Konfiguration mehrerer Provider erfolgt unter Verwaltung -> Integrationen -> Authentifizierung.
+oidc:
+  enabled: false
+  issuer: https://id.example.org/realms/justapps
+  client_id: justapps
+  admin_group: admin
+  insecure: false
+  disable_local_auth: false
+  disable_registration: false
+
+# Auch ohne Repository-Sync und AI erforderlich. Dieses Secret verschlüsselt
+# Provider-Zugangsdaten, die in PostgreSQL gespeichert werden.
+repository_provider_encryption:
+  secret: durch-langes-zufaelliges-secret-ersetzen
+
+cors:
+  allowed_origins:
+    - https://apps.example.org
+```
+
+Das Verschlüsselungs-Secret für Repository-Provider wird beim Backend-Start benötigt. Es schützt auch Repository-Tokens, AI-Provider-API-Keys und OIDC-Client-Secrets, die über die Verwaltung gespeichert werden. Wenn es verloren geht, können diese Zugangsdaten nicht mehr entschlüsselt werden.
+
+## Überschreiben per Backend-Umgebungsvariable
+
+Das Backend verwendet das Präfix `BACKEND_` und bildet verschachtelte YAML-Schlüssel auf Großbuchstaben mit Unterstrichen ab:
+
+| Konfigurationsschlüssel                 | Umgebungsvariable                               | Hinweise                                                              |
+| --------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------- |
+| `log_level`                             | `BACKEND_LOG_LEVEL`                             | `debug`, `info`, `warn` oder `error`                                  |
+| `port`                                  | `BACKEND_PORT`                                  | Interner HTTP-Port; Compose und Helm setzen ihn passend zur Topologie |
+| `data_path`                             | `BACKEND_DATA_PATH`                             | Uploads und Backend-Daten                                             |
+| `database.server`                       | `BACKEND_DATABASE_SERVER`                       | PostgreSQL-Hostname oder Service-Name                                 |
+| `database.port`                         | `BACKEND_DATABASE_PORT`                         | PostgreSQL-Port                                                       |
+| `database.name`                         | `BACKEND_DATABASE_NAME`                         | Datenbankname                                                         |
+| `database.user`                         | `BACKEND_DATABASE_USER`                         | Datenbankbenutzer                                                     |
+| `database.password`                     | `BACKEND_DATABASE_PASSWORD`                     | In einem Secret aufbewahren                                           |
+| `jwt.secret`                            | `BACKEND_JWT_SECRET`                            | Signiert lokale Sitzungen und Tokens                                  |
+| `repository_provider_encryption.secret` | `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET` | Erforderlicher Schlüssel zur Zugangsdatenverschlüsselung              |
+| `cors.allowed_origins`                  | `BACKEND_CORS_ALLOWED_ORIGINS`                  | Durch Komma getrennte Browser-Origins                                 |
+| `oidc.enabled`                          | `BACKEND_OIDC_ENABLED`                          | Legacy-Fallback für einen Provider                                    |
+| `oidc.issuer`                           | `BACKEND_OIDC_ISSUER`                           | Legacy-Fallback für einen Provider                                    |
+| `oidc.client_id`                        | `BACKEND_OIDC_CLIENT_ID`                        | Legacy-Fallback für einen Provider                                    |
+| `oidc.admin_group`                      | `BACKEND_OIDC_ADMIN_GROUP`                      | Legacy-Fallback für einen Provider                                    |
+| `oidc.insecure`                         | `BACKEND_OIDC_INSECURE`                         | Nicht für Produktion verwenden                                        |
+| `oidc.disable_local_auth`               | `BACKEND_OIDC_DISABLE_LOCAL_AUTH`               | Richtlinie des Legacy-Fallbacks                                       |
+| `oidc.disable_registration`             | `BACKEND_OIDC_DISABLE_REGISTRATION`             | Richtlinie des Legacy-Fallbacks                                       |
+
+Repository-Verschlüsselungs-Secret, JWT-Secret, Datenbankpasswort und OIDC-Secret sollten lang und zufällig sein. Erzeuge für jeden Zweck einen eigenen Wert:
+
+```bash
+openssl rand -base64 32
+```
+
+## Frontend-Konfiguration
+
+Das Frontend benötigt die öffentliche API und ein eigenes Session-Secret. Bei einem getrennten Deployment braucht es außerdem die interne Dokumentations-URL für den `/docs`-Rewrite.
+
+| Variable              | Beispiel                          | Zweck                                            |
+| --------------------- | --------------------------------- | ------------------------------------------------ |
+| `NEXT_PUBLIC_API_URL` | `https://apps.example.org/api/v1` | Im Browser sichtbare API-Basis-URL               |
+| `INTERNAL_API_URL`    | `http://backend:8080/api/v1`      | Serverseitige Frontend-zu-Backend-URL            |
+| `AUTH_SECRET`         | zufälliges Secret                 | Verschlüsselung der Next.js/Auth.js-Sitzung      |
+| `AUTH_URL`            | `https://apps.example.org`        | Kanonische Frontend-URL                          |
+| `DOCS_INTERNAL_URL`   | `http://docs:3000`                | Dokumentationsservice bei getrennten Deployments |
+
+Wenn Frontend und API unterschiedliche Origins verwenden, trage die exakte Frontend-Origin in `cors.allowed_origins` ein. Übernimm bei Bedarf Schema und Port; für authentifizierte Browser-Sitzungen solltest du niemals `*` verwenden.
+
+## Reihenfolge der Konfiguration
+
+- Compose mountet `deploy/compose/backend.config.yaml` und ergänzt deploymentspezifische Werte über Umgebungsvariablen.
+- Helm rendert die Backend-ConfigMap aus `values.yaml` und injiziert Secrets über die konfigurierten Secret-Referenzen.
+- Umgebungsvariablen überschreiben Werte aus der Backend-YAML-Datei.
+- Plattform-Einstellungen liegen in PostgreSQL und werden von Administratoren über `PUT /api/v1/settings` geändert.
+
+Starte den betroffenen Service nach Änderungen an Startvariablen neu. In der Verwaltung gespeicherte Plattform-Einstellungen werden ohne Image-Neubau wirksam.
+
+## Secret-Checkliste
+
+Vor einem Produktions-Rollout benötigst du:
+
+- ein eindeutiges PostgreSQL-Passwort;
+- `BACKEND_JWT_SECRET`;
+- `BACKEND_REPOSITORY_PROVIDER_ENCRYPTION_SECRET`;
+- `AUTH_SECRET`;
+- TLS-Zugangsdaten am Reverse Proxy oder Ingress;
+- OIDC-Client-Secrets und Provider-API-Tokens ausschließlich über die Verwaltung oder ein geschütztes Backup.
+
+Für Kubernetes nutze [Helm-Secret-Referenzen](./deployment/helm#secret-management-and-persistence). Bei Compose gehört `.env` nach `deploy/compose/` und sollte nur für das Operator-Konto lesbar sein.

@@ -1,0 +1,78 @@
+---
+title: Deployment guides
+description: Document reproducible Docker, Docker Compose, and Helm instructions for individual apps.
+---
+
+The deployment help in the app editor is a compact, app-specific installation card. It does not replace complete operations documentation, but it should take an experienced person to the first successful start without additional questions.
+
+## Choose an installation path
+
+Enable **Installationshilfe anbieten** and select the paths the app actually supports:
+
+- **Docker** for one image or a direct start command;
+- **Docker Compose** for multiple services and their configuration;
+- **Helm** for Kubernetes or an OCI/chart installation.
+
+Do not select a path merely because it is theoretically possible. A visible path is a commitment to catalog users.
+
+## Docker
+
+For Docker, provide an image, `docker run` command, and an additional note. Document at least:
+
+- complete image name and stable tag or digest;
+- required ports;
+- volumes and write paths;
+- environment variables without real Secret values;
+- external dependencies;
+- health check or expected readiness state.
+
+Use placeholders such as `${APP_SECRET}` and explain where the value is set securely. Avoid `latest` when reproducible rollbacks matter.
+
+## Docker Compose
+
+The setup field is required for Compose. Include a complete minimal service excerpt or a link to the canonical file. Explain:
+
+- which variables must be set in `.env`;
+- which services start;
+- which ports are exposed;
+- which volumes are persistent;
+- how migrations and updates work;
+- how to check logs and health checks.
+
+When the Compose file is in the repository, link the repository and give the exact path. Keep the snippet synchronized with the file; a stale example is worse than no example.
+
+## Helm
+
+For Helm, provide a chart repository or Helm command. Add a suitable `values.yaml` or the key overrides where relevant:
+
+- namespace and release name;
+- image and version;
+- ingress host and TLS;
+- database and persistent volumes;
+- resources and autoscaling;
+- Secrets through Secret references;
+- required external services.
+
+Never show production credentials in `values.yaml`. Point to an existing Kubernetes Secret, External Secrets, or your Secret-management solution. For the JustApps platform itself, see [Helm installation for administrators](/admin/deployment/helm).
+
+## Details every method needs
+
+An installation path should answer:
+
+1. Which version or commit is intended?
+2. Which prerequisites must exist?
+3. Which configuration is required and which is optional?
+4. How is the first admin or login configured?
+5. How do you verify that the app is healthy?
+6. How are updates, backups, and rollbacks handled?
+
+## Security and operational quality
+
+- Do not use real Secrets, tokens, or private URLs in catalog text.
+- State required least-privilege permissions.
+- Describe data retention and backup requirements.
+- Name incompatible versions and known migrations.
+- Give a command that checks a real readiness state.
+- Clearly label demo, development, and production values.
+
+After changing a deployment guide, test it in a clean environment. Also inspect the public app detail page so code, instructions, and catalog status remain aligned.

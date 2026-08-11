@@ -1,0 +1,77 @@
+---
+title: AI and repositories
+description: Use AI suggestions, repository imports, and synchronization safely when creating apps.
+---
+
+JustApps can accelerate app creation with AI and take data from a connected repository. Both features produce suggestions or snapshots, not automatic business approval. You remain responsible for the accuracy of the app entry.
+
+## AI features in the catalog
+
+Depending on platform configuration, you may have:
+
+- a global AI chat or dedicated chat page for questions about apps, deployment paths, and catalog content;
+- contextual chat on an app detail page that prioritizes the current app;
+- AI-assisted app creation from a short description or repository scan;
+- AI suggestions for changelogs while maintaining an app;
+- Health Copilot and Catalog Steward notices about missing or contradictory information.
+
+Answers come from the catalog knowledge index, which may contain descriptions, categories, detail fields, README content, Compose and Helm files, links, and changelog information. AI helps find and formulate information; it is not a security review, licensing decision, or proof of a working installation.
+
+Fill in missing facts yourself and mark uncertainty. Never let the model invent ownership, data classification, production readiness, or compliance claims.
+
+## AI app-creation assistant
+
+In the first step of the app editor, enter a short description or ask the assistant to analyze a repository. It can suggest a name, technical ID, description, categories, tags, license, tech stack, reuse details, and deployment fields.
+
+The suggestion appears as a preview and is not saved automatically. Before adopting it, check:
+
+- Is the description supported by the sources?
+- Are category and status realistic?
+- Were demo and source-code links recognized correctly?
+- Are image, Compose, and Helm paths correct?
+- Are privacy, permissions, or operational details missing?
+- Were no Secrets or confidential contents included?
+
+Without an active AI provider, the assistant is not fully available. Administrators configure providers and access under [AI administration](/admin/integrations/ai).
+
+## Repository scan
+
+Enable **Repository mit analysieren** in the AI dialog, choose an available provider, and enter the project path. Optionally provide a branch or ref and paths for:
+
+- README file;
+- Helm values file;
+- Docker Compose file.
+
+The scan reads project metadata, README, and the selected deployment files. Treat assistant warnings as review points, not as errors to dismiss.
+
+## Connect a repository
+
+Create a persistent connection in the optional repository step of the editor. You need:
+
+- an enabled repository provider;
+- a valid project path (`group/project` for GitLab or `owner/repo` for GitHub);
+- optional branch and file paths.
+
+After saving, you can synchronize. The provider-neutral operations guide is [Repository sync for administrators](/admin/integrations/repository-sync).
+
+## Snapshot and approval
+
+JustApps stores a snapshot of synchronized values. Depending on the field, README, description, license, topics, Helm values, Compose file, and repository links can be applied to the catalog. Manual edits to these fields may require approval for the next sync.
+
+Before applying a snapshot, check:
+
+1. branch or ref;
+2. snapshot time;
+3. files actually found;
+4. differences from manual catalog values;
+5. sensitive content or internal URLs.
+
+Resolve conflicts deliberately. Repository state is not automatically more accurate or safer than published documentation.
+
+## Practical limits
+
+- An AI model can infer incorrect operational maturity from README text.
+- A repository scan does not prove a working installation.
+- Private providers must be reachable from the backend; browser reachability is not enough.
+- API tokens are encrypted server-side but must not appear in Markdown or Compose examples.
+- Update app entries when paths or branches change.

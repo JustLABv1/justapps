@@ -1,0 +1,25 @@
+---
+title: Integrationen und AI
+description: Identity Provider, Quellcode-Repositories und AI-Dienste mit JustApps verbinden.
+---
+
+Integrationseinstellungen werden in PostgreSQL gespeichert und nach einem gesunden Basis-Deployment in der Verwaltung gepflegt. Das Verschlüsselungs-Secret aus der Deployment-Konfiguration muss bei Neustarts, Upgrades und Restores unverändert bleiben.
+
+## Verfügbare Integrationen
+
+| Integration                   | Verwaltungsseite                                 | Dokumentation                                          |
+| ----------------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| OIDC-Identity-Provider        | `/verwaltung/integrationen/auth`                 | [Authentifizierung](/admin/authentication)             |
+| GitLab- und GitHub-Provider   | `/verwaltung/integrationen/repository-providers` | [Repository-Sync](/admin/integrations/repository-sync) |
+| Synchronisation und Freigaben | `/verwaltung/integrationen/repository-sync`      | [Repository-Sync](/admin/integrations/repository-sync) |
+| AI-Provider und Wissensindex  | `/verwaltung/integrationen/ai`                   | [AI-Assistent](/admin/integrations/ai)                 |
+
+## Sicherer Einführungsablauf
+
+1. Provider-Verschlüsselungs-Secret in Compose oder Helm konfigurieren.
+2. Einen Provider mit den kleinstmöglichen Berechtigungen anlegen.
+3. Den Provider-Test oder eine nichtproduktive App-Verknüpfung verwenden.
+4. Logs, Synchronisationsstatus und Zugriffstrennung prüfen.
+5. Tokens bei Bedarf über die Verwaltung rotieren.
+
+Provider-Zugangsdaten sind keine öffentlichen Frontend-Einstellungen. Füge sie niemals in App-Markdown, Repository-Dateien oder Screenshots ein.

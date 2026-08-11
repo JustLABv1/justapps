@@ -36,6 +36,14 @@ services/frontend/yarn-error.log*
 services/frontend/*.tsbuildinfo
 services/frontend/next-env.d.ts
 
+# Documentation service
+services/docs/node_modules
+services/docs/.next/
+services/docs/out/
+services/docs/next-env.d.ts
+services/docs/*.tsbuildinfo
+services/docs/.source/
+
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #

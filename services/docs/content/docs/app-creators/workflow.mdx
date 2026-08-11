@@ -1,0 +1,58 @@
+---
+title: Workflow und Veröffentlichung
+description: Die Schritte des JustApps-App-Editors von der ersten Idee bis zur überprüften Veröffentlichung.
+---
+
+Der App-Editor führt dich durch einen variablen Ablauf. Optionale Abschnitte werden erst eingeblendet, wenn du sie aktivierst. Du kannst die Eingaben in der Übersicht prüfen und zu jedem Schritt zurückspringen, bevor du die App erstellst.
+
+## 1. Name und technische ID
+
+Gib einen verständlichen Namen ein. JustApps erzeugt daraus eine technische ID; du kannst sie anschließend bearbeiten. Die ID wird in URLs, API-Aufrufen, Repository-Verknüpfungen und Pins verwendet. Halte sie daher kurz, stabil, kleingeschrieben und ohne organisations- oder versionsabhängige Details.
+
+Ändere die ID nach der Veröffentlichung nur, wenn die Auswirkungen auf Links und Integrationen geklärt sind.
+
+## 2. Logo und Auffindbarkeit
+
+Wähle ein Emoji, eine Bild-URL oder lade ein Logo hoch. Danach folgen Kategorien. Wähle mindestens eine Kategorie, die den fachlichen Zweck beschreibt, nicht nur die Implementierungstechnologie.
+
+Ergänze im nächsten Schritt den Lebenszyklusstatus:
+
+- **Entwurf** für noch nicht veröffentlichungsreife Inhalte,
+- **POC**, **MVP** oder **Sandbox** für frühe Stufen,
+- **In Erprobung** für begrenzten praktischen Einsatz,
+- **Etabliert** für belastbar eingeführte Lösungen.
+
+## 3. Beschreibung, Lizenz und Tags
+
+Die Kurzbeschreibung sollte den Nutzen in wenigen Sätzen erklären. Lizenz und Schlagwörter helfen bei Einordnung und Suche. Verwende Tags sparsam und konsistent; Synonyme und Versionsnummern als Tags machen die Suche unübersichtlich.
+
+## 4. Repository optional verbinden
+
+Wenn ein Repository-Provider verfügbar ist, kannst du Provider und Projektpfad verknüpfen. Branch beziehungsweise Ref sowie README-, Helm- und Compose-Pfade sind optional. Die Verbindung kann später synchronisiert und durch Owner oder Admin freigegeben werden. Details stehen unter [AI und Repositories](/app-creators/ai-and-repositories).
+
+## 5. Nachnutzung und Deployment
+
+Beschreibe, ob und unter welchen Bedingungen andere Teams die App nachnutzen können. Wenn eine Installationshilfe sinnvoll ist, aktiviere sie und wähle mindestens einen Weg: Docker, Docker Compose oder Helm. Die methodenspezifischen Angaben werden im App-Eintrag sichtbar; die Anforderungen stehen unter [Deployment-Anleitungen](/app-creators/deployment-guides).
+
+## 6. Links, Herausgeber und Hinweise
+
+Du kannst Live-Demos, Quellcode, Ressourcen und externe Dokumentation getrennt verlinken. Ergänze Herausgeber, technische Basis und die konfigurierten Detailfelder. Ein optionaler Statushinweis kann als Info, Warnung oder kritisch markiert werden.
+
+## 7. Zusammenarbeit, Beziehungen und Dokumentation
+
+Füge bei Bedarf Bearbeiter, Gruppen und verwandte Apps hinzu. Administratoren können eine App als **Ausgezeichnet** auf der Startseite hervorheben. Die ausführliche Markdown-Dokumentation ist optional, eignet sich aber für Architektur, Bedienung, Datenflüsse und bekannte Einschränkungen.
+
+## 8. Review und Speichern
+
+Prüfe die Zusammenfassung. Der Editor markiert fehlende Pflichtangaben, unter anderem:
+
+- Name beziehungsweise technische ID,
+- Kategorie und Beschreibung bei einem Nicht-Entwurf,
+- Repository-Provider und Projektpfad bei aktivierter Repository-Verbindung,
+- Nachnutzungsanforderungen bei aktivierter Nachnutzung,
+- mindestens ein Deployment-Weg und die zugehörigen Angaben,
+- mindestens ein Link bei aktivierten Ressourcen,
+- Hinweistext bei aktivierter Meldung,
+- Markdown-Inhalt bei aktivierter Dokumentation.
+
+Die Erstellung speichert zunächst die App und danach optionale Verknüpfungen, Bearbeiter und Gruppen. Prüfe nach dem Speichern die öffentliche Detailseite und melde dich gegebenenfalls ab, um die Sichtbarkeit aus Besuchersicht zu testen.

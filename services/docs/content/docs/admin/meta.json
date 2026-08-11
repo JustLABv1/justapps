@@ -1,0 +1,14 @@
+{
+  "title": "Für Administratoren",
+  "pages": [
+    "index",
+    "getting-started",
+    "deployment",
+    "configuration",
+    "authentication",
+    "platform",
+    "catalog",
+    "integrations",
+    "security"
+  ]
+}

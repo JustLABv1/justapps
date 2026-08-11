@@ -1,0 +1,29 @@
+---
+title: JustApps bereitstellen
+description: Den Docker-Compose- oder Kubernetes-/Helm-Weg auswählen und prüfen.
+---
+
+JustApps kann als Compose-Stack auf einem Host oder als Helm-Release in Kubernetes betrieben werden. Beide Wege benötigen PostgreSQL, persistente Uploads, Start-Secrets und Routen für Frontend, API und Dokumentation.
+
+## Installationsweg auswählen
+
+| Situation                                                                              | Anleitung                                                |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Einzelne VM, ein Operator, gebündelte oder externe Datenbank                           | [Docker Compose](/admin/deployment/docker-compose)       |
+| Kubernetes-Ingress, Secret-Verwaltung, persistente Volumes oder unabhängige Skalierung | [Helm](/admin/deployment/helm)                           |
+| Entwicklung oder Build aus dem Quellcode                                               | [Erstinstallation und Bootstrap](/admin/getting-started) |
+
+## Gemeinsame Voraussetzungen
+
+Bereite vor der Veröffentlichung vor:
+
+- PostgreSQL und ein persistentes Datenbank-Volume,
+- persistenten Speicher für hochgeladene App- und Plattform-Assets,
+- eigene Werte für JWT-, Frontend-Auth- und Provider-Verschlüsselungs-Secrets,
+- einen stabilen öffentlichen Hostnamen und TLS-Terminierung,
+- Routen für `/`, `/api/v1`, `/metrics` und `/docs`,
+- ein getestetes Backup- und Restore-Verfahren.
+
+Das Provider-Verschlüsselungs-Secret wird auch dann benötigt, wenn Repository-Sync und AI zunächst deaktiviert bleiben. Es schützt Provider-Zugangsdaten, die später über die Verwaltung gespeichert werden.
+
+Nach dem Deployment fahre mit [Laufzeitkonfiguration](../configuration), [Authentifizierung](../authentication) und [Plattform konfigurieren](../platform) fort.

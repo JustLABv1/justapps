@@ -1,0 +1,54 @@
+---
+title: Zusammenarbeit und Lebenszyklus
+description: Ownership, Bearbeiter, Gruppen, Updates und langfristige Pflege von App-Einträgen.
+---
+
+Ein App-Eintrag ist ein betreutes Produktartefakt. Vereinbare deshalb eine verantwortliche Person und einen Pflegeweg, bevor du ihn als etabliert markierst.
+
+## Owner und Bearbeiter
+
+Der Owner trägt die fachliche Verantwortung für Inhalt und Kontakt. Bearbeiter können ausgewählte Apps aktualisieren, ohne die Eigentümerschaft zu übernehmen. Füge Bearbeiter hinzu, wenn mehrere Personen regelmäßig Änderungen liefern; entferne sie beim Teamwechsel.
+
+Bei einer Übergabe:
+
+1. Owner aktualisieren,
+2. Bearbeiter und Gruppen prüfen,
+3. Repository-Zugriff und Provider-Verknüpfung prüfen,
+4. Kontakt und Supportweg im App-Eintrag aktualisieren,
+5. Deployment-, Backup- und Migrationsverantwortung bestätigen.
+
+## Gruppen und verwandte Apps
+
+Gruppen helfen bei fachlicher Navigation. Verwandte Apps zeigen Alternativen, Ergänzungen oder abhängige Komponenten. Verknüpfe nur tatsächlich hilfreiche Beziehungen und erkläre die Beziehung gegebenenfalls in der Beschreibung.
+
+## Status als Lebenszyklus
+
+Aktualisiere den Status, wenn sich der Einsatz verändert. Eine App sollte nicht dauerhaft als **MVP** oder **In Erprobung** markiert bleiben, wenn sie inzwischen etabliert ist; umgekehrt sollte ein Rückschritt bei Wartungsende oder einer kritischen Abhängigkeit sichtbar werden.
+
+Statusänderungen sollten mit der Dokumentation einhergehen:
+
+- **POC/MVP:** Ziel und bekannte Lücken nennen.
+- **Sandbox:** klar auf Testdaten und nicht-produktiven Betrieb hinweisen.
+- **In Erprobung:** Pilotbereich und Feedbackweg angeben.
+- **Etabliert:** Update-, Backup- und Supportmodell dokumentieren.
+
+## Updates und Changelog
+
+Pflege bei jeder relevanten Version mindestens Beschreibung, Deployment-Werte, Voraussetzungen und Links. Wenn ein Repository verbunden ist, prüfe synchronisierte Änderungen und genehmige sie bewusst. Für größere Änderungen kann die App im Editor oder über die Versions-/Changelog-Funktion aktualisiert werden; AI-Vorschläge für Changelogs müssen wie jeder andere Vorschlag geprüft werden.
+
+## Gesundheit und regelmäßige Prüfung
+
+Prüfe den Eintrag nach einem Release und in einem festen Intervall:
+
+- Live-Demo und externe Links,
+- Repository-Sync und aktuelle Pfade,
+- Dokumentationsalter,
+- Owner und Kontakt,
+- sichtbare Warnhinweise,
+- Start der dokumentierten Docker-, Compose- oder Helm-Variante.
+
+Administratoren sehen zusammengefasste Hinweise unter [App-Gesundheit](/verwaltung/katalog/gesundheit). Die globale Link-Status-Prüfung kann für geschützte Demos abgeschaltet werden; die Verantwortung für die Aktualität bleibt trotzdem beim Owner.
+
+## Sperren und Archivieren
+
+Wenn eine App vorübergehend nicht geändert werden soll, kann ein Administrator sie sperren. Entferne keine App nur, weil sie nicht aktiv entwickelt wird: Kennzeichne ihren Status, aktualisiere die Hinweise und dokumentiere, ob sie noch betrieben oder nur archiviert wird. Vor einer Löschung sollte der Inhalt exportiert oder anderweitig archiviert werden.

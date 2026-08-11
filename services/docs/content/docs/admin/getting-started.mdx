@@ -1,0 +1,91 @@
+---
+title: Erstinstallation und Bootstrap
+description: JustApps starten, Services prüfen und den ersten Administrator anlegen.
+---
+
+Diese Seite beschreibt den kürzesten Weg von einem leeren Host zu einem nutzbaren JustApps-Administrationskonto. Für einen produktiven Betrieb lies zuerst den [Docker-Compose-Leitfaden](./deployment/docker-compose) oder den [Helm-Leitfaden](./deployment/helm).
+
+## Installationsweg wählen
+
+| Situation                                               | Empfohlener Weg                               |
+| ------------------------------------------------------- | --------------------------------------------- |
+| Ein VM- oder Einzelhost mit PostgreSQL                  | [Docker Compose](./deployment/docker-compose) |
+| Kubernetes-Cluster mit Ingress und persistenten Volumes | [Helm](./deployment/helm)                     |
+| Entwicklung aus dem Quellcode                           | Die lokalen Schritte weiter unten             |
+
+## Voraussetzungen
+
+| Voraussetzung                                              | Version          |
+| ---------------------------------------------------------- | ---------------- |
+| [Node.js](https://nodejs.org/) und [pnpm](https://pnpm.io) | Node 24+         |
+| [Go](https://go.dev/)                                      | 1.24+            |
+| [PostgreSQL](https://www.postgresql.org/)                  | 15+              |
+| [Keycloak](https://www.keycloak.org/) _(optional)_         | Aktuelle Version |
+
+## Schnelle Installation mit Docker Compose
+
+```bash
+git clone https://github.com/JustLABv1/justapps.git
+cd justapps/deploy/compose
+cp .env.example .env
+# Platzhalter-Secrets vor einem produktiven Betrieb ersetzen.
+docker compose up -d
+```
+
+Der Stack startet PostgreSQL, Backend, Frontend und Dokumentationsservice. OIDC ist standardmäßig deaktiviert, damit du unter `http://localhost:3000` den ersten lokalen Benutzer anlegen kannst. Das erste lokal registrierte Konto erhält automatisch die Rolle `admin`.
+
+Konfiguriere produktive Werte vor dem Start. Für Keycloak lies [Authentifizierung](./authentication); für Containerdetails [Docker](./deployment/docker-compose). Für einen gemeinsamen Hostnamen kannst du den optionalen NGINX-Edge-Proxy aktivieren.
+
+## Lokale Entwicklung
+
+### Backend
+
+```bash
+cd services/backend
+go mod download
+go run main.go --config config/config.yaml
+```
+
+Die API ist bei `port: 8082` unter `http://localhost:8082` erreichbar. Ausstehende Datenbankmigrationen werden beim Start ausgeführt.
+
+### Frontend
+
+```bash
+cd services/frontend
+pnpm install
+pnpm dev
+```
+
+Die Anwendung läuft unter `http://localhost:3000`.
+
+### Dokumentation
+
+```bash
+cd services/docs
+pnpm install
+pnpm dev
+```
+
+Der direkte Dokumentationsservice ist unter `http://localhost:3001/docs` erreichbar. Das Frontend stellt ihn zusätzlich unter `http://localhost:3000/docs` bereit.
+
+## Erste Anmeldung
+
+Wenn OIDC deaktiviert ist, registriere den ersten lokalen Benutzer unter `http://localhost:3000/register`. Das Backend vergibt beim ersten lokalen Konto automatisch die Rolle `admin`.
+
+Wenn OIDC aktiviert ist, melde dich über Keycloak an. Siehe [Authentifizierung](./authentication).
+
+## Installation prüfen
+
+```bash
+curl http://localhost:8080/api/v1/health
+curl -I http://localhost:3001/docs
+```
+
+Die Ports hängen vom Deploymentweg ab. Compose verwendet standardmäßig Frontend `3000`, Backend `8080` und direkten Dokumentationszugriff auf `3001`.
+
+## Nächste Schritte
+
+- [Backend und Frontend konfigurieren](./configuration)
+- [Keycloak einrichten](./authentication)
+- [Plattform konfigurieren](./platform)
+- [Repository- und AI-Integrationen](./integrations)

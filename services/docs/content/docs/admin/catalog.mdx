@@ -1,0 +1,88 @@
+---
+title: Katalog verwalten
+description: Apps, Gruppen, Inhalte, Verantwortlichkeiten und den laufenden Katalogbetrieb administrieren.
+---
+
+Der Katalog ist unter [Verwaltung → Katalog](/verwaltung/katalog) in getrennte Arbeitsbereiche aufgeteilt. Nutze die Katalogverwaltung für redaktionelle und betriebliche Aufgaben; die inhaltliche Pflege einer eigenen App erfolgt meist über den normalen App-Editor.
+
+## Apps
+
+Die [App-Liste](/verwaltung/katalog/apps) bietet Suche und Filter für:
+
+- Name oder technische ID,
+- Status,
+- Kategorie,
+- Owner,
+- vorhandene Bearbeiter,
+- Repository-Synchronisationsstatus,
+- **Ausgezeichnet** beziehungsweise Featured,
+- gesperrte Einträge,
+- Sichtbarkeit.
+
+Administratoren können Apps anlegen, bearbeiten, kopieren, löschen, mehrere Einträge gesammelt löschen, sperren oder entsperren, den Owner übertragen und Bearbeiter verwalten. Löschen ist dauerhaft; vor größeren Bereinigungen empfiehlt sich ein [verschlüsselter Backup-Export](/admin/security#backups).
+
+### Status und Veröffentlichung
+
+JustApps kennt diese App-Status:
+
+| Status           | Typischer Zweck                                                           |
+| ---------------- | ------------------------------------------------------------------------- |
+| **Entwurf**      | Inhalt wird noch vorbereitet und ist nicht als fertige Lösung gedacht.    |
+| **POC**          | Proof of Concept; technische oder fachliche Machbarkeit wird geprüft.     |
+| **MVP**          | Erste nutzbare Version mit begrenztem Funktionsumfang.                    |
+| **Sandbox**      | Test- oder Experimentierumgebung.                                         |
+| **In Erprobung** | Einsatz wird mit echten Nutzern oder in einem begrenzten Kontext erprobt. |
+| **Etabliert**    | Lösung ist für den vorgesehenen Einsatz belastbar dokumentiert.           |
+
+Für jeden Status außer **Entwurf** verlangt der Editor mindestens eine Kategorie und eine Beschreibung. Veröffentliche eine App erst, wenn Owner, Zielgruppe, Live-Zugang, Lizenz, Quellcode und Installationshinweise ausreichend klar sind.
+
+### Sperren, übertragen und hervorheben
+
+- **Sperren** verhindert weitere normale Bearbeitung, ohne den Eintrag zu löschen. Entsperre nur für eine bewusst geplante Aktualisierung.
+- **Owner übertragen** ändert die verantwortliche Person. Prüfe danach Bearbeiter und Repository-Link.
+- **Bearbeiter verwalten** gibt ausgewählten Benutzern Bearbeitungsrechte, ohne ihnen die Eigentümerschaft zu geben.
+- **Ausgezeichnet** hebt eine App auf der Startseite hervor. Verwende die Plattform-Pins für eine feste Reihenfolge und Featured für redaktionelle Hervorhebung.
+
+## Gruppen
+
+Unter [Gruppen](/verwaltung/katalog/gruppen) organisierst du Apps thematisch oder nach Organisationseinheit. Eine Gruppe hat:
+
+- einen Namen,
+- eine Beschreibung,
+- optional ein Gruppen-Icon,
+- eine Menge von Apps beziehungsweise Mitgliedschaften.
+
+Administratoren können Gruppen anlegen, Icons hochladen, Apps zuordnen und Mitgliedschaften gesammelt bearbeiten. Verwende stabile, verständliche Gruppennamen wie `Digitale Verwaltung`, `Daten und Analyse` oder einen klaren Organisationsbereich. Vermeide Gruppen, die nur den aktuellen Projektstatus duplizieren; dafür sind App-Status und Banner gedacht.
+
+## Inhalte und Detailfelder
+
+Die [Kataloginhalte](/verwaltung/katalog/inhalte) zeigen die konfigurierten Detailfelder. Ihre Reihenfolge und Bezeichnungen werden zentral in den [Plattform-Einstellungen](/admin/platform#kataloginhalte) gepflegt. Wenn ein Feld fachlich nicht mehr gilt, kläre zuerst, ob die gespeicherten Werte archiviert oder migriert werden müssen.
+
+Für die redaktionelle Qualität jeder nicht privaten App sollten mindestens diese Fragen beantwortet sein:
+
+- Welches Problem löst die App und für wen?
+- Wie wird sie gestartet oder ausprobiert?
+- Wo liegen Quellcode und Dokumentation?
+- Welche Daten, Berechtigungen und externen Dienste benötigt sie?
+- Wer ist für Betrieb und Aktualisierung verantwortlich?
+
+Die ausführliche Checkliste für Ersteller steht unter [Inhalte und Metadaten](/app-creators/content-and-metadata).
+
+## Gesundheit
+
+Die [App-Gesundheit](/verwaltung/katalog/gesundheit) bündelt betriebliche Hinweise:
+
+- Erreichbarkeit von Live-Links,
+- Repository-Synchronisation und Sync-Fehler,
+- veraltete Dokumentation,
+- Apps ohne Owner.
+
+Der Filter unterscheidet **Gesund**, **Aufmerksamkeit nötig** und **Kritisch**. Öffne bei Problemen zuerst die App-Details, prüfe die verknüpften Pfade und den Owner und starte danach gegebenenfalls die Repository-Synchronisation erneut. Der Health Copilot kann Hinweise zusammenfassen; seine Vorschläge ersetzen keine technische Prüfung.
+
+## AI Catalog Steward
+
+Wenn AI aktiviert und ein Provider als Standard konfiguriert ist, kann der [Catalog Steward](/verwaltung/katalog) Katalogeinträge auf fehlende oder widersprüchliche Angaben prüfen. Behandle das Ergebnis als redaktionellen Vorschlag. Übernimm keine automatisch vorgeschlagene Aussage zu Sicherheit, Datenschutz, Lizenz oder Betriebsreife, ohne sie mit dem App-Team zu verifizieren.
+
+## Berechtigungen und Ownership
+
+Administratoren können alle Katalogbereiche verwalten. App-Owner und eingetragene Bearbeiter können ihre freigegebenen Inhalte pflegen; globale Einstellungen, Benutzer, Backups und andere administrative Bereiche bleiben Admins vorbehalten. Wenn ein Team wechselt, übertrage den Owner und dokumentiere den Übergang im App-Inhalt oder im Audit-Protokoll.

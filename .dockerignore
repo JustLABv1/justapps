@@ -15,4 +15,4 @@ pnpm-debug.log*
 README.md
 k8s
 charts
-docs
+/docs

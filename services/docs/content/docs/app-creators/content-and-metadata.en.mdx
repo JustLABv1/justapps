@@ -1,0 +1,84 @@
+---
+title: Content and metadata
+description: The information that makes an app understandable, discoverable, and accountable.
+---
+
+Structured metadata powers catalog search, the AI knowledge base, groups, and health checks. Write for people who do not know the app and need to decide within minutes whether it is relevant.
+
+## Core information
+
+### Name and technical ID
+
+The name should be readable and meaningful. Keep the technical ID stable. Avoid `v2`, team names, or environment names unless they are genuinely part of the identity.
+
+### Description
+
+Explain the value first and the context second. A good short description names the audience, main task, and most important benefit. Avoid technology-only wording such as “React app with REST API” when it does not explain what the app does.
+
+### Categories, license, and tags
+
+Choose at least one appropriate business category. Set a realistic license and use tags for search terms, data types, or established technologies. Keep tag language and spelling consistent.
+
+## Technical and organizational context
+
+Fill in publisher, authority, contact person, and tech-stack fields when the platform exposes them. The tech stack should name the main required components, not every transitive library.
+
+Also document:
+
+- database, file storage, and external APIs;
+- authentication and required roles;
+- Secrets and configuration values;
+- network access and outbound connections;
+- backup, update, and monitoring responsibility.
+
+## Configured detail fields
+
+Administrators can define additional detail fields, so visible fields depend on the JustApps instance. Fill each field concretely. When something does not apply, prefer `not required` or `unknown` plus an owner over a plausible placeholder.
+
+## Links
+
+Keep link types distinct:
+
+- **Live demos** go directly to a running application.
+- **Repositories** show source code or the linked project path.
+- **Resources** point to additional internal or external material.
+- **External documentation** is the canonical detailed guide outside the catalog.
+
+Test every link with a user without special privileges. If a demo requires authentication, say so visibly and consider disabling global or app-specific link status checks.
+
+## Reuse
+
+When other teams may use the app, state requirements and limits, including:
+
+- required infrastructure and minimum resources;
+- licenses or approvals;
+- data and tenant separation;
+- configuration and Secrets;
+- support and operating model;
+- unsupported scenarios.
+
+Do not treat “Open Source” as automatically meaning “easy to reuse.” Honest limits prevent failed installations.
+
+## Status notices
+
+An app notice can be `Info`, `Warnung`, or `Kritisch` and can have an optional heading. Use it for current app-specific limitations such as:
+
+- a demo available only on weekdays;
+- migration to new infrastructure;
+- a known data gap in a POC version.
+
+Remove or update notices when they expire. Permanent operational information belongs in the description or documentation.
+
+## Markdown documentation
+
+Optional Markdown is the right place for:
+
+- purpose and architecture;
+- local development;
+- configuration and examples;
+- operation and typical workflows;
+- data flows and permissions;
+- known limitations;
+- release and migration notes.
+
+Use headings, short paragraphs, and copyable examples. Never put real tokens, passwords, or personal test data in the entry.
