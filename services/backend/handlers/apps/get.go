@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"justapps-backend/config"
+	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
 
@@ -33,6 +35,28 @@ func getViewerContext(c *gin.Context) (uuid.UUID, string, bool) {
 	}
 
 	return uuid.Nil, role, false
+}
+
+func appendUniqueSearchTerms(existing []string, values []string) []string {
+	seen := make(map[string]struct{}, len(existing)+len(values))
+	for _, value := range existing {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value != "" {
+			seen[value] = struct{}{}
+		}
+	}
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		existing = append(existing, value)
+	}
+	return existing
 }
 
 // allowedSortFields maps frontend-safe field names to DB column names.
@@ -241,6 +265,21 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 	apps := make([]models.Apps, 0)
 	q := c.Query("q")
+	semanticRequested := strings.EqualFold(strings.TrimSpace(c.Query("semantic")), "true") && strings.TrimSpace(q) != ""
+	semanticMode := false
+	searchIntent := ""
+	searchTerms := []string{}
+	if strings.TrimSpace(q) != "" {
+		if semanticRequested {
+			plan, planErr := aifunc.ExpandSearchQuery(c.Request.Context(), db, config.Config, aifunc.SearchExpansionInput{Query: q})
+			if planErr == nil {
+				semanticMode = true
+				searchIntent = plan.Intent
+				searchTerms = append(searchTerms, plan.Terms...)
+			}
+		}
+		searchTerms = appendUniqueSearchTerms(searchTerms, aifunc.SearchTerms(q))
+	}
 	category := c.Query("category")
 	techStack := c.Query("techStack")
 	statusFilter := c.Query("status")
@@ -287,19 +326,30 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		OrderExpr(fmt.Sprintf("a.%s %s", sortField, sortDir)).
 		OrderExpr("a.id ASC")
 
-	if q != "" {
-		pattern := "%" + strings.ToLower(q) + "%"
-		query = query.Where(
-			`LOWER(COALESCE(a.name, '')) LIKE ? OR
-			 LOWER(COALESCE(a.description, '')) LIKE ? OR
-			 LOWER(COALESCE(a.license, '')) LIKE ? OR
-			 LOWER(COALESCE(array_to_string(a.categories, ' '), '')) LIKE ? OR
-			 LOWER(COALESCE(array_to_string(a.tech_stack, ' '), '')) LIKE ? OR
-			 LOWER(COALESCE(array_to_string(a.tags, ' '), '')) LIKE ? OR
-			 LOWER(COALESCE(array_to_string(a.collections, ' '), '')) LIKE ? OR
-			 LOWER(COALESCE(a.custom_fields::text, '')) LIKE ?`,
-			pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern,
-		)
+	if len(searchTerms) > 0 {
+		searchText := `LOWER(CONCAT_WS(' ',
+			COALESCE(a.name, ''),
+			COALESCE(a.description, ''),
+			COALESCE(a.license, ''),
+			COALESCE(array_to_string(a.categories, ' '), ''),
+			COALESCE(array_to_string(a.tech_stack, ' '), ''),
+			COALESCE(array_to_string(a.tags, ' '), ''),
+			COALESCE(array_to_string(a.collections, ' '), ''),
+			COALESCE(a.custom_fields::text, ''),
+			COALESCE(a.markdown_content, ''),
+			COALESCE(a.custom_docker_command, ''),
+			COALESCE(a.custom_compose_command, ''),
+			COALESCE(a.custom_helm_command, ''),
+			COALESCE(a.reuse_requirements, '')
+		))`
+		clauses := make([]string, 0, len(searchTerms))
+		args := make([]interface{}, 0, len(searchTerms)*2)
+		for _, term := range searchTerms {
+			pattern := "%" + strings.ToLower(term) + "%"
+			clauses = append(clauses, "("+searchText+" LIKE ? OR EXISTS (SELECT 1 FROM ai_knowledge_chunks kc WHERE kc.app_id = a.id AND LOWER(COALESCE(kc.search_text, '')) LIKE ?))")
+			args = append(args, pattern, pattern)
+		}
+		query = query.Where("("+strings.Join(clauses, " OR ")+")", args...)
 	}
 
 	if category != "" {
@@ -544,11 +594,13 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 	if paginationRequested {
 		c.JSON(200, gin.H{
-			"items":    apps,
-			"page":     page,
-			"pageSize": pageSize,
-			"total":    total,
-			"hasMore":  page*pageSize < total,
+			"items":                apps,
+			"page":                 page,
+			"pageSize":             pageSize,
+			"total":                total,
+			"hasMore":              page*pageSize < total,
+			"searchMode":           map[bool]string{true: "semantic", false: "lexical"}[semanticMode],
+			"searchInterpretation": searchIntent,
 		})
 		return
 	}

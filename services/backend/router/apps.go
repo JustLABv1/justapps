@@ -17,6 +17,12 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/health", middlewares.Auth(db), func(c *gin.Context) {
 			apps.GetMyHealth(c, db)
 		})
+		appsGroup.POST("/:id/health/copilot", middlewares.Auth(db), func(c *gin.Context) {
+			apps.GenerateHealthCopilot(c, db)
+		})
+		appsGroup.POST("/creation/suggest", middlewares.Auth(db), func(c *gin.Context) {
+			apps.SuggestAppCreation(c, db)
+		})
 		appsGroup.POST("/changelog/suggest", middlewares.Auth(db), func(c *gin.Context) {
 			apps.SuggestChangelog(c, db)
 		})

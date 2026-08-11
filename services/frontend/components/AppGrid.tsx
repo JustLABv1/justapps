@@ -6,8 +6,8 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Input, ListBox, Select, TextField } from "@heroui/react";
-import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
+import { Button, Input, ListBox, Select, TextField, Tooltip } from "@heroui/react";
+import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,8 +31,9 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const selectedType = searchParams.get('type');
   const selectedGroup = searchParams.get('group');
   const selectedSort = searchParams.get('sort') ?? '';
+  const semanticSearch = searchParams.get('semantic') === 'true';
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly);
+  const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch);
   const paginationKey = [
     searchQuery,
     selectedCategory ?? '',
@@ -40,6 +41,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     selectedType ?? '',
     selectedGroup ?? '',
     selectedSort,
+    semanticSearch ? 'semantic' : '',
     showFavoritesOnly ? 'favorites' : '',
   ].join('|');
 
@@ -58,8 +60,9 @@ export function AppGrid({ initialApps }: AppGridProps) {
     type: selectedType,
     group: selectedGroup,
     sort: selectedSort,
+    semantic: semanticSearch,
     favorite: showFavoritesOnly,
-  }), [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly]);
+  }), [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly]);
   const serverResults = hasServerFilter && serverResponse?.key === serverFilterKey
     ? serverResponse.apps
     : null;
@@ -78,6 +81,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
         if (selectedType) params.set('type', selectedType);
         if (selectedGroup) params.set('group', selectedGroup);
         if (selectedSort) params.set('sort', selectedSort);
+        if (semanticSearch && searchQuery) params.set('semantic', 'true');
         if (showFavoritesOnly) params.set('favorite', 'me');
         params.set('page', '1');
         params.set('pageSize', String(PAGE_SIZE));
@@ -100,7 +104,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly, serverFilterKey]);
+  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -119,6 +123,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const setSelectedGroup = useCallback((v: string | null) => updateParam('group', v), [updateParam]);
   const setSelectedSort = useCallback((v: string | null) => updateParam('sort', v && v !== 'default' ? v : null), [updateParam]);
   const commitSearch = useCallback((v: string) => updateParam('q', v || null), [updateParam]);
+  const setSemanticSearch = useCallback((enabled: boolean) => updateParam('semantic', enabled ? 'true' : null), [updateParam]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -166,7 +171,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
-  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly;
+  const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch;
 
   const visibleAppsKey = `${paginationKey}|${serverResults ? serverFilterKey : 'initial'}`;
   const visibleCount = hasServerFilter
@@ -189,6 +194,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
         if (selectedType) params.set('type', selectedType);
         if (selectedGroup) params.set('group', selectedGroup);
         if (selectedSort) params.set('sort', selectedSort);
+        if (semanticSearch && searchQuery) params.set('semantic', 'true');
         if (showFavoritesOnly) params.set('favorite', 'me');
         params.set('page', String(current.page + 1));
         params.set('pageSize', String(PAGE_SIZE));
@@ -215,7 +221,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       const previousCount = current.key === visibleAppsKey ? current.count : PAGE_SIZE;
       return { key: visibleAppsKey, count: Math.min(previousCount + PAGE_SIZE, filteredApps.length) };
     });
-  }, [filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
+  }, [filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -309,8 +315,16 @@ export function AppGrid({ initialApps }: AppGridProps) {
       });
     }
 
+    if (semanticSearch) {
+      filters.push({
+        key: 'semantic',
+        label: 'Semantische Suche',
+        clear: () => setSemanticSearch(false),
+      });
+    }
+
     return filters;
-  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedSort, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedSort, setSelectedStatus, setSelectedType, showFavoritesOnly]);
+  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedSort, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedSort, setSelectedStatus, setSelectedType, semanticSearch, setSemanticSearch, showFavoritesOnly]);
 
   const filterSummary = useMemo(() => {
     const summary = [];
@@ -336,14 +350,35 @@ export function AppGrid({ initialApps }: AppGridProps) {
       {/* Filter bar */}
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-2xl">
-            <TextField value={searchQuery} onChange={commitSearch} className="w-full">
-              <Input
-                placeholder="Apps suchen..."
-                className="w-full bg-field-background h-11 rounded-xl pl-10"
-              />
-            </TextField>
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+          <div className="flex w-full flex-col gap-2 lg:max-w-3xl sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <TextField value={searchQuery} onChange={commitSearch} className="w-full">
+                <Input
+                  aria-label="Apps suchen"
+                  placeholder={semanticSearch ? "Natürlich suchen, z. B. \"Werkzeuge für Karten\"" : "Apps suchen..."}
+                  className="h-11 w-full rounded-xl bg-field-background pl-10 pr-12"
+                />
+              </TextField>
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                <Tooltip delay={0}>
+                  <Tooltip.Trigger>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant={semanticSearch ? "primary" : "ghost"}
+                      onPress={() => setSemanticSearch(!semanticSearch)}
+                      aria-pressed={semanticSearch}
+                      aria-label={semanticSearch ? "Semantische KI-Suche deaktivieren" : "Semantische KI-Suche aktivieren"}
+                      className={`h-8 w-8 rounded-lg ${semanticSearch ? 'text-background' : 'text-muted hover:text-foreground'}`}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </Button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="top">{semanticSearch ? 'Semantische KI-Suche an' : 'Semantische KI-Suche'}</Tooltip.Content>
+                </Tooltip>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 self-start lg:self-auto">

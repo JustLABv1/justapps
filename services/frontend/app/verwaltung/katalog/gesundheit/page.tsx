@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Card, Chip, ListBox, Select } from '@heroui/react';
+import { AppHealthCopilot } from '@/components/AppHealthCopilot';
 import { Activity, AlertTriangle, CheckCircle2, CircleHelp, Clock3, ExternalLink, Link2, RefreshCw, ShieldAlert } from 'lucide-react';
 import NextLink from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -225,9 +226,21 @@ export default function VerwaltungKatalogGesundheitPage() {
               </Card.Content>
               <Card.Footer className="justify-between border-t border-border/60 p-4">
                 <span className="text-xs text-muted">Sync: {relativeDate(app.lastSyncedAt)}</span>
-                <NextLink href={`/apps/${encodeURIComponent(app.appId)}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
-                  Details <ExternalLink className="h-3.5 w-3.5" />
-                </NextLink>
+                <div className="flex items-center gap-2">
+                  {app.issues.length > 0 && (
+                    <AppHealthCopilot
+                      appId={app.appId}
+                      appName={app.name}
+                      issues={app.issues}
+                      linkProbeStatus={app.linkProbeStatus}
+                      syncStatus={app.syncStatus}
+                      syncError={app.syncError}
+                    />
+                  )}
+                  <NextLink href={`/apps/${encodeURIComponent(app.appId)}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+                    Details <ExternalLink className="h-3.5 w-3.5" />
+                  </NextLink>
+                </div>
               </Card.Footer>
             </Card>
           ))}

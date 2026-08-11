@@ -6,11 +6,12 @@ import { AppConfig, GitLabIntegrationState, GitLabProviderSummary, SystemUser } 
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi, uploadFile } from "@/lib/api";
+import { suggestAppCreation, type AppCreationSuggestion } from "@/lib/ai";
 import { DRAFT_STATUS, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl, isImageAssetSource } from "@/lib/assets";
 import {
   Alert, Button, Chip, FieldError, Input as HeroInput, Label, ListBox, ProgressBar,
-  Select, Switch, TextArea as HeroTextArea, TextField, ToggleButton, toast,
+  Modal, Select, Switch, TextArea as HeroTextArea, TextField, ToggleButton, toast,
 } from "@heroui/react";
 import {
   ArrowLeft, ArrowRight, BookOpen, Boxes, Check, CircleHelp, FileText,
@@ -64,10 +65,13 @@ function SectionGate({ title, description, enabled, onChange, icon }: { title: s
   </div>;
 }
 
-function StepVisual({ step, formData }: { step: Step; formData: Partial<AppConfig> }) {
+function StepVisual({ step, formData, onOpenAI }: { step: Step; formData: Partial<AppConfig>; onOpenAI?: () => void }) {
   const image = getImageAssetUrl(formData.icon);
-  return <div aria-hidden="true" className="mx-auto flex h-28 w-28 items-center justify-center rounded-[2rem] border border-accent/20 bg-accent/10 text-accent shadow-sm transition-[transform,opacity] duration-200 ease-out sm:h-32 sm:w-32">
-    {step.id === "logo" && image ? <Image src={image} alt="" width={112} height={112} className="h-full w-full object-contain p-3" unoptimized /> : step.id === "name" ? <span className="max-w-[7rem] truncate text-center text-lg font-bold">{formData.name || "App"}</span> : <span className="text-4xl">{step.id === "logo" ? (formData.icon || "🏛️") : step.icon}</span>}
+  return <div className="flex flex-col items-center gap-3">
+    <div aria-hidden="true" className="mx-auto flex h-28 w-28 items-center justify-center rounded-[2rem] border border-accent/20 bg-accent/10 text-accent shadow-sm transition-[transform,opacity] duration-200 ease-out sm:h-32 sm:w-32">
+      {step.id === "logo" && image ? <Image src={image} alt="" width={112} height={112} className="h-full w-full object-contain p-3" unoptimized /> : step.id === "name" ? <span className="max-w-[7rem] truncate text-center text-lg font-bold">{formData.name || "App"}</span> : <span className="text-4xl">{step.id === "logo" ? (formData.icon || "🏛️") : step.icon}</span>}
+    </div>
+    {step.id === "name" && onOpenAI && <Button size="sm" variant="secondary" onPress={onOpenAI}><Sparkles className="h-4 w-4" />Mit AI ausfüllen</Button>}
   </div>;
 }
 
@@ -112,6 +116,11 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const [editorIds, setEditorIds] = useState<Set<string>>(new Set(initialFormData?.editors?.map((editor) => editor.id) || []));
   const [editorSearch, setEditorSearch] = useState("");
   const [editorsWereSaved, setEditorsWereSaved] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [aiBrief, setAiBrief] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<AppCreationSuggestion | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const iconInput = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -216,6 +225,64 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const saveEditors = async (id: string, userIds = Array.from(editorIds)) => {
     const response = await fetchApi(`/apps/${id}/editors`, { method: "PUT", body: JSON.stringify({ userIds }) });
     if (!response.ok) throw new Error("Bearbeiter konnten nicht gespeichert werden.");
+  };
+  const generateAIDraft = async () => {
+    const brief = aiBrief.trim();
+    if (!brief || aiGenerating) return;
+    setAiGenerating(true);
+    setAiError(null);
+    try {
+      const suggestion = await suggestAppCreation({
+        brief,
+        name: formData.name || "",
+        description: formData.description || "",
+        markdownContent: formData.markdownContent || "",
+        repository: {
+          projectPath: repo.projectPath,
+          branch: repo.branch,
+          readmeContent: formData.markdownContent || "",
+          topics: formData.tags || [],
+          helmValuesContent: formData.customHelmValues || "",
+          composeFileContent: formData.customComposeCommand || "",
+        },
+      });
+      setAiSuggestion(suggestion);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : "AI-Vorschlag konnte nicht erzeugt werden.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+  const applyAIDraft = () => {
+    if (!aiSuggestion) return;
+    setFormData((previous) => ({
+      ...previous,
+      name: aiSuggestion.name || previous.name,
+      id: aiSuggestion.id || slugify(aiSuggestion.name) || previous.id,
+      description: aiSuggestion.description || previous.description,
+      categories: aiSuggestion.categories.length ? aiSuggestion.categories : previous.categories,
+      tags: aiSuggestion.tags.length ? aiSuggestion.tags : previous.tags,
+      techStack: aiSuggestion.techStack.length ? aiSuggestion.techStack : previous.techStack,
+      license: aiSuggestion.license || previous.license,
+      isReuse: previous.isReuse || aiSuggestion.isReuse,
+      reuseRequirements: aiSuggestion.reuseRequirements || previous.reuseRequirements,
+      markdownContent: aiSuggestion.markdownContent || previous.markdownContent,
+      dockerRepo: aiSuggestion.dockerRepo || previous.dockerRepo,
+      customDockerCommand: aiSuggestion.customDockerCommand || previous.customDockerCommand,
+      customComposeCommand: aiSuggestion.customComposeCommand || previous.customComposeCommand,
+      helmRepo: aiSuggestion.helmRepo || previous.helmRepo,
+      customHelmCommand: aiSuggestion.customHelmCommand || previous.customHelmCommand,
+      customHelmValues: aiSuggestion.customHelmValues || previous.customHelmValues,
+    }));
+    setBranches((previous) => ({
+      ...previous,
+      deployment: previous.deployment || Boolean(aiSuggestion.dockerRepo || aiSuggestion.customDockerCommand || aiSuggestion.customComposeCommand || aiSuggestion.helmRepo || aiSuggestion.customHelmCommand),
+      documentation: previous.documentation || Boolean(aiSuggestion.markdownContent),
+    }));
+    setAiAssistantOpen(false);
+    setCurrentId("description");
+    setAttemptedNext(false);
+    toast.success("AI-Vorschlag übernommen. Bitte prüfe die Angaben.");
   };
   const hasResource = !!(formData.liveDemos?.some((item) => item.url?.trim()) || formData.repositories?.some((item) => item.url?.trim()) || formData.customLinks?.some((item) => item.url?.trim()) || formData.docsUrl?.trim());
   const hasDockerSetup = !!(formData.dockerRepo?.trim() || formData.customDockerCommand?.trim());
@@ -368,7 +435,58 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
 
   return <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-5xl flex-col px-4 pb-28 pt-6 sm:px-6">
     <header className="sticky top-14 z-20 -mx-4 border-b border-border bg-background/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6"><div className="flex items-center justify-between gap-4"><Button variant="ghost" size="sm" onPress={requestExit}><ArrowLeft className="h-4 w-4" />Verlassen</Button><div className="text-right" aria-live="polite"><p className="text-xs font-semibold text-muted">{saveState === "saving" ? "Speichert …" : saveState === "saved" ? "Entwurf gespeichert" : saveState === "error" ? "Speichern fehlgeschlagen" : copySource ? "Kopie wird erstellt" : "Neue App"}</p><p className="text-sm font-semibold text-foreground">Schritt {currentIndex + 1} von {steps.length}</p></div></div><ProgressBar aria-label="Fortschritt der App-Erstellung" value={((currentIndex + 1) / steps.length) * 100} className="mt-3"><ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track></ProgressBar></header>
-    <main onKeyDown={handleStageKeyDown} className="flex flex-1 items-center justify-center py-8"><section className="w-full max-w-2xl px-2 py-6 sm:px-8 sm:py-10"><StepVisual step={current} formData={formData} /><p className="mt-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-accent">{current.optional ? "Optional" : "App erstellen"}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-center text-2xl font-bold tracking-tight text-foreground outline-none sm:text-3xl">{current.title}</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted">{current.description}</p><div className="mt-8">{stage()}</div>{attemptedNext && !validCurrent() && current.id !== "name" && current.id !== "description" && <p className="mt-4 text-sm font-medium text-danger" role="status">{validationMessage()}</p>}{saveError && <Alert color="danger" className="mt-5"><Alert.Content><Alert.Description>{saveError}</Alert.Description></Alert.Content></Alert>}</section></main>
+    <main onKeyDown={handleStageKeyDown} className="flex flex-1 items-center justify-center py-8"><section className="w-full max-w-2xl px-2 py-6 sm:px-8 sm:py-10"><StepVisual step={current} formData={formData} onOpenAI={() => { setAiSuggestion(null); setAiError(null); setAiAssistantOpen(true); }} /><p className="mt-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-accent">{current.optional ? "Optional" : "App erstellen"}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-center text-2xl font-bold tracking-tight text-foreground outline-none sm:text-3xl">{current.title}</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted">{current.description}</p><div className="mt-8">{stage()}</div>{attemptedNext && !validCurrent() && current.id !== "name" && current.id !== "description" && <p className="mt-4 text-sm font-medium text-danger" role="status">{validationMessage()}</p>}{saveError && <Alert color="danger" className="mt-5"><Alert.Content><Alert.Description>{saveError}</Alert.Description></Alert.Content></Alert>}</section></main>
     <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3"><Button variant="secondary" isDisabled={currentIndex === 0} onPress={() => move(-1)}><ArrowLeft className="h-4 w-4" />Zurück</Button>{current.id === "review" ? <Button isPending={saveState === "saving"} onPress={finish}>App erstellen<Check className="h-4 w-4" /></Button> : <Button onPress={() => returnToReview ? (validCurrent() ? setCurrentId("review") : setAttemptedNext(true)) : move(1)}>{returnToReview ? "Zur Übersicht" : "Weiter"}<ArrowRight className="h-4 w-4" /></Button>}</div></footer>
+    <Modal>
+      <Modal.Backdrop isOpen={aiAssistantOpen} onOpenChange={setAiAssistantOpen}>
+        <Modal.Container size="lg">
+          <Modal.Dialog className="max-h-[min(760px,calc(100vh-2rem))] w-full overflow-hidden">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Icon className="bg-accent/10 text-accent"><Sparkles className="h-5 w-5" /></Modal.Icon>
+              <div>
+                <Modal.Heading>AI-App-Erstellungsassistent</Modal.Heading>
+                <p className="mt-1 text-xs text-muted">Erstellt einen Vorschlag. Gespeichert wird erst nach deiner Prüfung.</p>
+              </div>
+            </Modal.Header>
+            <Modal.Body className="max-h-[62vh] space-y-5 overflow-y-auto">
+              <TextField isRequired>
+                <Label>Was soll die App leisten?</Label>
+                <TextArea
+                  value={aiBrief}
+                  onChange={(event) => setAiBrief(event.target.value)}
+                  placeholder="z. B. Eine interne Anwendung, mit der Kommunen Anträge digital erfassen und den Bearbeitungsstand verfolgen können."
+                  className="min-h-36"
+                />
+              </TextField>
+              {aiError && <Alert color="danger"><Alert.Content><Alert.Description>{aiError}</Alert.Description></Alert.Content></Alert>}
+              {!aiSuggestion && <Button onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={!aiBrief.trim()}><Sparkles className="h-4 w-4" />Vorschlag erstellen</Button>}
+              {aiSuggestion && (
+                <div className="space-y-4 rounded-2xl border border-border bg-surface-secondary/50 p-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted">Vorschau</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">{aiSuggestion.name}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{aiSuggestion.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {aiSuggestion.categories.map((category) => <Chip key={category} size="sm" variant="soft">{category}</Chip>)}
+                    {aiSuggestion.tags.map((tag) => <Chip key={tag} size="sm" color="accent" variant="soft">#{tag}</Chip>)}
+                  </div>
+                  <div className="grid gap-3 text-sm sm:grid-cols-2">
+                    <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted">Technologien</span><span className="text-foreground">{aiSuggestion.techStack.join(", ") || "Nicht belegt"}</span></div>
+                    <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted">Technische ID</span><span className="font-mono text-foreground">{aiSuggestion.id}</span></div>
+                  </div>
+                  {(aiSuggestion.missingFields.length > 0 || aiSuggestion.notes.length > 0) && <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning"><p className="font-semibold">Bitte noch prüfen</p>{aiSuggestion.missingFields.length > 0 && <p>Fehlende Angaben: {aiSuggestion.missingFields.join(", ")}</p>}{aiSuggestion.notes.length > 0 && <ul className="list-disc space-y-1 pl-5">{aiSuggestion.notes.map((note) => <li key={note}>{note}</li>)}</ul>}</div>}
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onPress={() => setAiAssistantOpen(false)}>Abbrechen</Button>
+              {aiSuggestion && <Button onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+    </Modal>
   </div>;
 }

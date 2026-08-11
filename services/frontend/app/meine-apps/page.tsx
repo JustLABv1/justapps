@@ -1,6 +1,7 @@
 'use client';
 
 import { AppEditorsModal } from '@/components/AppEditorsModal';
+import { AppHealthCopilot } from '@/components/AppHealthCopilot';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig, SystemUser } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
@@ -65,8 +66,12 @@ function MyAppsCardSkeleton() {
 
 interface MyAppHealthRow {
   appId: string;
+  name?: string;
   health: 'healthy' | 'attention' | 'critical' | string;
   issues: string[];
+  linkProbeStatus?: string;
+  syncStatus?: string;
+  syncError?: string;
 }
 
 interface MyAppsHealthResponse {
@@ -491,6 +496,17 @@ function MyAppsContent() {
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2 lg:justify-end">
+                        {appHealth && appHealth.issues.length > 0 && (
+                          <AppHealthCopilot
+                            iconOnly
+                            appId={app.id}
+                            appName={app.name}
+                            issues={appHealth.issues}
+                            linkProbeStatus={appHealth.linkProbeStatus}
+                            syncStatus={appHealth.syncStatus}
+                            syncError={appHealth.syncError}
+                          />
+                        )}
                         <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)}>
                           <ExternalLink className="h-4 w-4" />
                           Öffnen

@@ -91,6 +91,58 @@ export interface ChangelogSuggestion {
   changelog: string;
 }
 
+export interface HealthCopilotIssue {
+  code: string;
+  title: string;
+  explanation: string;
+  evidence: string;
+  actions: string[];
+}
+
+export interface HealthCopilotSuggestion {
+  appId: string;
+  name: string;
+  summary: string;
+  priority: 'low' | 'medium' | 'high' | string;
+  issues: HealthCopilotIssue[];
+}
+
+export interface AppCreationSuggestion {
+  name: string;
+  id: string;
+  description: string;
+  categories: string[];
+  tags: string[];
+  techStack: string[];
+  license: string;
+  isReuse: boolean;
+  reuseRequirements: string;
+  markdownContent: string;
+  dockerRepo: string;
+  customDockerCommand: string;
+  customComposeCommand: string;
+  helmRepo: string;
+  customHelmCommand: string;
+  customHelmValues: string;
+  missingFields: string[];
+  notes: string[];
+}
+
+export interface AppCreationSuggestionPayload {
+  brief: string;
+  name?: string;
+  description?: string;
+  markdownContent?: string;
+  repository?: {
+    projectPath?: string;
+    branch?: string;
+    readmeContent?: string;
+    topics?: string[];
+    helmValuesContent?: string;
+    composeFileContent?: string;
+  };
+}
+
 export interface ChangelogSuggestionPayload {
   appId?: string;
   name: string;
@@ -194,6 +246,24 @@ export async function suggestChangelog(payload: ChangelogSuggestionPayload): Pro
   });
   if (!response.ok) throw await parseError(response, 'AI-Changelog konnte nicht erzeugt werden.');
   return response.json() as Promise<ChangelogSuggestion>;
+}
+
+export async function explainAppHealth(appId: string): Promise<HealthCopilotSuggestion> {
+  const response = await fetchApi(`/apps/${encodeURIComponent(appId)}/health/copilot`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Erklärung konnte nicht erzeugt werden.');
+  return response.json() as Promise<HealthCopilotSuggestion>;
+}
+
+export async function suggestAppCreation(payload: AppCreationSuggestionPayload): Promise<AppCreationSuggestion> {
+  const response = await fetchApi('/apps/creation/suggest', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-App-Vorschlag konnte nicht erzeugt werden.');
+  return response.json() as Promise<AppCreationSuggestion>;
 }
 
 export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {
