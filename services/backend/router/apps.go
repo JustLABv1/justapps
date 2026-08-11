@@ -14,6 +14,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetApps(c, db)
 		})
+		appsGroup.GET("/health", middlewares.Auth(db), func(c *gin.Context) {
+			apps.GetMyHealth(c, db)
+		})
 		appsGroup.GET("/:id", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetApp(c, db)
 		})

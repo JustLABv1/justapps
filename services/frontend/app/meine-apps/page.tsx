@@ -4,6 +4,7 @@ import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AppConfig, SystemUser } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
+import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
 import { getImageAssetUrl } from '@/lib/assets';
 import {
     Button,
@@ -14,7 +15,9 @@ import {
     toast
 } from '@heroui/react';
 import {
+    CheckCircle2,
     ChevronLeft,
+    CircleHelp,
     Copy,
     ExternalLink,
     Lock,
@@ -22,6 +25,7 @@ import {
     Pencil,
     Plus,
     Search,
+    ShieldAlert,
     ShieldCheck,
     Trash2,
     UsersRound
@@ -59,11 +63,39 @@ function MyAppsCardSkeleton() {
   );
 }
 
+interface MyAppHealthRow {
+  appId: string;
+  health: 'healthy' | 'attention' | 'critical' | string;
+  issues: string[];
+}
+
+interface MyAppsHealthResponse {
+  generatedAt: string;
+  total: number;
+  healthy: number;
+  attention: number;
+  critical: number;
+  apps: MyAppHealthRow[];
+}
+
+function healthLabel(health: string) {
+  if (health === 'critical') return 'Kritisch';
+  if (health === 'attention') return 'Aufmerksamkeit nötig';
+  return 'Gesund';
+}
+
+function healthColor(health: string): 'success' | 'warning' | 'danger' {
+  if (health === 'critical') return 'danger';
+  if (health === 'attention') return 'warning';
+  return 'success';
+}
+
 function MyAppsContent() {
   const { user, loading: authLoading, profileReady, profileError, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
+  const [health, setHealth] = useState<MyAppsHealthResponse | null>(null);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [settings, setSettings] = useState({ allowAppSubmissions: true });
   const [loading, setLoading] = useState(true);
@@ -90,9 +122,10 @@ function MyAppsContent() {
     setLoading(true);
     setError(null);
     try {
-      const [settingsRes, appsRes] = await Promise.all([
+      const [settingsRes, appsRes, healthRes] = await Promise.all([
         fetchApi('/settings'),
         fetchApi('/apps?editable=me'),
+        fetchApi('/apps/health'),
       ]);
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
@@ -103,6 +136,11 @@ function MyAppsContent() {
         setApps(data);
       } else {
         setError(`Fehler beim Laden Ihrer Apps: ${appsRes.statusText}`);
+      }
+      if (healthRes.ok) {
+        setHealth(await healthRes.json() as MyAppsHealthResponse);
+      } else {
+        setHealth(null);
       }
       const usersRes = await fetchApi('/users');
       if (usersRes.ok) {
@@ -230,6 +268,33 @@ function MyAppsContent() {
     const search = query.trim().toLowerCase();
     return !search || [app.name, app.id, app.description, ...(app.categories || [])].some((value) => value?.toLowerCase().includes(search));
   });
+  const healthByAppId = new Map((health?.apps || []).map((app) => [app.appId, app]));
+  const healthSummaryCards = health ? [
+    {
+      label: 'Gesund',
+      value: health.healthy,
+      sub: 'Keine offenen Hinweise',
+      icon: CheckCircle2,
+      iconColor: 'text-success',
+      iconBackground: 'bg-success/10',
+    },
+    {
+      label: 'Aufmerksamkeit',
+      value: health.attention,
+      sub: 'Apps mit Hinweisen',
+      icon: CircleHelp,
+      iconColor: 'text-warning',
+      iconBackground: 'bg-warning/10',
+    },
+    {
+      label: 'Kritisch',
+      value: health.critical,
+      sub: 'Dringende Probleme',
+      icon: ShieldAlert,
+      iconColor: 'text-danger',
+      iconBackground: 'bg-danger/10',
+    },
+  ] as const : [];
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -284,6 +349,36 @@ function MyAppsContent() {
         </div>
       )}
 
+      {health && (
+        <Card variant="default" className="mt-6 border-border shadow-sm">
+          <Card.Header className="gap-1 p-5 pb-0">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Card.Title className="text-base">App-Gesundheit</Card.Title>
+                <Card.Description className="mt-1">Erreichbarkeit, Synchronisation und Pflegezustand Ihrer Apps.</Card.Description>
+              </div>
+              <Chip color={health.critical > 0 ? 'danger' : health.attention > 0 ? 'warning' : 'success'} variant="soft" size="sm">
+                {health.total} überprüft
+              </Chip>
+            </div>
+          </Card.Header>
+          <Card.Content className="grid gap-3 p-5 sm:grid-cols-3">
+            {healthSummaryCards.map(({ label, value, sub, icon: Icon, iconColor, iconBackground }) => (
+              <div key={label} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted">{label}</span>
+                  <span className={['flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', iconBackground].join(' ')}>
+                    <Icon className={['h-4 w-4', iconColor].join(' ')} aria-hidden="true" />
+                  </span>
+                </div>
+                <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
+                <span className="text-xs text-muted">{sub}</span>
+              </div>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
       <div className="pt-6">
         {!settings.allowAppSubmissions && user.role !== 'admin' && !user.canSubmitApps && (
           <div className="flex flex-col md:flex-row gap-4 pb-4 justify-end items-center">
@@ -316,6 +411,7 @@ function MyAppsContent() {
                 const statusMeta = getAppStatusMeta(app.status);
                 const iconSrc = getImageAssetUrl(app.icon);
                 const permissions = getAppPermissions(app);
+                const appHealth = healthByAppId.get(app.id);
                 const canEdit = permissions.canEdit && !app.isLocked;
                 const canDelete = permissions.canDelete && !app.isLocked;
                 const canCopy = user.role === 'admin' || app.ownerId === user.id;
@@ -358,6 +454,29 @@ function MyAppsContent() {
                               {statusMeta.label}
                             </Chip>
                           )}
+                          {appHealth && (
+                            <Chip
+                              size="sm"
+                              color={healthColor(appHealth.health)}
+                              variant="soft"
+                              className="font-bold text-[10px] uppercase tracking-wider"
+                            >
+                              {healthLabel(appHealth.health)}
+                              {appHealth.issues.length > 0 && ' · ' + appHealth.issues.length + ' Hinweis' + (appHealth.issues.length === 1 ? '' : 'e')}
+                            </Chip>
+                          )}
+                          {appHealth?.issues.map((issue) => (
+                            <Chip
+                              key={issue}
+                              color={getAppHealthIssueColor(issue)}
+                              variant="soft"
+                              size="sm"
+                              title={getAppHealthIssueDescription(issue)}
+                              className="font-medium text-[10px]"
+                            >
+                              {getAppHealthIssueLabel(issue)}
+                            </Chip>
+                          ))}
                           {app.isLocked && (
                             <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
                               <Lock className="w-3 h-3" /> Gesperrt

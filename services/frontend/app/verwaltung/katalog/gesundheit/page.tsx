@@ -5,6 +5,7 @@ import { Activity, AlertTriangle, CheckCircle2, CircleHelp, Clock3, ExternalLink
 import NextLink from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchApi } from '@/lib/api';
+import { getAppHealthIssueColor, getAppHealthIssueLabel } from '@/lib/appHealth';
 import { getImageAssetUrl, isImageAssetSource } from '@/lib/assets';
 import Image from 'next/image';
 
@@ -35,16 +36,6 @@ interface HealthResponse {
   unowned: number;
   apps: AppHealthRow[];
 }
-
-const issueLabels: Record<string, string> = {
-  'link-probe-down': 'Live-Link nicht erreichbar',
-  'link-probe-partial': 'Live-Links teilweise fehlerhaft',
-  'repository-sync-error': 'Repository-Sync fehlgeschlagen',
-  'repository-sync-pending': 'Sync wartet auf Freigabe',
-  'no-owner': 'Keine verantwortliche Person',
-  'stale-catalog-entry': 'Seit über 90 Tagen unverändert',
-  'missing-documentation': 'Keine Dokumentation hinterlegt',
-};
 
 function healthLabel(health: string) {
   if (health === 'critical') return 'Kritisch';
@@ -220,8 +211,8 @@ export default function VerwaltungKatalogGesundheitPage() {
                   {app.issues.length === 0 ? (
                     <Chip color="success" variant="soft" size="sm">Keine offenen Hinweise</Chip>
                   ) : app.issues.map((issue) => (
-                    <Chip key={issue} color={issue.includes('down') || issue.includes('error') ? 'danger' : 'warning'} variant="soft" size="sm">
-                      {issueLabels[issue] || issue}
+                    <Chip key={issue} color={getAppHealthIssueColor(issue)} variant="soft" size="sm">
+                      {getAppHealthIssueLabel(issue)}
                     </Chip>
                   ))}
                 </div>
