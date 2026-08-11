@@ -52,6 +52,7 @@ export function Navigation() {
     startTransition(() => {
       setSearchOpen(false);
       setSearchQuery("");
+      setMobileOpen(false);
     });
   }, [pathname]);
 
@@ -93,20 +94,22 @@ export function Navigation() {
     router.push("/");
   };
 
+  const documentationLink = {
+    href: "/docs",
+    label: "Dokumentation",
+    icon: BookOpen,
+    active: pathname === "/docs" || pathname.startsWith("/docs/"),
+  };
+
   const regularNavLinks = [
     { href: "/", label: "Apps", icon: Layers, active: pathname === "/" },
-    {
-      href: "/docs",
-      label: "Dokumentation",
-      icon: BookOpen,
-      active: pathname === "/docs" || pathname.startsWith("/docs/"),
-    },
     {
       href: "/gruppen",
       label: "Gruppen",
       icon: Layers2,
       active: pathname === "/gruppen" || pathname.startsWith("/gruppen/"),
     },
+    documentationLink,
     ...(user
       ? [
           {
@@ -138,10 +141,13 @@ export function Navigation() {
         ]
       : []),
   ];
+  const desktopNavLinks = regularNavLinks.filter(
+    (link) => link.href !== documentationLink.href,
+  );
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link
           href="/"
@@ -168,15 +174,18 @@ export function Navigation() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1 ml-8">
-          {regularNavLinks.map((link) => {
+        <nav
+          className="hidden min-w-0 flex-1 items-center gap-1 ml-4 xl:flex"
+          aria-label="Hauptnavigation"
+        >
+          {desktopNavLinks.map((link) => {
             const Icon = link.icon;
 
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors no-underline ${
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors no-underline xl:px-3 ${
                   link.active
                     ? "text-accent bg-accent/8"
                     : "text-muted hover:text-foreground hover:bg-default"
@@ -234,7 +243,21 @@ export function Navigation() {
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+          {/* Documentation is a utility destination on wide screens, not part of the catalog sequence. */}
+          <Link
+            href={documentationLink.href}
+            aria-current={documentationLink.active ? "page" : undefined}
+            className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
+              documentationLink.active
+                ? "text-accent bg-accent/8"
+                : "text-muted hover:text-foreground hover:bg-default"
+            }`}
+          >
+            <BookOpen className="h-3.5 w-3.5 shrink-0" />
+            <span>{documentationLink.label}</span>
+          </Link>
+
           {/* Global search */}
           <div className="hidden sm:flex items-center">
             {searchOpen ? (
@@ -273,7 +296,7 @@ export function Navigation() {
                 aria-label="Suche öffnen (Cmd+K)"
               >
                 <Search className="w-4 h-4" />
-                <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted/70">
+                <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted/70">
                   ⌘K
                 </kbd>
               </button>
@@ -352,9 +375,11 @@ export function Navigation() {
             isIconOnly
             variant="secondary"
             size="sm"
-            className="md:hidden"
+            className="xl:hidden"
             onPress={() => setMobileOpen(!mobileOpen)}
-            aria-label="Menü öffnen"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
+            aria-label={mobileOpen ? "Menü schließen" : "Menü öffnen"}
           >
             {mobileOpen ? (
               <X className="w-4 h-4" />
@@ -367,7 +392,11 @@ export function Navigation() {
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-surface p-4 space-y-2">
+        <nav
+          id="mobile-navigation"
+          aria-label="Mobile Navigation"
+          className="xl:hidden border-t border-border bg-surface p-4 space-y-2"
+        >
           {/* Mobile search */}
           <form
             onSubmit={(e) => {
@@ -392,7 +421,12 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-default no-underline"
+                aria-current={link.active ? "page" : undefined}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline ${
+                  link.active
+                    ? "bg-accent/8 text-accent"
+                    : "text-foreground hover:bg-default"
+                }`}
                 onPress={() => setMobileOpen(false)}
               >
                 <Icon className="h-4 w-4 shrink-0 text-muted" />
@@ -446,7 +480,7 @@ export function Navigation() {
               </Button>
             </div>
           )}
-        </div>
+        </nav>
       )}
     </header>
   );
