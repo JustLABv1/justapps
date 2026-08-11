@@ -100,6 +100,10 @@ export function Navigation() {
     icon: BookOpen,
     active: pathname === "/docs" || pathname.startsWith("/docs/"),
   };
+  const documentationLinkAttributes = {
+    target: "_blank" as const,
+    rel: "noopener noreferrer",
+  };
 
   const regularNavLinks = [
     { href: "/", label: "Apps", icon: Layers, active: pathname === "/" },
@@ -247,6 +251,8 @@ export function Navigation() {
           {/* Documentation is a utility destination on wide screens, not part of the catalog sequence. */}
           <Link
             href={documentationLink.href}
+            target={documentationLinkAttributes.target}
+            rel={documentationLinkAttributes.rel}
             aria-current={documentationLink.active ? "page" : undefined}
             className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
               documentationLink.active
@@ -421,6 +427,16 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
+                target={
+                  link.href === documentationLink.href
+                    ? documentationLinkAttributes.target
+                    : undefined
+                }
+                rel={
+                  link.href === documentationLink.href
+                    ? documentationLinkAttributes.rel
+                    : undefined
+                }
                 aria-current={link.active ? "page" : undefined}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline ${
                   link.active
