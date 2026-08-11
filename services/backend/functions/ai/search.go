@@ -72,6 +72,7 @@ func ExpandSearchQuery(ctx context.Context, db *bun.DB, conf *config.RestfulConf
 		Messages:        messages,
 		Temperature:     temperature,
 		MaxOutputTokens: maxOutputTokens,
+		JSONMode:        true,
 	})
 	if err != nil {
 		return SearchPlan{}, fmt.Errorf("expand app search query with provider %q: %w", provider.Key, err)

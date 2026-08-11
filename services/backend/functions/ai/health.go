@@ -93,6 +93,7 @@ Führe nur Hinweis-Codes auf, die in den Daten vorkommen. Nenne pro Hinweis ein 
 		Messages:        messages,
 		Temperature:     temperature,
 		MaxOutputTokens: maxOutputTokens,
+		JSONMode:        true,
 	})
 	if err != nil {
 		return HealthCopilotSuggestion{}, fmt.Errorf("generate health copilot response with provider %q: %w", provider.Key, err)

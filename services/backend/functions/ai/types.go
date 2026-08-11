@@ -36,6 +36,7 @@ type ChatRequest struct {
 	Messages        []ChatMessage
 	Temperature     float64
 	MaxOutputTokens int
+	JSONMode        bool
 }
 
 type Usage struct {

@@ -16,7 +16,7 @@ import (
 var (
 	ErrAIDisabled       = errors.New("ai feature disabled")
 	ErrAINoProvider     = errors.New("no active ai provider configured")
-	ErrAIInvalidPayload = errors.New("ai returned an invalid changelog payload")
+	ErrAIInvalidPayload = errors.New("ai returned an invalid structured payload")
 )
 
 type ChangelogGenerationInput struct {
@@ -90,6 +90,7 @@ Schreibe in der angeforderten Sprache. Der Changelog-Text soll direkt in JustApp
 		Messages:        messages,
 		Temperature:     provider.Temperature,
 		MaxOutputTokens: maxOutputTokens,
+		JSONMode:        true,
 	})
 	if err != nil {
 		return ChangelogSuggestion{}, fmt.Errorf("generate changelog with provider %q: %w", provider.Key, err)

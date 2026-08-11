@@ -6,12 +6,12 @@ import { AppConfig, GitLabIntegrationState, GitLabProviderSummary, SystemUser } 
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi, uploadFile } from "@/lib/api";
-import { suggestAppCreation, type AppCreationSuggestion } from "@/lib/ai";
+import { suggestAppCreation, type AppCreationSuggestionResponse } from "@/lib/ai";
 import { DRAFT_STATUS, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl, isImageAssetSource } from "@/lib/assets";
 import {
   Alert, Button, Chip, FieldError, Input as HeroInput, Label, ListBox, ProgressBar,
-  Modal, Select, Switch, TextArea as HeroTextArea, TextField, ToggleButton, toast,
+  Modal, Select, Spinner, Switch, TextArea as HeroTextArea, TextField, ToggleButton, toast,
 } from "@heroui/react";
 import {
   ArrowLeft, ArrowRight, BookOpen, Boxes, Check, CircleHelp, FileText,
@@ -45,6 +45,23 @@ const emptyApp = (): Partial<AppConfig> => ({
 
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const links = (items?: { label?: string; url?: string }[]) => (items || []).filter((item) => item.url?.trim()).map((item) => ({ label: item.label?.trim() || "Link", url: item.url!.trim() }));
+const formatAIAssistantError = (error: unknown) => {
+  const message = error instanceof Error ? error.message.trim() : "";
+  const normalized = message.toLowerCase();
+  if (!message || /failed to fetch|networkerror|network request failed|load failed/i.test(message)) {
+    return "Der AI-Service ist momentan nicht erreichbar. Prüfe die Verbindung und die AI-Provider-Konfiguration und versuche es erneut.";
+  }
+  if (normalized.includes("invalid structured payload") || normalized.includes("invalid changelog payload") || normalized.includes("app-vorschlag war unvollständig")) {
+    return "Die KI hat eine unvollständige oder ungültige Antwort geliefert. Bitte starte die Analyse erneut.";
+  }
+  if (normalized.includes("kein aktiver ai-provider")) {
+    return "Es ist kein aktiver AI-Provider konfiguriert. Bitte richte zuerst einen Provider in der Verwaltung ein.";
+  }
+  if (normalized.includes("repository konnte nicht analysiert werden")) {
+    return "Das Repository konnte nicht analysiert werden. Prüfe Provider, Projektpfad und Berechtigungen und versuche es erneut.";
+  }
+  return message;
+};
 
 function Input({ className, ...props }: ComponentProps<typeof HeroInput>) {
   return <HeroInput {...props} className={`h-12 text-base ${className || ""}`} />;
@@ -118,7 +135,9 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const [editorsWereSaved, setEditorsWereSaved] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState("");
-  const [aiSuggestion, setAiSuggestion] = useState<AppCreationSuggestion | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<AppCreationSuggestionResponse | null>(null);
+  const [aiScanRepository, setAiScanRepository] = useState(false);
+  const [repositoryScannedByAI, setRepositoryScannedByAI] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const iconInput = useRef<HTMLInputElement>(null);
@@ -175,7 +194,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const previewIcon = getImageAssetUrl(formData.icon);
 
   useEffect(() => { headingRef.current?.focus(); }, [currentId]);
-  useEffect(() => { if (branches.repository) fetchApi("/settings/repository-providers/available").then((response) => response.ok ? response.json() : []).then((value) => setProviders(Array.isArray(value) ? value : [])).catch(() => {}); }, [branches.repository]);
+  useEffect(() => { if (branches.repository || aiAssistantOpen) fetchApi("/settings/repository-providers/available").then((response) => response.ok ? response.json() : []).then((value) => setProviders(Array.isArray(value) ? value : [])).catch(() => {}); }, [branches.repository, aiAssistantOpen]);
   useEffect(() => { if (canManageGroups) fetchApi("/app-groups").then((response) => response.ok ? response.json() : []).then((value) => setGroups(Array.isArray(value) ? value : [])).catch(() => {}); }, [canManageGroups]);
   useEffect(() => { if (branches.editors) fetchApi("/users").then((response) => response.ok ? response.json() : []).then((value) => { const users = Array.isArray(value) ? value : value.users || []; setAvailableUsers(users.filter((candidate: SystemUser) => !candidate.disabled && candidate.id !== user?.id)); }).catch(() => {}); }, [branches.editors, user?.id]);
 
@@ -203,17 +222,37 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, branches]);
 
+  const applyRepositorySnapshot = (snapshot: GitLabIntegrationState["snapshot"]) => {
+    if (!snapshot) return;
+    setFormData((previous) => ({
+      ...previous,
+      markdownContent: snapshot.readmeContent?.trim() || previous.markdownContent,
+      description: snapshot.description?.trim() || previous.description,
+      license: snapshot.license?.trim() || previous.license,
+      tags: Array.from(new Set([...(previous.tags || []), ...(snapshot.topics || []).filter(Boolean)])),
+      repositories: snapshot.projectWebUrl
+        ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
+        : previous.repositories,
+      customHelmValues: snapshot.helmValuesContent?.trim() || previous.customHelmValues,
+      customComposeCommand: snapshot.composeFileContent?.trim() || previous.customComposeCommand,
+    }));
+  };
+
+  const syncRepositoryForApp = async (id: string, applySnapshot = true) => {
+    const response = await fetchApi(`/apps/${id}/repository/sync`, { method: "POST" });
+    if (!response.ok) throw new Error("Repository-Synchronisation fehlgeschlagen.");
+    const integration = await response.json() as GitLabIntegrationState;
+    if (applySnapshot) applyRepositorySnapshot(integration.snapshot);
+    return integration;
+  };
+
   const syncRepository = async () => {
     if (!repo.providerKey || !repo.projectPath) return;
     setSyncing(true);
     try {
       const id = await save();
       await saveRepositoryConnection(id);
-      const response = await fetchApi(`/apps/${id}/repository/sync`, { method: "POST" });
-      if (!response.ok) throw new Error("Repository-Synchronisation fehlgeschlagen.");
-      const integration = await response.json() as GitLabIntegrationState;
-      const snapshot = integration.snapshot;
-      if (snapshot) setFormData((previous) => ({ ...previous, markdownContent: snapshot.readmeContent?.trim() || previous.markdownContent, description: snapshot.description?.trim() || previous.description, license: snapshot.license?.trim() || previous.license, tags: Array.from(new Set([...(previous.tags || []), ...(snapshot.topics || []).filter(Boolean)])), repositories: snapshot.projectWebUrl ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }] : previous.repositories, customHelmValues: snapshot.helmValuesContent?.trim() || previous.customHelmValues, customComposeCommand: snapshot.composeFileContent?.trim() || previous.customComposeCommand }));
+      await syncRepositoryForApp(id);
       toast.success("Repositorydaten wurden übernommen.");
     } catch (error) { const message = error instanceof Error ? error.message : "Repository-Synchronisation fehlgeschlagen."; setSaveError(message); toast.danger(message); } finally { setSyncing(false); }
   };
@@ -228,7 +267,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   };
   const generateAIDraft = async () => {
     const brief = aiBrief.trim();
-    if (!brief || aiGenerating) return;
+    const hasRepositoryInput = aiScanRepository && !!repo.providerKey && !!repo.projectPath.trim();
+    if ((!brief && !hasRepositoryInput) || aiGenerating) return;
     setAiGenerating(true);
     setAiError(null);
     try {
@@ -237,48 +277,77 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
         name: formData.name || "",
         description: formData.description || "",
         markdownContent: formData.markdownContent || "",
+        scanRepository: aiScanRepository,
         repository: {
+          providerKey: repo.providerKey,
           projectPath: repo.projectPath,
           branch: repo.branch,
-          readmeContent: formData.markdownContent || "",
-          topics: formData.tags || [],
-          helmValuesContent: formData.customHelmValues || "",
-          composeFileContent: formData.customComposeCommand || "",
+          readmePath: repo.readmePath,
+          helmValuesPath: repo.helmValuesPath,
+          composeFilePath: repo.composeFilePath,
+          readmeContent: aiScanRepository ? "" : formData.markdownContent || "",
+          topics: aiScanRepository ? [] : formData.tags || [],
+          helmValuesContent: aiScanRepository ? "" : formData.customHelmValues || "",
+          composeFileContent: aiScanRepository ? "" : formData.customComposeCommand || "",
         },
       });
       setAiSuggestion(suggestion);
     } catch (error) {
-      setAiError(error instanceof Error ? error.message : "AI-Vorschlag konnte nicht erzeugt werden.");
+      setAiError(formatAIAssistantError(error));
     } finally {
       setAiGenerating(false);
     }
   };
   const applyAIDraft = () => {
     if (!aiSuggestion) return;
+    const snapshot = aiSuggestion.repositorySnapshot;
+    const hasDockerSetup = Boolean(aiSuggestion.dockerRepo || aiSuggestion.customDockerCommand);
+    const hasComposeSetup = Boolean(aiSuggestion.customComposeCommand || snapshot?.composeFileContent);
+    const hasHelmSetup = Boolean(aiSuggestion.helmRepo || aiSuggestion.customHelmCommand);
     setFormData((previous) => ({
       ...previous,
       name: aiSuggestion.name || previous.name,
       id: aiSuggestion.id || slugify(aiSuggestion.name) || previous.id,
-      description: aiSuggestion.description || previous.description,
+      description: aiSuggestion.description || snapshot?.description || previous.description,
       categories: aiSuggestion.categories.length ? aiSuggestion.categories : previous.categories,
-      tags: aiSuggestion.tags.length ? aiSuggestion.tags : previous.tags,
+      tags: Array.from(new Set([...(aiSuggestion.tags.length ? aiSuggestion.tags : previous.tags || []), ...(snapshot?.topics || [])])),
       techStack: aiSuggestion.techStack.length ? aiSuggestion.techStack : previous.techStack,
-      license: aiSuggestion.license || previous.license,
+      license: aiSuggestion.license || snapshot?.license || previous.license,
       isReuse: previous.isReuse || aiSuggestion.isReuse,
       reuseRequirements: aiSuggestion.reuseRequirements || previous.reuseRequirements,
-      markdownContent: aiSuggestion.markdownContent || previous.markdownContent,
+      markdownContent: aiSuggestion.markdownContent || snapshot?.readmeContent || previous.markdownContent,
+      repositories: snapshot?.projectWebUrl
+        ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
+        : previous.repositories,
       dockerRepo: aiSuggestion.dockerRepo || previous.dockerRepo,
       customDockerCommand: aiSuggestion.customDockerCommand || previous.customDockerCommand,
-      customComposeCommand: aiSuggestion.customComposeCommand || previous.customComposeCommand,
+      customComposeCommand: aiSuggestion.customComposeCommand || snapshot?.composeFileContent || previous.customComposeCommand,
       helmRepo: aiSuggestion.helmRepo || previous.helmRepo,
       customHelmCommand: aiSuggestion.customHelmCommand || previous.customHelmCommand,
-      customHelmValues: aiSuggestion.customHelmValues || previous.customHelmValues,
+      customHelmValues: aiSuggestion.customHelmValues || snapshot?.helmValuesContent || previous.customHelmValues,
+      showDocker: hasDockerSetup ? previous.showDocker !== false : false,
+      showCompose: hasComposeSetup ? previous.showCompose !== false : false,
+      showHelm: hasHelmSetup ? previous.showHelm !== false : false,
     }));
     setBranches((previous) => ({
       ...previous,
-      deployment: previous.deployment || Boolean(aiSuggestion.dockerRepo || aiSuggestion.customDockerCommand || aiSuggestion.customComposeCommand || aiSuggestion.helmRepo || aiSuggestion.customHelmCommand),
-      documentation: previous.documentation || Boolean(aiSuggestion.markdownContent),
+      repository: previous.repository || Boolean(aiSuggestion.repositoryScan),
+      deployment: previous.deployment || hasDockerSetup || hasComposeSetup || hasHelmSetup,
+      resources: previous.resources || Boolean(snapshot?.projectWebUrl),
+      documentation: previous.documentation || Boolean(aiSuggestion.markdownContent || snapshot?.readmeContent),
     }));
+    if (aiSuggestion.repositoryScan) {
+      setRepo((previous) => ({
+        ...previous,
+        providerKey: aiSuggestion.repositoryScan?.providerKey || previous.providerKey,
+        projectPath: aiSuggestion.repositoryScan?.projectPath || previous.projectPath,
+        branch: aiSuggestion.repositoryScan?.branch || previous.branch,
+        readmePath: aiSuggestion.repositoryScan?.readmePath || previous.readmePath,
+        helmValuesPath: aiSuggestion.repositoryScan?.helmValuesPath || previous.helmValuesPath,
+        composeFilePath: aiSuggestion.repositoryScan?.composeFilePath || previous.composeFilePath,
+      }));
+      setRepositoryScannedByAI(true);
+    }
     setAiAssistantOpen(false);
     setCurrentId("description");
     setAttemptedNext(false);
@@ -419,7 +488,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
     }
   };
 
-  const finish = async () => { if (validationIssues().length) { setAttemptedNext(true); return; } try { const id = await save(); if (branches.repository) await saveRepositoryConnection(id); if (branches.editors || editorsWereSaved) await saveEditors(id, branches.editors ? Array.from(editorIds) : []); for (const groupId of groupIds) await fetchApi(`/app-groups/${groupId}/members`, { method: "POST", body: JSON.stringify({ appId: id }) }); await save(true); } catch (error) { const message = error instanceof Error ? error.message : "Die App konnte nicht erstellt werden."; setSaveError(message); toast.danger(message); } };
+  const finish = async () => { if (validationIssues().length) { setAttemptedNext(true); return; } try { const id = await save(); if (branches.repository) { await saveRepositoryConnection(id); if (repositoryScannedByAI) await syncRepositoryForApp(id, false); } if (branches.editors || editorsWereSaved) await saveEditors(id, branches.editors ? Array.from(editorIds) : []); for (const groupId of groupIds) await fetchApi(`/app-groups/${groupId}/members`, { method: "POST", body: JSON.stringify({ appId: id }) }); await save(true); } catch (error) { const message = error instanceof Error ? error.message : "Die App konnte nicht erstellt werden."; setSaveError(message); toast.danger(message); } };
   const requestExit = () => {
     if ((saveState === "saving" || saveState === "error") && !window.confirm("Der Entwurf wird noch gespeichert. Möchtest du die Erstellung wirklich verlassen?")) return;
     router.push(backUrl);
@@ -435,7 +504,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
 
   return <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-5xl flex-col px-4 pb-28 pt-6 sm:px-6">
     <header className="sticky top-14 z-20 -mx-4 border-b border-border bg-background/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6"><div className="flex items-center justify-between gap-4"><Button variant="ghost" size="sm" onPress={requestExit}><ArrowLeft className="h-4 w-4" />Verlassen</Button><div className="text-right" aria-live="polite"><p className="text-xs font-semibold text-muted">{saveState === "saving" ? "Speichert …" : saveState === "saved" ? "Entwurf gespeichert" : saveState === "error" ? "Speichern fehlgeschlagen" : copySource ? "Kopie wird erstellt" : "Neue App"}</p><p className="text-sm font-semibold text-foreground">Schritt {currentIndex + 1} von {steps.length}</p></div></div><ProgressBar aria-label="Fortschritt der App-Erstellung" value={((currentIndex + 1) / steps.length) * 100} className="mt-3"><ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track></ProgressBar></header>
-    <main onKeyDown={handleStageKeyDown} className="flex flex-1 items-center justify-center py-8"><section className="w-full max-w-2xl px-2 py-6 sm:px-8 sm:py-10"><StepVisual step={current} formData={formData} onOpenAI={() => { setAiSuggestion(null); setAiError(null); setAiAssistantOpen(true); }} /><p className="mt-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-accent">{current.optional ? "Optional" : "App erstellen"}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-center text-2xl font-bold tracking-tight text-foreground outline-none sm:text-3xl">{current.title}</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted">{current.description}</p><div className="mt-8">{stage()}</div>{attemptedNext && !validCurrent() && current.id !== "name" && current.id !== "description" && <p className="mt-4 text-sm font-medium text-danger" role="status">{validationMessage()}</p>}{saveError && <Alert color="danger" className="mt-5"><Alert.Content><Alert.Description>{saveError}</Alert.Description></Alert.Content></Alert>}</section></main>
+    <main onKeyDown={handleStageKeyDown} className="flex flex-1 items-center justify-center py-8"><section className="w-full max-w-2xl px-2 py-6 sm:px-8 sm:py-10"><StepVisual step={current} formData={formData} onOpenAI={() => { setAiSuggestion(null); setAiError(null); setAiScanRepository(Boolean(repo.projectPath)); setAiAssistantOpen(true); }} /><p className="mt-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-accent">{current.optional ? "Optional" : "App erstellen"}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-center text-2xl font-bold tracking-tight text-foreground outline-none sm:text-3xl">{current.title}</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted">{current.description}</p><div className="mt-8">{stage()}</div>{attemptedNext && !validCurrent() && current.id !== "name" && current.id !== "description" && <p className="mt-4 text-sm font-medium text-danger" role="status">{validationMessage()}</p>}{saveError && <Alert color="danger" className="mt-5"><Alert.Content><Alert.Description>{saveError}</Alert.Description></Alert.Content></Alert>}</section></main>
     <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3"><Button variant="secondary" isDisabled={currentIndex === 0} onPress={() => move(-1)}><ArrowLeft className="h-4 w-4" />Zurück</Button>{current.id === "review" ? <Button isPending={saveState === "saving"} onPress={finish}>App erstellen<Check className="h-4 w-4" /></Button> : <Button onPress={() => returnToReview ? (validCurrent() ? setCurrentId("review") : setAttemptedNext(true)) : move(1)}>{returnToReview ? "Zur Übersicht" : "Weiter"}<ArrowRight className="h-4 w-4" /></Button>}</div></footer>
     <Modal>
       <Modal.Backdrop isOpen={aiAssistantOpen} onOpenChange={setAiAssistantOpen}>
@@ -450,8 +519,25 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
               </div>
             </Modal.Header>
             <Modal.Body className="max-h-[62vh] space-y-5 overflow-y-auto">
-              <TextField isRequired>
-                <Label>Was soll die App leisten?</Label>
+              {aiError && <Alert status="danger" className="border-danger/30 bg-danger/10" aria-live="assertive">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Title>AI-Analyse fehlgeschlagen</Alert.Title>
+                  <Alert.Description>
+                    <p className="break-words">{aiError}</p>
+                    <p className="mt-2 text-xs">Deine Eingaben bleiben erhalten. Du kannst die Analyse nach der Korrektur erneut starten.</p>
+                  </Alert.Description>
+                </Alert.Content>
+              </Alert>}
+              {aiGenerating && <Alert status="accent" className="border-accent/30 bg-accent/10" aria-live="polite">
+                <Alert.Indicator><Spinner size="sm" color="accent" /></Alert.Indicator>
+                <Alert.Content>
+                  <Alert.Title>{aiScanRepository ? "Repository wird analysiert" : "AI-Vorschlag wird erstellt"}</Alert.Title>
+                  <Alert.Description>{aiScanRepository ? "Projektmetadaten, README und optionale Deployment-Dateien werden gelesen. Das kann einige Sekunden dauern." : "Der Assistent erstellt aus deiner Beschreibung einen prüfbaren App-Vorschlag."}</Alert.Description>
+                </Alert.Content>
+              </Alert>}
+              <TextField isRequired={!aiScanRepository}>
+                <Label>Was soll die App leisten? {aiScanRepository && <span className="font-normal text-muted">(optional bei Repository-Scan)</span>}</Label>
                 <TextArea
                   value={aiBrief}
                   onChange={(event) => setAiBrief(event.target.value)}
@@ -459,8 +545,47 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                   className="min-h-36"
                 />
               </TextField>
-              {aiError && <Alert color="danger"><Alert.Content><Alert.Description>{aiError}</Alert.Description></Alert.Content></Alert>}
-              {!aiSuggestion && <Button onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={!aiBrief.trim()}><Sparkles className="h-4 w-4" />Vorschlag erstellen</Button>}
+              <div className="rounded-2xl border border-border bg-surface-secondary/50 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground">Repository mit analysieren</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">Der Assistent liest Projektmetadaten, README und optional angegebene Deployment-Dateien. Die Inhalte werden nur als Faktenquelle verwendet.</p>
+                  </div>
+                  <Switch aria-label="Repository mit analysieren" isSelected={aiScanRepository} onChange={setAiScanRepository}>
+                    <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Content>
+                  </Switch>
+                </div>
+                {aiScanRepository && <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Repository-Provider</Label>
+                    <Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => setRepo((previous) => ({ ...previous, providerKey: String(key) }))} isDisabled={!providers.length}>
+                      <Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger>
+                      <Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover>
+                    </Select>
+                  </div>
+                  <TextField isRequired isInvalid={aiScanRepository && !repo.projectPath.trim()} onChange={(projectPath) => setRepo((previous) => ({ ...previous, projectPath }))}>
+                    <Label>Projektpfad</Label>
+                    <Input value={repo.projectPath} placeholder="gruppe/projekt" />
+                  </TextField>
+                  <TextField onChange={(branch) => setRepo((previous) => ({ ...previous, branch }))}>
+                    <Label>Branch oder Ref</Label>
+                    <Input value={repo.branch} placeholder="Standard-Branch" />
+                  </TextField>
+                  <TextField onChange={(readmePath) => setRepo((previous) => ({ ...previous, readmePath }))}>
+                    <Label>README-Pfad <span className="font-normal text-muted">(optional)</span></Label>
+                    <Input value={repo.readmePath} placeholder="README.md – leer für automatische Suche" />
+                  </TextField>
+                  <TextField onChange={(helmValuesPath) => setRepo((previous) => ({ ...previous, helmValuesPath }))}>
+                    <Label>Helm Values <span className="font-normal text-muted">(optional)</span></Label>
+                    <Input value={repo.helmValuesPath} placeholder="chart/values.yaml" />
+                  </TextField>
+                  <TextField onChange={(composeFilePath) => setRepo((previous) => ({ ...previous, composeFilePath }))}>
+                    <Label>Compose-Datei <span className="font-normal text-muted">(optional)</span></Label>
+                    <Input value={repo.composeFilePath} placeholder="docker-compose.yml" />
+                  </TextField>
+                </div>}
+                {aiScanRepository && !providers.length && <p className="mt-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">Es ist aktuell kein Repository-Provider verfügbar. Bitte zuerst einen Provider in der Verwaltung konfigurieren.</p>}
+              </div>
               {aiSuggestion && (
                 <div className="space-y-4 rounded-2xl border border-border bg-surface-secondary/50 p-4">
                   <div>
@@ -476,12 +601,14 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                     <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted">Technologien</span><span className="text-foreground">{aiSuggestion.techStack.join(", ") || "Nicht belegt"}</span></div>
                     <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted">Technische ID</span><span className="font-mono text-foreground">{aiSuggestion.id}</span></div>
                   </div>
+                  {aiSuggestion.repositoryScan && <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 text-sm"><p className="font-semibold text-foreground">Repository analysiert</p><p className="mt-1 text-muted">{aiSuggestion.repositoryScan.providerLabel} · {aiSuggestion.repositoryScan.projectPath} · {aiSuggestion.repositoryScan.branch || "Standard-Branch"}</p>{aiSuggestion.repositoryScan.warnings.length > 0 && <p className="mt-2 text-warning">{aiSuggestion.repositoryScan.warnings.join(" ")}</p>}</div>}
                   {(aiSuggestion.missingFields.length > 0 || aiSuggestion.notes.length > 0) && <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning"><p className="font-semibold">Bitte noch prüfen</p>{aiSuggestion.missingFields.length > 0 && <p>Fehlende Angaben: {aiSuggestion.missingFields.join(", ")}</p>}{aiSuggestion.notes.length > 0 && <ul className="list-disc space-y-1 pl-5">{aiSuggestion.notes.map((note) => <li key={note}>{note}</li>)}</ul>}</div>}
                 </div>
               )}
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onPress={() => setAiAssistantOpen(false)}>Abbrechen</Button>
+              {!aiSuggestion && <Button onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={aiGenerating || ((!aiBrief.trim() && !(aiScanRepository && repo.providerKey && repo.projectPath.trim())) || (aiScanRepository && !providers.length))}><Sparkles className="h-4 w-4" />{aiError ? "Erneut versuchen" : aiScanRepository ? "Repository analysieren & Vorschlag erstellen" : "Vorschlag erstellen"}</Button>}
               {aiSuggestion && <Button onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
             </Modal.Footer>
           </Modal.Dialog>

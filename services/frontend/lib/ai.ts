@@ -1,5 +1,5 @@
 import { fetchApi } from './api';
-import type { AppLink } from '@/config/apps';
+import type { AppLink, GitLabSyncSnapshot } from '@/config/apps';
 
 export interface AIProviderSummary {
   key: string;
@@ -128,14 +128,37 @@ export interface AppCreationSuggestion {
   notes: string[];
 }
 
+export interface AppCreationRepositoryScan {
+  providerKey: string;
+  providerType: string;
+  providerLabel: string;
+  projectPath: string;
+  branch: string;
+  readmePath: string;
+  helmValuesPath: string;
+  composeFilePath: string;
+  status: string;
+  warnings: string[];
+}
+
+export interface AppCreationSuggestionResponse extends AppCreationSuggestion {
+  repositorySnapshot?: GitLabSyncSnapshot;
+  repositoryScan?: AppCreationRepositoryScan;
+}
+
 export interface AppCreationSuggestionPayload {
-  brief: string;
+  brief?: string;
   name?: string;
   description?: string;
   markdownContent?: string;
+  scanRepository?: boolean;
   repository?: {
+    providerKey?: string;
     projectPath?: string;
     branch?: string;
+    readmePath?: string;
+    helmValuesPath?: string;
+    composeFilePath?: string;
     readmeContent?: string;
     topics?: string[];
     helmValuesContent?: string;
@@ -257,13 +280,41 @@ export async function explainAppHealth(appId: string): Promise<HealthCopilotSugg
   return response.json() as Promise<HealthCopilotSuggestion>;
 }
 
-export async function suggestAppCreation(payload: AppCreationSuggestionPayload): Promise<AppCreationSuggestion> {
+export async function suggestAppCreation(payload: AppCreationSuggestionPayload): Promise<AppCreationSuggestionResponse> {
   const response = await fetchApi('/apps/creation/suggest', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw await parseError(response, 'AI-App-Vorschlag konnte nicht erzeugt werden.');
-  return response.json() as Promise<AppCreationSuggestion>;
+  return response.json() as Promise<AppCreationSuggestionResponse>;
+}
+
+export interface CatalogStewardFinding {
+  appId: string;
+  appName: string;
+  kind: string;
+  severity: 'low' | 'medium' | 'high' | string;
+  title: string;
+  summary: string;
+  evidence: string[];
+  suggestions: string[];
+  relatedAppIds: string[];
+}
+
+export interface CatalogStewardReport {
+  generatedAt: string;
+  appsScanned: number;
+  summary: string;
+  findings: CatalogStewardFinding[];
+}
+
+export async function runCatalogSteward(): Promise<CatalogStewardReport> {
+  const response = await fetchApi('/admin/catalog/steward', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw await parseError(response, 'AI-Katalogprüfung konnte nicht erzeugt werden.');
+  return response.json() as Promise<CatalogStewardReport>;
 }
 
 export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {

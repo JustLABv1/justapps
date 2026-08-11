@@ -8,6 +8,7 @@ import (
 	"justapps-backend/config"
 	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
+	gitlabsync "justapps-backend/functions/integrations/gitlab"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 
@@ -21,14 +22,38 @@ type appCreationSuggestionRequest struct {
 	Name            string `json:"name"`
 	Description     string `json:"description"`
 	MarkdownContent string `json:"markdownContent"`
+	ScanRepository  bool   `json:"scanRepository"`
 	Repository      struct {
+		ProviderKey        string   `json:"providerKey"`
 		ProjectPath        string   `json:"projectPath"`
 		Branch             string   `json:"branch"`
+		ReadmePath         string   `json:"readmePath"`
+		HelmValuesPath     string   `json:"helmValuesPath"`
+		ComposeFilePath    string   `json:"composeFilePath"`
 		ReadmeContent      string   `json:"readmeContent"`
 		Topics             []string `json:"topics"`
 		HelmValuesContent  string   `json:"helmValuesContent"`
 		ComposeFileContent string   `json:"composeFileContent"`
 	} `json:"repository"`
+}
+
+type appCreationRepositoryScanResponse struct {
+	ProviderKey     string   `json:"providerKey"`
+	ProviderType    string   `json:"providerType"`
+	ProviderLabel   string   `json:"providerLabel"`
+	ProjectPath     string   `json:"projectPath"`
+	Branch          string   `json:"branch"`
+	ReadmePath      string   `json:"readmePath"`
+	HelmValuesPath  string   `json:"helmValuesPath"`
+	ComposeFilePath string   `json:"composeFilePath"`
+	Status          string   `json:"status"`
+	Warnings        []string `json:"warnings"`
+}
+
+type appCreationSuggestionResponse struct {
+	aifunc.AppCreationSuggestion
+	RepositorySnapshot *models.GitLabSyncSnapshot         `json:"repositorySnapshot,omitempty"`
+	RepositoryScan     *appCreationRepositoryScanResponse `json:"repositoryScan,omitempty"`
 }
 
 func SuggestAppCreation(c *gin.Context, db *bun.DB) {
@@ -54,7 +79,7 @@ func SuggestAppCreation(c *gin.Context, db *bun.DB) {
 		return
 	}
 	req.Brief = strings.TrimSpace(req.Brief)
-	if req.Brief == "" {
+	if req.Brief == "" && !req.ScanRepository {
 		httperror.StatusBadRequest(c, "Bitte beschreiben Sie die App-Idee", errors.New("missing app brief"))
 		return
 	}
@@ -63,19 +88,64 @@ func SuggestAppCreation(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	repository := aifunc.AppCreationRepositoryInput{
+		ProviderKey:        strings.TrimSpace(req.Repository.ProviderKey),
+		ProjectPath:        strings.TrimSpace(req.Repository.ProjectPath),
+		Branch:             strings.TrimSpace(req.Repository.Branch),
+		ReadmePath:         strings.TrimSpace(req.Repository.ReadmePath),
+		HelmValuesPath:     strings.TrimSpace(req.Repository.HelmValuesPath),
+		ComposeFilePath:    strings.TrimSpace(req.Repository.ComposeFilePath),
+		ReadmeContent:      strings.TrimSpace(req.Repository.ReadmeContent),
+		Topics:             req.Repository.Topics,
+		HelmValuesContent:  strings.TrimSpace(req.Repository.HelmValuesContent),
+		ComposeFileContent: strings.TrimSpace(req.Repository.ComposeFileContent),
+		ScanRepository:     req.ScanRepository,
+	}
+	var repositorySnapshot *models.GitLabSyncSnapshot
+	var repositoryScan *appCreationRepositoryScanResponse
+	if req.ScanRepository {
+		snapshot, scan, scanErr := scanRepositoryForCreation(c, db, repository)
+		if scanErr != nil {
+			httperror.StatusBadRequest(c, "Repository konnte nicht analysiert werden", scanErr)
+			return
+		}
+		repositorySnapshot = &snapshot
+		repositoryScan = &scan
+		if snapshot.ProjectPath != "" {
+			repository.ProjectPath = snapshot.ProjectPath
+		}
+		if repository.Branch == "" {
+			repository.Branch = snapshot.DefaultBranch
+		}
+		if snapshot.ReadmePath != "" {
+			repository.ReadmePath = snapshot.ReadmePath
+		}
+		if snapshot.HelmValuesPath != "" {
+			repository.HelmValuesPath = snapshot.HelmValuesPath
+		}
+		if snapshot.ComposeFilePath != "" {
+			repository.ComposeFilePath = snapshot.ComposeFilePath
+		}
+		if strings.TrimSpace(snapshot.ReadmeContent) != "" {
+			repository.ReadmeContent = snapshot.ReadmeContent
+		}
+		if len(snapshot.Topics) > 0 {
+			repository.Topics = snapshot.Topics
+		}
+		if strings.TrimSpace(snapshot.HelmValuesContent) != "" {
+			repository.HelmValuesContent = snapshot.HelmValuesContent
+		}
+		if strings.TrimSpace(snapshot.ComposeFileContent) != "" {
+			repository.ComposeFileContent = snapshot.ComposeFileContent
+		}
+	}
+
 	suggestion, err := aifunc.GenerateAppCreationSuggestion(c.Request.Context(), db, config.Config, aifunc.AppCreationAssistantInput{
 		Brief:           req.Brief,
 		Name:            strings.TrimSpace(req.Name),
 		Description:     strings.TrimSpace(req.Description),
 		MarkdownContent: strings.TrimSpace(req.MarkdownContent),
-		Repository: aifunc.AppCreationRepositoryInput{
-			ProjectPath:        strings.TrimSpace(req.Repository.ProjectPath),
-			Branch:             strings.TrimSpace(req.Repository.Branch),
-			ReadmeContent:      strings.TrimSpace(req.Repository.ReadmeContent),
-			Topics:             req.Repository.Topics,
-			HelmValuesContent:  strings.TrimSpace(req.Repository.HelmValuesContent),
-			ComposeFileContent: strings.TrimSpace(req.Repository.ComposeFileContent),
-		},
+		Repository:      repository,
 	})
 	if err != nil {
 		switch {
@@ -91,6 +161,83 @@ func SuggestAppCreation(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	audit.WriteAudit(c.Request.Context(), db, viewerID.String(), "app.creation.suggest", "generated AI app creation suggestion")
-	c.JSON(200, suggestion)
+	auditAction := "app.creation.suggest"
+	auditDetails := "generated AI app creation suggestion"
+	if req.ScanRepository {
+		auditAction = "app.creation.suggest.repository_scan"
+		auditDetails = "generated AI app creation suggestion from repository scan"
+	}
+	audit.WriteAudit(c.Request.Context(), db, viewerID.String(), auditAction, auditDetails)
+	c.JSON(200, appCreationSuggestionResponse{
+		AppCreationSuggestion: suggestion,
+		RepositorySnapshot:    repositorySnapshot,
+		RepositoryScan:        repositoryScan,
+	})
+}
+
+func scanRepositoryForCreation(c *gin.Context, db *bun.DB, input aifunc.AppCreationRepositoryInput) (models.GitLabSyncSnapshot, appCreationRepositoryScanResponse, error) {
+	provider, found, err := gitlabsync.ResolveProvider(c.Request.Context(), db, config.Config, input.ProviderKey)
+	if err != nil {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, err
+	}
+	if !found || !provider.Enabled {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("repository provider is not configured")
+	}
+
+	projectPath := gitlabsync.NormalizeProjectPath(input.ProjectPath)
+	if projectPath == "" {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("missing repository project path")
+	}
+	if !gitlabsync.IsProjectAllowed(config.RepositoryProviderConf{NamespaceAllowlist: provider.NamespaceAllowlist}, projectPath) {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("repository project is outside the configured namespace allowlist")
+	}
+
+	readmePath := strings.TrimSpace(input.ReadmePath)
+	helmValuesPath := strings.TrimSpace(input.HelmValuesPath)
+	composeFilePath := strings.TrimSpace(input.ComposeFilePath)
+	if helmValuesPath == "" {
+		helmValuesPath = provider.DefaultHelmValuesPath
+	}
+	if composeFilePath == "" {
+		composeFilePath = provider.DefaultComposeFilePath
+	}
+
+	syncer := gitlabsync.NewSyncer(config.RepositoryProviderConf{
+		Key:                provider.Key,
+		Label:              provider.Label,
+		Type:               provider.Type,
+		BaseURL:            provider.BaseURL,
+		Token:              provider.Token,
+		NamespaceAllowlist: provider.NamespaceAllowlist,
+		TimeoutSeconds:     provider.TimeoutSeconds,
+	})
+	result, err := syncer.Sync(models.GitLabAppLink{
+		ProviderKey:     provider.Key,
+		ProviderType:    provider.Type,
+		ProjectPath:     projectPath,
+		Branch:          strings.TrimSpace(input.Branch),
+		ReadmePath:      readmePath,
+		HelmValuesPath:  helmValuesPath,
+		ComposeFilePath: composeFilePath,
+	})
+	if err != nil {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, err
+	}
+
+	branch := strings.TrimSpace(input.Branch)
+	if branch == "" {
+		branch = result.Snapshot.DefaultBranch
+	}
+	return result.Snapshot, appCreationRepositoryScanResponse{
+		ProviderKey:     provider.Key,
+		ProviderType:    provider.Type,
+		ProviderLabel:   provider.Label,
+		ProjectPath:     result.Snapshot.ProjectPath,
+		Branch:          branch,
+		ReadmePath:      result.Snapshot.ReadmePath,
+		HelmValuesPath:  result.Snapshot.HelmValuesPath,
+		ComposeFilePath: result.Snapshot.ComposeFilePath,
+		Status:          result.Status,
+		Warnings:        result.Snapshot.Warnings,
+	}, nil
 }
