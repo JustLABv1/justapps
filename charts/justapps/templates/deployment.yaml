@@ -17,6 +17,10 @@ metadata:
     {{- include "justapps.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  {{- with .Values.monolith.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "justapps.selectorLabels" . | nindent 6 }}
@@ -155,6 +159,10 @@ metadata:
     app.kubernetes.io/component: backend
 spec:
   replicas: {{ .Values.backend.replicaCount }}
+  {{- with .Values.backend.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "justapps.selectorLabels" . | nindent 6 }}
@@ -265,6 +273,10 @@ metadata:
     app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
+  {{- with .Values.frontend.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "justapps.selectorLabels" . | nindent 6 }}
@@ -344,6 +356,10 @@ metadata:
     app.kubernetes.io/component: docs
 spec:
   replicas: {{ .Values.docs.replicaCount }}
+  {{- with .Values.docs.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "justapps.selectorLabels" . | nindent 6 }}
