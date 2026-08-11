@@ -247,9 +247,6 @@ export function AppGrid({ initialApps }: AppGridProps) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [initialApps]);
 
-  const quickCategories = categories.slice(0, 6);
-  const quickStatuses = statuses.slice(0, 4);
-
   const clearAllFilters = () => {
     setShowFavoritesOnly(false);
     router.replace('/', { scroll: false });
@@ -350,7 +347,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       {/* Filter bar */}
       <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex w-full flex-col gap-2 lg:max-w-3xl sm:flex-row">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row lg:flex-1">
             <div className="relative min-w-0 flex-1">
               <TextField value={searchQuery} onChange={commitSearch} className="w-full">
                 <Input
@@ -381,7 +378,23 @@ export function AppGrid({ initialApps }: AppGridProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start lg:self-auto">
+          <div className="flex shrink-0 items-center gap-2 self-start lg:self-auto">
+            {favoritesLoaded && (
+              <Button
+                variant={showFavoritesOnly ? "primary" : "secondary"}
+                isDisabled={favorites.size === 0}
+                onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                aria-pressed={showFavoritesOnly}
+                aria-label={`Meine Favoriten filtern (${favorites.size})`}
+                className={`h-11 rounded-xl px-4 gap-2 font-medium ${showFavoritesOnly ? 'text-background' : ''}`}
+              >
+                <Heart className={`h-4 w-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                Meine Favoriten
+                <span className="inline-flex min-w-5 justify-center rounded-full bg-background/20 px-1.5 py-0.5 text-[11px] font-semibold text-current">
+                  {favorites.size}
+                </span>
+              </Button>
+            )}
             <Button
               variant={showFilters || hasActiveFilters ? "primary" : "secondary"}
               onPress={() => setShowFilters(!showFilters)}
@@ -410,51 +423,12 @@ export function AppGrid({ initialApps }: AppGridProps) {
           </div>
         </div>
 
-        {(quickCategories.length > 0 || quickStatuses.length > 0 || favoritesLoaded) && (
-          <div className="flex flex-col gap-3 border-t border-border/50 pt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted/80">Schnellfilter</span>
-              {favoritesLoaded && favorites.size > 0 && (
-                <Button
-                  size="sm"
-                  variant={showFavoritesOnly ? "primary" : "secondary"}
-                  onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                  className={`h-8 rounded-full px-3 text-xs font-medium gap-1.5 ${showFavoritesOnly ? 'text-background' : ''}`}
-                >
-                  <Heart className={`w-3 h-3 ${showFavoritesOnly ? 'fill-current' : ''}`} />
-                  Favoriten ({favorites.size})
-                </Button>
-              )}
-              {quickCategories.map((cat) => (
-                <Button
-                  key={`quick-cat-${cat}`}
-                  size="sm"
-                  variant={selectedCategory === cat ? "primary" : "secondary"}
-                  onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
-                >
-                  {cat}
-                </Button>
-              ))}
-              {quickStatuses.map((status) => (
-                <Button
-                  key={`quick-status-${status}`}
-                  size="sm"
-                  variant={selectedStatus === status ? "primary" : "secondary"}
-                  onPress={() => setSelectedStatus(selectedStatus === status ? null : status)}
-                  className={`h-8 rounded-full px-3 text-xs font-medium ${selectedStatus === status ? 'text-background' : ''}`}
-                >
-                  {getAppStatusLabel(status) || status}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted">
-              Starten Sie direkt mit Suche oder Schnellfiltern. Für feinere Auswahl stehen Kategorie, Status, Art und Gruppe bereit.
+              {showFilters
+                ? 'Verfeinern Sie die Auswahl mit Kategorie, Status, Art, Gruppe und Sortierung.'
+                : 'Starten Sie direkt mit der Suche. Für weitere Auswahl öffnen Sie die Filter.'}
             </p>
             {!showFilters && filterSummary && (
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted/80">
