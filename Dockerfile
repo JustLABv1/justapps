@@ -1,8 +1,8 @@
-FROM reg.mini.dev/node:v26.5.1-dev AS base
+FROM reg.mini.dev/node:26.7.0-dev AS base
 USER root
 
 # Stage 1: Build the frontend
-FROM reg.mini.dev/node:v26.5.1-dev AS frontend-builder
+FROM reg.mini.dev/node:26.7.0-dev AS frontend-builder
 USER root
 WORKDIR /app/frontend
 
@@ -18,7 +18,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # Stage 2: Build the documentation service
-FROM reg.mini.dev/node:v26.5.1-dev AS docs-builder
+FROM reg.mini.dev/node:26.7.0-dev AS docs-builder
 USER root
 WORKDIR /app/docs
 
