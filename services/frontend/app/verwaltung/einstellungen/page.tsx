@@ -240,6 +240,8 @@ export function AdminSettingsWorkspace({
   const [providerTokenDrafts, setProviderTokenDrafts] = useState<
     Record<string, string>
   >({});
+  const [providerNamespaceAllowlistDrafts, setProviderNamespaceAllowlistDrafts] =
+    useState<Record<string, string>>({});
   const [providerToDelete, setProviderToDelete] =
     useState<GitLabProviderAdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -353,6 +355,14 @@ export function AdminSettingsWorkspace({
   const loadRepositoryProviders = async () => {
     const providersData = await fetchRepositoryProviders();
     setGitLabProviders(Array.isArray(providersData) ? providersData : []);
+    setProviderNamespaceAllowlistDrafts(
+      Object.fromEntries(
+        providersData.map((provider) => [
+          provider.providerKey,
+          provider.namespaceAllowlist.join("\n"),
+        ]),
+      ),
+    );
     setGitLabProviderError(null);
   };
 
@@ -364,6 +374,14 @@ export function AdminSettingsWorkspace({
       .then(([settingsData, providersData]) => {
         if (settingsData) setSettings(normalizeSettingsState(settingsData));
         setGitLabProviders(providersData);
+        setProviderNamespaceAllowlistDrafts(
+          Object.fromEntries(
+            providersData.map((provider) => [
+              provider.providerKey,
+              provider.namespaceAllowlist.join("\n"),
+            ]),
+          ),
+        );
         setGitLabProviderError(null);
       })
       .catch((error) => {
@@ -475,6 +493,10 @@ export function AdminSettingsWorkspace({
     try {
       const tokenDraft =
         providerTokenDrafts[provider.providerKey]?.trim() || "";
+      const namespaceAllowlist = parseProviderAllowlist(
+        providerNamespaceAllowlistDrafts[provider.providerKey] ??
+          provider.namespaceAllowlist.join("\n"),
+      );
       const res = await fetchApi(
         `/settings/repository-providers/${provider.providerKey}`,
         {
@@ -484,7 +506,7 @@ export function AdminSettingsWorkspace({
             baseUrl: provider.baseUrl,
             token: options?.clearToken ? "" : tokenDraft,
             clearToken: options?.clearToken ?? false,
-            namespaceAllowlist: provider.namespaceAllowlist,
+            namespaceAllowlist,
             enabled: provider.enabled,
             autoSyncEnabled: provider.autoSyncEnabled,
             syncIntervalMinutes: provider.syncIntervalMinutes,
@@ -2063,14 +2085,16 @@ export function AdminSettingsWorkspace({
                             Namespace-Allowlist
                           </Label>
                           <textarea
-                            value={provider.namespaceAllowlist.join("\n")}
+                            value={
+                              providerNamespaceAllowlistDrafts[
+                                provider.providerKey
+                              ] ?? provider.namespaceAllowlist.join("\n")
+                            }
                             onChange={(event) =>
-                              updateGitLabProvider(provider.providerKey, {
-                                namespaceAllowlist: event.target.value
-                                  .split(/\n|,/)
-                                  .map((value) => value.trim())
-                                  .filter(Boolean),
-                              })
+                              setProviderNamespaceAllowlistDrafts((prev) => ({
+                                ...prev,
+                                [provider.providerKey]: event.target.value,
+                              }))
                             }
                             className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
                             placeholder={"gruppe\norganisation/team"}

@@ -14,6 +14,7 @@ import { getAppBannerMeta } from "@/lib/appBanner";
 import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
+import { resolveRepositoryMarkdownLink } from "@/lib/markdown";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Accordion, Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
@@ -192,6 +193,37 @@ function AppPageContent() {
   const customLinks = app.customLinks || [];
   const gitLabRepoUrl = gitLabIntegration?.projectWebUrl?.trim();
   const hasGitLabRepoLink = !!gitLabRepoUrl && repositories.some((repository) => repository.url === gitLabRepoUrl);
+  const fallbackMarkdownRepositoryUrl = repositories
+    .map((repository) => repository.url?.trim())
+    .find(Boolean);
+  const markdownRepositoryUrl =
+    gitLabIntegration?.projectWebUrl?.trim() ||
+    gitLabIntegration?.snapshot?.projectWebUrl?.trim() ||
+    fallbackMarkdownRepositoryUrl ||
+    app.repoUrl?.trim();
+  const markdownRepository = {
+    providerType: gitLabIntegration?.providerType ||
+      (markdownRepositoryUrl?.toLowerCase().includes("github.com") ? "github" : "gitlab"),
+    projectWebUrl: markdownRepositoryUrl,
+    branch: gitLabIntegration?.branch || gitLabIntegration?.snapshot?.defaultBranch,
+    readmePath: gitLabIntegration?.readmePath || gitLabIntegration?.snapshot?.readmePath,
+  };
+  const markdownComponents = {
+    a: ({ href, children, ...props }: React.ComponentProps<"a">) => {
+      const resolvedHref = resolveRepositoryMarkdownLink(href, markdownRepository);
+      const isRepositoryLink = resolvedHref !== href;
+      return (
+        <a
+          {...props}
+          href={resolvedHref}
+          target={isRepositoryLink ? "_blank" : props.target}
+          rel={isRepositoryLink ? "noreferrer noopener" : props.rel}
+        >
+          {children}
+        </a>
+      );
+    },
+  };
 
   /* Build metadata pairs from the admin-configured field schema + app's customFields values */
   const fieldValueMap = new Map((app.customFields ?? []).map(f => [f.key, f.value]));
@@ -584,7 +616,7 @@ function AppPageContent() {
         {/* Dokumentation */}
         <Tabs.Panel id="docs">
           <div className="prose prose-bund max-w-none min-h-[300px]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {content}
             </ReactMarkdown>
           </div>
@@ -665,7 +697,7 @@ function AppPageContent() {
               ))}
               {!releases.length && app.changelog && (
                 <div className="prose prose-bund max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{app.changelog}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{app.changelog}</ReactMarkdown>
                 </div>
               )}
             </div>
