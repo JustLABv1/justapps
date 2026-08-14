@@ -1,4 +1,4 @@
-FROM reg.mini.dev/go:v1.26.5 AS builder
+FROM reg.mini.dev/go:v1.26.6 AS builder
 USER 0
 # Define cache locations for Go build
 ENV GOCACHE=/tmp/go-cache
