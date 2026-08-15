@@ -1,6 +1,6 @@
 module justapps-backend
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.12.3
 	github.com/prometheus/client_golang v1.24.1
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.0
 	github.com/spf13/viper v1.21.0
 	github.com/uptrace/bun v1.2.18
 	github.com/uptrace/bun/dialect/pgdialect v1.2.18
