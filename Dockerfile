@@ -33,7 +33,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # Stage 3: Build the backend
-FROM reg.mini.dev/go:v1.26.6 AS backend-builder
+FROM reg.mini.dev/go:v1.27.0 AS backend-builder
 WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
