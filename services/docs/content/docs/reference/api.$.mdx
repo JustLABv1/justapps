@@ -44,19 +44,21 @@ It intentionally excludes per-process Go runtime, memory, and HTTP request metri
 
 JustApps exposes a read-only MCP server over Streamable HTTP. The endpoint is:
 
-| Method | Path   | Auth | Description |
-| ------ | ------ | ---- | ----------- |
+For a step-by-step setup guide, see [MCP integration](/reference/mcp).
+
+| Method | Path   | Auth | Description                      |
+| ------ | ------ | ---- | -------------------------------- |
 | `POST` | `/mcp` | User | MCP JSON-RPC endpoint for agents |
 
 The full URL is `/api/v1/mcp`. Send a JustApps bearer token in the `Authorization` header. The endpoint is stateless, so it works behind load balancing without sticky sessions. Draft apps, account data, provider credentials, and internal synchronization fields are not exposed.
 
 Users can create and revoke their own MCP tokens through the profile area or the following authenticated endpoints:
 
-| Method   | Path                       | Description                                      |
-| -------- | -------------------------- | ------------------------------------------------ |
-| `GET`    | `/user/tokens`             | List own MCP tokens without secret values       |
-| `POST`   | `/user/tokens`             | Create a token; the full value is returned once  |
-| `DELETE` | `/user/tokens/:tokenID`    | Revoke one of the user's own MCP tokens          |
+| Method   | Path                    | Description                                     |
+| -------- | ----------------------- | ----------------------------------------------- |
+| `GET`    | `/user/tokens`          | List own MCP tokens without secret values       |
+| `POST`   | `/user/tokens`          | Create a token; the full value is returned once |
+| `DELETE` | `/user/tokens/:tokenID` | Revoke one of the user's own MCP tokens         |
 
 Create request example:
 
@@ -84,7 +86,7 @@ Example agent configuration (the exact wrapper key can vary by agent):
   "type": "streamable-http",
   "url": "https://apps.example.org/api/v1/mcp",
   "headers": {
-    "Authorization": "Bearer <JUSTAPPS_TOKEN>"
+    "Authorization": "Bearer <MCP_TOKEN>"
   }
 }
 ```
