@@ -28,7 +28,7 @@ type exportBackupRequest struct {
 	Passphrase string   `json:"passphrase"`
 }
 
-const schemaVersion = "2026-04-27"
+const schemaVersion = "2026-09-08"
 
 var allSections = []string{
 	"apps",
@@ -43,6 +43,7 @@ var allSections = []string{
 	"tokens",
 	"favorites",
 	"ratings",
+	"faq",
 	"audit",
 	"assets",
 }
@@ -199,6 +200,16 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}
 			manifest.Data.Ratings = ratings
 			appendSummary(&manifest, section, len(ratings))
+		case "faq":
+			questions, answers, upvotes, sectionErr := exportFAQ(c, db)
+			if sectionErr != nil {
+				respondSectionError(c, section, sectionErr)
+				return
+			}
+			manifest.Data.FAQQuestions = questions
+			manifest.Data.FAQAnswers = answers
+			manifest.Data.FAQAnswerUpvotes = upvotes
+			appendSummary(&manifest, section, len(questions)+len(answers)+len(upvotes))
 		case "audit":
 			auditEntries, sectionErr := exportAudit(c, db)
 			if sectionErr != nil {
@@ -433,6 +444,26 @@ func exportRatings(c *gin.Context, db *bun.DB) ([]models.Rating, error) {
 	var ratings []models.Rating
 	err := db.NewSelect().Model(&ratings).Order("created_at ASC").Scan(c.Request.Context())
 	return ratings, err
+}
+
+func exportFAQ(c *gin.Context, db *bun.DB) ([]models.FAQQuestion, []models.FAQAnswer, []models.FAQAnswerUpvote, error) {
+	ctx := c.Request.Context()
+	var questions []models.FAQQuestion
+	if err := db.NewSelect().Model(&questions).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+
+	var answers []models.FAQAnswer
+	if err := db.NewSelect().Model(&answers).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+
+	var upvotes []models.FAQAnswerUpvote
+	if err := db.NewSelect().Model(&upvotes).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return questions, answers, upvotes, nil
 }
 
 func exportAudit(c *gin.Context, db *bun.DB) ([]models.Audit, error) {

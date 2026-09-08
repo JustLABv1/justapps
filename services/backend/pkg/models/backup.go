@@ -73,6 +73,9 @@ type BackupData struct {
 	Tokens              []BackupToken            `json:"tokens,omitempty"`
 	Favorites           []UserFavorite           `json:"favorites,omitempty"`
 	Ratings             []Rating                 `json:"ratings,omitempty"`
+	FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
+	FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
+	FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
 	Audit               []Audit                  `json:"audit,omitempty"`
 	Assets              []BackupAsset            `json:"assets,omitempty"`
 }
@@ -97,6 +100,9 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		Tokens              []BackupToken            `json:"tokens,omitempty"`
 		Favorites           []UserFavorite           `json:"favorites,omitempty"`
 		Ratings             []Rating                 `json:"ratings,omitempty"`
+		FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
+		FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
+		FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
 		Audit               []Audit                  `json:"audit,omitempty"`
 		Assets              []BackupAsset            `json:"assets,omitempty"`
 	}
@@ -119,6 +125,9 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		Tokens:              raw.Tokens,
 		Favorites:           raw.Favorites,
 		Ratings:             raw.Ratings,
+		FAQQuestions:        raw.FAQQuestions,
+		FAQAnswers:          raw.FAQAnswers,
+		FAQAnswerUpvotes:    raw.FAQAnswerUpvotes,
 		Audit:               raw.Audit,
 		Assets:              raw.Assets,
 	}

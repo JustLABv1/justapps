@@ -75,6 +75,7 @@ type AdminSettingsWorkspaceProps = {
 
 type SettingsState = {
   aiEnabled: boolean;
+  faqEnabled: boolean;
   allowAppSubmissions: boolean;
   requireAuthForAppStore: boolean;
   allowAnonymousAI: boolean;
@@ -106,6 +107,7 @@ type SettingsState = {
 
 const defaultState: SettingsState = {
   aiEnabled: true,
+  faqEnabled: true,
   allowAppSubmissions: true,
   requireAuthForAppStore: false,
   allowAnonymousAI: false,
@@ -625,6 +627,40 @@ export function AdminSettingsWorkspace({
                   </Switch.Content>
                 </Switch>
               </div>
+            </Surface>
+
+            <Surface className="p-6 border border-border/50 shadow-sm">
+              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-accent" /> FAQ & Community
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">
+                    FAQ aktivieren
+                  </span>
+                  <p className="text-xs text-muted max-w-xl">
+                    Erlaubt Benutzern, Fragen zu Apps zu stellen, Antworten zu
+                    geben und hilfreiche Antworten hochzuwerten.
+                  </p>
+                </div>
+                <Switch
+                  aria-label="FAQ aktivieren"
+                  isSelected={settings.faqEnabled}
+                  onChange={(val) =>
+                    save({ faqEnabled: val }, "faqEnabled")
+                  }
+                >
+                  <Switch.Content>
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch.Content>
+                </Switch>
+              </div>
+              <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
+                Wenn deaktiviert, wird die FAQ-Registerkarte ausgeblendet und
+                bestehende Fragen und Antworten bleiben erhalten.
+              </p>
             </Surface>
           </div>
         )}

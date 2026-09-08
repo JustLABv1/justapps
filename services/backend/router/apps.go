@@ -38,6 +38,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id/ratings", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetRatings(c, db)
 		})
+		appsGroup.GET("/:id/faq", middlewares.OptionalAuth(db), func(c *gin.Context) {
+			apps.GetFAQ(c, db)
+		})
 		appsGroup.GET("/:id/releases", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.ListReleases(c, db)
 		})
@@ -51,6 +54,39 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			})
 			ratingAuthGroup.DELETE("/:ratingId", func(c *gin.Context) {
 				apps.DeleteRating(c, db)
+			})
+		}
+
+		// FAQ reads follow app-store visibility; questions, answers, votes, and
+		// moderation actions require an authenticated user.
+		faqQuestionGroup := appsGroup.Group("/:id/faq/questions")
+		faqQuestionGroup.Use(middlewares.Auth(db))
+		{
+			faqQuestionGroup.POST("", func(c *gin.Context) {
+				apps.CreateFAQQuestion(c, db)
+			})
+			faqQuestionGroup.DELETE("/:questionId", func(c *gin.Context) {
+				apps.DeleteFAQQuestion(c, db)
+			})
+			faqQuestionGroup.POST("/:questionId/answers", func(c *gin.Context) {
+				apps.CreateFAQAnswer(c, db)
+			})
+			faqQuestionGroup.DELETE("/:questionId/answers/:answerId", func(c *gin.Context) {
+				apps.DeleteFAQAnswer(c, db)
+			})
+		}
+
+		faqAnswerGroup := appsGroup.Group("/:id/faq/answers/:answerId")
+		faqAnswerGroup.Use(middlewares.Auth(db))
+		{
+			faqAnswerGroup.POST("/upvote", func(c *gin.Context) {
+				apps.UpvoteFAQAnswer(c, db)
+			})
+			faqAnswerGroup.DELETE("/upvote", func(c *gin.Context) {
+				apps.RemoveFAQAnswerUpvote(c, db)
+			})
+			faqAnswerGroup.PATCH("", func(c *gin.Context) {
+				apps.UpdateFAQAnswerHighlights(c, db)
 			})
 		}
 

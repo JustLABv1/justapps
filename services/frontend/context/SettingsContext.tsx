@@ -20,6 +20,7 @@ export interface FooterLink {
 export interface StoreSettings {
   id: string;
   aiEnabled: boolean;
+  faqEnabled: boolean;
   allowAppSubmissions: boolean;
   requireAuthForAppStore: boolean;
   allowAnonymousAI: boolean;
@@ -75,6 +76,7 @@ export const defaultDetailFields: DetailFieldDef[] = [
 export const defaultSettings: StoreSettings = {
   id: 'default',
   aiEnabled: true,
+  faqEnabled: true,
   allowAppSubmissions: true,
   requireAuthForAppStore: false,
   allowAnonymousAI: false,

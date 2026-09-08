@@ -210,6 +210,12 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 			}); result != nil {
 				return *result
 			}
+		case "faq":
+			if result := applySection(section, func() (importSectionStats, []string, error) {
+				return importFAQ(ctx, tx, manifest.Data.FAQQuestions, manifest.Data.FAQAnswers, manifest.Data.FAQAnswerUpvotes)
+			}); result != nil {
+				return *result
+			}
 		case "audit":
 			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importAudit(ctx, tx, manifest.Data.Audit)
@@ -360,6 +366,9 @@ func inferManifestSections(manifest models.BackupManifest) []string {
 	if len(manifest.Data.Ratings) > 0 {
 		sections = append(sections, "ratings")
 	}
+	if len(manifest.Data.FAQQuestions) > 0 || len(manifest.Data.FAQAnswers) > 0 || len(manifest.Data.FAQAnswerUpvotes) > 0 {
+		sections = append(sections, "faq")
+	}
 	if len(manifest.Data.Audit) > 0 {
 		sections = append(sections, "audit")
 	}
@@ -398,6 +407,9 @@ func clearDatabaseForReplace(ctx context.Context, tx bun.Tx) error {
 
 	for _, model := range []interface{}{
 		(*models.Audit)(nil),
+		(*models.FAQAnswerUpvote)(nil),
+		(*models.FAQAnswer)(nil),
+		(*models.FAQQuestion)(nil),
 		(*models.Rating)(nil),
 		(*models.UserFavorite)(nil),
 		(*models.Tokens)(nil),
@@ -946,6 +958,57 @@ func importRatings(ctx context.Context, tx bun.Tx, ratings []models.Rating) (imp
 		}
 		stats.Created++
 	}
+	return stats, nil, nil
+}
+
+func importFAQ(ctx context.Context, tx bun.Tx, questions []models.FAQQuestion, answers []models.FAQAnswer, upvotes []models.FAQAnswerUpvote) (importSectionStats, []string, error) {
+	stats := importSectionStats{}
+
+	for _, question := range questions {
+		exists, err := tx.NewSelect().Model((*models.FAQQuestion)(nil)).Where("id = ?", question.ID).Exists(ctx)
+		if err != nil {
+			return stats, nil, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&question).Where("id = ?", question.ID).Column("app_id", "user_id", "username", "question", "created_at").Exec(ctx)
+			if err != nil {
+				return stats, nil, err
+			}
+			stats.Updated++
+			continue
+		}
+		if _, err = tx.NewInsert().Model(&question).Exec(ctx); err != nil {
+			return stats, nil, err
+		}
+		stats.Created++
+	}
+
+	for _, answer := range answers {
+		exists, err := tx.NewSelect().Model((*models.FAQAnswer)(nil)).Where("id = ?", answer.ID).Exists(ctx)
+		if err != nil {
+			return stats, nil, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&answer).Where("id = ?", answer.ID).Column("question_id", "app_id", "user_id", "username", "answer", "is_pinned", "creator_liked", "created_at").Exec(ctx)
+			if err != nil {
+				return stats, nil, err
+			}
+			stats.Updated++
+			continue
+		}
+		if _, err = tx.NewInsert().Model(&answer).Exec(ctx); err != nil {
+			return stats, nil, err
+		}
+		stats.Created++
+	}
+
+	for _, upvote := range upvotes {
+		if _, err := tx.NewInsert().Model(&upvote).On("CONFLICT DO NOTHING").Exec(ctx); err != nil {
+			return stats, nil, err
+		}
+		stats.Created++
+	}
+
 	return stats, nil, nil
 }
 

@@ -143,6 +143,24 @@ Common fields accepted in the request body:
 
 ---
 
+## FAQ
+
+| Method   | Path                                                    | Auth        | Description                                         |
+| -------- | ------------------------------------------------------- | ----------- | --------------------------------------------------- |
+| `GET`    | `/apps/:id/faq`                                         | —           | List questions, answers, upvotes, and highlights    |
+| `POST`   | `/apps/:id/faq/questions`                               | User        | Ask a question                                      |
+| `DELETE` | `/apps/:id/faq/questions/:questionId`                   | User        | Delete own question; app creator/admin may moderate |
+| `POST`   | `/apps/:id/faq/questions/:questionId/answers`           | User        | Add an answer                                       |
+| `DELETE` | `/apps/:id/faq/questions/:questionId/answers/:answerId` | User        | Delete own answer; app creator/admin may moderate   |
+| `POST`   | `/apps/:id/faq/answers/:answerId/upvote`                | User        | Upvote an answer                                    |
+| `DELETE` | `/apps/:id/faq/answers/:answerId/upvote`                | User        | Remove your upvote                                  |
+| `PATCH`  | `/apps/:id/faq/answers/:answerId`                       | Owner/admin | Pin or creator-like an answer                       |
+
+Question bodies use `{ "question": "..." }`; answer bodies use `{ "answer": "..." }`.
+The FAQ is controlled by the admin setting `faqEnabled`.
+
+---
+
 ## Favorites
 
 | Method   | Path                  | Auth | Description           |
