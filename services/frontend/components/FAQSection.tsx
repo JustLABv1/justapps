@@ -413,6 +413,11 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
                       <span>{formatDate(question.createdAt)}</span>
                       <span aria-hidden="true">·</span>
                       <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                      {question.answerCount === 0 && (
+                        <Chip size="sm" color="warning" variant="soft" className="text-[10px] font-bold">
+                          Antwort gesucht
+                        </Chip>
+                      )}
                     </div>
                   </div>
                   {canDeleteQuestion && (

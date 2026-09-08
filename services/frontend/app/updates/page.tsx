@@ -1,7 +1,7 @@
 "use client";
 
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
-import type { ReleaseInboxItem } from "@/config/apps";
+import type { FAQNotification, ReleaseInboxItem } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useUpdates } from "@/context/UpdatesContext";
 import {
@@ -13,7 +13,14 @@ import {
     Switch,
     toast,
 } from "@heroui/react";
-import { Bell, CheckCheck, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  CheckCircle2,
+  ExternalLink,
+  MessageCircleQuestion,
+  RefreshCw,
+} from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,20 +44,27 @@ export default function UpdatesPage() {
   const { user, loading: authLoading } = useAuth();
   const {
     loadInboxItems,
+    loadFAQNotifications,
     markAsSeen,
     markAllAsSeen,
+    markFAQAsSeen,
     refreshSummary,
     preferences,
     updatePreferences,
     loaded,
   } = useUpdates();
   const [items, setItems] = useState<ReleaseInboxItem[]>([]);
+  const [faqNotifications, setFAQNotifications] = useState<FAQNotification[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [markingAllSeen, setMarkingAllSeen] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const safeItems = Array.isArray(items) ? items : [];
-  const hasUnreadItems = safeItems.some((item) => !item.seenAt);
+  const safeFAQNotifications = Array.isArray(faqNotifications)
+    ? faqNotifications
+    : [];
+  const hasUnreadItems = safeItems.some((item) => !item.seenAt)
+    || safeFAQNotifications.some((item) => !item.seenAt);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -64,8 +78,12 @@ export default function UpdatesPage() {
     const timeoutId = window.setTimeout(async () => {
       setPageLoading(true);
       try {
-        const nextItems = await loadInboxItems("all");
+        const [nextItems, nextFAQNotifications] = await Promise.all([
+          loadInboxItems("all"),
+          loadFAQNotifications("all"),
+        ]);
         setItems(nextItems);
+        setFAQNotifications(nextFAQNotifications);
       } finally {
         setPageLoading(false);
       }
@@ -74,14 +92,18 @@ export default function UpdatesPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [loadInboxItems, user]);
+  }, [loadFAQNotifications, loadInboxItems, user]);
 
   const handleRefresh = async () => {
     setPageLoading(true);
     try {
       await refreshSummary();
-      const nextItems = await loadInboxItems("all");
+      const [nextItems, nextFAQNotifications] = await Promise.all([
+        loadInboxItems("all"),
+        loadFAQNotifications("all"),
+      ]);
       setItems(nextItems);
+      setFAQNotifications(nextFAQNotifications);
     } finally {
       setPageLoading(false);
     }
@@ -120,9 +142,32 @@ export default function UpdatesPage() {
 
       const seenAt = new Date().toISOString();
       setItems((current) => current.map((item) => ({ ...item, seenAt })));
+      setFAQNotifications((current) =>
+        current.map((notification) => ({ ...notification, seenAt })),
+      );
       toast.success("Alle Updates wurden als gelesen markiert.");
     } finally {
       setMarkingAllSeen(false);
+    }
+  };
+
+  const handleMarkFAQSeen = async (notificationId: string) => {
+    setUpdatingItemId(`faq:${notificationId}`);
+    try {
+      const ok = await markFAQAsSeen(notificationId);
+      if (!ok) {
+        toast.danger("FAQ-Benachrichtigung konnte nicht als gelesen markiert werden.");
+        return;
+      }
+      setFAQNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, seenAt: new Date().toISOString() }
+            : notification,
+        ),
+      );
+    } finally {
+      setUpdatingItemId(null);
     }
   };
 
@@ -159,7 +204,7 @@ export default function UpdatesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Updates</h1>
           <p className="text-sm text-muted">
-            Alle automatischen Änderungen aus Apps, die Sie verfolgen.
+            Neue Releases und wichtige Hinweise zu Ihren Apps.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -254,10 +299,10 @@ export default function UpdatesPage() {
           <div className="flex min-h-[20vh] flex-col items-center justify-center gap-3">
             <Spinner />
             <p className="text-sm text-muted">
-              Release-Updates werden geladen...
+              Updates und FAQ-Benachrichtigungen werden geladen...
             </p>
           </div>
-        ) : safeItems.length === 0 ? (
+        ) : safeItems.length === 0 && safeFAQNotifications.length === 0 ? (
           <Card variant="default">
             <Card.Content className="flex flex-col items-center gap-3 py-12 text-center">
               <Bell className="h-8 w-8 text-muted" />
@@ -266,14 +311,98 @@ export default function UpdatesPage() {
                   Keine Updates vorhanden
                 </p>
                 <p className="text-sm text-muted">
-                  Sobald verfolgte Apps neue Releases veröffentlichen,
-                  erscheinen sie hier.
+                  Sobald verfolgte Apps neue Releases veröffentlichen oder
+                  neue Fragen zu Ihren Apps gestellt werden, erscheinen sie hier.
                 </p>
               </div>
             </Card.Content>
           </Card>
         ) : (
-          safeItems.map((item) => {
+          <>
+            {safeFAQNotifications.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <MessageCircleQuestion className="h-5 w-5 text-accent" />
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Offene FAQ-Fragen
+                  </h2>
+                  <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold">
+                    {safeFAQNotifications.length}
+                  </Chip>
+                </div>
+                {safeFAQNotifications.map((notification) => (
+                  <Card
+                    key={notification.id}
+                    variant={notification.seenAt ? "default" : "secondary"}
+                  >
+                    <Card.Content className="flex flex-col gap-4 p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-secondary">
+                            <MessageCircleQuestion className="h-6 w-6 text-accent" />
+                          </div>
+                          <div className="min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-base font-semibold text-foreground">
+                                {notification.appName}
+                              </p>
+                              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
+                                FAQ
+                              </Chip>
+                              {!notification.seenAt && (
+                                <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
+                                  Neu
+                                </Chip>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-foreground">
+                              Neue Frage von {notification.questioner || "einem Nutzer"}
+                            </p>
+                            <p className="whitespace-pre-wrap text-sm text-muted">
+                              {notification.question}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                              <span>{new Date(notification.createdAt).toLocaleString("de-DE")}</span>
+                              <span>•</span>
+                              <span>
+                                {notification.answerCount} {notification.answerCount === 1 ? "Antwort" : "Antworten"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                          <Button
+                            variant="secondary"
+                            className="gap-2"
+                            onPress={() => {
+                              if (!notification.seenAt) {
+                                void handleMarkFAQSeen(notification.id);
+                              }
+                              router.push(`/apps/${notification.appId}#faq`);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            Frage öffnen
+                          </Button>
+                          {!notification.seenAt && (
+                            <Button
+                              variant="secondary"
+                              className="gap-2"
+                              isPending={updatingItemId === `faq:${notification.id}`}
+                              onPress={() => void handleMarkFAQSeen(notification.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Gelesen
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </section>
+            )}
+            {safeItems.map((item) => {
             const iconSrc = getImageAssetUrl(item.appIcon);
 
             return (
@@ -420,7 +549,8 @@ export default function UpdatesPage() {
                 </Card.Content>
               </Card>
             );
-          })
+            })}
+          </>
         )}
       </div>
     </div>

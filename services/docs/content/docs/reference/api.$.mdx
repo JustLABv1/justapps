@@ -158,6 +158,8 @@ Common fields accepted in the request body:
 
 Question bodies use `{ "question": "..." }`; answer bodies use `{ "answer": "..." }`.
 The FAQ is controlled by the admin setting `faqEnabled`.
+New questions create an in-app notification for the app owner and its editors;
+the notification is shown in the Updates area until the question is answered.
 
 ---
 
@@ -167,7 +169,10 @@ The FAQ is controlled by the admin setting `faqEnabled`.
 | -------- | ------------------------ | ---- | -------------------------------- |
 | `GET`    | `/user/updates`          | User | List the user's release updates  |
 | `GET`    | `/user/updates/summary`  | User | Get unread totals and app counts |
-| `POST`   | `/user/updates/seen`     | User | Mark all release updates as read |
+| `GET`    | `/user/faq-notifications` | User | List FAQ question notifications  |
+| `GET`    | `/user/faq-notifications/summary` | User | Get unread FAQ totals and app counts |
+| `POST`   | `/user/updates/seen`     | User | Mark all updates as read         |
+| `POST`   | `/user/faq-notifications/:id/seen` | User | Mark one FAQ notification as read |
 | `POST`   | `/user/updates/:id/seen` | User | Mark one release update as read  |
 
 ---
