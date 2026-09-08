@@ -115,6 +115,11 @@ const sectionOptions: SectionOption[] = [
     description: "Bewertungen und Kommentare.",
   },
   {
+    id: "faq",
+    label: "FAQ",
+    description: "Fragen, Antworten und hilfreiche Stimmen.",
+  },
+  {
     id: "audit",
     label: "Audit",
     description: "Audit-Log und Operationen.",
@@ -546,7 +551,7 @@ export default function BackupsPage() {
             <p>
               Der Export deckt bereits Apps, Gruppen, Relationen, Benutzer,
               Einstellungen, Repository-Zustand, Tokens, Favoriten, Ratings,
-              Audit-Daten und hochgeladene Dateien ab. Jede neue Sicherung wird
+              FAQ, Audit-Daten und hochgeladene Dateien ab. Jede neue Sicherung wird
               mit einer Backup-Passphrase verschlüsselt; Merge-Importe und
               vollständige Replace-Restores bleiben verfügbar.
             </p>

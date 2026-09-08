@@ -4,7 +4,7 @@ export default function VerwaltungPlattformGovernancePage() {
   return (
     <AdminSettingsWorkspace
       title="Regeln & Freigaben"
-      description="Regelt zentrale Einreichungen und steuert, ob Benutzer eigene Apps in den Katalog einbringen dürfen."
+      description="Regelt zentrale Einreichungen und steuert Community-Funktionen wie die FAQ in den App-Details."
       sections={['governance']}
     />
   );

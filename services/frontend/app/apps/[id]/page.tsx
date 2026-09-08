@@ -2,6 +2,7 @@
 
 import { AppStoreGate } from "@/components/AppStoreGate";
 import { DeploymentAssistant } from "@/components/DeploymentAssistant";
+import { FAQSection } from "@/components/FAQSection";
 import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
@@ -28,6 +29,7 @@ import {
   LayoutDashboard,
   Link2,
   Loader2,
+  MessageCircleQuestion,
   Pencil,
   Scale,
   Server,
@@ -70,17 +72,22 @@ function AppPageContent() {
   // Read tab from URL hash on mount
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    const validTabs = ['docs', 'details', 'deployment', 'ratings', 'changelog', 'related'];
+    const validTabs = ['docs', 'details', 'deployment', 'ratings', 'faq', 'changelog', 'related'];
     if (!hash || !validTabs.includes(hash)) return;
 
     const timeoutId = window.setTimeout(() => {
+      if (hash === 'faq' && !settings.faqEnabled) {
+        setActiveTab('docs');
+        window.history.replaceState(null, '', '#docs');
+        return;
+      }
       setActiveTab(hash);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [settings.faqEnabled]);
 
   const handleTabChange = (key: React.Key) => {
     const tabKey = String(key);
@@ -240,7 +247,7 @@ function AppPageContent() {
   const headerActionClassName = "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0";
 
   return (
-    <div className="max-w-5xl mx-auto pb-20">
+    <div className="max-w-6xl mx-auto pb-20">
 
       {/* ── Nav row ── */}
       <div className="flex justify-between items-center mb-6 gap-3">
@@ -565,26 +572,26 @@ function AppPageContent() {
       <Tabs variant="secondary" className="w-full" selectedKey={activeTab} onSelectionChange={handleTabChange}>
         <Tabs.ListContainer className="border-b border-border mb-6">
           <Tabs.List aria-label="App-Details Bereiche" className="gap-8">
-            <Tabs.Tab id="docs" className="gap-2 py-3 text-sm font-semibold">
+            <Tabs.Tab id="docs" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
               <BookOpen className="w-4 h-4" />
               Dokumentation
               <Tabs.Indicator />
             </Tabs.Tab>
             {metaFields.length > 0 && (
-              <Tabs.Tab id="details" className="gap-2 py-3 text-sm font-semibold">
+              <Tabs.Tab id="details" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
                 <Layers className="w-4 h-4" />
                 Fachliche Details
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
             {app.hasDeploymentAssistant !== false && (
-              <Tabs.Tab id="deployment" className="gap-2 py-3 text-sm font-semibold">
+              <Tabs.Tab id="deployment" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
                 <Server className="w-4 h-4" />
                 Deployment
                 <Tabs.Indicator />
               </Tabs.Tab>
             )}
-            <Tabs.Tab id="ratings" className="gap-2 py-3 text-sm font-semibold">
+            <Tabs.Tab id="ratings" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
               <Star className="w-4 h-4" />
               Bewertungen
               {hasRating && (
@@ -592,8 +599,15 @@ function AppPageContent() {
               )}
               <Tabs.Indicator />
             </Tabs.Tab>
+            {settings.faqEnabled && (
+              <Tabs.Tab id="faq" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
+                <MessageCircleQuestion className="w-4 h-4" />
+                FAQ
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            )}
             {(releases.length > 0 || app.changelog) && (
-              <Tabs.Tab id="changelog" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+              <Tabs.Tab id="changelog" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
                 <History className="w-4 h-4" />
                 Änderungsprotokoll
                 {releases.length > 0 && (
@@ -603,7 +617,7 @@ function AppPageContent() {
               </Tabs.Tab>
             )}
             {(app.relatedApps && app.relatedApps.length > 0) && (
-              <Tabs.Tab id="related" className="gap-2 py-3 text-sm font-semibold whitespace-nowrap">
+              <Tabs.Tab id="related" className="gap-2 whitespace-nowrap py-3 text-sm font-semibold">
                 <Link2 className="w-4 h-4" />
                 Verwandte Apps
                 <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">{app.relatedApps.length}</span>
@@ -644,6 +658,13 @@ function AppPageContent() {
         <Tabs.Panel id="ratings">
           <RatingSection appId={app.id} />
         </Tabs.Panel>
+
+        {/* FAQ */}
+        {settings.faqEnabled && (
+          <Tabs.Panel id="faq">
+            <FAQSection appId={app.id} canManageHighlights={isAdmin || isOwner} />
+          </Tabs.Panel>
+        )}
 
         {/* Änderungsprotokoll */}
         {(releases.length > 0 || app.changelog) && (

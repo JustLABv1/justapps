@@ -9,7 +9,7 @@ A self-hosted application store for teams and organizations. Centrally manage, d
 ## Features
 
 - **App catalog** — browse and discover applications with categories, tech stacks, and links
-- **Ratings & reviews** — community-driven per-app ratings
+- **Ratings, reviews & FAQ** — community ratings plus app-specific questions, answers, upvotes, and creator/admin highlights
 - **Deployment-ready** — built-in Docker, Docker Compose, and Helm chart deployment instructions per app
 - **Admin interface** — manage users, apps, platform branding, and settings
 - **OIDC authentication** — Keycloak integration with local username/password fallback

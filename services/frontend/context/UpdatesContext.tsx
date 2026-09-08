@@ -14,6 +14,7 @@ interface UpdatesContextType {
   refreshPreferences: () => Promise<void>;
   updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => Promise<boolean>;
   markAsSeen: (itemId: string) => Promise<boolean>;
+  markAllAsSeen: () => Promise<boolean>;
   loadInboxItems: (status?: 'all' | 'unread') => Promise<ReleaseInboxItem[]>;
 }
 
@@ -26,6 +27,7 @@ const UpdatesContext = createContext<UpdatesContextType>({
   refreshPreferences: async () => {},
   updatePreferences: async () => false,
   markAsSeen: async () => false,
+  markAllAsSeen: async () => false,
   loadInboxItems: async () => [],
 });
 
@@ -119,6 +121,22 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const markAllAsSeen = async () => {
+    try {
+      const response = await fetchApi('/user/updates/seen', { method: 'POST' });
+      if (!response.ok) {
+        return false;
+      }
+
+      setTotalUnread(0);
+      setAppUnreadCounts({});
+      await refreshSummary().catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const loadInboxItems = async (status: 'all' | 'unread' = 'all') => {
     const query = status === 'unread' ? '?status=unread' : '';
     const response = await fetchApi(`/user/updates${query}`, { cache: 'no-store' });
@@ -140,6 +158,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
         refreshPreferences,
         updatePreferences,
         markAsSeen,
+        markAllAsSeen,
         loadInboxItems,
       }}
     >

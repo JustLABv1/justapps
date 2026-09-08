@@ -23,6 +23,8 @@ import {
   Package,
   PlugZap,
   Search,
+  Moon,
+  Sun,
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -47,7 +49,7 @@ export function Navigation() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
   const { totalUnread } = useUpdates();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   // Close search and clear on navigation
   useEffect(() => {
@@ -150,6 +152,9 @@ export function Navigation() {
   const desktopNavLinks = regularNavLinks.filter(
     (link) => link.href !== documentationLink.href,
   );
+  const mobileNavLinks = user
+    ? regularNavLinks.filter((link) => link.href !== documentationLink.href)
+    : regularNavLinks;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur-sm">
@@ -181,7 +186,7 @@ export function Navigation() {
 
         {/* Desktop nav */}
         <nav
-          className="hidden min-w-0 flex-1 items-center gap-1 ml-4 xl:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-1 ml-4 xl:flex"
           aria-label="Hauptnavigation"
         >
           {desktopNavLinks.map((link) => {
@@ -250,21 +255,23 @@ export function Navigation() {
 
         {/* Right side */}
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          {/* Documentation is a utility destination on wide screens, not part of the catalog sequence. */}
-          <Link
-            href={documentationLink.href}
-            target={documentationLinkAttributes.target}
-            rel={documentationLinkAttributes.rel}
-            aria-current={documentationLink.active ? "page" : undefined}
-            className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
-              documentationLink.active
-                ? "text-accent bg-accent/8"
-                : "text-muted hover:text-foreground hover:bg-default"
-            }`}
-          >
-            <BookOpen className="h-3.5 w-3.5 shrink-0" />
-            <span>{documentationLink.label}</span>
-          </Link>
+          {/* Guests keep direct access because they do not have a profile menu. */}
+          {(!user || loading) && (
+            <Link
+              href={documentationLink.href}
+              target={documentationLinkAttributes.target}
+              rel={documentationLinkAttributes.rel}
+              aria-current={documentationLink.active ? "page" : undefined}
+              className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
+                documentationLink.active
+                  ? "text-accent bg-accent/8"
+                  : "text-muted hover:text-foreground hover:bg-default"
+              }`}
+            >
+              <BookOpen className="h-3.5 w-3.5 shrink-0" />
+              <span>{documentationLink.label}</span>
+            </Link>
+          )}
 
           {/* Global search */}
           <div className="hidden sm:flex items-center">
@@ -311,7 +318,7 @@ export function Navigation() {
             )}
           </div>
 
-          <ThemeSwitcher />
+          {(!user || loading) && <ThemeSwitcher />}
 
           {loading ? (
             <div className="h-8 w-8 rounded-full bg-default/50 animate-pulse" />
@@ -331,7 +338,11 @@ export function Navigation() {
               <Dropdown.Popover>
                 <Dropdown.Menu
                   onAction={(key) => {
-                    if (key === "profile-tokens") {
+                    if (key === "documentation") {
+                      window.open(documentationLink.href, "_blank", "noopener,noreferrer");
+                    } else if (key === "theme-toggle") {
+                      setTheme(isDark ? "light" : "dark");
+                    } else if (key === "profile-tokens") {
                       router.push("/profil/tokens");
                     } else if (key === "profile-mcp") {
                       router.push("/profil/mcp");
@@ -358,6 +369,22 @@ export function Navigation() {
                           </span>
                         </div>
                       )}
+                    </div>
+                  </Dropdown.Item>
+                  <Separator />
+                  <Dropdown.Item id="documentation" textValue="Dokumentation öffnen">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-muted" />
+                      <Label>Dokumentation</Label>
+                    </div>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="theme-toggle"
+                    textValue={isDark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isDark ? <Sun className="w-4 h-4 text-muted" /> : <Moon className="w-4 h-4 text-muted" />}
+                      <Label>{isDark ? "Heller Modus" : "Dunkler Modus"}</Label>
                     </div>
                   </Dropdown.Item>
                   <Separator />
@@ -449,7 +476,7 @@ export function Navigation() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           </form>
 
-          {regularNavLinks.map((link) => {
+          {mobileNavLinks.map((link) => {
             const Icon = link.icon;
 
             return (

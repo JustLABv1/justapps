@@ -26,7 +26,7 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 		// frontend origin to configure BACKEND_CORS_ALLOWED_ORIGINS explicitly.
 		corsConfig.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
 	}
-	corsConfig.AllowMethods = []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"}
+	corsConfig.AllowMethods = []string{"GET", "HEAD", "POST", "PUT", "PATCH", "OPTIONS", "DELETE"}
 	corsConfig.AllowHeaders = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type", "Mcp-Protocol-Version", "Mcp-Session-Id", "Mcp-Method", "Mcp-Name"}
 	corsConfig.ExposeHeaders = []string{"Content-Length", "Mcp-Session-Id"}
 	corsConfig.AllowCredentials = true

@@ -13,7 +13,7 @@ import {
     Switch,
     toast,
 } from "@heroui/react";
-import { Bell, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
+import { Bell, CheckCheck, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -38,6 +38,7 @@ export default function UpdatesPage() {
   const {
     loadInboxItems,
     markAsSeen,
+    markAllAsSeen,
     refreshSummary,
     preferences,
     updatePreferences,
@@ -46,8 +47,10 @@ export default function UpdatesPage() {
   const [items, setItems] = useState<ReleaseInboxItem[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [markingAllSeen, setMarkingAllSeen] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const safeItems = Array.isArray(items) ? items : [];
+  const hasUnreadItems = safeItems.some((item) => !item.seenAt);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -104,6 +107,25 @@ export default function UpdatesPage() {
     }
   };
 
+  const handleMarkAllSeen = async () => {
+    if (!hasUnreadItems) return;
+
+    setMarkingAllSeen(true);
+    try {
+      const ok = await markAllAsSeen();
+      if (!ok) {
+        toast.danger("Updates konnten nicht als gelesen markiert werden.");
+        return;
+      }
+
+      const seenAt = new Date().toISOString();
+      setItems((current) => current.map((item) => ({ ...item, seenAt })));
+      toast.success("Alle Updates wurden als gelesen markiert.");
+    } finally {
+      setMarkingAllSeen(false);
+    }
+  };
+
   const handlePreferenceChange = async (patch: {
     notifyFavoritedApps: boolean;
     notifyRecentlyViewedApps: boolean;
@@ -140,10 +162,22 @@ export default function UpdatesPage() {
             Alle automatischen Änderungen aus Apps, die Sie verfolgen.
           </p>
         </div>
-        <Button variant="secondary" onPress={handleRefresh} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Aktualisieren
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="secondary"
+            isDisabled={!hasUnreadItems || markingAllSeen}
+            isPending={markingAllSeen}
+            onPress={() => void handleMarkAllSeen()}
+            className="gap-2"
+          >
+            <CheckCheck className="h-4 w-4" />
+            Alle als gelesen markieren
+          </Button>
+          <Button variant="secondary" onPress={handleRefresh} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Aktualisieren
+          </Button>
+        </div>
       </div>
 
       <Card variant="default">
