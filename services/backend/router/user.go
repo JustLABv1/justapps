@@ -2,6 +2,7 @@ package router
 
 import (
 	"justapps-backend/handlers/apps"
+	"justapps-backend/handlers/tokens"
 	"justapps-backend/handlers/users"
 	"justapps-backend/middlewares"
 
@@ -21,6 +22,15 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 	{
 		user.GET("/", func(c *gin.Context) {
 			users.GetUserDetails(c, db)
+		})
+		user.GET("/tokens", func(c *gin.Context) {
+			tokens.ListUserTokens(c, db)
+		})
+		user.POST("/tokens", func(c *gin.Context) {
+			tokens.CreateUserToken(c, db)
+		})
+		user.DELETE("/tokens/:tokenID", func(c *gin.Context) {
+			tokens.RevokeUserToken(c, db)
 		})
 
 		user.PUT("/", func(c *gin.Context) {

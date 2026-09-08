@@ -40,6 +40,57 @@ It includes:
 
 It intentionally excludes per-process Go runtime, memory, and HTTP request metrics so the public scrape remains correct behind load balancing and multiple backend replicas.
 
+## MCP (Model Context Protocol)
+
+JustApps exposes a read-only MCP server over Streamable HTTP. The endpoint is:
+
+For a step-by-step setup guide, see [MCP integration](/reference/mcp).
+
+| Method | Path   | Auth | Description                      |
+| ------ | ------ | ---- | -------------------------------- |
+| `POST` | `/mcp` | User | MCP JSON-RPC endpoint for agents |
+
+The full URL is `/api/v1/mcp`. Send a JustApps bearer token in the `Authorization` header. The endpoint is stateless, so it works behind load balancing without sticky sessions. Draft apps, account data, provider credentials, and internal synchronization fields are not exposed.
+
+Users can create and revoke their own MCP tokens through the profile area or the following authenticated endpoints:
+
+| Method   | Path                    | Description                                     |
+| -------- | ----------------------- | ----------------------------------------------- |
+| `GET`    | `/user/tokens`          | List own MCP tokens without secret values       |
+| `POST`   | `/user/tokens`          | Create a token; the full value is returned once |
+| `DELETE` | `/user/tokens/:tokenID` | Revoke one of the user's own MCP tokens         |
+
+Create request example:
+
+```json
+{
+  "description": "Mein Entwicklungsagent",
+  "expires_in_days": 365
+}
+```
+
+Available tools:
+
+- `search_apps` — search published apps by free text, category, technology, or status;
+- `get_app` — read one published app including public metadata, links, documentation, and deployment instructions.
+
+Available resources:
+
+- `justapps://catalog` — compact JSON snapshot of the published catalog;
+- `justapps://apps/{id}` — JSON representation of one published app.
+
+Example agent configuration (the exact wrapper key can vary by agent):
+
+```json
+{
+  "type": "streamable-http",
+  "url": "https://apps.example.org/api/v1/mcp",
+  "headers": {
+    "Authorization": "Bearer <MCP_TOKEN>"
+  }
+}
+```
+
 ---
 
 ## Apps

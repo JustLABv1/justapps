@@ -1,0 +1,97 @@
+---
+title: MCP integration
+description: Connect external agents to the published JustApps catalog with the Model Context Protocol.
+---
+
+The Model Context Protocol (MCP) endpoint lets an external agent connect to the published app catalog over Streamable HTTP. It is an integration interface for agents and does not replace the built-in AI Chat for users who work inside the web application.
+
+## Requirements
+
+- a user account in the JustApps installation;
+- an MCP token created under **Profile → API-Tokens**;
+- an MCP-compatible agent that supports Streamable HTTP;
+- a public URL that routes `/api/v1/mcp` to the JustApps backend.
+
+The token is shown in full only once after creation. Store it in the agent's secret store and never commit it to a repository or share it in a prompt. The profile UI currently offers 30-day, 90-day and one-year token lifetimes.
+
+## Endpoint and authentication
+
+The endpoint is:
+
+```text
+https://apps.example.org/api/v1/mcp
+```
+
+Replace `apps.example.org` with the public hostname of your installation. Authenticate every request with the bearer token:
+
+```http
+Authorization: Bearer <MCP_TOKEN>
+```
+
+The endpoint uses the Streamable HTTP transport. The exact configuration key depends on the agent, but the following shape is commonly supported:
+
+```json
+{
+  "type": "streamable-http",
+  "url": "https://apps.example.org/api/v1/mcp",
+  "headers": {
+    "Authorization": "Bearer <MCP_TOKEN>"
+  }
+}
+```
+
+For the underlying HTTP route, authentication levels and token endpoints, see the [MCP section in the API reference](/reference/api#mcp-model-context-protocol).
+
+## Available tools
+
+### `search_apps`
+
+Search published catalog entries. The tool accepts:
+
+| Field       | Description                                                      |
+| ----------- | ---------------------------------------------------------------- |
+| `query`     | Free-text search across app metadata and indexed public content. |
+| `category`  | Optional category filter.                                        |
+| `techStack` | Optional technology or framework filter.                         |
+| `status`    | Optional status filter such as `active`, `beta` or `deprecated`. |
+| `limit`     | Number of results from 1 to 50; the default is 20.               |
+
+### `get_app`
+
+Read the public details for one app. Pass its stable catalog ID as `id`. The response can include metadata, links, documentation, repositories, deployment variants, Docker, Compose and Helm instructions, changelog information, and related apps.
+
+## Available resources
+
+- `justapps://catalog` — a compact JSON snapshot of all published catalog entries;
+- `justapps://apps/{id}` — the JSON representation of one published app.
+
+## Data scope and security
+
+The MCP server is intentionally read-only. It exposes only published catalog entries and does not expose:
+
+- owner information or user accounts;
+- permissions and editor assignments;
+- provider credentials or API keys;
+- internal synchronization state;
+- draft or unpublished apps.
+
+MCP tokens grant access in the name of the issuing user. Revoke a token immediately under **Profile → API-Tokens** if an agent is retired or the token may have been exposed. Token list responses contain only a preview; the full secret is never returned again.
+
+## Deployment checklist
+
+For a reverse proxy, ingress or load balancer, make sure the public route is forwarded to the backend:
+
+```text
+/api/v1/mcp  →  JustApps backend
+```
+
+The endpoint is stateless and can be served by any backend replica. Keep the public API URL configured correctly in the frontend so the profile setup page displays the same address that agents should use.
+
+## Troubleshooting
+
+| Symptom                  | Check                                                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `401 Unauthorized`       | The `Authorization` header is missing, malformed, expired or revoked. Create a new token if necessary.                                 |
+| `404 Not Found`          | The public hostname or `/api/v1/mcp` proxy route is incorrect.                                                                         |
+| `405 Method Not Allowed` | The client is not using the MCP Streamable HTTP request flow. Use an MCP client that supports the transport and sends `POST` requests. |
+| Empty search results     | Only published apps are visible; verify the app status and search filters.                                                             |

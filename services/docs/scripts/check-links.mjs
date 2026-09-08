@@ -84,7 +84,9 @@ for (const filePath of files) {
       target === "/meine-apps" ||
       target.startsWith("/meine-apps/") ||
       target === "/login" ||
-      target === "/register"
+      target === "/register" ||
+      target === "/profil" ||
+      target.startsWith("/profil/")
     )
       continue;
 

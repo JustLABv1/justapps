@@ -18,8 +18,10 @@ import {
   Layers,
   Layers2,
   LayoutDashboard,
+  KeyRound,
   Menu,
   Package,
+  PlugZap,
   Search,
   X,
 } from "lucide-react";
@@ -328,7 +330,15 @@ export function Navigation() {
               </Button>
               <Dropdown.Popover>
                 <Dropdown.Menu
-                  onAction={(key) => key === "logout" && handleLogout()}
+                  onAction={(key) => {
+                    if (key === "profile-tokens") {
+                      router.push("/profil/tokens");
+                    } else if (key === "profile-mcp") {
+                      router.push("/profil/mcp");
+                    } else if (key === "logout") {
+                      handleLogout();
+                    }
+                  }}
                 >
                   <Dropdown.Item
                     id="profile"
@@ -348,6 +358,25 @@ export function Navigation() {
                           </span>
                         </div>
                       )}
+                    </div>
+                  </Dropdown.Item>
+                  <Separator />
+                  <Dropdown.Item
+                    id="profile-tokens"
+                    textValue="API-Tokens verwalten"
+                  >
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-muted" />
+                      <Label>API-Tokens</Label>
+                    </div>
+                  </Dropdown.Item>
+                  <Dropdown.Item
+                    id="profile-mcp"
+                    textValue="MCP für Agenten einrichten"
+                  >
+                    <div className="flex items-center gap-2">
+                      <PlugZap className="w-4 h-4 text-muted" />
+                      <Label>MCP einrichten</Label>
                     </div>
                   </Dropdown.Item>
                   <Separator />
@@ -468,6 +497,38 @@ export function Navigation() {
                   {label}
                 </Link>
               ))}
+            </div>
+          )}
+
+          {user && (
+            <div className="pt-2 border-t border-separator">
+              <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">
+                Mein Konto
+              </p>
+              <Link
+                href="/profil/tokens"
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
+                  pathname.startsWith("/profil/tokens")
+                    ? "bg-accent/8 text-accent"
+                    : "text-foreground hover:bg-default"
+                }`}
+                onPress={() => setMobileOpen(false)}
+              >
+                <KeyRound className="w-4 h-4 text-muted" />
+                API-Tokens
+              </Link>
+              <Link
+                href="/profil/mcp"
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
+                  pathname.startsWith("/profil/mcp")
+                    ? "bg-accent/8 text-accent"
+                    : "text-foreground hover:bg-default"
+                }`}
+                onPress={() => setMobileOpen(false)}
+              >
+                <PlugZap className="w-4 h-4 text-muted" />
+                MCP einrichten
+              </Link>
             </div>
           )}
 
