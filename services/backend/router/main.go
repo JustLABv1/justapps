@@ -27,8 +27,8 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 		corsConfig.AllowOrigins = []string{"http://localhost:3000", "http://127.0.0.1:3000"}
 	}
 	corsConfig.AllowMethods = []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"}
-	corsConfig.AllowHeaders = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type"}
-	corsConfig.ExposeHeaders = []string{"Content-Length"}
+	corsConfig.AllowHeaders = []string{"Origin", "Authorization", "X-Requested-With", "Content-Type", "Mcp-Protocol-Version", "Mcp-Session-Id", "Mcp-Method", "Mcp-Name"}
+	corsConfig.ExposeHeaders = []string{"Content-Length", "Mcp-Session-Id"}
 	corsConfig.AllowCredentials = true
 	corsConfig.MaxAge = 12 * time.Hour
 
@@ -47,6 +47,7 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 		RegisterSettings(v1, db)
 		RegisterAI(v1, db)
 		RegisterUploads(v1, db, config.DataPath)
+		RegisterMCP(v1, db)
 	}
 
 	server := &http.Server{

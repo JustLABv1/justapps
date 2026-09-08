@@ -47,3 +47,11 @@ The backend exposes a public Prometheus/OpenMetrics endpoint at `/metrics`.
 This endpoint is outside the `/api/v1` namespace and is intended for cluster-global observability. The first version focuses on database-backed catalog metrics and audit-backed functional counters, including app inventory, ratings, favorites, AI usage snapshots, and lifecycle/login activity.
 
 The public scrape intentionally excludes per-process Go runtime and request metrics. Those values become misleading when `/metrics` is scraped through a public load-balanced path across multiple backend replicas.
+
+## MCP endpoint
+
+The backend exposes a read-only Model Context Protocol server at `/api/v1/mcp` using Streamable HTTP. MCP clients must send a JustApps bearer token in the `Authorization` header.
+
+The server provides `search_apps` and `get_app` tools plus the `justapps://catalog` and `justapps://apps/{id}` resources. Only published catalog entries are returned; owner data, credentials, permissions, and internal synchronization state are deliberately excluded.
+
+Authenticated users can create and revoke their own MCP tokens via `/api/v1/user/tokens`. The full token value is returned only in the create response and is never returned by the list endpoint. The frontend exposes these actions under `Profil → API-Tokens`; the setup guide is available under `Profil → MCP einrichten`.

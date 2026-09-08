@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"time"
 
 	"justapps-backend/config"
@@ -11,14 +12,25 @@ import (
 )
 
 func GenerateJWT(id uuid.UUID, rememberMe bool) (tokenString string, ExpiresAt int64, err error) {
-	var jwtKey = []byte(config.Config.JWT.Secret)
-	var expirationTime time.Time
-
+	lifetime := 30 * 24 * time.Hour
 	if rememberMe {
-		expirationTime = time.Now().Add(90 * 24 * time.Hour)
-	} else {
-		expirationTime = time.Now().Add(30 * 24 * time.Hour)
+		lifetime = 90 * 24 * time.Hour
 	}
+	return generateUserJWT(id, lifetime)
+}
+
+// GenerateUserToken creates a user-scoped API token with an explicit lifetime.
+// It is used for integrations such as the JustApps MCP endpoint.
+func GenerateUserToken(id uuid.UUID, lifetime time.Duration) (tokenString string, ExpiresAt int64, err error) {
+	if lifetime <= 0 {
+		return "", 0, errors.New("token lifetime must be positive")
+	}
+	return generateUserJWT(id, lifetime)
+}
+
+func generateUserJWT(id uuid.UUID, lifetime time.Duration) (tokenString string, ExpiresAt int64, err error) {
+	var jwtKey = []byte(config.Config.JWT.Secret)
+	expirationTime := time.Now().Add(lifetime)
 
 	claims := &models.JWTClaim{
 		ID:   id,
