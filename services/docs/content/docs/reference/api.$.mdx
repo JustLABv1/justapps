@@ -161,6 +161,17 @@ The FAQ is controlled by the admin setting `faqEnabled`.
 
 ---
 
+## Update inbox
+
+| Method   | Path                     | Auth | Description                      |
+| -------- | ------------------------ | ---- | -------------------------------- |
+| `GET`    | `/user/updates`          | User | List the user's release updates  |
+| `GET`    | `/user/updates/summary`  | User | Get unread totals and app counts |
+| `POST`   | `/user/updates/seen`     | User | Mark all release updates as read |
+| `POST`   | `/user/updates/:id/seen` | User | Mark one release update as read  |
+
+---
+
 ## Favorites
 
 | Method   | Path                  | Auth | Description           |

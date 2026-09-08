@@ -65,6 +65,9 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 		user.GET("/updates/summary", func(c *gin.Context) {
 			users.GetReleaseUpdateSummary(c, db)
 		})
+		user.POST("/updates/seen", func(c *gin.Context) {
+			users.MarkAllReleaseUpdatesSeen(c, db)
+		})
 		user.POST("/updates/:id/seen", func(c *gin.Context) {
 			users.MarkReleaseUpdateSeen(c, db)
 		})

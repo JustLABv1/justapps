@@ -204,7 +204,7 @@ func GetReleaseUpdateSummary(context *gin.Context, db *bun.DB) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{
-		"totalUnread":    totalUnread,
+		"totalUnread":     totalUnread,
 		"appUnreadCounts": appCounts,
 	})
 }
@@ -236,6 +236,26 @@ func MarkReleaseUpdateSeen(context *gin.Context, db *bun.DB) {
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		httperror.StatusNotFound(context, "Update nicht gefunden", errors.New("update not found"))
+		return
+	}
+
+	context.Status(http.StatusNoContent)
+}
+
+func MarkAllReleaseUpdatesSeen(context *gin.Context, db *bun.DB) {
+	userID, ok := getUserIDFromContext(context)
+	if !ok {
+		return
+	}
+
+	_, err := db.NewUpdate().
+		Model((*models.UserReleaseInboxItem)(nil)).
+		Set("seen_at = ?", time.Now().UTC()).
+		Where("user_id = ?", userID).
+		Where("seen_at IS NULL").
+		Exec(context.Request.Context())
+	if err != nil {
+		httperror.InternalServerError(context, "Updates konnten nicht als gelesen markiert werden", err)
 		return
 	}
 
