@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -247,13 +248,61 @@ func CreateFAQQuestion(c *gin.Context, db *bun.DB) {
 		Username: strings.TrimSpace(c.GetString("username")),
 		Question: questionText,
 	}
-	if _, err := db.NewInsert().Model(question).Exec(c); err != nil {
+	if err := db.RunInTx(c.Request.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().Model(question).Exec(ctx); err != nil {
+			return err
+		}
+		return createFAQQuestionNotifications(ctx, tx, *question)
+	}); err != nil {
 		httperror.InternalServerError(c, "Failed to create FAQ question", err)
 		return
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, audit.ActorID(userID, "unknown"), "app.faq.question.create", fmt.Sprintf("created FAQ question for app %s", app.ID))
 	c.JSON(http.StatusCreated, question)
+}
+
+func createFAQQuestionNotifications(ctx context.Context, tx bun.Tx, question models.FAQQuestion) error {
+	type recipientRow struct {
+		UserID uuid.UUID `bun:"user_id"`
+	}
+
+	var recipients []recipientRow
+	if err := tx.NewRaw(`
+		SELECT candidate.user_id
+		FROM (
+			SELECT owner_id AS user_id
+			FROM apps
+			WHERE id = ? AND owner_id IS NOT NULL
+			UNION
+			SELECT user_id
+			FROM app_editors
+			WHERE app_id = ?
+		) AS candidate
+		JOIN users AS recipient ON recipient.id = candidate.user_id
+		WHERE candidate.user_id <> ?
+		  AND recipient.disabled = FALSE
+	`, question.AppID, question.AppID, question.UserID).Scan(ctx, &recipients); err != nil {
+		return err
+	}
+
+	if len(recipients) == 0 {
+		return nil
+	}
+
+	now := time.Now().UTC()
+	items := make([]models.UserFAQInboxItem, 0, len(recipients))
+	for _, recipient := range recipients {
+		items = append(items, models.UserFAQInboxItem{
+			UserID:     recipient.UserID,
+			QuestionID: question.ID,
+			AppID:      question.AppID,
+			CreatedAt:  now,
+		})
+	}
+
+	_, err := tx.NewInsert().Model(&items).On("CONFLICT (user_id, question_id) DO NOTHING").Exec(ctx)
+	return err
 }
 
 func CreateFAQAnswer(c *gin.Context, db *bun.DB) {

@@ -200,6 +200,19 @@ export interface ReleaseInboxItem {
   seenAt?: string | null;
 }
 
+export interface FAQNotification {
+  id: string;
+  questionId: string;
+  appId: string;
+  appName: string;
+  appIcon?: string;
+  questioner: string;
+  question: string;
+  answerCount: number;
+  createdAt: string;
+  seenAt?: string | null;
+}
+
 export interface SystemUser {
   id: string;
   username: string;

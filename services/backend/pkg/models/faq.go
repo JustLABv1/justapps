@@ -48,3 +48,30 @@ type FAQAnswerUpvote struct {
 	UserID    uuid.UUID `bun:"user_id,pk,type:uuid" json:"userId"`
 	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
 }
+
+// UserFAQInboxItem notifies an app owner or editor that a new question needs
+// attention. The row is user-specific so each recipient can read it on their
+// own schedule.
+type UserFAQInboxItem struct {
+	bun.BaseModel `bun:"table:user_faq_inbox_items,alias:ufii"`
+
+	ID         uuid.UUID  `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	UserID     uuid.UUID  `bun:"user_id,notnull,type:uuid" json:"userId"`
+	QuestionID uuid.UUID  `bun:"question_id,notnull,type:uuid" json:"questionId"`
+	AppID      string     `bun:"app_id,notnull,type:text" json:"appId"`
+	SeenAt     *time.Time `bun:"seen_at,nullzero" json:"seenAt,omitempty"`
+	CreatedAt  time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
+}
+
+type FAQInboxListItem struct {
+	ID          uuid.UUID  `json:"id"`
+	QuestionID  uuid.UUID  `json:"questionId"`
+	AppID       string     `json:"appId"`
+	AppName     string     `json:"appName"`
+	AppIcon     string     `json:"appIcon"`
+	Questioner  string     `json:"questioner"`
+	Question    string     `json:"question"`
+	AnswerCount int        `json:"answerCount"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	SeenAt      *time.Time `json:"seenAt,omitempty"`
+}

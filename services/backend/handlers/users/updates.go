@@ -258,6 +258,10 @@ func MarkAllReleaseUpdatesSeen(context *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(context, "Updates konnten nicht als gelesen markiert werden", err)
 		return
 	}
+	if err := markAllFAQQuestionNotificationsSeen(context.Request.Context(), db, userID); err != nil {
+		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht als gelesen markiert werden", err)
+		return
+	}
 
 	context.Status(http.StatusNoContent)
 }

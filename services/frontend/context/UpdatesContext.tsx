@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReleaseInboxItem, UpdatePreferences } from '@/config/apps';
+import type { FAQNotification, ReleaseInboxItem, UpdatePreferences } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
@@ -15,7 +15,9 @@ interface UpdatesContextType {
   updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => Promise<boolean>;
   markAsSeen: (itemId: string) => Promise<boolean>;
   markAllAsSeen: () => Promise<boolean>;
+  markFAQAsSeen: (notificationId: string) => Promise<boolean>;
   loadInboxItems: (status?: 'all' | 'unread') => Promise<ReleaseInboxItem[]>;
+  loadFAQNotifications: (status?: 'all' | 'unread') => Promise<FAQNotification[]>;
 }
 
 const UpdatesContext = createContext<UpdatesContextType>({
@@ -28,7 +30,9 @@ const UpdatesContext = createContext<UpdatesContextType>({
   updatePreferences: async () => false,
   markAsSeen: async () => false,
   markAllAsSeen: async () => false,
+  markFAQAsSeen: async () => false,
   loadInboxItems: async () => [],
+  loadFAQNotifications: async () => [],
 });
 
 export function UpdatesProvider({ children }: { children: React.ReactNode }) {
@@ -48,11 +52,22 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   const refreshSummary = async () => {
     if (!user) return;
     try {
-      const response = await fetchApi('/user/updates/summary', { cache: 'no-store' });
-      if (!response.ok) return;
-      const data = await response.json() as { totalUnread?: number; appUnreadCounts?: Record<string, number> };
-      setTotalUnread(data.totalUnread ?? 0);
-      setAppUnreadCounts(data.appUnreadCounts ?? {});
+      const [releaseResponse, faqResponse] = await Promise.all([
+        fetchApi('/user/updates/summary', { cache: 'no-store' }).catch(() => null),
+        fetchApi('/user/faq-notifications/summary', { cache: 'no-store' }).catch(() => null),
+      ]);
+      const releaseData = releaseResponse?.ok
+        ? await releaseResponse.json() as { totalUnread?: number; appUnreadCounts?: Record<string, number> }
+        : {};
+      const faqData = faqResponse?.ok
+        ? await faqResponse.json() as { totalUnread?: number; appUnreadCounts?: Record<string, number> }
+        : {};
+      const appCounts = { ...(releaseData.appUnreadCounts ?? {}) };
+      Object.entries(faqData.appUnreadCounts ?? {}).forEach(([appId, count]) => {
+        appCounts[appId] = (appCounts[appId] ?? 0) + count;
+      });
+      setTotalUnread((releaseData.totalUnread ?? 0) + (faqData.totalUnread ?? 0));
+      setAppUnreadCounts(appCounts);
     } finally {
       setLoaded(true);
     }
@@ -137,6 +152,19 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const markFAQAsSeen = async (notificationId: string) => {
+    try {
+      const response = await fetchApi(`/user/faq-notifications/${notificationId}/seen`, { method: 'POST' });
+      if (!response.ok) {
+        return false;
+      }
+      await refreshSummary().catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const loadInboxItems = async (status: 'all' | 'unread' = 'all') => {
     const query = status === 'unread' ? '?status=unread' : '';
     const response = await fetchApi(`/user/updates${query}`, { cache: 'no-store' });
@@ -145,6 +173,20 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await response.json() as ReleaseInboxItem[] | null;
     return Array.isArray(data) ? data : [];
+  };
+
+  const loadFAQNotifications = async (status: 'all' | 'unread' = 'all') => {
+    const query = status === 'unread' ? '?status=unread' : '';
+    try {
+      const response = await fetchApi(`/user/faq-notifications${query}`, { cache: 'no-store' });
+      if (!response.ok) {
+        return [];
+      }
+      const data = await response.json() as FAQNotification[] | null;
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   };
 
   return (
@@ -159,7 +201,9 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
         updatePreferences,
         markAsSeen,
         markAllAsSeen,
+        markFAQAsSeen,
         loadInboxItems,
+        loadFAQNotifications,
       }}
     >
       {children}
