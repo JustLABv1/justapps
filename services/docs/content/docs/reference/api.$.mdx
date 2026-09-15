@@ -147,7 +147,8 @@ Common fields accepted in the request body:
 
 | Method   | Path                                                    | Auth        | Description                                         |
 | -------- | ------------------------------------------------------- | ----------- | --------------------------------------------------- |
-| `GET`    | `/apps/:id/faq`                                         | —           | List questions, answers, upvotes, and highlights    |
+| `GET`    | `/apps/:id/faq`                                         | —           | List and filter a page of questions                 |
+| `GET`    | `/apps/:id/faq/questions/:questionId/answers`           | —           | List a page of answers, upvotes, and highlights     |
 | `POST`   | `/apps/:id/faq/questions`                               | User        | Ask a question                                      |
 | `DELETE` | `/apps/:id/faq/questions/:questionId`                   | User        | Delete own question; app creator/admin may moderate |
 | `POST`   | `/apps/:id/faq/questions/:questionId/answers`           | User        | Add an answer                                       |
@@ -157,6 +158,11 @@ Common fields accepted in the request body:
 | `PATCH`  | `/apps/:id/faq/answers/:answerId`                       | Owner/admin | Pin or creator-like an answer                       |
 
 Question bodies use `{ "question": "..." }`; answer bodies use `{ "answer": "..." }`.
+Question listing accepts `page` (default `1`), `pageSize` (default `20`, maximum
+`50`), `q`, `status` (`all`, `open`, or `answered`), and `sort` (`newest` or
+`most-answered`). Answer listing accepts `page` and `pageSize`. Both listing
+responses include `page`, `pageSize`, `total`, and `hasMore`; answers are loaded
+separately when a question is opened.
 The FAQ is controlled by the admin setting `faqEnabled`.
 New questions create an in-app notification for the app owner and its editors;
 the notification is shown in the Updates area until the question is answered.
@@ -165,7 +171,8 @@ the notification is shown in the Updates area until the question is answered.
 
 | Method   | Path                                             | Auth  | Purpose                                      |
 |----------|--------------------------------------------------|-------|----------------------------------------------|
-| `GET`    | `/faq`                                           | —     | List platform-wide questions and answers     |
+| `GET`    | `/faq`                                           | —     | List and filter platform-wide questions      |
+| `GET`    | `/faq/questions/:questionId/answers`             | —     | List a page of answers to a question         |
 | `POST`   | `/faq/questions`                                 | User  | Ask a platform-wide question                 |
 | `DELETE` | `/faq/questions/:questionId`                     | User  | Delete own question; admins may moderate     |
 | `POST`   | `/faq/questions/:questionId/answers`             | User  | Add an answer                                |
@@ -176,7 +183,8 @@ the notification is shown in the Updates area until the question is answered.
 
 The global FAQ uses the same `faqEnabled` platform setting as app FAQs and is
 available from the main navigation. Its questions are not associated with a
-catalog app.
+catalog app. Its list endpoints use the same pagination, search, filter, and
+sorting parameters as the app FAQ endpoints above.
 
 ---
 

@@ -2,9 +2,9 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
-import { AlertDialog, Button, Card, Chip, Input, Label, TextArea, TextField, toast } from '@heroui/react';
-import { ArrowDownUp, ArrowUp, Heart, Loader2, MessageCircleQuestion, Pin, Search, Send, Trash2, User, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
+import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
@@ -38,6 +38,10 @@ interface FAQSectionProps {
 
 type FAQStatusFilter = 'all' | 'open' | 'answered';
 type FAQSort = 'newest' | 'most-answered';
+type FAQAnswerPage = { answers: FAQAnswer[]; page: number; hasMore: boolean; loading: boolean };
+
+const FAQ_PAGE_SIZE = 20;
+const FAQ_ANSWER_PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -121,51 +125,41 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
   const [sort, setSort] = useState<FAQSort>('newest');
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [questionPage, setQuestionPage] = useState(1);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [hasMoreQuestions, setHasMoreQuestions] = useState(false);
+  const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
+  const [answerPages, setAnswerPages] = useState<Record<string, FAQAnswerPage>>({});
+  const loadMoreQuestionsRef = useRef<HTMLDivElement>(null);
+  const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
-
-  const visibleQuestions = useMemo(() => {
-    const needle = searchQuery.trim().toLocaleLowerCase('de-DE');
-    return questions
-      .filter((question) => {
-        if (statusFilter === 'open' && question.answerCount > 0) return false;
-        if (statusFilter === 'answered' && question.answerCount === 0) return false;
-        if (!needle) return true;
-        return [
-          question.question,
-          question.username,
-          ...question.answers.flatMap((answer) => [answer.answer, answer.username]),
-        ].some((value) => value.toLocaleLowerCase('de-DE').includes(needle));
-      })
-      .sort((left, right) => {
-        if (sort === 'most-answered') {
-          return right.answerCount - left.answerCount
-            || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-        }
-        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-      });
-  }, [questions, searchQuery, sort, statusFilter]);
 
   const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest';
 
-  const loadFAQ = useCallback(async () => {
-    setLoading(true);
+  const loadFAQ = useCallback(async (page = 1, append = false) => {
+    if (append) setLoadingMoreQuestions(true);
+    else setLoading(true);
     try {
-      const response = await fetchApi(endpoint, { cache: 'no-store' });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_PAGE_SIZE), status: statusFilter, sort });
+      if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
       }
-      const data = await response.json() as { questions?: FAQQuestion[] };
+      const data = await response.json() as { questions?: FAQQuestion[]; page?: number; total?: number; hasMore?: boolean };
       const nextQuestions = Array.isArray(data.questions)
-        ? data.questions.map((question) => {
-            const answers = Array.isArray(question.answers) ? question.answers : [];
-            return {
-              ...question,
-              answers,
-              answerCount: Number.isFinite(question.answerCount) ? question.answerCount : answers.length,
-            };
-          })
+        ? data.questions.map((question) => ({ ...question, answers: [] }))
         : [];
-      setQuestions(nextQuestions);
+      setQuestions((current) => append ? [...current, ...nextQuestions] : nextQuestions);
+      setQuestionPage(data.page ?? page);
+      setTotalQuestions(data.total ?? nextQuestions.length);
+      setHasMoreQuestions(data.hasMore === true);
+      if (!append) {
+        setExpandedQuestionId(null);
+        setAnswerPages({});
+      }
       setError(null);
       return true;
     } catch (reason) {
@@ -174,19 +168,79 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       toast.danger(message);
       return false;
     } finally {
-      setLoading(false);
+      if (append) setLoadingMoreQuestions(false);
+      else setLoading(false);
+    }
+  }, [endpoint, searchQuery, sort, statusFilter]);
+
+  const loadAnswers = useCallback(async (questionId: string, page = 1, append = false) => {
+    setAnswerPages((current) => ({
+      ...current,
+      [questionId]: { answers: append ? current[questionId]?.answers ?? [] : [], page, hasMore: false, loading: true },
+    }));
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_ANSWER_PAGE_SIZE) });
+      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers?${params.toString()}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(await responseError(response, 'Antworten konnten nicht geladen werden.'));
+      const data = await response.json() as { answers?: FAQAnswer[]; page?: number; hasMore?: boolean };
+      const answers = Array.isArray(data.answers) ? data.answers : [];
+      setAnswerPages((current) => ({
+        ...current,
+        [questionId]: {
+          answers: append ? [...(current[questionId]?.answers ?? []), ...answers] : answers,
+          page: data.page ?? page,
+          hasMore: data.hasMore === true,
+          loading: false,
+        },
+      }));
+      return true;
+    } catch (reason) {
+      const message = userFacingError(reason, 'Antworten konnten nicht geladen werden.');
+      setAnswerPages((current) => ({ ...current, [questionId]: { ...(current[questionId] ?? { answers: [], page, hasMore: false }), loading: false } }));
+      setError(message);
+      toast.danger(message);
+      return false;
     }
   }, [endpoint]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadFAQ();
-    }, 0);
+    const timeoutId = window.setTimeout(() => void loadFAQ(1, false), 300);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
   }, [loadFAQ]);
+
+  useEffect(() => {
+    const target = loadMoreQuestionsRef.current;
+    if (!target || !hasMoreQuestions || loading || loadingMoreQuestions) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) void loadFAQ(questionPage + 1, true);
+    }, { rootMargin: '320px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMoreQuestions, loadFAQ, loading, loadingMoreQuestions, questionPage]);
+
+  useEffect(() => {
+    if (!expandedQuestionId) return;
+    const page = answerPages[expandedQuestionId];
+    const target = loadMoreAnswersRef.current;
+    if (!target || !page?.hasMore || page.loading) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) void loadAnswers(expandedQuestionId, page.page + 1, true);
+    }, { rootMargin: '240px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [answerPages, expandedQuestionId, loadAnswers]);
+
+  const toggleQuestion = (questionId: string) => {
+    if (expandedQuestionId === questionId) {
+      setExpandedQuestionId(null);
+      return;
+    }
+    setExpandedQuestionId(questionId);
+    if (!answerPages[questionId]) void loadAnswers(questionId);
+  };
 
   const handleAskQuestion = async () => {
     const question = questionDraft.trim();
@@ -203,7 +257,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
         throw new Error(await responseError(response, 'Frage konnte nicht veröffentlicht werden.'));
       }
       setQuestionDraft('');
-      if (await loadFAQ()) {
+      setComposerOpen(false);
+      if (await loadFAQ(1, false)) {
         toast.success('Frage veröffentlicht.');
       }
     } catch (reason) {
@@ -234,7 +289,9 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
         delete next[questionId];
         return next;
       });
-      if (await loadFAQ()) {
+      if (await loadFAQ(1, false)) {
+        setExpandedQuestionId(questionId);
+        await loadAnswers(questionId);
         toast.success('Antwort veröffentlicht.');
       }
     } catch (reason) {
@@ -255,7 +312,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       if (!response.ok) {
         throw new Error(await responseError(response, 'Frage konnte nicht gelöscht werden.'));
       }
-      if (await loadFAQ()) {
+      if (await loadFAQ(1, false)) {
         toast.success('Frage gelöscht.');
       }
     } catch (reason) {
@@ -276,7 +333,9 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       if (!response.ok) {
         throw new Error(await responseError(response, 'Antwort konnte nicht gelöscht werden.'));
       }
-      if (await loadFAQ()) {
+      if (await loadFAQ(1, false)) {
+        setExpandedQuestionId(questionId);
+        await loadAnswers(questionId);
         toast.success('Antwort gelöscht.');
       }
     } catch (reason) {
@@ -300,16 +359,19 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
         throw new Error(await responseError(response, 'Stimme konnte nicht gespeichert werden.'));
       }
       const result = await response.json().catch(() => ({})) as { upvoted?: boolean; upvoteCount?: number };
-      setQuestions((previous) => previous.map((question) => ({
-        ...question,
-        answers: question.answers.map((candidate) => candidate.id === answer.id
-          ? {
-              ...candidate,
-              userUpvoted: result.upvoted ?? !answer.userUpvoted,
-              upvoteCount: result.upvoteCount ?? candidate.upvoteCount + (answer.userUpvoted ? -1 : 1),
-            }
-          : candidate),
-      })));
+      setAnswerPages((current) => ({
+        ...current,
+        [answer.questionId]: {
+          ...current[answer.questionId],
+          answers: (current[answer.questionId]?.answers ?? []).map((candidate) => candidate.id === answer.id
+            ? {
+                ...candidate,
+                userUpvoted: result.upvoted ?? !answer.userUpvoted,
+                upvoteCount: result.upvoteCount ?? candidate.upvoteCount + (answer.userUpvoted ? -1 : 1),
+              }
+            : candidate),
+        },
+      }));
       toast.success(answer.userUpvoted ? 'Stimme entfernt.' : 'Antwort als hilfreich markiert.');
     } catch (reason) {
       const message = userFacingError(reason, 'Stimme konnte nicht gespeichert werden.');
@@ -334,7 +396,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       if (!response.ok) {
         throw new Error(await responseError(response, 'Hervorhebung konnte nicht gespeichert werden.'));
       }
-      if (await loadFAQ()) {
+      if (await loadAnswers(answer.questionId)) {
         if (field === 'isPinned') {
           toast.success(enabled ? 'Antwort angeheftet.' : 'Anheftung entfernt.');
         } else {
@@ -352,29 +414,25 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
 
   return (
     <div className={`${global ? '' : 'mt-2'} space-y-5`}>
-      {!global && (
+      {(
         <>
-          <div className="flex items-center gap-2 text-lg font-bold text-foreground">
-            <MessageCircleQuestion className="h-5 w-5 text-accent" />
-            Fragen & Antworten
-            {questions.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">{global ? 'Alle Fragen' : 'Häufige Fragen'}</h2>
+            {totalQuestions > 0 && (
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold text-muted shadow-sm">
-                {questions.length}
+                {totalQuestions}
               </span>
             )}
+            </div>
+            {user && <Button size="sm" variant="secondary" onPress={() => setComposerOpen(!composerOpen)} aria-expanded={composerOpen} aria-controls="faq-composer"><Plus className="h-4 w-4" />Frage stellen</Button>}
           </div>
-
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-            <span className="font-semibold text-foreground">Gemeinsam Antworten finden</span>
-            <span aria-hidden="true">·</span>
-            Stellen Sie Fragen oder teilen Sie Ihr Wissen. Hilfreiche Antworten werden durch Stimmen und Empfehlungen sichtbarer.
-          </p>
         </>
       )}
 
-      {global && (
-        <Card className="rounded-2xl border-border bg-surface shadow-sm" variant="default">
-          <Card.Content className="space-y-3 p-4 sm:p-5">
+      {(
+        <div className="space-y-4">
+          <div className="space-y-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -382,8 +440,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Fragen, Antworten oder Personen durchsuchen"
-                  aria-label="Globales FAQ durchsuchen"
-                  className="w-full pl-10 pr-9"
+                  aria-label="FAQ durchsuchen"
+                  className="h-12 w-full rounded-xl pl-10 pr-9"
                   variant="secondary"
                 />
                 {searchQuery && (
@@ -409,25 +467,40 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     key={value}
                     size="sm"
                     variant={statusFilter === value ? 'primary' : 'secondary'}
+                    aria-pressed={statusFilter === value}
                     onPress={() => setStatusFilter(value)}
                   >
                     {label}
                   </Button>
                 ))}
               </div>
-              <Button
-                size="sm"
+              <Select
+                aria-label="Fragen sortieren"
+                selectedKey={sort}
+                onSelectionChange={(key) => setSort(String(key) as FAQSort)}
                 variant="secondary"
-                onPress={() => setSort((current) => current === 'newest' ? 'most-answered' : 'newest')}
-                className="gap-2"
-                aria-label={`Sortierung: ${sort === 'newest' ? 'Neueste zuerst' : 'Meiste Antworten zuerst'}`}
+                className="w-full sm:w-48"
               >
-                <ArrowDownUp className="h-3.5 w-3.5" />
-                {sort === 'newest' ? 'Neueste' : 'Meiste Antworten'}
-              </Button>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="newest" textValue="Neueste zuerst">
+                      Neueste zuerst
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="most-answered" textValue="Meiste Antworten">
+                      Meiste Antworten
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
             </div>
             <div className="flex items-center justify-between gap-3 text-xs text-muted">
-              <span>{visibleQuestions.length} {visibleQuestions.length === 1 ? 'Frage' : 'Fragen'} gefunden</span>
+              <span role="status">{loading ? 'Fragen werden geladen …' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
               {hasActiveFilters && (
                 <Button
                   size="sm"
@@ -439,8 +512,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                 </Button>
               )}
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       )}
 
       {error && (
@@ -449,8 +522,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
         </div>
       )}
 
-      {user ? (
-        <Card className="rounded-2xl border-border bg-surface shadow-sm" variant="default">
+      {user && composerOpen ? (
+        <Card id="faq-composer" className="rounded-2xl border border-border bg-surface shadow-none" variant="default">
           <Card.Content className="flex flex-col gap-3 p-4 sm:p-5">
             <TextField
               value={questionDraft}
@@ -458,12 +531,13 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
               className="flex min-w-0 flex-1 flex-col gap-1.5"
             >
               <div className="flex items-center justify-between gap-4">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                <Label className="text-sm font-medium text-foreground">
                   Eine Frage stellen
                 </Label>
                 <span className="text-[10px] text-muted">Max. 1.000 Zeichen</span>
               </div>
               <TextArea
+                autoFocus
                 aria-label="Ihre Frage"
                 placeholder={global ? 'Was möchten Sie über JustApps wissen?' : 'Was möchten Sie über diese App wissen?'}
                 variant="secondary"
@@ -473,6 +547,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
               />
             </TextField>
             <div className="flex justify-end">
+              <Button variant="ghost" size="sm" className="mr-2" onPress={() => setComposerOpen(false)}>Abbrechen</Button>
               <Button
                 size="sm"
                 onPress={handleAskQuestion}
@@ -486,42 +561,40 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
             </div>
           </Card.Content>
         </Card>
-      ) : (
-        <Card variant="secondary" className="rounded-xl border border-border bg-surface-secondary/50 shadow-sm">
-          <Card.Content className="p-6 text-center text-sm">
-            <p className="font-medium text-muted">Bitte melden Sie sich an, um Fragen zu stellen, Antworten zu geben oder abzustimmen.</p>
-          </Card.Content>
-        </Card>
-      )}
+      ) : null}
 
-      {loading ? (
+      {loading && questions.length === 0 ? (
         <div className="flex items-center justify-center gap-3 py-12 text-sm text-muted">
           <Loader2 className="h-5 w-5 animate-spin text-accent" />
           Fragen und Antworten werden geladen …
         </div>
-      ) : visibleQuestions.length === 0 ? (
+      ) : questions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface-secondary/10 py-12 text-center text-muted">
           <MessageCircleQuestion className="mx-auto mb-3 h-8 w-8 opacity-20" />
           <p className="text-sm font-medium">
-            {questions.length === 0 ? 'Noch keine Fragen. Stellen Sie die erste Frage!' : 'Keine Fragen passen zu Ihrer Suche.'}
+            {hasActiveFilters ? 'Keine Fragen passen zu Ihrer Suche.' : 'Noch keine Fragen. Stellen Sie die erste Frage!'}
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {visibleQuestions.map((question) => {
+        <div className="overflow-hidden rounded-2xl border border-border bg-surface divide-y divide-border">
+          {questions.map((question) => {
             const canDeleteQuestion = canManageHighlights || user?.id === question.userId;
             const answerDraft = answerDrafts[question.id] || '';
+            const answerPage = answerPages[question.id];
+            const isExpanded = expandedQuestionId === question.id;
 
             return (
-              <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-                <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
+              <article key={question.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleQuestion(question.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`faq-answer-panel-${question.id}`}
+                  className="flex w-full cursor-pointer items-center justify-between gap-5 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
+                >
                   <div className="min-w-0 space-y-2">
-                    <h3 className="text-base font-bold leading-relaxed text-foreground">{question.question}</h3>
-                    <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted">
-                      <span>{question.username || 'Anonymer Nutzer'}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{formatDate(question.createdAt)}</span>
-                      <span aria-hidden="true">·</span>
+                    <h3 className="break-words text-base font-semibold leading-relaxed text-foreground">{question.question}</h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                       <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
                       {question.answerCount === 0 && (
                         <Chip size="sm" color="warning" variant="soft" className="text-[10px] font-bold">
@@ -530,6 +603,14 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       )}
                     </div>
                   </div>
+                  <ChevronDown className={`h-5 w-5 shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isExpanded && (
+                <div className="px-5 pb-6 sm:px-6">
+                  <div id={`faq-answer-panel-${question.id}`}>
+                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 text-xs text-muted">
+                    <span>Gefragt von {question.username || 'Anonymer Nutzer'} · {formatDate(question.createdAt)}</span>
                   {canDeleteQuestion && (
                     <DeleteAction
                       title="Frage löschen?"
@@ -539,9 +620,12 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     />
                   )}
                 </div>
-
-                <div className="space-y-3 bg-surface-secondary/25 p-5 sm:p-6">
-                  {question.answers.length > 0 ? question.answers.map((answer) => {
+                <div className="space-y-6">
+                  {answerPage?.loading && answerPage.answers.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
+                    </div>
+                  ) : (answerPage?.answers.length ?? 0) > 0 ? answerPage!.answers.map((answer) => {
                     const canDeleteAnswer = canManageHighlights || user?.id === answer.userId;
                     const answerBusy = busyAction === `upvote:${answer.id}`
                       || busyAction === `isPinned:${answer.id}`
@@ -551,16 +635,13 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     return (
                       <div
                         key={answer.id}
-                        className={`rounded-xl border p-4 transition-colors ${answer.isPinned || answer.creatorLiked ? 'border-accent/30 bg-accent/5' : 'border-border bg-surface-secondary/30'}`}
+                        className={`border-l-2 pl-4 sm:pl-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent' : 'border-border'}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface shadow-sm">
-                              <User className="h-4 w-4 text-muted" />
-                            </div>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-bold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{formatDate(answer.createdAt)}</p>
+                              <p className="text-xs text-muted">{formatDate(answer.createdAt)}</p>
                             </div>
                           </div>
                           <div className="flex flex-wrap justify-end gap-1.5">
@@ -577,7 +658,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                           </div>
                         </div>
 
-                        <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted">{answer.answer}</p>
+                        <p className="mt-3 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{answer.answer}</p>
 
                         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
                           <Button
@@ -635,8 +716,22 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     </p>
                   )}
 
+                  {answerPage?.hasMore && (
+                    <div ref={loadMoreAnswersRef} className="flex justify-center py-2" aria-live="polite">
+                      {answerPage.loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted" />
+                      ) : (
+                        <Button size="sm" variant="ghost" onPress={() => void loadAnswers(question.id, answerPage.page + 1, true)}>
+                          Weitere Antworten laden
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {user && (
-                    <div className="border-t border-border pt-4">
+                    <details className="border-t border-border pt-4">
+                      <summary className="cursor-pointer text-sm font-medium text-accent">Antwort hinzufügen</summary>
+                      <div className="mt-4">
                       <TextField
                         value={answerDraft}
                         onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
@@ -665,14 +760,28 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                           Antwort senden
                         </Button>
                       </div>
-                    </div>
+                      </div>
+                    </details>
                   )}
                 </div>
+                  </div>
+                </div>
+                )}
               </article>
             );
           })}
         </div>
       )}
+      {hasMoreQuestions && (
+        <div ref={loadMoreQuestionsRef} className="flex justify-center py-4" aria-live="polite">
+          {loadingMoreQuestions ? (
+            <div className="flex items-center gap-2 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" />Weitere Fragen werden geladen …</div>
+          ) : (
+            <Button variant="secondary" onPress={() => void loadFAQ(questionPage + 1, true)}>Weitere Fragen laden</Button>
+          )}
+        </div>
+      )}
+      {!user && <p className="text-center text-sm text-muted"><a href="/login" className="font-medium text-accent underline underline-offset-4">Anmelden</a>, um eigene Fragen zu stellen oder Antworten beizutragen.</p>}
     </div>
   );
 }

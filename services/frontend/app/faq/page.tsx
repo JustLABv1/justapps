@@ -4,7 +4,6 @@ import { FAQSection } from '@/components/FAQSection';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { Card } from '@heroui/react';
-import { MessageCircleQuestion } from 'lucide-react';
 
 export default function GlobalFAQPage() {
   const { user } = useAuth();
@@ -21,20 +20,13 @@ export default function GlobalFAQPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 pb-10">
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-surface px-6 py-7 shadow-sm sm:px-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-accent/8 blur-3xl" />
-        <div className="relative flex items-start gap-4">
-          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-accent/15 bg-accent/8 text-accent">
-            <MessageCircleQuestion className="h-5 w-5" />
-          </div>
-          <div className="max-w-2xl">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Globales FAQ</h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Stellen Sie allgemeine Fragen zu JustApps und finden Sie Antworten aus der Community.
-            </p>
-          </div>
-        </div>
+    <div className="mx-auto w-full max-w-6xl space-y-8 pb-10">
+      <header className="max-w-2xl space-y-3">
+        <p className="text-sm font-medium text-accent">Wissen aus der Community</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Ihre Fragen. Unsere Antworten.</h1>
+        <p className="text-base leading-relaxed text-muted">
+          Das globale FAQ für alles rund um JustApps. Finden Sie hilfreiche Antworten oder stellen Sie Ihre eigene Frage.
+        </p>
       </header>
 
       <FAQSection global canManageHighlights={user?.role === 'admin'} />

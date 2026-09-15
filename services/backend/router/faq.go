@@ -11,6 +11,7 @@ import (
 func RegisterFAQ(router *gin.RouterGroup, db *bun.DB) {
 	faq := router.Group("/faq")
 	faq.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.GetGlobalFAQ(c, db) })
+	faq.GET("/questions/:questionId/answers", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.GetGlobalFAQAnswers(c, db) })
 
 	questions := faq.Group("/questions")
 	questions.Use(middlewares.Auth(db))
