@@ -9,32 +9,35 @@ import { FavoritesProvider } from '../context/FavoritesContext';
 import { SettingsProvider } from '../context/SettingsContext';
 import { UpdatesProvider } from '../context/UpdatesContext';
 import { AIChatWidget } from './AIChatWidget';
+import { BackendHealthGate } from './BackendHealthGate';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   return (
     <SessionProvider refetchInterval={60} refetchOnWindowFocus={true}>
-      <AuthProvider>
-        <FavoritesProvider>
-          <UpdatesProvider>
-            <SettingsProvider>
-              <NextThemesProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem={false}
-                disableTransitionOnChange
-              >
-                <RouterProvider navigate={router.push}>
-                  <Toast.Provider placement="bottom end" />
-                  {children}
-                  <AIChatWidget />
-                </RouterProvider>
-              </NextThemesProvider>
-            </SettingsProvider>
-          </UpdatesProvider>
-        </FavoritesProvider>
-      </AuthProvider>
+      <NextThemesProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem={false}
+        disableTransitionOnChange
+      >
+        <RouterProvider navigate={router.push}>
+          <BackendHealthGate>
+            <AuthProvider>
+              <FavoritesProvider>
+                <UpdatesProvider>
+                  <SettingsProvider>
+                    <Toast.Provider placement="bottom end" />
+                    {children}
+                    <AIChatWidget />
+                  </SettingsProvider>
+                </UpdatesProvider>
+              </FavoritesProvider>
+            </AuthProvider>
+          </BackendHealthGate>
+        </RouterProvider>
+      </NextThemesProvider>
     </SessionProvider>
   );
 }

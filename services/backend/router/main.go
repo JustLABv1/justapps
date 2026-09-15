@@ -40,7 +40,7 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 		Auth(v1, db)
 		Token(v1, db)
 		User(v1, db)
-		Health(v1)
+		Health(v1, db)
 		Admin(v1, db)
 		RegisterBackups(v1, db, config.DataPath)
 		RegisterApps(v1, db)

@@ -178,3 +178,61 @@ body {
   0%, 100% { transform: translateY(0px) rotate(-2deg); }
   50% { transform: translateY(-22px) rotate(1.5deg); }
 }
+
+/* ── Maintenance screen ── */
+@keyframes maintenance-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes maintenance-reveal {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes maintenance-float-a {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-14px) rotate(1.5deg); }
+}
+
+@keyframes maintenance-float-b {
+  0%, 100% { transform: translateY(0) rotate(1deg); }
+  50% { transform: translateY(-18px) rotate(-1.5deg); }
+}
+
+@keyframes maintenance-glow {
+  0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(0.96); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.04); }
+}
+
+.maintenance-card {
+  animation: maintenance-enter 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.maintenance-icon,
+.maintenance-copy,
+.maintenance-notice,
+.maintenance-action {
+  opacity: 0;
+  animation: maintenance-reveal 260ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.maintenance-icon { animation-delay: 70ms; }
+.maintenance-copy { animation-delay: 110ms; }
+.maintenance-notice { animation-delay: 150ms; }
+.maintenance-action { animation-delay: 190ms; }
+.maintenance-float { animation-timing-function: ease-in-out !important; animation-iteration-count: infinite !important; }
+.maintenance-glow { animation: maintenance-glow 8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .maintenance-card,
+  .maintenance-icon,
+  .maintenance-copy,
+  .maintenance-notice,
+  .maintenance-action,
+  .maintenance-float,
+  .maintenance-glow {
+    animation: none !important;
+    opacity: 1;
+  }
+}

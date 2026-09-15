@@ -2,20 +2,21 @@ import { getApiUrl } from './apiUrl';
 
 const API_URL = getApiUrl();
 
+function reportBackendUnavailable(status?: number) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('backend:unavailable', { detail: { status } }));
+}
+
 /**
  * Upload a file to the backend. Returns the public path of the uploaded asset.
  * Use for multipart/form-data uploads (e.g. logos).
  */
 export async function uploadFile(endpoint: string, file: File): Promise<string> {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  const url = `${API_URL}${cleanEndpoint}`;
-
   const form = new FormData();
   form.append('file', file);
 
-  const res = await fetch(url, {
+  const res = await fetchApi(endpoint, {
     method: 'POST',
-    credentials: 'include',
     body: form,
   });
 
@@ -49,6 +50,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
       credentials: 'include',
     });
 
+    if (response.status >= 500) {
+      reportBackendUnavailable(response.status);
+    }
+
     if (response.status === 401 && hadAuthorization) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('auth:unauthorized'));
@@ -60,6 +65,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     if (typeof window === 'undefined') {
       console.error(`Fetch error in SSR for ${url}:`, err);
     }
+    reportBackendUnavailable();
     throw err;
   }
 }
