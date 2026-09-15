@@ -209,7 +209,15 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			manifest.Data.FAQQuestions = questions
 			manifest.Data.FAQAnswers = answers
 			manifest.Data.FAQAnswerUpvotes = upvotes
-			appendSummary(&manifest, section, len(questions)+len(answers)+len(upvotes))
+			globalQuestions, globalAnswers, globalUpvotes, sectionErr := exportGlobalFAQ(c, db)
+			if sectionErr != nil {
+				respondSectionError(c, section, sectionErr)
+				return
+			}
+			manifest.Data.GlobalFAQQuestions = globalQuestions
+			manifest.Data.GlobalFAQAnswers = globalAnswers
+			manifest.Data.GlobalFAQUpvotes = globalUpvotes
+			appendSummary(&manifest, section, len(questions)+len(answers)+len(upvotes)+len(globalQuestions)+len(globalAnswers)+len(globalUpvotes))
 		case "audit":
 			auditEntries, sectionErr := exportAudit(c, db)
 			if sectionErr != nil {
@@ -463,6 +471,23 @@ func exportFAQ(c *gin.Context, db *bun.DB) ([]models.FAQQuestion, []models.FAQAn
 		return nil, nil, nil, err
 	}
 
+	return questions, answers, upvotes, nil
+}
+
+func exportGlobalFAQ(c *gin.Context, db *bun.DB) ([]models.GlobalFAQQuestion, []models.GlobalFAQAnswer, []models.GlobalFAQAnswerUpvote, error) {
+	ctx := c.Request.Context()
+	var questions []models.GlobalFAQQuestion
+	if err := db.NewSelect().Model(&questions).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+	var answers []models.GlobalFAQAnswer
+	if err := db.NewSelect().Model(&answers).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
+	var upvotes []models.GlobalFAQAnswerUpvote
+	if err := db.NewSelect().Model(&upvotes).Order("created_at ASC").Scan(ctx); err != nil {
+		return nil, nil, nil, err
+	}
 	return questions, answers, upvotes, nil
 }
 

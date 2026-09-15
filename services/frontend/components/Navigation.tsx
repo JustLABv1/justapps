@@ -19,6 +19,7 @@ import {
   Layers2,
   LayoutDashboard,
   KeyRound,
+  MessageCircleQuestion,
   Menu,
   Package,
   PlugZap,
@@ -117,6 +118,14 @@ export function Navigation() {
       icon: Layers2,
       active: pathname === "/gruppen" || pathname.startsWith("/gruppen/"),
     },
+    ...(settings.faqEnabled
+      ? [{
+          href: "/faq",
+          label: "FAQ",
+          icon: MessageCircleQuestion,
+          active: pathname === "/faq",
+        }]
+      : []),
     documentationLink,
     ...(user
       ? [

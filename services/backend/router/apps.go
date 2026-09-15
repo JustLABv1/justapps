@@ -41,6 +41,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		appsGroup.GET("/:id/faq", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.GetFAQ(c, db)
 		})
+		appsGroup.GET("/:id/faq/questions/:questionId/answers", middlewares.OptionalAuth(db), func(c *gin.Context) {
+			apps.GetFAQAnswers(c, db)
+		})
 		appsGroup.GET("/:id/releases", middlewares.OptionalAuth(db), func(c *gin.Context) {
 			apps.ListReleases(c, db)
 		})

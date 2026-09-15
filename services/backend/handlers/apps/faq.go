@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 const (
 	maxFAQQuestionLength = 1000
 	maxFAQAnswerLength   = 5000
+	defaultFAQPageSize   = 20
+	maxFAQPageSize       = 50
 )
 
 type faqQuestionRow struct {
@@ -58,6 +61,52 @@ type faqAnswerRequest struct {
 type faqAnswerHighlightsRequest struct {
 	IsPinned     *bool `json:"isPinned"`
 	CreatorLiked *bool `json:"creatorLiked"`
+}
+
+func parseFAQPagination(c *gin.Context) (int, int, bool) {
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		httperror.StatusBadRequest(c, "Invalid FAQ page", errors.New("page must be a positive integer"))
+		return 0, 0, false
+	}
+	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", strconv.Itoa(defaultFAQPageSize)))
+	if err != nil || pageSize < 1 || pageSize > maxFAQPageSize {
+		httperror.StatusBadRequest(c, "Invalid FAQ page size", fmt.Errorf("pageSize must be between 1 and %d", maxFAQPageSize))
+		return 0, 0, false
+	}
+	return page, pageSize, true
+}
+
+func applyFAQQuestionFilters(query *bun.SelectQuery, c *gin.Context, answerTable string) (*bun.SelectQuery, bool) {
+	search := strings.TrimSpace(c.Query("q"))
+	if search != "" {
+		pattern := "%" + search + "%"
+		query = query.WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.WhereOr("q.question ILIKE ?", pattern).
+				WhereOr("q.username ILIKE ?", pattern).
+				WhereOr(fmt.Sprintf("EXISTS (SELECT 1 FROM %s search_answer WHERE search_answer.question_id = q.id AND (search_answer.answer ILIKE ? OR search_answer.username ILIKE ?))", answerTable), pattern, pattern)
+		})
+	}
+
+	switch c.Query("status") {
+	case "", "all":
+	case "open":
+		query = query.Where(fmt.Sprintf("NOT EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
+	case "answered":
+		query = query.Where(fmt.Sprintf("EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
+	default:
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+		return nil, false
+	}
+
+	return query, true
+}
+
+func applyFAQQuestionOrder(query *bun.SelectQuery, sort string) *bun.SelectQuery {
+	if sort == "most-answered" {
+		return query.OrderExpr("answer_count DESC").OrderExpr("q.created_at DESC").OrderExpr("q.id DESC")
+	}
+	return query.OrderExpr("q.created_at DESC").OrderExpr("q.id DESC")
 }
 
 // ensureFAQEnabled keeps the feature disabled server-side even if a client
@@ -142,79 +191,79 @@ func faqQuestionResponse(row faqQuestionRow) models.FAQQuestion {
 	}
 }
 
-// GetFAQ returns questions and their answers in display order. Promoted answers
-// are ordered first, followed by community upvotes and then oldest-first so a
-// discussion reads naturally.
+// GetFAQ returns a filtered page of questions. Answers are loaded lazily through
+// GetFAQAnswers when a question is opened.
 func GetFAQ(c *gin.Context, db *bun.DB) {
 	appID := c.Param("id")
 	if _, ok := loadVisibleFAQApp(c, db, appID); !ok {
 		return
 	}
 
-	viewerID, _, _ := getViewerContext(c)
+	page, pageSize, ok := parseFAQPagination(c)
+	if !ok {
+		return
+	}
 	ctx := c.Request.Context()
 	questionRows := make([]faqQuestionRow, 0)
-	err := db.NewRaw(`
-		SELECT q.id, q.app_id, q.user_id, q.username, q.question, q.created_at,
-		       COUNT(a.id)::int AS answer_count
-		FROM faq_questions q
-		LEFT JOIN faq_answers a ON a.question_id = q.id
-		WHERE q.app_id = ?
-		GROUP BY q.id, q.app_id, q.user_id, q.username, q.question, q.created_at
-		ORDER BY q.created_at DESC, q.id DESC
-	`, appID).Scan(ctx, &questionRows)
+	query := db.NewSelect().TableExpr("faq_questions AS q").
+		ColumnExpr("q.id, q.app_id, q.user_id, q.username, q.question, q.created_at").
+		ColumnExpr("(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count").
+		Where("q.app_id = ?", appID)
+	query, ok = applyFAQQuestionFilters(query, c, "faq_answers")
+	if !ok {
+		return
+	}
+	total, err := query.Clone().Count(ctx)
+	if err == nil {
+		err = applyFAQQuestionOrder(query, c.Query("sort")).Limit(pageSize).Offset((page-1)*pageSize).Scan(ctx, &questionRows)
+	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ questions", err)
 		return
 	}
 
-	answerRows := make([]faqAnswerRow, 0)
-	err = db.NewRaw(`
-		SELECT a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer,
-		       a.is_pinned, a.creator_liked, a.created_at,
-		       COUNT(v.user_id)::int AS upvote_count,
-		       COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted
-		FROM faq_answers a
-		LEFT JOIN faq_answer_upvotes v ON v.answer_id = a.id
-		WHERE a.app_id = ?
-		GROUP BY a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer,
-		         a.is_pinned, a.creator_liked, a.created_at
-		ORDER BY a.question_id, a.is_pinned DESC, a.creator_liked DESC,
-		         COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC
-	`, viewerID, appID).Scan(ctx, &answerRows)
+	questions := make([]models.FAQQuestion, 0, len(questionRows))
+	for _, row := range questionRows {
+		questions = append(questions, faqQuestionResponse(row))
+	}
+	c.JSON(http.StatusOK, gin.H{"questions": questions, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
+}
+
+func GetFAQAnswers(c *gin.Context, db *bun.DB) {
+	app, ok := loadVisibleFAQApp(c, db, c.Param("id"))
+	if !ok {
+		return
+	}
+	questionID, ok := parseFAQUUID(c, "questionId", "question ID")
+	if !ok {
+		return
+	}
+	page, pageSize, ok := parseFAQPagination(c)
+	if !ok {
+		return
+	}
+	viewerID, _, _ := getViewerContext(c)
+	rows := make([]faqAnswerRow, 0)
+	query := db.NewSelect().TableExpr("faq_answers AS a").
+		ColumnExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at").
+		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
+		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
+		Join("LEFT JOIN faq_answer_upvotes AS v ON v.answer_id = a.id").
+		Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).
+		GroupExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at")
+	total, err := db.NewSelect().TableExpr("faq_answers AS a").Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).Count(c)
+	if err == nil {
+		err = query.OrderExpr("a.is_pinned DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
+	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ answers", err)
 		return
 	}
-
-	questions := make([]models.FAQQuestion, 0, len(questionRows))
-	questionIndexes := make(map[uuid.UUID]int, len(questionRows))
-	for _, row := range questionRows {
-		questionIndexes[row.ID] = len(questions)
-		questions = append(questions, faqQuestionResponse(row))
+	answers := make([]models.FAQAnswer, 0, len(rows))
+	for _, row := range rows {
+		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
-
-	for _, row := range answerRows {
-		questionIndex, ok := questionIndexes[row.QuestionID]
-		if !ok {
-			continue
-		}
-		questions[questionIndex].Answers = append(questions[questionIndex].Answers, models.FAQAnswer{
-			ID:           row.ID,
-			QuestionID:   row.QuestionID,
-			AppID:        row.AppID,
-			UserID:       row.UserID,
-			Username:     row.Username,
-			Answer:       row.Answer,
-			IsPinned:     row.IsPinned,
-			CreatorLiked: row.CreatorLiked,
-			CreatedAt:    row.CreatedAt,
-			UpvoteCount:  row.UpvoteCount,
-			UserUpvoted:  row.UserUpvoted,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"questions": questions})
+	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
 }
 
 func CreateFAQQuestion(c *gin.Context, db *bun.DB) {

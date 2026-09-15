@@ -76,6 +76,9 @@ type BackupData struct {
 	FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
 	FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
 	FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
+	GlobalFAQQuestions  []GlobalFAQQuestion      `json:"globalFaqQuestions,omitempty"`
+	GlobalFAQAnswers    []GlobalFAQAnswer        `json:"globalFaqAnswers,omitempty"`
+	GlobalFAQUpvotes    []GlobalFAQAnswerUpvote  `json:"globalFaqAnswerUpvotes,omitempty"`
 	Audit               []Audit                  `json:"audit,omitempty"`
 	Assets              []BackupAsset            `json:"assets,omitempty"`
 }
@@ -103,6 +106,9 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
 		FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
 		FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
+		GlobalFAQQuestions  []GlobalFAQQuestion      `json:"globalFaqQuestions,omitempty"`
+		GlobalFAQAnswers    []GlobalFAQAnswer        `json:"globalFaqAnswers,omitempty"`
+		GlobalFAQUpvotes    []GlobalFAQAnswerUpvote  `json:"globalFaqAnswerUpvotes,omitempty"`
 		Audit               []Audit                  `json:"audit,omitempty"`
 		Assets              []BackupAsset            `json:"assets,omitempty"`
 	}
@@ -128,6 +134,9 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		FAQQuestions:        raw.FAQQuestions,
 		FAQAnswers:          raw.FAQAnswers,
 		FAQAnswerUpvotes:    raw.FAQAnswerUpvotes,
+		GlobalFAQQuestions:  raw.GlobalFAQQuestions,
+		GlobalFAQAnswers:    raw.GlobalFAQAnswers,
+		GlobalFAQUpvotes:    raw.GlobalFAQUpvotes,
 		Audit:               raw.Audit,
 		Assets:              raw.Assets,
 	}
