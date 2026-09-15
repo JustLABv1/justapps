@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
+import { useStoreName } from '@/context/SettingsContext';
 import { fetchApi } from '@/lib/api';
 import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
 import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, X } from 'lucide-react';
@@ -115,6 +116,7 @@ function DeleteAction({
 
 export function FAQSection({ appId, canManageHighlights, global = false }: FAQSectionProps) {
   const { user } = useAuth();
+  const storeName = useStoreName();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
   const [questionDraft, setQuestionDraft] = useState('');
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
@@ -539,7 +541,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
               <TextArea
                 autoFocus
                 aria-label="Ihre Frage"
-                placeholder={global ? 'Was möchten Sie über JustApps wissen?' : 'Was möchten Sie über diese App wissen?'}
+                placeholder={global ? `Was möchten Sie über ${storeName} wissen?` : 'Was möchten Sie über diese App wissen?'}
                 variant="secondary"
                 className="min-h-20 w-full rounded-xl border border-border bg-surface-secondary text-sm"
                 rows={2}

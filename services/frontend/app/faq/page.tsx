@@ -2,12 +2,13 @@
 
 import { FAQSection } from '@/components/FAQSection';
 import { useAuth } from '@/context/AuthContext';
-import { useSettings } from '@/context/SettingsContext';
+import { useSettings, useStoreName } from '@/context/SettingsContext';
 import { Card } from '@heroui/react';
 
 export default function GlobalFAQPage() {
   const { user } = useAuth();
   const { settings } = useSettings();
+  const storeName = useStoreName();
 
   if (!settings.faqEnabled) {
     return (
@@ -25,7 +26,7 @@ export default function GlobalFAQPage() {
         <p className="text-sm font-medium text-accent">Wissen aus der Community</p>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Ihre Fragen. Unsere Antworten.</h1>
         <p className="text-base leading-relaxed text-muted">
-          Das globale FAQ für alles rund um JustApps. Finden Sie hilfreiche Antworten oder stellen Sie Ihre eigene Frage.
+          Das globale FAQ für alles rund um {storeName}. Finden Sie hilfreiche Antworten oder stellen Sie Ihre eigene Frage.
         </p>
       </header>
 

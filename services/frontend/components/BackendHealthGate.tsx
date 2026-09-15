@@ -13,7 +13,7 @@ const HEALTH_TIMEOUT_MS = 5_000;
 const SYSTEM_STATUS_ITEMS = [
   { label: 'API Gateway', icon: Network, position: 'left-[7%] top-[16%]', animation: 'maintenance-float-a 7s -1s' },
   { label: 'Datenbank', icon: Database, position: 'right-[8%] top-[22%]', animation: 'maintenance-float-b 8.5s -3s' },
-  { label: 'JustApps Server', icon: Server, position: 'bottom-[17%] left-[10%]', animation: 'maintenance-float-b 9s -5s' },
+  { label: 'Anwendungsserver', icon: Server, position: 'bottom-[17%] left-[10%]', animation: 'maintenance-float-b 9s -5s' },
   { label: 'Verbindung', icon: CloudOff, position: 'bottom-[13%] right-[9%]', animation: 'maintenance-float-a 7.5s -2s' },
 ] as const;
 
@@ -116,7 +116,7 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
             <div className="maintenance-copy space-y-2">
               <Card.Title className="text-2xl sm:text-3xl">Wir sind gleich wieder da</Card.Title>
               <Card.Description className="mx-auto max-w-md text-base leading-6">
-                JustApps kann den Server momentan nicht erreichen. Möglicherweise werden gerade Wartungsarbeiten durchgeführt.
+                Die Plattform kann den Server momentan nicht erreichen. Möglicherweise werden gerade Wartungsarbeiten durchgeführt.
               </Card.Description>
             </div>
           </Card.Header>
