@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<rect width="1200" height="800" fill="#F7F7F2"/>
+<text x="48" y="52" fill="#747681" font-family="Arial,sans-serif" font-size="14" letter-spacing="2">JUSTAPPS / BRAND IDENTITY</text>
+<svg x="140" y="135" width="220" height="220" viewBox="0 0 512 512" fill="#4655F5"><rect x="272" y="72" width="112" height="112" rx="32"/>
+    <path d="M304 208h48a32 32 0 0 1 32 32v72c0 79.529-64.471 144-144 144h-64a56 56 0 0 1 0-112h64a32 32 0 0 0 32-32v-72a32 32 0 0 1 32-32Z"/></svg>
+<text x="380" y="294" font-family="Arial,sans-serif" font-weight="700" font-size="104" letter-spacing="-5" fill="#171923">JustApps</text>
+<rect y="480" width="600" height="320" fill="#171923"/>
+<svg x="54" y="566" width="136" height="136" viewBox="0 0 512 512" fill="#7B85FF"><rect x="272" y="72" width="112" height="112" rx="32"/>
+    <path d="M304 208h48a32 32 0 0 1 32 32v72c0 79.529-64.471 144-144 144h-64a56 56 0 0 1 0-112h64a32 32 0 0 0 32-32v-72a32 32 0 0 1 32-32Z"/></svg>
+<text x="208" y="659" font-family="Arial,sans-serif" font-weight="700" font-size="62" letter-spacing="-3" fill="white">JustApps</text>
+<rect x="600" y="480" width="600" height="320" fill="#EBEBFF"/>
+<svg x="688" y="550" width="180" height="180" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#4655F5"/>
+  <g fill="white" transform="translate(51.2 51.2) scale(.8)">
+    <rect x="272" y="72" width="112" height="112" rx="32"/>
+    <path d="M304 208h48a32 32 0 0 1 32 32v72c0 79.529-64.471 144-144 144h-64a56 56 0 0 1 0-112h64a32 32 0 0 0 32-32v-72a32 32 0 0 1 32-32Z"/>
+  </g>
+</svg>
+<svg x="941" y="576" width="128" height="128" viewBox="0 0 512 512" fill="#171923"><rect x="272" y="72" width="112" height="112" rx="32"/>
+    <path d="M304 208h48a32 32 0 0 1 32 32v72c0 79.529-64.471 144-144 144h-64a56 56 0 0 1 0-112h64a32 32 0 0 0 32-32v-72a32 32 0 0 1 32-32Z"/></svg>
+</svg>
