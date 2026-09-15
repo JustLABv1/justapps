@@ -52,10 +52,19 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
             </ul>
           </div>
         </div>
-        <div className="border-t border-border/50 pt-6 flex items-center justify-between">
-          <span className="text-[11px] text-muted/50">
-            © {new Date().getFullYear()} JustLAB. Alle Rechte vorbehalten.
-          </span>
+        <div className="border-t border-border/50 pt-6 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted/50">
+            <span>© {new Date().getFullYear()} JustLAB</span>
+            <span aria-hidden="true">·</span>
+            <a
+              href="https://github.com/JustLABv1/justapps/blob/main/LICENSE"
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-transparent underline-offset-2 transition-colors hover:text-accent hover:decoration-current"
+            >
+              Lizenziert unter GNU AGPL v3.0
+            </a>
+          </div>
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="text-[11px] text-muted/40 font-mono">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
