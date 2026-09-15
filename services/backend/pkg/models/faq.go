@@ -49,6 +49,43 @@ type FAQAnswerUpvote struct {
 	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
 }
 
+// GlobalFAQQuestion is a platform-wide community question that is not tied to
+// a catalog app.
+type GlobalFAQQuestion struct {
+	bun.BaseModel `bun:"table:global_faq_questions"`
+
+	ID          uuid.UUID         `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	UserID      uuid.UUID         `bun:"user_id,notnull,type:uuid" json:"userId"`
+	Username    string            `bun:"username,notnull,default:''" json:"username"`
+	Question    string            `bun:"question,notnull" json:"question"`
+	CreatedAt   time.Time         `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	AnswerCount int               `bun:"-" json:"answerCount"`
+	Answers     []GlobalFAQAnswer `bun:"-" json:"answers"`
+}
+
+type GlobalFAQAnswer struct {
+	bun.BaseModel `bun:"table:global_faq_answers"`
+
+	ID           uuid.UUID `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	QuestionID   uuid.UUID `bun:"question_id,notnull,type:uuid" json:"questionId"`
+	UserID       uuid.UUID `bun:"user_id,notnull,type:uuid" json:"userId"`
+	Username     string    `bun:"username,notnull,default:''" json:"username"`
+	Answer       string    `bun:"answer,notnull" json:"answer"`
+	IsPinned     bool      `bun:"is_pinned,notnull,default:false" json:"isPinned"`
+	CreatorLiked bool      `bun:"creator_liked,notnull,default:false" json:"creatorLiked"`
+	CreatedAt    time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	UpvoteCount  int       `bun:"-" json:"upvoteCount"`
+	UserUpvoted  bool      `bun:"-" json:"userUpvoted"`
+}
+
+type GlobalFAQAnswerUpvote struct {
+	bun.BaseModel `bun:"table:global_faq_answer_upvotes"`
+
+	AnswerID  uuid.UUID `bun:"answer_id,pk,type:uuid" json:"answerId"`
+	UserID    uuid.UUID `bun:"user_id,pk,type:uuid" json:"userId"`
+	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+}
+
 // UserFAQInboxItem notifies an app owner or editor that a new question needs
 // attention. The row is user-specific so each recipient can read it on their
 // own schedule.

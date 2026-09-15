@@ -161,6 +161,23 @@ The FAQ is controlled by the admin setting `faqEnabled`.
 New questions create an in-app notification for the app owner and its editors;
 the notification is shown in the Updates area until the question is answered.
 
+### Global FAQ
+
+| Method   | Path                                             | Auth  | Purpose                                      |
+|----------|--------------------------------------------------|-------|----------------------------------------------|
+| `GET`    | `/faq`                                           | —     | List platform-wide questions and answers     |
+| `POST`   | `/faq/questions`                                 | User  | Ask a platform-wide question                 |
+| `DELETE` | `/faq/questions/:questionId`                     | User  | Delete own question; admins may moderate     |
+| `POST`   | `/faq/questions/:questionId/answers`             | User  | Add an answer                                |
+| `DELETE` | `/faq/questions/:questionId/answers/:answerId`   | User  | Delete own answer; admins may moderate       |
+| `POST`   | `/faq/answers/:answerId/upvote`                  | User  | Upvote an answer                             |
+| `DELETE` | `/faq/answers/:answerId/upvote`                  | User  | Remove your upvote                           |
+| `PATCH`  | `/faq/answers/:answerId`                         | Admin | Pin or recommend an answer                   |
+
+The global FAQ uses the same `faqEnabled` platform setting as app FAQs and is
+available from the main navigation. Its questions are not associated with a
+catalog app.
+
 ---
 
 ## Update inbox

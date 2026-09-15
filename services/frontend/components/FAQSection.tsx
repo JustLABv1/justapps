@@ -2,9 +2,9 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
-import { AlertDialog, Button, Card, Chip, Label, TextArea, TextField, toast } from '@heroui/react';
-import { ArrowUp, Heart, Loader2, MessageCircleQuestion, Pin, Send, Trash2, User } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { AlertDialog, Button, Card, Chip, Input, Label, TextArea, TextField, toast } from '@heroui/react';
+import { ArrowDownUp, ArrowUp, Heart, Loader2, MessageCircleQuestion, Pin, Search, Send, Trash2, User, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
@@ -30,10 +30,14 @@ interface FAQQuestion {
 }
 
 interface FAQSectionProps {
-  appId: string;
-  /** The app owner and admins can promote or moderate answers. */
+  appId?: string;
+  /** App owners/admins manage app FAQs; only admins manage the global FAQ. */
   canManageHighlights: boolean;
+  global?: boolean;
 }
+
+type FAQStatusFilter = 'all' | 'open' | 'answered';
+type FAQSort = 'newest' | 'most-answered';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -72,13 +76,13 @@ function DeleteAction({
     <AlertDialog>
       <AlertDialog.Trigger>
         <Button
-          variant="ghost"
+          variant="danger-soft"
           size="sm"
           isDisabled={isLoading}
-          className="h-auto min-w-0 gap-1 px-0 py-0 text-[10px] font-bold text-danger"
+          className="gap-1.5 font-bold"
           aria-label={title}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3.5 w-3.5" />
           Löschen
         </Button>
       </AlertDialog.Trigger>
@@ -105,7 +109,7 @@ function DeleteAction({
   );
 }
 
-export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
+export function FAQSection({ appId, canManageHighlights, global = false }: FAQSectionProps) {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
   const [questionDraft, setQuestionDraft] = useState('');
@@ -114,11 +118,39 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
+  const [sort, setSort] = useState<FAQSort>('newest');
+  const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
+
+  const visibleQuestions = useMemo(() => {
+    const needle = searchQuery.trim().toLocaleLowerCase('de-DE');
+    return questions
+      .filter((question) => {
+        if (statusFilter === 'open' && question.answerCount > 0) return false;
+        if (statusFilter === 'answered' && question.answerCount === 0) return false;
+        if (!needle) return true;
+        return [
+          question.question,
+          question.username,
+          ...question.answers.flatMap((answer) => [answer.answer, answer.username]),
+        ].some((value) => value.toLocaleLowerCase('de-DE').includes(needle));
+      })
+      .sort((left, right) => {
+        if (sort === 'most-answered') {
+          return right.answerCount - left.answerCount
+            || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+        }
+        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+      });
+  }, [questions, searchQuery, sort, statusFilter]);
+
+  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest';
 
   const loadFAQ = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetchApi(`/apps/${appId}/faq`, { cache: 'no-store' });
+      const response = await fetchApi(endpoint, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
       }
@@ -144,7 +176,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     } finally {
       setLoading(false);
     }
-  }, [appId]);
+  }, [endpoint]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -163,7 +195,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setSubmitting('question');
     setError(null);
     try {
-      const response = await fetchApi(`/apps/${appId}/faq/questions`, {
+      const response = await fetchApi(`${endpoint}/questions`, {
         method: 'POST',
         body: JSON.stringify({ question }),
       });
@@ -190,7 +222,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setSubmitting(`answer:${questionId}`);
     setError(null);
     try {
-      const response = await fetchApi(`/apps/${appId}/faq/questions/${questionId}/answers`, {
+      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers`, {
         method: 'POST',
         body: JSON.stringify({ answer }),
       });
@@ -219,7 +251,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setBusyAction(action);
     setError(null);
     try {
-      const response = await fetchApi(`/apps/${appId}/faq/questions/${questionId}`, { method: 'DELETE' });
+      const response = await fetchApi(`${endpoint}/questions/${questionId}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Frage konnte nicht gelöscht werden.'));
       }
@@ -240,7 +272,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setBusyAction(action);
     setError(null);
     try {
-      const response = await fetchApi(`/apps/${appId}/faq/questions/${questionId}/answers/${answerId}`, { method: 'DELETE' });
+      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers/${answerId}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Antwort konnte nicht gelöscht werden.'));
       }
@@ -263,7 +295,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setError(null);
     try {
       const method = answer.userUpvoted ? 'DELETE' : 'POST';
-      const response = await fetchApi(`/apps/${appId}/faq/answers/${answer.id}/upvote`, { method });
+      const response = await fetchApi(`${endpoint}/answers/${answer.id}/upvote`, { method });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Stimme konnte nicht gespeichert werden.'));
       }
@@ -295,7 +327,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
     setError(null);
     const enabled = !answer[field];
     try {
-      const response = await fetchApi(`/apps/${appId}/faq/answers/${answer.id}`, {
+      const response = await fetchApi(`${endpoint}/answers/${answer.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ [field]: enabled }),
       });
@@ -319,22 +351,97 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
   };
 
   return (
-    <div className="mt-2 space-y-6">
-      <div className="flex items-center gap-2 text-lg font-bold text-foreground">
-        <MessageCircleQuestion className="h-5 w-5 text-accent" />
-        Fragen & Antworten
-        {questions.length > 0 && (
-          <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold text-muted shadow-sm">
-            {questions.length}
-          </span>
-        )}
-      </div>
+    <div className={`${global ? '' : 'mt-2'} space-y-5`}>
+      {!global && (
+        <>
+          <div className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <MessageCircleQuestion className="h-5 w-5 text-accent" />
+            Fragen & Antworten
+            {questions.length > 0 && (
+              <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold text-muted shadow-sm">
+                {questions.length}
+              </span>
+            )}
+          </div>
 
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-        <span className="font-semibold text-foreground">Gemeinsam Antworten finden</span>
-        <span aria-hidden="true">·</span>
-        Stellen Sie Fragen oder teilen Sie Ihr Wissen. Hilfreiche Antworten werden durch Stimmen und Empfehlungen sichtbarer.
-      </p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span className="font-semibold text-foreground">Gemeinsam Antworten finden</span>
+            <span aria-hidden="true">·</span>
+            Stellen Sie Fragen oder teilen Sie Ihr Wissen. Hilfreiche Antworten werden durch Stimmen und Empfehlungen sichtbarer.
+          </p>
+        </>
+      )}
+
+      {global && (
+        <Card className="rounded-2xl border-border bg-surface shadow-sm" variant="default">
+          <Card.Content className="space-y-3 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Fragen, Antworten oder Personen durchsuchen"
+                  aria-label="Globales FAQ durchsuchen"
+                  className="w-full pl-10 pr-9"
+                  variant="secondary"
+                />
+                {searchQuery && (
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="ghost"
+                    aria-label="Suche löschen"
+                    onPress={() => setSearchQuery('')}
+                    className="absolute right-1 top-1/2 min-w-7 -translate-y-1/2"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Fragen filtern">
+                {([
+                  ['all', 'Alle'],
+                  ['open', 'Offen'],
+                  ['answered', 'Beantwortet'],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    size="sm"
+                    variant={statusFilter === value ? 'primary' : 'secondary'}
+                    onPress={() => setStatusFilter(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={() => setSort((current) => current === 'newest' ? 'most-answered' : 'newest')}
+                className="gap-2"
+                aria-label={`Sortierung: ${sort === 'newest' ? 'Neueste zuerst' : 'Meiste Antworten zuerst'}`}
+              >
+                <ArrowDownUp className="h-3.5 w-3.5" />
+                {sort === 'newest' ? 'Neueste' : 'Meiste Antworten'}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs text-muted">
+              <span>{visibleQuestions.length} {visibleQuestions.length === 1 ? 'Frage' : 'Fragen'} gefunden</span>
+              {hasActiveFilters && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); }}
+                  className="h-auto px-0 py-0 text-xs"
+                >
+                  Filter zurücksetzen
+                </Button>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+      )}
 
       {error && (
         <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
@@ -343,8 +450,8 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
       )}
 
       {user ? (
-        <Card className="border-border bg-surface-secondary shadow-sm" variant="default">
-          <Card.Content className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+        <Card className="rounded-2xl border-border bg-surface shadow-sm" variant="default">
+          <Card.Content className="flex flex-col gap-3 p-4 sm:p-5">
             <TextField
               value={questionDraft}
               onChange={setQuestionDraft}
@@ -358,23 +465,25 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
               </div>
               <TextArea
                 aria-label="Ihre Frage"
-                placeholder="Was möchten Sie über diese App wissen?"
+                placeholder={global ? 'Was möchten Sie über JustApps wissen?' : 'Was möchten Sie über diese App wissen?'}
                 variant="secondary"
-                className="min-h-16 w-full rounded-lg border border-border bg-default text-sm"
+                className="min-h-20 w-full rounded-xl border border-border bg-surface-secondary text-sm"
                 rows={2}
                 maxLength={1000}
               />
             </TextField>
-            <Button
-              size="sm"
-              onPress={handleAskQuestion}
-              isDisabled={!questionDraft.trim() || submitting !== null}
-              isPending={submitting === 'question'}
-              className="w-full shrink-0 gap-2 rounded-lg bg-accent px-4 text-xs font-bold text-white shadow-sm hover:bg-accent/90 sm:w-auto"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Frage veröffentlichen
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onPress={handleAskQuestion}
+                isDisabled={!questionDraft.trim() || submitting !== null}
+                isPending={submitting === 'question'}
+                className="w-full gap-2 font-bold sm:w-auto"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Frage veröffentlichen
+              </Button>
+            </div>
           </Card.Content>
         </Card>
       ) : (
@@ -390,22 +499,23 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
           <Loader2 className="h-5 w-5 animate-spin text-accent" />
           Fragen und Antworten werden geladen …
         </div>
-      ) : questions.length === 0 ? (
+      ) : visibleQuestions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-surface-secondary/10 py-12 text-center text-muted">
           <MessageCircleQuestion className="mx-auto mb-3 h-8 w-8 opacity-20" />
-          <p className="text-sm font-medium">Noch keine Fragen. Stellen Sie die erste Frage!</p>
+          <p className="text-sm font-medium">
+            {questions.length === 0 ? 'Noch keine Fragen. Stellen Sie die erste Frage!' : 'Keine Fragen passen zu Ihrer Suche.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-5">
-          {questions.map((question) => {
+          {visibleQuestions.map((question) => {
             const canDeleteQuestion = canManageHighlights || user?.id === question.userId;
             const answerDraft = answerDrafts[question.id] || '';
 
             return (
               <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-                <div className="flex items-start justify-between gap-4 border-b border-border bg-surface-secondary/40 p-5">
+                <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
                   <div className="min-w-0 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-accent">Frage</p>
                     <h3 className="text-base font-bold leading-relaxed text-foreground">{question.question}</h3>
                     <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                       <span>{question.username || 'Anonymer Nutzer'}</span>
@@ -430,7 +540,7 @@ export function FAQSection({ appId, canManageHighlights }: FAQSectionProps) {
                   )}
                 </div>
 
-                <div className="space-y-3 p-5">
+                <div className="space-y-3 bg-surface-secondary/25 p-5 sm:p-6">
                   {question.answers.length > 0 ? question.answers.map((answer) => {
                     const canDeleteAnswer = canManageHighlights || user?.id === answer.userId;
                     const answerBusy = busyAction === `upvote:${answer.id}`
