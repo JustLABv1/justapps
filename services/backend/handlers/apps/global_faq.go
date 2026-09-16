@@ -20,11 +20,22 @@ import (
 
 type globalFAQQuestionRow struct {
 	ID          uuid.UUID `bun:"id"`
+	Scope       string    `bun:"scope"`
+	AppID       *string   `bun:"app_id"`
+	AppName     *string   `bun:"app_name"`
+	AppIcon     *string   `bun:"app_icon"`
 	UserID      uuid.UUID `bun:"user_id"`
 	Username    string    `bun:"username"`
 	Question    string    `bun:"question"`
 	CreatedAt   time.Time `bun:"created_at"`
 	AnswerCount int       `bun:"answer_count"`
+	Total       int       `bun:"total"`
+}
+
+type globalFAQAppOption struct {
+	ID   string `bun:"id" json:"id"`
+	Name string `bun:"name" json:"name"`
+	Icon string `bun:"icon" json:"icon"`
 }
 
 type globalFAQAnswerRow struct {
@@ -48,40 +59,92 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
-	ctx := c.Request.Context()
-	questions := make([]globalFAQQuestionRow, 0)
-	query := db.NewSelect().TableExpr("global_faq_questions AS q").
-		ColumnExpr("q.id, q.user_id, q.username, q.question, q.created_at").
-		ColumnExpr("(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count")
-	if owner := strings.TrimSpace(c.Query("owner")); owner != "" {
+	status := c.DefaultQuery("status", "all")
+	if status != "all" && status != "open" && status != "answered" {
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+		return
+	}
+	scope := c.DefaultQuery("scope", "all")
+	if scope != "all" && scope != "global" && scope != "app" {
+		httperror.StatusBadRequest(c, "Invalid FAQ scope", errors.New("scope must be all, global, or app"))
+		return
+	}
+	appID := strings.TrimSpace(c.Query("appId"))
+	search := strings.TrimSpace(c.Query("q"))
+	owner := strings.TrimSpace(c.Query("owner"))
+	viewerID, viewerRole, hasViewer := getViewerContext(c)
+	if owner != "" {
 		if owner != "me" {
 			httperror.StatusBadRequest(c, "Invalid FAQ owner", errors.New("owner must be me"))
 			return
 		}
-		userID, _, authenticated := getRequiredViewerContext(c)
-		if !authenticated {
+		if !hasViewer {
+			httperror.Unauthorized(c, "User ID not found", errors.New("unauthorized"))
 			return
 		}
-		query = query.Where("q.user_id = ?", userID)
 	}
-	query, ok = applyFAQQuestionFilters(query, c, "global_faq_answers")
-	if !ok {
-		return
-	}
-	total, err := query.Clone().Count(ctx)
-	if err == nil {
-		err = applyFAQQuestionOrder(query, c.Query("sort")).Limit(pageSize).Offset((page-1)*pageSize).Scan(ctx, &questions)
-	}
+	pattern := "%" + search + "%"
+	questions := make([]globalFAQQuestionRow, 0)
+	err := db.NewRaw(`
+		WITH combined AS (
+			SELECT q.id, 'global'::text AS scope, NULL::text AS app_id, NULL::text AS app_name,
+				NULL::text AS app_icon, q.user_id, q.username, q.question, q.created_at,
+				(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+			FROM global_faq_questions q
+			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
+				SELECT 1 FROM global_faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
+			))
+			UNION ALL
+			SELECT q.id, 'app'::text AS scope, q.app_id, app.name AS app_name, app.icon AS app_icon,
+				q.user_id, q.username, q.question, q.created_at,
+				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+			FROM faq_questions q
+			JOIN apps app ON app.id = q.app_id
+			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
+				SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
+			))
+			AND (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf')
+				OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
+					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
+				))))
+		)
+		SELECT *, COUNT(*) OVER()::int AS total
+		FROM combined
+		WHERE (? = 'all' OR scope = ?)
+			AND (? = '' OR app_id = ?)
+			AND (? = '' OR user_id = ?)
+			AND (? = 'all' OR (? = 'open' AND answer_count = 0) OR (? = 'answered' AND answer_count > 0))
+		ORDER BY
+			CASE WHEN ? = 'most-answered' THEN answer_count END DESC,
+			created_at DESC, id DESC
+		LIMIT ? OFFSET ?`,
+		search, pattern, pattern, pattern, pattern,
+		search, pattern, pattern, pattern, pattern,
+		viewerRole, hasViewer, viewerID, viewerID,
+		scope, scope, appID, appID, owner, viewerID,
+		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
+	).Scan(c.Request.Context(), &questions)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ questions", err)
 		return
 	}
 
-	result := make([]models.GlobalFAQQuestion, 0, len(questions))
+	total := 0
+	result := make([]gin.H, 0, len(questions))
 	for _, row := range questions {
-		result = append(result, models.GlobalFAQQuestion{ID: row.ID, UserID: row.UserID, Username: row.Username, Question: row.Question, CreatedAt: row.CreatedAt, AnswerCount: row.AnswerCount, Answers: []models.GlobalFAQAnswer{}})
+		total = row.Total
+		result = append(result, gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "answers": []models.GlobalFAQAnswer{}})
 	}
-	c.JSON(http.StatusOK, gin.H{"questions": result, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
+
+	apps := make([]globalFAQAppOption, 0)
+	err = db.NewRaw(`SELECT DISTINCT app.id, app.name, app.icon FROM apps app JOIN faq_questions q ON q.app_id = app.id
+		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
+			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, viewerRole, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ apps", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"questions": result, "apps": apps, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
 }
 
 func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
