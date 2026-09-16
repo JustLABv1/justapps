@@ -2,9 +2,10 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useStoreName } from '@/context/SettingsContext';
+import { PageFilters } from '@/components/PageHeader';
 import { fetchApi } from '@/lib/api';
 import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
-import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface FAQAnswer {
@@ -81,10 +82,10 @@ function DeleteAction({
     <AlertDialog>
       <AlertDialog.Trigger>
         <Button
-          variant="danger-soft"
+          variant="ghost"
           size="sm"
           isDisabled={isLoading}
-          className="gap-1.5 font-bold"
+          className="gap-1.5 text-xs text-muted hover:text-danger"
           aria-label={title}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -127,6 +128,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
   const [sort, setSort] = useState<FAQSort>('newest');
+  const [mineOnly, setMineOnly] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [questionPage, setQuestionPage] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(0);
@@ -138,7 +140,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
 
-  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest';
+  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly;
 
   const loadFAQ = useCallback(async (page = 1, append = false) => {
     if (append) setLoadingMoreQuestions(true);
@@ -146,6 +148,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_PAGE_SIZE), status: statusFilter, sort });
       if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      if (mineOnly) params.set('owner', 'me');
       const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
@@ -173,7 +176,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       if (append) setLoadingMoreQuestions(false);
       else setLoading(false);
     }
-  }, [endpoint, searchQuery, sort, statusFilter]);
+  }, [endpoint, mineOnly, searchQuery, sort, statusFilter]);
 
   const loadAnswers = useCallback(async (questionId: string, page = 1, append = false) => {
     setAnswerPages((current) => ({
@@ -435,7 +438,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       {(
         <div className="space-y-4">
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <PageFilters>
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
                 <Input
@@ -475,6 +478,17 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     {label}
                   </Button>
                 ))}
+                {user && (
+                  <Button
+                    size="sm"
+                    variant={mineOnly ? 'primary' : 'secondary'}
+                    aria-pressed={mineOnly}
+                    onPress={() => setMineOnly((current) => !current)}
+                  >
+                    <UserRound className="h-4 w-4" />
+                    Meine Fragen
+                  </Button>
+                )}
               </div>
               <Select
                 aria-label="Fragen sortieren"
@@ -500,14 +514,14 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                   </ListBox>
                 </Select.Popover>
               </Select>
-            </div>
+            </PageFilters>
             <div className="flex items-center justify-between gap-3 text-xs text-muted">
               <span role="status">{loading ? 'Fragen werden geladen …' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
               {hasActiveFilters && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); }}
+                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); }}
                   className="h-auto px-0 py-0 text-xs"
                 >
                   Filter zurücksetzen
@@ -578,7 +592,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface divide-y divide-border">
+        <div className="space-y-4">
           {questions.map((question) => {
             const canDeleteQuestion = canManageHighlights || user?.id === question.userId;
             const answerDraft = answerDrafts[question.id] || '';
@@ -586,18 +600,22 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
             const isExpanded = expandedQuestionId === question.id;
 
             return (
-              <article key={question.id}>
+              <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
                 <button
                   type="button"
                   onClick={() => toggleQuestion(question.id)}
                   aria-expanded={isExpanded}
                   aria-controls={`faq-answer-panel-${question.id}`}
-                  className="flex w-full cursor-pointer items-center justify-between gap-5 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
+                  className="flex w-full cursor-pointer items-start justify-between gap-4 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
                 >
                   <div className="min-w-0 space-y-2">
-                    <h3 className="break-words text-base font-semibold leading-relaxed text-foreground">{question.question}</h3>
+                    <h3 className="break-words text-lg font-semibold leading-snug text-foreground">{question.question}</h3>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                      <span className="font-medium">{question.username || 'Anonymer Nutzer'}</span>
+                      <span aria-hidden="true">·</span>
+                      <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
+                      <span aria-hidden="true">·</span>
+                      <span className="text-accent">{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
                       {question.answerCount === 0 && (
                         <Chip size="sm" color="warning" variant="soft" className="text-[10px] font-bold">
                           Antwort gesucht
@@ -605,14 +623,14 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       )}
                     </div>
                   </div>
-                  <ChevronDown className={`h-5 w-5 shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`mt-1 h-5 w-5 shrink-0 text-muted ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isExpanded && (
                 <div className="px-5 pb-6 sm:px-6">
                   <div id={`faq-answer-panel-${question.id}`}>
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 text-xs text-muted">
-                    <span>Gefragt von {question.username || 'Anonymer Nutzer'} · {formatDate(question.createdAt)}</span>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+                    <h4 className="font-medium text-foreground">{question.answerCount === 1 ? 'Antwort' : 'Antworten'}</h4>
                   {canDeleteQuestion && (
                     <DeleteAction
                       title="Frage löschen?"
@@ -622,7 +640,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     />
                   )}
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {answerPage?.loading && answerPage.answers.length === 0 ? (
                     <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
@@ -637,13 +655,16 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     return (
                       <div
                         key={answer.id}
-                        className={`border-l-2 pl-4 sm:pl-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent' : 'border-border'}`}
+                        className={`rounded-xl border p-4 sm:p-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent/25 bg-accent/5' : 'border-transparent bg-surface-secondary/60'}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
+                            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-surface text-xs font-semibold uppercase text-accent">
+                              {(answer.username || 'Anonymer Nutzer').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}
+                            </span>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
-                              <p className="text-xs text-muted">{formatDate(answer.createdAt)}</p>
+                              <p className="break-words text-sm font-semibold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
+                              <time dateTime={answer.createdAt} className="text-xs text-muted">{formatDate(answer.createdAt)}</time>
                             </div>
                           </div>
                           <div className="flex flex-wrap justify-end gap-1.5">
@@ -660,15 +681,16 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                           </div>
                         </div>
 
-                        <p className="mt-3 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{answer.answer}</p>
+                        <p className="my-4 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground sm:ml-12">{answer.answer}</p>
 
-                        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:ml-12">
                           <Button
                             size="sm"
-                            variant={answer.userUpvoted ? 'primary' : 'secondary'}
+                            variant={answer.userUpvoted ? 'secondary' : 'ghost'}
                             isDisabled={!user || answerBusy}
                             onPress={() => void handleUpvote(answer)}
-                            className={`gap-1.5 ${answer.userUpvoted ? 'bg-accent text-white' : ''}`}
+                            className={`gap-1.5 text-xs ${answer.userUpvoted ? 'text-accent' : 'text-muted'}`}
+                            aria-pressed={answer.userUpvoted}
                             aria-label={user ? 'Antwort hochstufen' : 'Zum Abstimmen anmelden'}
                           >
                             <ArrowUp className="h-3.5 w-3.5" />
@@ -680,20 +702,22 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                             <>
                               <Button
                                 size="sm"
-                                variant={answer.isPinned ? 'primary' : 'ghost'}
+                                variant="ghost"
                                 isDisabled={answerBusy}
                                 onPress={() => void handleHighlight(answer, 'isPinned')}
-                                className={`gap-1.5 text-xs ${answer.isPinned ? 'bg-accent text-white' : 'text-muted'}`}
+                                className={`gap-1.5 text-xs ${answer.isPinned ? 'text-accent' : 'text-muted'}`}
+                                aria-pressed={answer.isPinned}
                               >
                                 <Pin className="h-3.5 w-3.5" />
                                 {answer.isPinned ? 'Lösen' : 'Anheften'}
                               </Button>
                               <Button
                                 size="sm"
-                                variant={answer.creatorLiked ? 'primary' : 'ghost'}
+                                variant="ghost"
                                 isDisabled={answerBusy}
                                 onPress={() => void handleHighlight(answer, 'creatorLiked')}
-                                className={`gap-1.5 text-xs ${answer.creatorLiked ? 'bg-accent text-white' : 'text-muted'}`}
+                                className={`gap-1.5 text-xs ${answer.creatorLiked ? 'text-accent' : 'text-muted'}`}
+                                aria-pressed={answer.creatorLiked}
                               >
                                 <Heart className={`h-3.5 w-3.5 ${answer.creatorLiked ? 'fill-current' : ''}`} />
                                 {answer.creatorLiked ? 'Empfehlung entfernen' : 'Empfehlen'}
@@ -731,20 +755,20 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                   )}
 
                   {user && (
-                    <details className="border-t border-border pt-4">
-                      <summary className="cursor-pointer text-sm font-medium text-accent">Antwort hinzufügen</summary>
-                      <div className="mt-4">
+                    <details className="group rounded-xl border border-border">
+                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4 group-open:rotate-45" />Antwort schreiben</summary>
+                      <div className="px-4 pb-4">
                       <TextField
                         value={answerDraft}
                         onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
                         className="flex flex-col gap-1.5"
                       >
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted">Antwort hinzufügen</Label>
+                        <Label className="sr-only">Ihre Antwort</Label>
                         <TextArea
                           aria-label={`Antwort auf: ${question.question}`}
                           placeholder="Was ist Ihre Erfahrung oder Empfehlung?"
                           variant="secondary"
-                          className="min-h-20 w-full rounded-lg border border-border bg-default text-sm"
+                          className="min-h-28 w-full rounded-lg border border-border bg-surface text-sm leading-relaxed"
                           rows={3}
                           maxLength={5000}
                         />
@@ -752,7 +776,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       <div className="mt-3 flex justify-end">
                         <Button
                           size="sm"
-                          variant="secondary"
+                          variant="primary"
                           onPress={() => void handleAnswer(question.id)}
                           isDisabled={!answerDraft.trim() || submitting !== null}
                           isPending={submitting === `answer:${question.id}`}

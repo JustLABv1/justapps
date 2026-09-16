@@ -1,6 +1,8 @@
 package apps
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -51,6 +53,17 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	query := db.NewSelect().TableExpr("global_faq_questions AS q").
 		ColumnExpr("q.id, q.user_id, q.username, q.question, q.created_at").
 		ColumnExpr("(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count")
+	if owner := strings.TrimSpace(c.Query("owner")); owner != "" {
+		if owner != "me" {
+			httperror.StatusBadRequest(c, "Invalid FAQ owner", errors.New("owner must be me"))
+			return
+		}
+		userID, _, authenticated := getRequiredViewerContext(c)
+		if !authenticated {
+			return
+		}
+		query = query.Where("q.user_id = ?", userID)
+	}
 	query, ok = applyFAQQuestionFilters(query, c, "global_faq_answers")
 	if !ok {
 		return
@@ -173,17 +186,27 @@ func CreateGlobalFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Answer is too long", errors.New("answer exceeds maximum length"))
 		return
 	}
-	exists, err := db.NewSelect().Model((*models.GlobalFAQQuestion)(nil)).Where("id = ?", questionID).Exists(c)
-	if err != nil {
+	var question models.GlobalFAQQuestion
+	if err := db.NewSelect().Model(&question).Where("id = ?", questionID).Scan(c); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httperror.StatusNotFound(c, "Question not found", errors.New("global FAQ question not found"))
+			return
+		}
 		httperror.InternalServerError(c, "Failed to check global FAQ question", err)
 		return
 	}
-	if !exists {
-		httperror.StatusNotFound(c, "Question not found", errors.New("global FAQ question not found"))
-		return
-	}
 	answer := &models.GlobalFAQAnswer{QuestionID: questionID, UserID: userID, Username: strings.TrimSpace(c.GetString("username")), Answer: text}
-	if _, err := db.NewInsert().Model(answer).Exec(c); err != nil {
+	if err := db.RunInTx(c.Request.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().Model(answer).Exec(ctx); err != nil {
+			return err
+		}
+		notification := newGlobalFAQAnswerNotification(question, *answer)
+		if notification == nil {
+			return nil
+		}
+		_, err := tx.NewInsert().Model(notification).On("CONFLICT DO NOTHING").Exec(ctx)
+		return err
+	}); err != nil {
 		httperror.InternalServerError(c, "Failed to create global FAQ answer", err)
 		return
 	}

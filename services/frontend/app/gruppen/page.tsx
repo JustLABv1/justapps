@@ -2,10 +2,12 @@
 
 import { AppStoreGate } from '@/components/AppStoreGate';
 import { GroupIcon } from '@/components/GroupIcon';
+import { PageContainer, PageFilters, PageHeader } from '@/components/PageHeader';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { getAppFreshness, getRelativeTimeMeta } from '@/lib/appFreshness';
-import { ArrowRight, Layers2, Loader2, Sparkles, Star } from 'lucide-react';
+import { Input } from '@heroui/react';
+import { ArrowRight, Layers2, Loader2, Search, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -113,6 +115,7 @@ function GruppenPageContent() {
   const [groups, setGroups] = useState<AppGroup[]>([]);
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -139,33 +142,34 @@ function GruppenPageContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-6 h-6 animate-spin text-muted" />
-      </div>
+      <PageContainer>
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-6 h-6 animate-spin text-muted" />
+        </div>
+      </PageContainer>
     );
   }
 
   const enrichedGroups = enrichGroups(groups, apps);
   const totalGroupedApps = new Set(enrichedGroups.flatMap((group) => group.members.map((app) => app.id))).size;
   const totalFreshApps = enrichedGroups.reduce((sum, group) => sum + group.freshCount, 0);
+  const normalizedQuery = query.trim().toLocaleLowerCase('de');
+  const visibleGroups = normalizedQuery
+    ? enrichedGroups.filter((group) => [
+        group.name,
+        group.description || '',
+        ...group.topCategories,
+        ...group.members.map((app) => app.name),
+      ].some((value) => value.toLocaleLowerCase('de').includes(normalizedQuery)))
+    : enrichedGroups;
 
   return (
-    <div className="max-w-6xl mx-auto pb-10 space-y-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-surface px-6 py-7 shadow-sm sm:px-8 sm:py-8">
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(0,75,118,0.12),transparent_60%)] sm:block" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-accent/15 bg-accent/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
-              Entdecken
-            </span>
-            <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground">App-Gruppen</h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted sm:text-base">
-              Gruppen bündeln thematisch passende Apps, zeigen schnelle Einstiege und machen sichtbarer,
-              wo gerade neue oder aktualisierte Lösungen entstehen.
-            </p>
-          </div>
-
+    <PageContainer>
+      <PageHeader
+        eyebrow="Entdecken"
+        title="App-Gruppen"
+        description="Gruppen bündeln thematisch passende Apps und machen neue oder aktualisierte Lösungen schneller auffindbar."
+        actions={
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Gruppen</p>
@@ -180,18 +184,26 @@ function GruppenPageContent() {
               <p className="mt-1 text-2xl font-bold text-foreground">{totalFreshApps}</p>
             </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
-      {enrichedGroups.length === 0 ? (
+      <PageFilters>
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Gruppen, Apps oder Kategorien durchsuchen" aria-label="Gruppen durchsuchen" variant="secondary" className="w-full pl-10" />
+        </div>
+        <p className="text-sm text-muted" role="status">{visibleGroups.length} {visibleGroups.length === 1 ? 'Gruppe' : 'Gruppen'}</p>
+      </PageFilters>
+
+      {visibleGroups.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
           <Layers2 className="w-10 h-10 text-muted/40" />
-          <p className="text-lg font-semibold text-foreground">Noch keine Gruppen vorhanden</p>
-          <p className="text-sm text-muted">Administratoren können Gruppen unter Verwaltung anlegen.</p>
+          <p className="text-lg font-semibold text-foreground">{enrichedGroups.length === 0 ? 'Noch keine Gruppen vorhanden' : 'Keine passenden Gruppen'}</p>
+          <p className="text-sm text-muted">{enrichedGroups.length === 0 ? 'Administratoren können Gruppen unter Verwaltung anlegen.' : 'Versuchen Sie einen anderen Suchbegriff.'}</p>
         </div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
-          {enrichedGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <Link
               key={group.id}
               href={`/gruppen/${group.id}`}
@@ -318,7 +330,7 @@ function GruppenPageContent() {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

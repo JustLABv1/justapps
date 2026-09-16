@@ -112,3 +112,33 @@ type FAQInboxListItem struct {
 	CreatedAt   time.Time  `json:"createdAt"`
 	SeenAt      *time.Time `json:"seenAt,omitempty"`
 }
+
+// UserFAQAnswerNotification informs a question author about one new answer.
+// App and global FAQ references are mutually exclusive and enforced by the DB.
+type UserFAQAnswerNotification struct {
+	bun.BaseModel `bun:"table:user_faq_answer_notifications,alias:ufan"`
+
+	ID               uuid.UUID  `bun:"id,pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	UserID           uuid.UUID  `bun:"user_id,notnull,type:uuid" json:"userId"`
+	AppID            *string    `bun:"app_id" json:"appId,omitempty"`
+	AppQuestionID    *uuid.UUID `bun:"app_question_id,type:uuid" json:"appQuestionId,omitempty"`
+	AppAnswerID      *uuid.UUID `bun:"app_answer_id,type:uuid" json:"appAnswerId,omitempty"`
+	GlobalQuestionID *uuid.UUID `bun:"global_question_id,type:uuid" json:"globalQuestionId,omitempty"`
+	GlobalAnswerID   *uuid.UUID `bun:"global_answer_id,type:uuid" json:"globalAnswerId,omitempty"`
+	SeenAt           *time.Time `bun:"seen_at,nullzero" json:"seenAt,omitempty"`
+	CreatedAt        time.Time  `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
+}
+
+type FAQAnswerNotificationListItem struct {
+	ID         uuid.UUID  `json:"id"`
+	QuestionID uuid.UUID  `json:"questionId"`
+	AnswerID   uuid.UUID  `json:"answerId"`
+	Scope      string     `json:"scope"`
+	AppID      *string    `json:"appId,omitempty"`
+	AppName    string     `json:"appName,omitempty"`
+	Question   string     `json:"question"`
+	Answer     string     `json:"answer"`
+	Answerer   string     `json:"answerer"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	SeenAt     *time.Time `json:"seenAt,omitempty"`
+}

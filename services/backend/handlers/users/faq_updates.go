@@ -19,6 +19,10 @@ func ListFAQQuestionNotifications(context *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
+	page, pageSize, ok := parseNotificationPagination(context)
+	if !ok {
+		return
+	}
 
 	var items []models.FAQInboxListItem
 	query := db.NewSelect().
@@ -41,9 +45,24 @@ func ListFAQQuestionNotifications(context *gin.Context, db *bun.DB) {
 		GroupExpr("item.id, item.question_id, item.app_id, app.name, app.icon, question.username, question.question, item.created_at, item.seen_at").
 		OrderExpr("item.created_at DESC")
 
-	if strings.EqualFold(strings.TrimSpace(context.Query("status")), "unread") {
+	unreadOnly := strings.EqualFold(strings.TrimSpace(context.Query("status")), "unread")
+	if unreadOnly {
 		query = query.Where("item.seen_at IS NULL")
 	}
+	countQuery := db.NewSelect().
+		TableExpr("user_faq_inbox_items AS item").
+		Join("JOIN faq_questions AS question ON question.id = item.question_id").
+		Where("item.user_id = ?", userID).
+		Where("NOT EXISTS (SELECT 1 FROM faq_answers AS resolved_answer WHERE resolved_answer.question_id = question.id)")
+	if unreadOnly {
+		countQuery = countQuery.Where("item.seen_at IS NULL")
+	}
+	total, err := countQuery.Count(context.Request.Context())
+	if err != nil {
+		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht gezählt werden", err)
+		return
+	}
+	query = query.Limit(pageSize).Offset((page - 1) * pageSize)
 
 	if err := query.Scan(context.Request.Context(), &items); err != nil {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht geladen werden", err)
@@ -53,7 +72,7 @@ func ListFAQQuestionNotifications(context *gin.Context, db *bun.DB) {
 	if items == nil {
 		items = make([]models.FAQInboxListItem, 0)
 	}
-	context.JSON(http.StatusOK, items)
+	context.JSON(http.StatusOK, paginatedResponse(items, page, pageSize, total))
 }
 
 func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
@@ -73,6 +92,16 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht gezählt werden", err)
 		return
 	}
+	answerUnread, err := db.NewSelect().
+		Model((*models.UserFAQAnswerNotification)(nil)).
+		Where("user_id = ?", userID).
+		Where("seen_at IS NULL").
+		Count(context.Request.Context())
+	if err != nil {
+		httperror.InternalServerError(context, "Antwort-Benachrichtigungen konnten nicht gezählt werden", err)
+		return
+	}
+	totalUnread += answerUnread
 
 	type appUnreadCount struct {
 		AppID string `bun:"app_id"`
@@ -96,6 +125,22 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 	appCounts := make(map[string]int, len(rows))
 	for _, row := range rows {
 		appCounts[row.AppID] = row.Count
+	}
+	var answerRows []appUnreadCount
+	if err := db.NewSelect().
+		Model((*models.UserFAQAnswerNotification)(nil)).
+		ColumnExpr("app_id").
+		ColumnExpr("COUNT(*)::int AS count").
+		Where("user_id = ?", userID).
+		Where("seen_at IS NULL").
+		Where("app_id IS NOT NULL").
+		GroupExpr("app_id").
+		Scan(context.Request.Context(), &answerRows); err != nil {
+		httperror.InternalServerError(context, "Antwort-Benachrichtigungen konnten nicht zusammengefasst werden", err)
+		return
+	}
+	for _, row := range answerRows {
+		appCounts[row.AppID] += row.Count
 	}
 
 	context.JSON(http.StatusOK, gin.H{

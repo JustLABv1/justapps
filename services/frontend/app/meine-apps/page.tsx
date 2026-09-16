@@ -3,6 +3,7 @@
 import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppHealthCopilot } from '@/components/AppHealthCopilot';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PageContainer, PageFilters, PageHeader } from '@/components/PageHeader';
 import { AppConfig, SystemUser } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
 import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
@@ -325,14 +326,13 @@ function MyAppsContent() {
   }
 
   return (
-    <div className="pb-10">
-      <header className="flex flex-col gap-6 border-b border-border pb-7 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Arbeitsbereich</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Meine Apps</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">Verwalten Sie Ihre eigenen Apps und Lösungen, für die Sie freigegeben sind.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageContainer>
+      <PageHeader
+        eyebrow="Arbeitsbereich"
+        title="Meine Apps"
+        description="Verwalten Sie Ihre eigenen Apps und Lösungen, für die Sie freigegeben sind."
+        actions={
+          <>
           <Button variant="secondary" onPress={() => router.push('/')}>
             <ChevronLeft className="h-4 w-4" />
             Zum Store
@@ -341,8 +341,9 @@ function MyAppsContent() {
             <Plus className="h-4 w-4" />
             Neue App
           </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {error && (
         <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
@@ -403,10 +404,10 @@ function MyAppsContent() {
         )}
 
         <Card variant="default" className="overflow-hidden border-border shadow-sm">
-          <div className="relative flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <PageFilters>
             <div><h2 className="font-semibold text-foreground">Apps</h2><p className="text-sm text-muted">{loading ? 'Wird geladen …' : `${visibleApps.length} ${visibleApps.length === 1 ? 'App' : 'Apps'}`}</p></div>
-            <div className="absolute right-5 top-1/2 w-80 -translate-y-1/2"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
-          </div>
+            <div className="relative min-w-0 flex-1 lg:ml-auto lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
+          </PageFilters>
           <div className="divide-y divide-border">
           {loading ? (
             [...Array(3)].map((_, i) => <MyAppsCardSkeleton key={i} />)
@@ -578,7 +579,7 @@ function MyAppsContent() {
         onOpenChange={(open) => { if (!open) setEditorApp(null); }}
         onSaved={loadData}
       />
-    </div>
+    </PageContainer>
   );
 }
 
