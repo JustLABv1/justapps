@@ -81,6 +81,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 
 		faqAnswerGroup := appsGroup.Group("/:id/faq/answers/:answerId")
 		faqAnswerGroup.Use(middlewares.Auth(db))
+		faqAnswerGroup.PATCH("/acceptance", func(c *gin.Context) { apps.SetFAQAnswerAcceptance(c, db, false) })
 		{
 			faqAnswerGroup.POST("/upvote", func(c *gin.Context) {
 				apps.UpvoteFAQAnswer(c, db)

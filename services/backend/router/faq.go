@@ -23,6 +23,7 @@ func RegisterFAQ(router *gin.RouterGroup, db *bun.DB) {
 
 	answers := faq.Group("/answers/:answerId")
 	answers.Use(middlewares.Auth(db))
+	answers.PATCH("/acceptance", func(c *gin.Context) { apps.SetFAQAnswerAcceptance(c, db, true) })
 	answers.POST("/upvote", func(c *gin.Context) { apps.SetGlobalFAQAnswerUpvote(c, db, true) })
 	answers.DELETE("/upvote", func(c *gin.Context) { apps.SetGlobalFAQAnswerUpvote(c, db, false) })
 	answers.PATCH("", func(c *gin.Context) { apps.UpdateGlobalFAQAnswerHighlights(c, db) })

@@ -4,12 +4,13 @@ import { useAuth } from '@/context/AuthContext';
 import { useStoreName } from '@/context/SettingsContext';
 import { PageFilters } from '@/components/PageHeader';
 import { fetchApi } from '@/lib/api';
-import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
+import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, Tooltip, toast } from '@heroui/react';
 import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
 import Image from 'next/image';
+import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { getImageAssetUrl } from '@/lib/assets';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
@@ -19,6 +20,7 @@ interface FAQAnswer {
   answer: string;
   isPinned: boolean;
   creatorLiked: boolean;
+  acceptedByAuthor: boolean;
   createdAt: string;
   upvoteCount: number;
   userUpvoted: boolean;
@@ -74,6 +76,19 @@ function userFacingError(reason: unknown, fallback: string) {
     return reason.message;
   }
   return fallback;
+}
+
+function AnswerActionTooltip({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <Tooltip delay={350} closeDelay={100}>
+      {children}
+      <Tooltip.Content showArrow placement="top" className="max-w-72 px-3 py-2.5">
+        <Tooltip.Arrow />
+        <p className="font-semibold text-foreground">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{description}</p>
+      </Tooltip.Content>
+    </Tooltip>
+  );
 }
 
 function DeleteAction({
@@ -407,6 +422,22 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     }
   };
 
+  const handleAcceptance = async (answer: FAQAnswer) => {
+    setBusyAction(`acceptance:${answer.id}`);
+    try {
+      const response = await fetchApi(`${endpointForQuestion(answer.questionId)}/answers/${answer.id}/acceptance`, {
+        method: 'PATCH',
+        body: JSON.stringify({ acceptedByAuthor: !answer.acceptedByAuthor }),
+      });
+      if (!response.ok) throw new Error(await responseError(response, 'Markierung konnte nicht gespeichert werden.'));
+      await loadAnswers(answer.questionId);
+    } catch (reason) {
+      toast.danger(userFacingError(reason, 'Markierung konnte nicht gespeichert werden.'));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const handleHighlight = async (answer: FAQAnswer, field: 'isPinned' | 'creatorLiked') => {
     if (!canManageHighlights) return;
     const action = `${field}:${answer.id}`;
@@ -690,6 +721,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                   ) : (answerPage?.answers.length ?? 0) > 0 ? answerPage!.answers.map((answer) => {
                     const canDeleteAnswer = canManageHighlights || user?.id === answer.userId;
                     const answerBusy = busyAction === `upvote:${answer.id}`
+                      || busyAction === `acceptance:${answer.id}`
                       || busyAction === `isPinned:${answer.id}`
                       || busyAction === `creatorLiked:${answer.id}`
                       || busyAction === `delete-answer:${answer.id}`;
@@ -710,6 +742,11 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                             </div>
                           </div>
                           <div className="flex flex-wrap justify-end gap-1.5">
+                            {answer.acceptedByAuthor && (
+                              <Chip size="sm" variant="soft" color="success" className="gap-1 text-xs">
+                                <CheckCircle2 className="h-3 w-3" /> Vom Fragensteller bestätigt
+                              </Chip>
+                            )}
                             {answer.isPinned && (
                               <Chip size="sm" variant="soft" color="accent" className="gap-1 text-[10px] font-bold">
                                 <Pin className="h-3 w-3" /> Angepinnt
@@ -742,6 +779,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
 
                           {canManageHighlights && (
                             <>
+                              <AnswerActionTooltip title="Anheften" description={`${question.scope === 'app' || !global ? 'App-Eigentümer und Admins' : 'Admins'} halten damit eine Antwort oben in der Liste. Das sagt nicht aus, ob das konkrete Anliegen gelöst wurde.`}>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -753,6 +791,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                                 <Pin className="h-3.5 w-3.5" />
                                 {answer.isPinned ? 'Lösen' : 'Anheften'}
                               </Button>
+                              </AnswerActionTooltip>
+                              <AnswerActionTooltip title="Empfehlen" description={`${question.scope === 'app' || !global ? 'App-Eigentümer und Admins' : 'Admins'} zeichnen damit eine fachlich besonders hilfreiche Antwort aus. Das ist unabhängig von der Bestätigung des Fragenstellers.`}>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -764,7 +804,20 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                                 <Heart className={`h-3.5 w-3.5 ${answer.creatorLiked ? 'fill-current' : ''}`} />
                                 {answer.creatorLiked ? 'Empfehlung entfernen' : 'Empfehlen'}
                               </Button>
+                              </AnswerActionTooltip>
                             </>
+                          )}
+
+                          {user?.id === question.userId && (
+                            <AnswerActionTooltip title="Hat meine Frage beantwortet" description="Nur der Fragensteller bestätigt damit, dass diese Antwort sein konkretes Anliegen gelöst hat. Das ist keine redaktionelle Empfehlung.">
+                            <Button size="sm" variant="ghost" isDisabled={answerBusy}
+                              aria-pressed={answer.acceptedByAuthor}
+                              className={`gap-1.5 text-xs ${answer.acceptedByAuthor ? 'text-success' : 'text-muted'}`}
+                              onPress={() => void handleAcceptance(answer)}>
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}
+                            </Button>
+                            </AnswerActionTooltip>
                           )}
 
                           {canDeleteAnswer && (

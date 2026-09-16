@@ -27,17 +27,18 @@ type FAQQuestion struct {
 type FAQAnswer struct {
 	bun.BaseModel `bun:"table:faq_answers"`
 
-	ID           uuid.UUID `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
-	QuestionID   uuid.UUID `bun:"question_id,notnull,type:uuid" json:"questionId"`
-	AppID        string    `bun:"app_id,notnull" json:"appId"`
-	UserID       uuid.UUID `bun:"user_id,notnull,type:uuid" json:"userId"`
-	Username     string    `bun:"username,notnull,default:''" json:"username"`
-	Answer       string    `bun:"answer,notnull" json:"answer"`
-	IsPinned     bool      `bun:"is_pinned,notnull,default:false" json:"isPinned"`
-	CreatorLiked bool      `bun:"creator_liked,notnull,default:false" json:"creatorLiked"`
-	CreatedAt    time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
-	UpvoteCount  int       `bun:"-" json:"upvoteCount"`
-	UserUpvoted  bool      `bun:"-" json:"userUpvoted"`
+	ID               uuid.UUID `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	QuestionID       uuid.UUID `bun:"question_id,notnull,type:uuid" json:"questionId"`
+	AppID            string    `bun:"app_id,notnull" json:"appId"`
+	UserID           uuid.UUID `bun:"user_id,notnull,type:uuid" json:"userId"`
+	Username         string    `bun:"username,notnull,default:''" json:"username"`
+	Answer           string    `bun:"answer,notnull" json:"answer"`
+	IsPinned         bool      `bun:"is_pinned,notnull,default:false" json:"isPinned"`
+	CreatorLiked     bool      `bun:"creator_liked,notnull,default:false" json:"creatorLiked"`
+	AcceptedByAuthor bool      `bun:"accepted_by_author,notnull,default:false" json:"acceptedByAuthor"`
+	CreatedAt        time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	UpvoteCount      int       `bun:"-" json:"upvoteCount"`
+	UserUpvoted      bool      `bun:"-" json:"userUpvoted"`
 }
 
 // FAQAnswerUpvote records one user's upvote for one answer.
@@ -66,16 +67,17 @@ type GlobalFAQQuestion struct {
 type GlobalFAQAnswer struct {
 	bun.BaseModel `bun:"table:global_faq_answers"`
 
-	ID           uuid.UUID `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
-	QuestionID   uuid.UUID `bun:"question_id,notnull,type:uuid" json:"questionId"`
-	UserID       uuid.UUID `bun:"user_id,notnull,type:uuid" json:"userId"`
-	Username     string    `bun:"username,notnull,default:''" json:"username"`
-	Answer       string    `bun:"answer,notnull" json:"answer"`
-	IsPinned     bool      `bun:"is_pinned,notnull,default:false" json:"isPinned"`
-	CreatorLiked bool      `bun:"creator_liked,notnull,default:false" json:"creatorLiked"`
-	CreatedAt    time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
-	UpvoteCount  int       `bun:"-" json:"upvoteCount"`
-	UserUpvoted  bool      `bun:"-" json:"userUpvoted"`
+	ID               uuid.UUID `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	QuestionID       uuid.UUID `bun:"question_id,notnull,type:uuid" json:"questionId"`
+	UserID           uuid.UUID `bun:"user_id,notnull,type:uuid" json:"userId"`
+	Username         string    `bun:"username,notnull,default:''" json:"username"`
+	Answer           string    `bun:"answer,notnull" json:"answer"`
+	IsPinned         bool      `bun:"is_pinned,notnull,default:false" json:"isPinned"`
+	CreatorLiked     bool      `bun:"creator_liked,notnull,default:false" json:"creatorLiked"`
+	AcceptedByAuthor bool      `bun:"accepted_by_author,notnull,default:false" json:"acceptedByAuthor"`
+	CreatedAt        time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	UpvoteCount      int       `bun:"-" json:"upvoteCount"`
+	UserUpvoted      bool      `bun:"-" json:"userUpvoted"`
 }
 
 type GlobalFAQAnswerUpvote struct {
