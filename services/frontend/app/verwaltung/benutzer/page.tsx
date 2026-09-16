@@ -29,6 +29,11 @@ interface SystemUser {
   lastLoginAt?: string;
 }
 
+interface RoleOption {
+  key: string;
+  name: string;
+}
+
 export default function BenutzerPage() {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +43,7 @@ export default function BenutzerPage() {
   const [formData, setFormData] = useState<Partial<SystemUser & { password?: string }>>({});
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
 
   const loadUsers = async () => {
     try {
@@ -65,6 +71,13 @@ export default function BenutzerPage() {
     return () => {
       window.clearTimeout(timeoutId);
     };
+  }, []);
+
+  useEffect(() => {
+    void fetchApi('/admin/roles')
+      .then((response) => response.ok ? response.json() : { roles: [] })
+      .then((data: { roles?: RoleOption[] }) => setRoles(data.roles || []))
+      .catch(() => setRoles([]));
   }, []);
 
   const handleCreateUser = () => {
@@ -174,6 +187,7 @@ export default function BenutzerPage() {
           handleDeleteUser={handleDeleteUser}
           handleToggleUserState={handleToggleUserState}
           handleToggleUserSubmission={handleToggleUserSubmission}
+          roleLabels={Object.fromEntries(roles.map((role) => [role.key, role.name]))}
         />
       )}
 
@@ -215,8 +229,11 @@ export default function BenutzerPage() {
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        <ListBox.Item id="user" textValue="Benutzer">Benutzer<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="admin" textValue="Administrator">Administrator<ListBox.ItemIndicator /></ListBox.Item>
+                        {(roles.length > 0 ? roles : [{ key: 'user', name: 'Benutzer' }, { key: 'moderator', name: 'Moderator' }, { key: 'admin', name: 'Administrator' }]).map((role) => (
+                          <ListBox.Item key={role.key} id={role.key} textValue={role.name}>
+                            {role.name}<ListBox.ItemIndicator />
+                          </ListBox.Item>
+                        ))}
                       </ListBox>
                     </Select.Popover>
                   </Select>

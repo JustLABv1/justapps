@@ -44,6 +44,9 @@ const OPERATION_META: Record<string, { label: string; color: OperationColor; ico
   'user.delete':     { label: 'Benutzer gelöscht',       color: 'danger',  icon: <UserMinus className="w-3 h-3" /> },
   'user.enable':     { label: 'Benutzer aktiviert',      color: 'success', icon: <UserCheck className="w-3 h-3" /> },
   'user.disable':    { label: 'Benutzer deaktiviert',    color: 'danger',  icon: <UserX     className="w-3 h-3" /> },
+  'role.create':     { label: 'Rolle erstellt',          color: 'success', icon: <UserPlus  className="w-3 h-3" /> },
+  'role.update':     { label: 'Rolle aktualisiert',      color: 'warning', icon: <UserCog   className="w-3 h-3" /> },
+  'role.delete':     { label: 'Rolle gelöscht',          color: 'danger',  icon: <UserMinus className="w-3 h-3" /> },
   'settings.update': { label: 'Einstellungen geändert',  color: 'accent',  icon: <Settings  className="w-3 h-3" /> },
 };
 

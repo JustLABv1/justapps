@@ -5,6 +5,7 @@ import (
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"
@@ -25,5 +26,5 @@ func GetUserDetails(context *gin.Context, db *bun.DB) {
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"result": "success", "user": user})
+	context.JSON(http.StatusOK, gin.H{"result": "success", "user": user, "permissions": permissions.KeysForRole(user.Role)})
 }

@@ -9,6 +9,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -169,8 +170,9 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	// Verify Ownership / Permissions
 	isOwner := existingApp.OwnerID == userID
 	isAdmin := userRole == "admin"
+	canModerateApps := permissions.Has(userRole, permissions.EditApps)
 	isEditor := false
-	if !isAdmin && !isOwner {
+	if !canModerateApps && !isOwner {
 		isEditor, err = isEditorForApp(c.Request.Context(), db, id, userID)
 		if err != nil {
 			httperror.InternalServerError(c, "Error checking app editor permissions", err)
@@ -178,7 +180,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		}
 	}
 
-	if !isAdmin {
+	if !canModerateApps {
 		if !isOwner && !isEditor {
 			httperror.Forbidden(c, "You do not have permission to edit this app", errors.New("not owner or editor"))
 			return
@@ -287,9 +289,9 @@ func DeleteApp(c *gin.Context, db *bun.DB) {
 	}
 
 	isOwner := existingApp.OwnerID == userID
-	isAdmin := userRole == "admin"
+	canModerateApps := permissions.Has(userRole, permissions.DeleteApps)
 
-	if !isAdmin {
+	if !canModerateApps {
 		if !isOwner {
 			httperror.Forbidden(c, "You do not have permission to delete this app", errors.New("not owner"))
 			return

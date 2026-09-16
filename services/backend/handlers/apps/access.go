@@ -6,6 +6,7 @@ import (
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -53,7 +54,7 @@ func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewe
 		return true
 	}
 
-	if viewerRole == "admin" {
+	if permissions.Has(viewerRole, permissions.ViewAppDrafts) {
 		return true
 	}
 
@@ -70,26 +71,35 @@ func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewe
 }
 
 func appViewerPermissions(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewer bool, isEditor bool) *models.AppViewerPermissions {
-	if !hasViewer && viewerRole != "admin" {
+	if !hasViewer && !permissions.HasAny(viewerRole, permissions.ViewAppDrafts, permissions.EditApps, permissions.DeleteApps) {
 		return nil
 	}
 
 	isAdmin := viewerRole == "admin"
+	canEditAny := permissions.Has(viewerRole, permissions.EditApps)
+	canDeleteAny := permissions.Has(viewerRole, permissions.DeleteApps)
+	isModerator := permissions.HasAny(viewerRole, permissions.ViewAppDrafts, permissions.EditApps, permissions.DeleteApps, permissions.ViewAppHealth) && !isAdmin
 	isOwner := hasViewer && app.OwnerID == viewerID
 	accessRole := "viewer"
 	if isAdmin {
 		accessRole = "admin"
+	} else if isModerator {
+		accessRole = "moderator"
 	} else if isOwner {
 		accessRole = "owner"
 	} else if isEditor {
 		accessRole = "editor"
 	}
 
-	canEdit := isAdmin || isOwner || isEditor
-	canDelete := isAdmin || isOwner
+	canEdit := isAdmin || canEditAny || isOwner || isEditor
+	canDelete := isAdmin || canDeleteAny || isOwner
 	if app.IsLocked && !isAdmin {
-		canEdit = false
-		canDelete = false
+		if !canEditAny {
+			canEdit = false
+		}
+		if !canDeleteAny {
+			canDelete = false
+		}
 	}
 
 	return &models.AppViewerPermissions{

@@ -16,6 +16,7 @@ import {
     Pencil,
     Search,
     ShieldCheck,
+    Shield,
     Trash2,
     Unlock,
     User
@@ -41,6 +42,7 @@ interface UserTableProps {
   handleDeleteUser: (userId: string) => void;
   handleToggleUserState: (u: SystemUser) => void | Promise<void>;
   handleToggleUserSubmission: (u: SystemUser) => void | Promise<void>;
+  roleLabels?: Record<string, string>;
 }
 
 export function UserTable({
@@ -48,7 +50,8 @@ export function UserTable({
   handleEditUser,
   handleDeleteUser,
   handleToggleUserState,
-  handleToggleUserSubmission
+  handleToggleUserSubmission,
+  roleLabels = {}
 }: UserTableProps) {
   const [filterValue, setFilterValue] = useState("");
   const [page, setPage] = useState(1);
@@ -83,6 +86,13 @@ export function UserTable({
     setPage(1);
     setFilterValue(value);
   }, []);
+
+  const roleLabel = (role: string) => {
+    if (role === 'admin') return 'Administrator';
+    if (role === 'moderator') return 'Moderator';
+    if (role === 'user') return 'Benutzer';
+    return roleLabels[role] || role.replaceAll('-', ' ');
+  };
 
   const topContent = useMemo(() => {
     return (
@@ -174,8 +184,8 @@ export function UserTable({
                 <Table.Row key={u.id} className={u.disabled ? 'opacity-75' : ''}>
                   <Table.Cell>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-secondary border-border text-muted'}`}>
-                        {u.role === 'admin' ? <ShieldCheck className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-accent/10 border-accent/20 text-accent' : u.role === 'moderator' ? 'bg-warning/10 border-warning/20 text-warning' : 'bg-surface-secondary border-border text-muted'}`}>
+                        {u.role === 'admin' ? <ShieldCheck className="w-4 h-4" /> : u.role === 'user' ? <User className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">{u.username}</span>
@@ -185,7 +195,7 @@ export function UserTable({
                   </Table.Cell>
                   <Table.Cell>
                     <div className="flex items-center gap-2">
-                    <Chip size="sm" variant="soft" className={`font-bold text-[9px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role === 'admin' ? 'Administrator' : 'Benutzer'}</Chip>
+                    <Chip size="sm" variant="soft" color={u.role === 'moderator' ? 'warning' : u.role === 'admin' ? 'accent' : 'default'} className="font-bold text-[9px] uppercase tracking-wider">{roleLabel(u.role)}</Chip>
                     {u.authType && (
                       <Chip size="sm" variant="primary" className="font-bold text-[9px] uppercase tracking-wider opacity-70 border-border/50">
                         {u.authType === 'oidc' ? 'OIDC' : 'Lokal'}

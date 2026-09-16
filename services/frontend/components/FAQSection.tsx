@@ -42,8 +42,10 @@ interface FAQQuestion {
 
 interface FAQSectionProps {
   appId?: string;
-  /** App owners/admins manage app FAQs; only admins manage the global FAQ. */
-  canManageHighlights: boolean;
+  canDeleteQuestions: boolean;
+  canDeleteAnswers: boolean;
+  canPinAnswers: boolean;
+  canRecommendAnswers: boolean;
   global?: boolean;
 }
 
@@ -139,7 +141,7 @@ function DeleteAction({
   );
 }
 
-export function FAQSection({ appId, canManageHighlights, global = false }: FAQSectionProps) {
+export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPinAnswers, canRecommendAnswers, global = false }: FAQSectionProps) {
   const { user } = useAuth();
   const storeName = useStoreName();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
@@ -439,7 +441,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   };
 
   const handleHighlight = async (answer: FAQAnswer, field: 'isPinned' | 'creatorLiked') => {
-    if (!canManageHighlights) return;
+    if (field === 'isPinned' && !canPinAnswers) return;
+    if (field === 'creatorLiked' && !canRecommendAnswers) return;
     const action = `${field}:${answer.id}`;
     setBusyAction(action);
     setError(null);
@@ -649,7 +652,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       ) : (
         <div className="space-y-4">
           {questions.map((question) => {
-            const canDeleteQuestion = canManageHighlights || user?.id === question.userId;
+            const canDeleteQuestion = canDeleteQuestions || user?.id === question.userId;
             const answerDraft = answerDrafts[question.id] || '';
             const answerPage = answerPages[question.id];
             const isExpanded = expandedQuestionId === question.id;
@@ -719,7 +722,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
                     </div>
                   ) : (answerPage?.answers.length ?? 0) > 0 ? answerPage!.answers.map((answer) => {
-                    const canDeleteAnswer = canManageHighlights || user?.id === answer.userId;
+                    const canDeleteAnswer = canDeleteAnswers || user?.id === answer.userId;
                     const answerBusy = busyAction === `upvote:${answer.id}`
                       || busyAction === `acceptance:${answer.id}`
                       || busyAction === `isPinned:${answer.id}`
@@ -777,9 +780,9 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                             <span className="text-xs">Hilfreich</span>
                           </Button>
 
-                          {canManageHighlights && (
+                          {(canPinAnswers || canRecommendAnswers) && (
                             <>
-                              <AnswerActionTooltip title="Anheften" description={`${question.scope === 'app' || !global ? 'App-Eigentümer und Admins' : 'Admins'} halten damit eine Antwort oben in der Liste. Das sagt nicht aus, ob das konkrete Anliegen gelöst wurde.`}>
+                              {canPinAnswers && <AnswerActionTooltip title="Anheften" description="Hält diese Antwort oben in der Liste. Das sagt nicht aus, ob das konkrete Anliegen gelöst wurde.">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -791,8 +794,8 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                                 <Pin className="h-3.5 w-3.5" />
                                 {answer.isPinned ? 'Lösen' : 'Anheften'}
                               </Button>
-                              </AnswerActionTooltip>
-                              <AnswerActionTooltip title="Empfehlen" description={`${question.scope === 'app' || !global ? 'App-Eigentümer und Admins' : 'Admins'} zeichnen damit eine fachlich besonders hilfreiche Antwort aus. Das ist unabhängig von der Bestätigung des Fragenstellers.`}>
+                              </AnswerActionTooltip>}
+                              {canRecommendAnswers && <AnswerActionTooltip title="Empfehlen" description="Zeichnet eine fachlich besonders hilfreiche Antwort aus. Das ist unabhängig von der Bestätigung des Fragenstellers.">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -804,7 +807,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                                 <Heart className={`h-3.5 w-3.5 ${answer.creatorLiked ? 'fill-current' : ''}`} />
                                 {answer.creatorLiked ? 'Empfehlung entfernen' : 'Empfehlen'}
                               </Button>
-                              </AnswerActionTooltip>
+                              </AnswerActionTooltip>}
                             </>
                           )}
 

@@ -13,6 +13,7 @@ interface User {
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -211,13 +212,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
-        const data = await response.json() as { user?: User };
+        const data = await response.json() as { user?: User; permissions?: string[] };
         if (!data.user) {
           setProfileError('Benutzerprofil konnte nicht geladen werden.');
           return false;
         }
 
-        setFetchedUser(data.user);
+        setFetchedUser({ ...data.user, permissions: data.permissions || [] });
         setAuthenticatedProfileReady(true);
         return true;
       } catch (error) {
@@ -243,8 +244,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const data = await response.json() as { user?: User };
-      setCookieUser(data.user || null);
+      const data = await response.json() as { user?: User; permissions?: string[] };
+      setCookieUser(data.user ? { ...data.user, permissions: data.permissions || [] } : null);
       setCookieProfileReady(true);
       return !!data.user;
     } catch (error) {

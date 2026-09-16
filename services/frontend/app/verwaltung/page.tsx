@@ -79,6 +79,9 @@ const OPERATION_LABELS: Record<string, string> = {
   'user.delete': 'Benutzer gelöscht',
   'user.enable': 'Benutzer aktiviert',
   'user.disable': 'Benutzer deaktiviert',
+  'role.create': 'Rolle erstellt',
+  'role.update': 'Rolle aktualisiert',
+  'role.delete': 'Rolle gelöscht',
   'settings.update': 'Einstellungen geändert',
 };
 

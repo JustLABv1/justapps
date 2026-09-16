@@ -11,6 +11,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,7 +40,7 @@ func GenerateHealthCopilot(c *gin.Context, db *bun.DB) {
 	}
 
 	scope := apphealth.Scope{}
-	if viewerRole != "admin" {
+	if !permissions.Has(viewerRole, permissions.ViewAppHealth) {
 		scope.EditableBy = &viewerID
 	}
 	health, err := apphealth.Load(c.Request.Context(), db, scope)

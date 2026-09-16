@@ -41,10 +41,9 @@ func populateOptionalAuthContext(context *gin.Context, db *bun.DB, tokenString s
 		if user.Disabled {
 			return false
 		}
-		context.Set("user_id", user.ID)
-		context.Set("role", user.Role)
-		context.Set("username", user.Username)
-		context.Set("user_email", user.Email)
+		if !setAuthenticatedUserContext(context, db, user) {
+			return false
+		}
 
 		return true
 	}
@@ -64,10 +63,9 @@ func populateOptionalAuthContext(context *gin.Context, db *bun.DB, tokenString s
 				if user.Disabled {
 					return false
 				}
-				context.Set("user_id", user.ID)
-				context.Set("role", user.Role)
-				context.Set("username", user.Username)
-				context.Set("user_email", user.Email)
+				if !setAuthenticatedUserContext(context, db, user) {
+					return false
+				}
 			} else {
 				if auth.IsAdminOIDC(claims) {
 					context.Set("role", "admin")
@@ -117,10 +115,9 @@ func populateOptionalAuthContext(context *gin.Context, db *bun.DB, tokenString s
 		return false
 	}
 
-	context.Set("user_id", userID)
-	context.Set("role", user.Role)
-	context.Set("username", user.Username)
-	context.Set("user_email", user.Email)
+	if !setAuthenticatedUserContext(context, db, user) {
+		return false
+	}
 
 	return true
 }

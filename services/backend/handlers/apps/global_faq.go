@@ -12,6 +12,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -74,6 +75,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	search := strings.TrimSpace(c.Query("q"))
 	owner := strings.TrimSpace(c.Query("owner"))
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
+	canViewAppDrafts := permissions.Has(viewerRole, permissions.ViewAppDrafts)
 	if owner != "" {
 		if owner != "me" {
 			httperror.StatusBadRequest(c, "Invalid FAQ owner", errors.New("owner must be me"))
@@ -105,7 +107,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 				SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
 			))
 			AND (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf')
-				OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
+				OR ? OR (? AND (app.owner_id = ? OR EXISTS (
 					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
 				))))
 		)
@@ -121,7 +123,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		LIMIT ? OFFSET ?`,
 		search, pattern, pattern, pattern, pattern,
 		search, pattern, pattern, pattern, pattern,
-		viewerRole, hasViewer, viewerID, viewerID,
+		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		scope, scope, appID, appID, owner, viewerID,
 		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
 	).Scan(c.Request.Context(), &questions)
@@ -139,8 +141,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 
 	apps := make([]globalFAQAppOption, 0)
 	err = db.NewRaw(`SELECT DISTINCT app.id, app.name, app.icon FROM apps app JOIN faq_questions q ON q.app_id = app.id
-		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
-			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, viewerRole, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
+		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, canViewAppDrafts, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ apps", err)
 		return
@@ -295,7 +297,7 @@ func DeleteGlobalFAQQuestion(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Question not found", err)
 		return
 	}
-	if question.UserID != userID && role != "admin" {
+	if question.UserID != userID && !permissions.Has(role, permissions.DeleteFAQQuestions) {
 		httperror.Forbidden(c, "You are not allowed to delete this question", errors.New("global FAQ question ownership required"))
 		return
 	}
@@ -328,7 +330,7 @@ func DeleteGlobalFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Answer not found", err)
 		return
 	}
-	if answer.UserID != userID && role != "admin" {
+	if answer.UserID != userID && !permissions.Has(role, permissions.DeleteFAQAnswers) {
 		httperror.Forbidden(c, "You are not allowed to delete this answer", errors.New("global FAQ answer ownership required"))
 		return
 	}
@@ -386,10 +388,6 @@ func UpdateGlobalFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
-	if role != "admin" {
-		httperror.Forbidden(c, "Only an admin can promote global FAQ answers", errors.New("global FAQ moderation permission required"))
-		return
-	}
 	answerID, ok := parseFAQUUID(c, "answerId", "answer ID")
 	if !ok {
 		return
@@ -401,6 +399,14 @@ func UpdateGlobalFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	if request.IsPinned == nil && request.CreatorLiked == nil {
 		httperror.StatusBadRequest(c, "No FAQ highlight change supplied", errors.New("at least one highlight field is required"))
+		return
+	}
+	if request.IsPinned != nil && !permissions.Has(role, permissions.PinFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to pin FAQ answers", errors.New("FAQ pin permission required"))
+		return
+	}
+	if request.CreatorLiked != nil && !permissions.Has(role, permissions.RecommendFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to recommend FAQ answers", errors.New("FAQ recommendation permission required"))
 		return
 	}
 	update := db.NewUpdate().Model((*models.GlobalFAQAnswer)(nil))

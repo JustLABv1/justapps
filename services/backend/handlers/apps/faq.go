@@ -13,6 +13,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -175,8 +176,8 @@ func parseFAQUUID(c *gin.Context, parameter, label string) (uuid.UUID, bool) {
 	return parsed, true
 }
 
-func faqUserCanManageApp(app models.Apps, userID uuid.UUID, role string) bool {
-	return role == "admin" || (userID != uuid.Nil && app.OwnerID == userID)
+func faqUserCanManageApp(app models.Apps, userID uuid.UUID, role string, permission permissions.Permission) bool {
+	return permissions.Has(role, permission) || (userID != uuid.Nil && app.OwnerID == userID)
 }
 
 func faqQuestionResponse(row faqQuestionRow) models.FAQQuestion {
@@ -452,7 +453,7 @@ func DeleteFAQQuestion(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Question not found", err)
 		return
 	}
-	if question.UserID != userID && !faqUserCanManageApp(app, userID, role) {
+	if question.UserID != userID && !faqUserCanManageApp(app, userID, role, permissions.DeleteFAQQuestions) {
 		httperror.Forbidden(c, "You are not allowed to delete this question", errors.New("FAQ question ownership required"))
 		return
 	}
@@ -490,7 +491,7 @@ func DeleteFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Answer not found", err)
 		return
 	}
-	if answer.UserID != userID && !faqUserCanManageApp(app, userID, role) {
+	if answer.UserID != userID && !faqUserCanManageApp(app, userID, role, permissions.DeleteFAQAnswers) {
 		httperror.Forbidden(c, "You are not allowed to delete this answer", errors.New("FAQ answer ownership required"))
 		return
 	}
@@ -568,7 +569,7 @@ func RemoveFAQAnswerUpvote(c *gin.Context, db *bun.DB) {
 	setFAQAnswerUpvote(c, db, false)
 }
 
-// UpdateFAQAnswerHighlights lets the app owner or an admin control the two
+// UpdateFAQAnswerHighlights lets the app owner or an FAQ moderator control the two
 // prominent answer signals. Both fields are optional so pin and like can be
 // changed independently in one endpoint.
 func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
@@ -578,10 +579,6 @@ func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	userID, role, ok := getRequiredViewerContext(c)
 	if !ok {
-		return
-	}
-	if !faqUserCanManageApp(app, userID, role) {
-		httperror.Forbidden(c, "Only the app creator or an admin can promote FAQ answers", errors.New("FAQ moderation permission required"))
 		return
 	}
 	answerID, ok := parseFAQUUID(c, "answerId", "answer ID")
@@ -596,6 +593,14 @@ func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	if request.IsPinned == nil && request.CreatorLiked == nil {
 		httperror.StatusBadRequest(c, "No FAQ highlight change supplied", errors.New("at least one highlight field is required"))
+		return
+	}
+	if request.IsPinned != nil && !faqUserCanManageApp(app, userID, role, permissions.PinFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to pin FAQ answers", errors.New("FAQ pin permission required"))
+		return
+	}
+	if request.CreatorLiked != nil && !faqUserCanManageApp(app, userID, role, permissions.RecommendFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to recommend FAQ answers", errors.New("FAQ recommendation permission required"))
 		return
 	}
 

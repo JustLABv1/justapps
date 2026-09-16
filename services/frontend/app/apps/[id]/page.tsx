@@ -16,6 +16,7 @@ import { getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { resolveRepositoryMarkdownLink } from "@/lib/markdown";
+import { hasPermission, Permission } from "@/lib/permissions";
 import { addRecentlyViewed } from "@/lib/recentlyViewed";
 import { Accordion, Button, Chip, Dropdown, Link, Tabs, Tooltip } from "@heroui/react";
 import {
@@ -169,8 +170,10 @@ function AppPageContent() {
   if (!app) return notFound();
 
   const isAdmin = user?.role === 'admin';
+  const canViewAppDrafts = hasPermission(user?.role, Permission.ViewAppDrafts, user?.permissions);
+  const canEditApps = hasPermission(user?.role, Permission.EditApps, user?.permissions);
   const isOwner = !!user?.id && (app.ownerId === user.id || app.owner?.id === user.id);
-  if (isDraftStatus(app.status) && !isOwner && !isAdmin) return notFound();
+  if (isDraftStatus(app.status) && !isOwner && !canViewAppDrafts) return notFound();
 
   const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
   const probeStatus = probeEnabled ? app.linkProbeStatus : undefined;
@@ -256,7 +259,7 @@ function AppPageContent() {
           Zurück zur Übersicht
         </NextLink>
 
-        {isAdmin ? (
+        {isAdmin || canEditApps ? (
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -269,19 +272,21 @@ function AppPageContent() {
               }
             </button>
             <NextLink
-              href={`/verwaltung/katalog/apps/${app.id}/edit`}
+              href={isAdmin ? `/verwaltung/katalog/apps/${app.id}/edit` : `/meine-apps/${app.id}/edit`}
               className={headerActionClassName}
             >
               <Pencil className="w-4 h-4" />
               Bearbeiten
             </NextLink>
-            <NextLink
-              href="/verwaltung"
-              className={headerActionClassName}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Verwaltung
-            </NextLink>
+            {isAdmin && (
+              <NextLink
+                href="/verwaltung"
+                className={headerActionClassName}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Verwaltung
+              </NextLink>
+            )}
           </div>
         ) : (
           <button
@@ -662,7 +667,13 @@ function AppPageContent() {
         {/* FAQ */}
         {settings.faqEnabled && (
           <Tabs.Panel id="faq">
-            <FAQSection appId={app.id} canManageHighlights={isAdmin || isOwner} />
+            <FAQSection
+              appId={app.id}
+              canDeleteQuestions={isOwner || hasPermission(user?.role, Permission.DeleteFAQQuestions, user?.permissions)}
+              canDeleteAnswers={isOwner || hasPermission(user?.role, Permission.DeleteFAQAnswers, user?.permissions)}
+              canPinAnswers={isOwner || hasPermission(user?.role, Permission.PinFAQAnswers, user?.permissions)}
+              canRecommendAnswers={isOwner || hasPermission(user?.role, Permission.RecommendFAQAnswers, user?.permissions)}
+            />
           </Tabs.Panel>
         )}
 

@@ -37,10 +37,9 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				return
 			}
 
-			context.Set("user_id", user.ID)
-			context.Set("role", user.Role)
-			context.Set("username", user.Username)
-			context.Set("user_email", user.Email)
+			if !setAuthenticatedUserContext(context, db, user) {
+				return
+			}
 
 			context.Next()
 			return
@@ -66,10 +65,9 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 						httperror.Unauthorized(context, "Your Account is currently disabled", errors.New("user is disabled"))
 						return
 					}
-					context.Set("user_id", user.ID)
-					context.Set("role", user.Role)
-					context.Set("username", user.Username)
-					context.Set("user_email", user.Email)
+					if !setAuthenticatedUserContext(context, db, user) {
+						return
+					}
 				} else {
 					// User not in DB yet (first login with raw Keycloak token, exchange not yet complete)
 					// Set role from OIDC claims but leave user_id unset to enforce re-authentication
@@ -130,10 +128,9 @@ func Auth(db *bun.DB) gin.HandlerFunc {
 				return
 			}
 
-			context.Set("user_id", userId)
-			context.Set("role", user.Role)
-			context.Set("username", user.Username)
-			context.Set("user_email", user.Email)
+			if !setAuthenticatedUserContext(context, db, user) {
+				return
+			}
 
 			context.Next()
 		} else if tokenType == "project" || tokenType == "service" {

@@ -38,7 +38,7 @@ export const adminNavLinks: AdminNavLink[] = [
     label: 'Sicherheit',
     icon: ShieldCheck,
     exact: false,
-    matchPrefixes: ['/verwaltung/backups', '/verwaltung/benutzer', '/verwaltung/audit', '/verwaltung/tokens'],
+    matchPrefixes: ['/verwaltung/backups', '/verwaltung/benutzer', '/verwaltung/audit', '/verwaltung/tokens', '/verwaltung/sicherheit/rollen'],
   },
 ];
 
