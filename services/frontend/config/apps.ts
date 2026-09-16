@@ -213,6 +213,20 @@ export interface FAQNotification {
   seenAt?: string | null;
 }
 
+export interface FAQAnswerNotification {
+  id: string;
+  questionId: string;
+  answerId: string;
+  scope: 'app' | 'global';
+  appId?: string | null;
+  appName?: string;
+  question: string;
+  answer: string;
+  answerer: string;
+  createdAt: string;
+  seenAt?: string | null;
+}
+
 export interface SystemUser {
   id: string;
   username: string;

@@ -131,6 +131,10 @@ func ListReleaseUpdates(context *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
+	page, pageSize, ok := parseNotificationPagination(context)
+	if !ok {
+		return
+	}
 
 	status := strings.ToLower(strings.TrimSpace(context.Query("status")))
 	var items []models.ReleaseInboxListItem
@@ -158,13 +162,22 @@ func ListReleaseUpdates(context *gin.Context, db *bun.DB) {
 	if status == "unread" {
 		query = query.Where("item.seen_at IS NULL")
 	}
+	total, err := query.Clone().Count(context.Request.Context())
+	if err != nil {
+		httperror.InternalServerError(context, "Updates konnten nicht gezählt werden", err)
+		return
+	}
+	query = query.Limit(pageSize).Offset((page - 1) * pageSize)
 
 	if err := query.Scan(context.Request.Context(), &items); err != nil {
 		httperror.InternalServerError(context, "Updates konnten nicht geladen werden", err)
 		return
 	}
 
-	context.JSON(http.StatusOK, items)
+	if items == nil {
+		items = make([]models.ReleaseInboxListItem, 0)
+	}
+	context.JSON(http.StatusOK, paginatedResponse(items, page, pageSize, total))
 }
 
 func GetReleaseUpdateSummary(context *gin.Context, db *bun.DB) {
@@ -260,6 +273,10 @@ func MarkAllReleaseUpdatesSeen(context *gin.Context, db *bun.DB) {
 	}
 	if err := markAllFAQQuestionNotificationsSeen(context.Request.Context(), db, userID); err != nil {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht als gelesen markiert werden", err)
+		return
+	}
+	if err := markAllFAQAnswerNotificationsSeen(context.Request.Context(), db, userID); err != nil {
+		httperror.InternalServerError(context, "Antwort-Benachrichtigungen konnten nicht als gelesen markiert werden", err)
 		return
 	}
 

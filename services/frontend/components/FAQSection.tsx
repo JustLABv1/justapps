@@ -2,9 +2,13 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useStoreName } from '@/context/SettingsContext';
+import { PageFilters } from '@/components/PageHeader';
 import { fetchApi } from '@/lib/api';
 import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
-import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { getImageAssetUrl } from '@/lib/assets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface FAQAnswer {
@@ -22,6 +26,10 @@ interface FAQAnswer {
 
 interface FAQQuestion {
   id: string;
+  scope?: 'global' | 'app';
+  appId?: string | null;
+  appName?: string | null;
+  appIcon?: string | null;
   userId: string;
   username: string;
   question: string;
@@ -39,6 +47,8 @@ interface FAQSectionProps {
 
 type FAQStatusFilter = 'all' | 'open' | 'answered';
 type FAQSort = 'newest' | 'most-answered';
+type FAQScopeFilter = 'all' | 'global' | 'app';
+type FAQAppOption = { id: string; name: string; icon?: string };
 type FAQAnswerPage = { answers: FAQAnswer[]; page: number; hasMore: boolean; loading: boolean };
 
 const FAQ_PAGE_SIZE = 20;
@@ -81,10 +91,10 @@ function DeleteAction({
     <AlertDialog>
       <AlertDialog.Trigger>
         <Button
-          variant="danger-soft"
+          variant="ghost"
           size="sm"
           isDisabled={isLoading}
-          className="gap-1.5 font-bold"
+          className="gap-1.5 text-xs text-muted hover:text-danger"
           aria-label={title}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -127,6 +137,10 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
   const [sort, setSort] = useState<FAQSort>('newest');
+  const [mineOnly, setMineOnly] = useState(false);
+  const [scopeFilter, setScopeFilter] = useState<FAQScopeFilter>('all');
+  const [selectedAppId, setSelectedAppId] = useState('');
+  const [faqApps, setFAQApps] = useState<FAQAppOption[]>([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [questionPage, setQuestionPage] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(0);
@@ -138,7 +152,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
   const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
 
-  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest';
+  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
 
   const loadFAQ = useCallback(async (page = 1, append = false) => {
     if (append) setLoadingMoreQuestions(true);
@@ -146,11 +160,14 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_PAGE_SIZE), status: statusFilter, sort });
       if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      if (mineOnly) params.set('owner', 'me');
+      if (global) params.set('scope', scopeFilter);
+      if (global && selectedAppId) params.set('appId', selectedAppId);
       const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
       }
-      const data = await response.json() as { questions?: FAQQuestion[]; page?: number; total?: number; hasMore?: boolean };
+      const data = await response.json() as { questions?: FAQQuestion[]; apps?: FAQAppOption[]; page?: number; total?: number; hasMore?: boolean };
       const nextQuestions = Array.isArray(data.questions)
         ? data.questions.map((question) => ({ ...question, answers: [] }))
         : [];
@@ -158,6 +175,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       setQuestionPage(data.page ?? page);
       setTotalQuestions(data.total ?? nextQuestions.length);
       setHasMoreQuestions(data.hasMore === true);
+      if (global && Array.isArray(data.apps)) setFAQApps(data.apps);
       if (!append) {
         setExpandedQuestionId(null);
         setAnswerPages({});
@@ -173,7 +191,12 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       if (append) setLoadingMoreQuestions(false);
       else setLoading(false);
     }
-  }, [endpoint, searchQuery, sort, statusFilter]);
+  }, [endpoint, global, mineOnly, scopeFilter, searchQuery, selectedAppId, sort, statusFilter]);
+
+  const endpointForQuestion = useCallback((questionId: string) => {
+    const question = questions.find((candidate) => candidate.id === questionId);
+    return global && question?.scope === 'app' && question.appId ? `/apps/${question.appId}/faq` : endpoint;
+  }, [endpoint, global, questions]);
 
   const loadAnswers = useCallback(async (questionId: string, page = 1, append = false) => {
     setAnswerPages((current) => ({
@@ -182,7 +205,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     }));
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_ANSWER_PAGE_SIZE) });
-      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers?${params.toString()}`, { cache: 'no-store' });
+      const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}/answers?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(await responseError(response, 'Antworten konnten nicht geladen werden.'));
       const data = await response.json() as { answers?: FAQAnswer[]; page?: number; hasMore?: boolean };
       const answers = Array.isArray(data.answers) ? data.answers : [];
@@ -203,7 +226,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       toast.danger(message);
       return false;
     }
-  }, [endpoint]);
+  }, [endpointForQuestion]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => void loadFAQ(1, false), 300);
@@ -279,7 +302,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     setSubmitting(`answer:${questionId}`);
     setError(null);
     try {
-      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers`, {
+      const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}/answers`, {
         method: 'POST',
         body: JSON.stringify({ answer }),
       });
@@ -310,7 +333,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     setBusyAction(action);
     setError(null);
     try {
-      const response = await fetchApi(`${endpoint}/questions/${questionId}`, { method: 'DELETE' });
+      const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Frage konnte nicht gelöscht werden.'));
       }
@@ -331,7 +354,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     setBusyAction(action);
     setError(null);
     try {
-      const response = await fetchApi(`${endpoint}/questions/${questionId}/answers/${answerId}`, { method: 'DELETE' });
+      const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}/answers/${answerId}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Antwort konnte nicht gelöscht werden.'));
       }
@@ -356,7 +379,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     setError(null);
     try {
       const method = answer.userUpvoted ? 'DELETE' : 'POST';
-      const response = await fetchApi(`${endpoint}/answers/${answer.id}/upvote`, { method });
+      const response = await fetchApi(`${endpointForQuestion(answer.questionId)}/answers/${answer.id}/upvote`, { method });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Stimme konnte nicht gespeichert werden.'));
       }
@@ -391,7 +414,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
     setError(null);
     const enabled = !answer[field];
     try {
-      const response = await fetchApi(`${endpoint}/answers/${answer.id}`, {
+      const response = await fetchApi(`${endpointForQuestion(answer.questionId)}/answers/${answer.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ [field]: enabled }),
       });
@@ -435,79 +458,94 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
       {(
         <div className="space-y-4">
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Fragen, Antworten oder Personen durchsuchen"
-                  aria-label="FAQ durchsuchen"
-                  className="h-12 w-full rounded-xl pl-10 pr-9"
-                  variant="secondary"
-                />
-                {searchQuery && (
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Suche löschen"
-                    onPress={() => setSearchQuery('')}
-                    className="absolute right-1 top-1/2 min-w-7 -translate-y-1/2"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+            <PageFilters>
+              <div className="flex w-full flex-col gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Fragen, Antworten oder Personen durchsuchen"
+                      aria-label="FAQ durchsuchen"
+                      className="h-12 w-full rounded-xl pl-10 pr-9"
+                      variant="secondary"
+                    />
+                    {searchQuery && (
+                      <Button isIconOnly size="sm" variant="ghost" aria-label="Suche löschen" onPress={() => setSearchQuery('')} className="absolute right-1 top-1/2 min-w-7 -translate-y-1/2">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 items-center gap-2 border-t border-border/60 pt-3 sm:flex sm:flex-wrap" role="group" aria-label="Filter und Sortierung">
+                  {global && (
+                    <Select
+                      aria-label="FAQ-Bereich filtern"
+                      selectedKey={scopeFilter}
+                      onSelectionChange={(key) => {
+                        const value = String(key) as FAQScopeFilter;
+                        setScopeFilter(value);
+                        if (value !== 'app') setSelectedAppId('');
+                      }}
+                      variant="secondary"
+                      className="min-w-0 w-full sm:w-44"
+                    >
+                      <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          <ListBox.Item id="all" textValue="Alle Bereiche">Alle Bereiche<ListBox.ItemIndicator /></ListBox.Item>
+                          <ListBox.Item id="global" textValue={`${storeName} allgemein`}>{storeName} allgemein<ListBox.ItemIndicator /></ListBox.Item>
+                          <ListBox.Item id="app" textValue="App-FAQs">App-FAQs<ListBox.ItemIndicator /></ListBox.Item>
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                  )}
+                  {global && scopeFilter === 'app' && (
+                    <Select aria-label="Nach App filtern" selectedKey={selectedAppId || 'all'} onSelectionChange={(key) => setSelectedAppId(String(key) === 'all' ? '' : String(key))} variant="secondary" className="min-w-0 w-full sm:w-52">
+                      <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          <ListBox.Item id="all" textValue="Alle Apps">Alle Apps<ListBox.ItemIndicator /></ListBox.Item>
+                          {faqApps.map((app) => <ListBox.Item key={app.id} id={app.id} textValue={app.name}>{app.name}<ListBox.ItemIndicator /></ListBox.Item>)}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                  )}
+                  <Select aria-label="Antwortstatus filtern" selectedKey={statusFilter} onSelectionChange={(key) => setStatusFilter(String(key) as FAQStatusFilter)} variant="secondary" className="min-w-0 w-full sm:w-40">
+                    <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id="all" textValue="Alle Status">Alle Status<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="open" textValue="Offen">Offen<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="answered" textValue="Beantwortet">Beantwortet<ListBox.ItemIndicator /></ListBox.Item>
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                  {user && (
+                    <Button size="sm" className="h-9" variant={mineOnly ? 'primary' : 'secondary'} aria-pressed={mineOnly} onPress={() => setMineOnly((current) => !current)}>
+                      <UserRound className="h-4 w-4" />Meine Fragen
+                    </Button>
+                  )}
+                  <Select aria-label="Fragen sortieren" selectedKey={sort} onSelectionChange={(key) => setSort(String(key) as FAQSort)} variant="secondary" className="min-w-0 w-full sm:ml-auto sm:w-48">
+                    <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id="newest" textValue="Neueste zuerst">Neueste zuerst<ListBox.ItemIndicator /></ListBox.Item>
+                        <ListBox.Item id="most-answered" textValue="Meiste Antworten">Meiste Antworten<ListBox.ItemIndicator /></ListBox.Item>
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Fragen filtern">
-                {([
-                  ['all', 'Alle'],
-                  ['open', 'Offen'],
-                  ['answered', 'Beantwortet'],
-                ] as const).map(([value, label]) => (
-                  <Button
-                    key={value}
-                    size="sm"
-                    variant={statusFilter === value ? 'primary' : 'secondary'}
-                    aria-pressed={statusFilter === value}
-                    onPress={() => setStatusFilter(value)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              <Select
-                aria-label="Fragen sortieren"
-                selectedKey={sort}
-                onSelectionChange={(key) => setSort(String(key) as FAQSort)}
-                variant="secondary"
-                className="w-full sm:w-48"
-              >
-                <Select.Trigger>
-                  <Select.Value />
-                  <Select.Indicator />
-                </Select.Trigger>
-                <Select.Popover>
-                  <ListBox>
-                    <ListBox.Item id="newest" textValue="Neueste zuerst">
-                      Neueste zuerst
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                    <ListBox.Item id="most-answered" textValue="Meiste Antworten">
-                      Meiste Antworten
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                  </ListBox>
-                </Select.Popover>
-              </Select>
-            </div>
+            </PageFilters>
             <div className="flex items-center justify-between gap-3 text-xs text-muted">
               <span role="status">{loading ? 'Fragen werden geladen …' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
               {hasActiveFilters && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); }}
+                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); setScopeFilter('all'); setSelectedAppId(''); }}
                   className="h-auto px-0 py-0 text-xs"
                 >
                   Filter zurücksetzen
@@ -578,26 +616,41 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-surface divide-y divide-border">
+        <div className="space-y-4">
           {questions.map((question) => {
             const canDeleteQuestion = canManageHighlights || user?.id === question.userId;
             const answerDraft = answerDrafts[question.id] || '';
             const answerPage = answerPages[question.id];
             const isExpanded = expandedQuestionId === question.id;
+            const appIconSrc = getImageAssetUrl(question.appIcon);
 
             return (
-              <article key={question.id}>
+              <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
                 <button
                   type="button"
                   onClick={() => toggleQuestion(question.id)}
                   aria-expanded={isExpanded}
                   aria-controls={`faq-answer-panel-${question.id}`}
-                  className="flex w-full cursor-pointer items-center justify-between gap-5 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
+                  className="flex w-full cursor-pointer items-start justify-between gap-4 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
                 >
                   <div className="min-w-0 space-y-2">
-                    <h3 className="break-words text-base font-semibold leading-relaxed text-foreground">{question.question}</h3>
+                    {global && (
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${question.scope === 'app' ? 'bg-accent/10 text-accent' : 'bg-surface-secondary text-muted'}`}>
+                        {question.scope === 'app' && (
+                          <span className="relative flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded bg-surface text-[9px] font-bold">
+                            {appIconSrc ? <Image src={appIconSrc} alt="" fill sizes="16px" className="object-contain p-0.5" unoptimized /> : (question.appIcon || question.appName?.charAt(0) || 'A')}
+                          </span>
+                        )}
+                        {question.scope === 'app' ? question.appName : `${storeName} allgemein`}
+                      </span>
+                    )}
+                    <h3 className="break-words text-lg font-semibold leading-snug text-foreground">{question.question}</h3>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                      <span className="font-medium">{question.username || 'Anonymer Nutzer'}</span>
+                      <span aria-hidden="true">·</span>
+                      <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
+                      <span aria-hidden="true">·</span>
+                      <span className="text-accent">{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
                       {question.answerCount === 0 && (
                         <Chip size="sm" color="warning" variant="soft" className="text-[10px] font-bold">
                           Antwort gesucht
@@ -605,14 +658,21 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       )}
                     </div>
                   </div>
-                  <ChevronDown className={`h-5 w-5 shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`mt-1 h-5 w-5 shrink-0 text-muted ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isExpanded && (
                 <div className="px-5 pb-6 sm:px-6">
                   <div id={`faq-answer-panel-${question.id}`}>
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 text-xs text-muted">
-                    <span>Gefragt von {question.username || 'Anonymer Nutzer'} · {formatDate(question.createdAt)}</span>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h4 className="font-medium text-foreground">{question.answerCount === 1 ? 'Antwort' : 'Antworten'}</h4>
+                      {global && question.scope === 'app' && question.appId && (
+                        <Link href={`/apps/${question.appId}`} className="font-medium text-accent hover:underline">
+                          Zu {question.appName || 'dieser App'}
+                        </Link>
+                      )}
+                    </div>
                   {canDeleteQuestion && (
                     <DeleteAction
                       title="Frage löschen?"
@@ -622,7 +682,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     />
                   )}
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {answerPage?.loading && answerPage.answers.length === 0 ? (
                     <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
@@ -637,13 +697,16 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                     return (
                       <div
                         key={answer.id}
-                        className={`border-l-2 pl-4 sm:pl-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent' : 'border-border'}`}
+                        className={`rounded-xl border p-4 sm:p-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent/25 bg-accent/5' : 'border-transparent bg-surface-secondary/60'}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
+                            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-surface text-xs font-semibold uppercase text-accent">
+                              {(answer.username || 'Anonymer Nutzer').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}
+                            </span>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
-                              <p className="text-xs text-muted">{formatDate(answer.createdAt)}</p>
+                              <p className="break-words text-sm font-semibold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
+                              <time dateTime={answer.createdAt} className="text-xs text-muted">{formatDate(answer.createdAt)}</time>
                             </div>
                           </div>
                           <div className="flex flex-wrap justify-end gap-1.5">
@@ -660,15 +723,16 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                           </div>
                         </div>
 
-                        <p className="mt-3 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground">{answer.answer}</p>
+                        <p className="my-4 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground sm:ml-12">{answer.answer}</p>
 
-                        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:ml-12">
                           <Button
                             size="sm"
-                            variant={answer.userUpvoted ? 'primary' : 'secondary'}
+                            variant={answer.userUpvoted ? 'secondary' : 'ghost'}
                             isDisabled={!user || answerBusy}
                             onPress={() => void handleUpvote(answer)}
-                            className={`gap-1.5 ${answer.userUpvoted ? 'bg-accent text-white' : ''}`}
+                            className={`gap-1.5 text-xs ${answer.userUpvoted ? 'text-accent' : 'text-muted'}`}
+                            aria-pressed={answer.userUpvoted}
                             aria-label={user ? 'Antwort hochstufen' : 'Zum Abstimmen anmelden'}
                           >
                             <ArrowUp className="h-3.5 w-3.5" />
@@ -680,20 +744,22 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                             <>
                               <Button
                                 size="sm"
-                                variant={answer.isPinned ? 'primary' : 'ghost'}
+                                variant="ghost"
                                 isDisabled={answerBusy}
                                 onPress={() => void handleHighlight(answer, 'isPinned')}
-                                className={`gap-1.5 text-xs ${answer.isPinned ? 'bg-accent text-white' : 'text-muted'}`}
+                                className={`gap-1.5 text-xs ${answer.isPinned ? 'text-accent' : 'text-muted'}`}
+                                aria-pressed={answer.isPinned}
                               >
                                 <Pin className="h-3.5 w-3.5" />
                                 {answer.isPinned ? 'Lösen' : 'Anheften'}
                               </Button>
                               <Button
                                 size="sm"
-                                variant={answer.creatorLiked ? 'primary' : 'ghost'}
+                                variant="ghost"
                                 isDisabled={answerBusy}
                                 onPress={() => void handleHighlight(answer, 'creatorLiked')}
-                                className={`gap-1.5 text-xs ${answer.creatorLiked ? 'bg-accent text-white' : 'text-muted'}`}
+                                className={`gap-1.5 text-xs ${answer.creatorLiked ? 'text-accent' : 'text-muted'}`}
+                                aria-pressed={answer.creatorLiked}
                               >
                                 <Heart className={`h-3.5 w-3.5 ${answer.creatorLiked ? 'fill-current' : ''}`} />
                                 {answer.creatorLiked ? 'Empfehlung entfernen' : 'Empfehlen'}
@@ -731,20 +797,20 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                   )}
 
                   {user && (
-                    <details className="border-t border-border pt-4">
-                      <summary className="cursor-pointer text-sm font-medium text-accent">Antwort hinzufügen</summary>
-                      <div className="mt-4">
+                    <details className="group rounded-xl border border-border">
+                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4 group-open:rotate-45" />Antwort schreiben</summary>
+                      <div className="px-4 pb-4">
                       <TextField
                         value={answerDraft}
                         onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
                         className="flex flex-col gap-1.5"
                       >
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted">Antwort hinzufügen</Label>
+                        <Label className="sr-only">Ihre Antwort</Label>
                         <TextArea
                           aria-label={`Antwort auf: ${question.question}`}
                           placeholder="Was ist Ihre Erfahrung oder Empfehlung?"
                           variant="secondary"
-                          className="min-h-20 w-full rounded-lg border border-border bg-default text-sm"
+                          className="min-h-28 w-full rounded-lg border border-border bg-surface text-sm leading-relaxed"
                           rows={3}
                           maxLength={5000}
                         />
@@ -752,7 +818,7 @@ export function FAQSection({ appId, canManageHighlights, global = false }: FAQSe
                       <div className="mt-3 flex justify-end">
                         <Button
                           size="sm"
-                          variant="secondary"
+                          variant="primary"
                           onPress={() => void handleAnswer(question.id)}
                           isDisabled={!answerDraft.trim() || submitting !== null}
                           isPending={submitting === `answer:${question.id}`}
