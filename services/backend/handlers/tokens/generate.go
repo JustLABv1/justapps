@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -39,6 +40,10 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 	var user models.Users
 	err := db.NewSelect().Model(&user).Where("email = ? OR username = ?", request.Email, request.Email).Scan(context)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httperror.Unauthorized(context, "E-Mail/Benutzername oder Passwort ist falsch", errors.New("invalid credentials"))
+			return
+		}
 		httperror.InternalServerError(context, "Benutzer nicht gefunden", err)
 		return
 	}
@@ -51,7 +56,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 	// check if password is correct
 	credentialError := user.CheckPassword(request.Password)
 	if credentialError != nil {
-		httperror.Unauthorized(context, "Passwort ist falsch", errors.New("passwort ist falsch"))
+		httperror.Unauthorized(context, "E-Mail/Benutzername oder Passwort ist falsch", errors.New("invalid credentials"))
 		return
 	}
 
