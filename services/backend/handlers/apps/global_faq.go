@@ -12,6 +12,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,16 +40,17 @@ type globalFAQAppOption struct {
 }
 
 type globalFAQAnswerRow struct {
-	ID           uuid.UUID `bun:"id"`
-	QuestionID   uuid.UUID `bun:"question_id"`
-	UserID       uuid.UUID `bun:"user_id"`
-	Username     string    `bun:"username"`
-	Answer       string    `bun:"answer"`
-	IsPinned     bool      `bun:"is_pinned"`
-	CreatorLiked bool      `bun:"creator_liked"`
-	CreatedAt    time.Time `bun:"created_at"`
-	UpvoteCount  int       `bun:"upvote_count"`
-	UserUpvoted  bool      `bun:"user_upvoted"`
+	ID               uuid.UUID `bun:"id"`
+	QuestionID       uuid.UUID `bun:"question_id"`
+	UserID           uuid.UUID `bun:"user_id"`
+	Username         string    `bun:"username"`
+	Answer           string    `bun:"answer"`
+	IsPinned         bool      `bun:"is_pinned"`
+	CreatorLiked     bool      `bun:"creator_liked"`
+	AcceptedByAuthor bool      `bun:"accepted_by_author"`
+	CreatedAt        time.Time `bun:"created_at"`
+	UpvoteCount      int       `bun:"upvote_count"`
+	UserUpvoted      bool      `bun:"user_upvoted"`
 }
 
 func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
@@ -73,6 +75,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	search := strings.TrimSpace(c.Query("q"))
 	owner := strings.TrimSpace(c.Query("owner"))
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
+	canViewAppDrafts := permissions.Has(viewerRole, permissions.ViewAppDrafts)
 	if owner != "" {
 		if owner != "me" {
 			httperror.StatusBadRequest(c, "Invalid FAQ owner", errors.New("owner must be me"))
@@ -104,7 +107,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 				SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
 			))
 			AND (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf')
-				OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
+				OR ? OR (? AND (app.owner_id = ? OR EXISTS (
 					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
 				))))
 		)
@@ -120,7 +123,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		LIMIT ? OFFSET ?`,
 		search, pattern, pattern, pattern, pattern,
 		search, pattern, pattern, pattern, pattern,
-		viewerRole, hasViewer, viewerID, viewerID,
+		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		scope, scope, appID, appID, owner, viewerID,
 		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
 	).Scan(c.Request.Context(), &questions)
@@ -138,8 +141,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 
 	apps := make([]globalFAQAppOption, 0)
 	err = db.NewRaw(`SELECT DISTINCT app.id, app.name, app.icon FROM apps app JOIN faq_questions q ON q.app_id = app.id
-		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? = 'admin' OR (? AND (app.owner_id = ? OR EXISTS (
-			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, viewerRole, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
+		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, canViewAppDrafts, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ apps", err)
 		return
@@ -171,15 +174,15 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	viewerID, _, _ := getViewerContext(c)
 	rows := make([]globalFAQAnswerRow, 0)
 	query := db.NewSelect().TableExpr("global_faq_answers AS a").
-		ColumnExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at").
+		ColumnExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN global_faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ?", questionID).
-		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at")
+		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at")
 	total, err := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID).Count(c)
 	if err == nil {
-		err = query.OrderExpr("a.is_pinned DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
+		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ answers", err)
@@ -187,7 +190,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.GlobalFAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
 }
@@ -294,7 +297,7 @@ func DeleteGlobalFAQQuestion(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Question not found", err)
 		return
 	}
-	if question.UserID != userID && role != "admin" {
+	if question.UserID != userID && !permissions.Has(role, permissions.DeleteFAQQuestions) {
 		httperror.Forbidden(c, "You are not allowed to delete this question", errors.New("global FAQ question ownership required"))
 		return
 	}
@@ -327,7 +330,7 @@ func DeleteGlobalFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Answer not found", err)
 		return
 	}
-	if answer.UserID != userID && role != "admin" {
+	if answer.UserID != userID && !permissions.Has(role, permissions.DeleteFAQAnswers) {
 		httperror.Forbidden(c, "You are not allowed to delete this answer", errors.New("global FAQ answer ownership required"))
 		return
 	}
@@ -385,10 +388,6 @@ func UpdateGlobalFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
-	if role != "admin" {
-		httperror.Forbidden(c, "Only an admin can promote global FAQ answers", errors.New("global FAQ moderation permission required"))
-		return
-	}
 	answerID, ok := parseFAQUUID(c, "answerId", "answer ID")
 	if !ok {
 		return
@@ -400,6 +399,14 @@ func UpdateGlobalFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	if request.IsPinned == nil && request.CreatorLiked == nil {
 		httperror.StatusBadRequest(c, "No FAQ highlight change supplied", errors.New("at least one highlight field is required"))
+		return
+	}
+	if request.IsPinned != nil && !permissions.Has(role, permissions.PinFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to pin FAQ answers", errors.New("FAQ pin permission required"))
+		return
+	}
+	if request.CreatorLiked != nil && !permissions.Has(role, permissions.RecommendFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to recommend FAQ answers", errors.New("FAQ recommendation permission required"))
 		return
 	}
 	update := db.NewUpdate().Model((*models.GlobalFAQAnswer)(nil))

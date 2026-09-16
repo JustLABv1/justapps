@@ -10,6 +10,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
@@ -64,7 +65,8 @@ func SuggestChangelog(c *gin.Context, db *bun.DB) {
 			return
 		}
 
-		if viewerRole != "admin" && baseline.OwnerID != viewerID {
+		canModerateApps := permissions.Has(viewerRole, permissions.EditApps)
+		if !canModerateApps && baseline.OwnerID != viewerID {
 			isEditor, editorErr := isEditorForApp(c.Request.Context(), db, appID, viewerID)
 			if editorErr != nil {
 				httperror.InternalServerError(c, "App-Berechtigungen konnten nicht geprüft werden", editorErr)
@@ -75,7 +77,7 @@ func SuggestChangelog(c *gin.Context, db *bun.DB) {
 				return
 			}
 		}
-		if viewerRole != "admin" && baseline.IsLocked {
+		if !canModerateApps && baseline.IsLocked {
 			httperror.Forbidden(c, "Diese App ist gesperrt und kann nicht bearbeitet werden", errors.New("app locked"))
 			return
 		}

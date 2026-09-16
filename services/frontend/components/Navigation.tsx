@@ -35,7 +35,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { useUpdates } from "../context/UpdatesContext";
-import { adminNavLinks } from "../lib/admin-navigation";
+import { adminNavGroups, adminNavLinks } from "../lib/admin-navigation";
 import { canAccessAI } from "../lib/ai-access";
 import { JustAppsLogo } from "./JustAppsLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
@@ -92,7 +92,14 @@ export function Navigation() {
   const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
   const isInVerwaltung = pathname.startsWith("/verwaltung");
-  const visibleAdminNavLinks = adminNavLinks;
+  const visibleAdminNavLinks = [
+    { ...adminNavLinks[0], label: 'Alle Einstellungen' },
+    ...adminNavGroups.flatMap((group) => group.items).filter((item) => [
+      '/verwaltung/katalog/apps',
+      '/verwaltung/sicherheit/benutzer',
+      '/verwaltung/sicherheit/rollen',
+    ].includes(item.href)),
+  ];
 
   const handleLogout = () => {
     logout();

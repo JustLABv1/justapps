@@ -58,12 +58,21 @@ type BackupToken struct {
 	UserID         string    `json:"userId"`
 }
 
+type BackupRole struct {
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	IsSystem    bool     `json:"isSystem"`
+	Permissions []string `json:"permissions"`
+}
+
 type BackupData struct {
 	Apps                []Apps                   `json:"apps,omitempty"`
 	AppEditors          []AppEditor              `json:"appEditors,omitempty"`
 	AppGroups           []AppGroup               `json:"appGroups,omitempty"`
 	AppRelations        []AppRelation            `json:"appRelations,omitempty"`
 	Users               []BackupUser             `json:"users,omitempty"`
+	Roles               []BackupRole             `json:"roles,omitempty"`
 	Settings            *PlatformSettings        `json:"settings,omitempty"`
 	RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
 	RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
@@ -92,6 +101,7 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		AppGroups           []AppGroup               `json:"appGroups,omitempty"`
 		AppRelations        []AppRelation            `json:"appRelations,omitempty"`
 		Users               []BackupUser             `json:"users,omitempty"`
+		Roles               []BackupRole             `json:"roles,omitempty"`
 		Settings            *PlatformSettings        `json:"settings,omitempty"`
 		RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
 		RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
@@ -122,6 +132,7 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		AppGroups:           raw.AppGroups,
 		AppRelations:        raw.AppRelations,
 		Users:               raw.Users,
+		Roles:               raw.Roles,
 		Settings:            raw.Settings,
 		RepositoryProviders: raw.RepositoryProviders,
 		RepositoryAppLinks:  raw.RepositoryAppLinks,

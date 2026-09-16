@@ -1,5 +1,5 @@
 import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { Activity, Archive, KeyRound, Users } from 'lucide-react';
+import { Activity, Archive, KeyRound, ShieldCheck, Users } from 'lucide-react';
 
 export default function VerwaltungSicherheitPage() {
   return (
@@ -7,6 +7,13 @@ export default function VerwaltungSicherheitPage() {
       title="Sicherheit"
       description="Konzentriert Benutzerzugänge, Nachvollziehbarkeit, Tokenverwaltung und Wiederherstellung auf einer Ebene."
       cards={[
+        {
+          href: '/verwaltung/sicherheit/rollen',
+          title: 'Rollen & Rechte',
+          description: 'Erstellen Sie Rollen und legen Sie einzelne FAQ- und App-Rechte zentral fest.',
+          icon: ShieldCheck,
+          note: 'Rollenmodell',
+        },
         {
           href: '/verwaltung/sicherheit/benutzer',
           title: 'Benutzer',

@@ -218,6 +218,10 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 	}
 
 	authfunc.SetSessionCookie(c, sessionToken, expiresAt)
+	loggedInAt := time.Now()
+	if err := recordOIDCLogin(c.Request.Context(), db, user.ID, loggedInAt); err != nil {
+		log.WithError(err).WithFields(log.Fields{"email": user.Email, "providerKey": provider.Key}).Warn("OIDC: failed to update last login")
+	}
 	values := url.Values{}
 	values.Set("callbackUrl", sanitizeCallbackURL(stateClaims.CallbackURL))
 	values.Set("oidc_provider", provider.Key)

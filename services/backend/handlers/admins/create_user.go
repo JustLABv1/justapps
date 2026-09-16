@@ -7,6 +7,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
@@ -17,6 +18,19 @@ func CreateUser(context *gin.Context, db *bun.DB) {
 	var user models.Users
 	if err := context.ShouldBindJSON(&user); err != nil {
 		httperror.StatusBadRequest(context, "Error parsing incoming data", err)
+		return
+	}
+	user.Role = permissions.NormalizeRole(user.Role)
+	if user.Role == "" {
+		user.Role = permissions.RoleUser
+	}
+	validRole, roleErr := roleExists(context, db, user.Role)
+	if roleErr != nil {
+		httperror.InternalServerError(context, "Error validating user role", roleErr)
+		return
+	}
+	if !validRole {
+		httperror.StatusBadRequest(context, "Invalid user role", fmt.Errorf("unsupported role %q", user.Role))
 		return
 	}
 

@@ -140,7 +140,14 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 		switch section {
 		case "users":
 			if result := applySection(section, func() (importSectionStats, []string, error) {
-				return importUsers(ctx, tx, manifest.Data.Users)
+				roleStats, roleWarnings, roleErr := importRoles(ctx, tx, manifest.Data.Roles)
+				if roleErr != nil {
+					return roleStats, roleWarnings, roleErr
+				}
+				userStats, userWarnings, userErr := importUsers(ctx, tx, manifest.Data.Users)
+				userStats.Created += roleStats.Created
+				userStats.Updated += roleStats.Updated
+				return userStats, append(roleWarnings, userWarnings...), userErr
 			}); result != nil {
 				return *result
 			}
@@ -524,6 +531,41 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 	}
 
 	return stats, dedupeWarnings(warnings), nil
+}
+
+func importRoles(ctx context.Context, tx bun.Tx, backupRoles []models.BackupRole) (importSectionStats, []string, error) {
+	stats := importSectionStats{}
+	for _, backupRole := range backupRoles {
+		key := strings.ToLower(strings.TrimSpace(backupRole.Key))
+		if key == "" {
+			continue
+		}
+		role := models.Role{Key: key, Name: backupRole.Name, Description: backupRole.Description, IsSystem: backupRole.IsSystem, UpdatedAt: time.Now().UTC()}
+		exists, err := tx.NewSelect().Model((*models.Role)(nil)).Where("key = ?", key).Exists(ctx)
+		if err != nil {
+			return stats, nil, err
+		}
+		if exists {
+			_, err = tx.NewUpdate().Model(&role).Column("name", "description", "updated_at").Where("key = ?", key).Exec(ctx)
+			stats.Updated++
+		} else {
+			role.CreatedAt = time.Now().UTC()
+			_, err = tx.NewInsert().Model(&role).Column("key", "name", "description", "is_system", "created_at", "updated_at").Exec(ctx)
+			stats.Created++
+		}
+		if err != nil {
+			return stats, nil, err
+		}
+		if _, err = tx.NewDelete().Model((*models.RolePermission)(nil)).Where("role_key = ?", key).Exec(ctx); err != nil {
+			return stats, nil, err
+		}
+		for _, permission := range backupRole.Permissions {
+			if _, err = tx.NewInsert().Model(&models.RolePermission{RoleKey: key, Permission: permission}).Exec(ctx); err != nil {
+				return stats, nil, err
+			}
+		}
+	}
+	return stats, nil, nil
 }
 
 func importedUserRequiresPasswordReset(authType string) bool {

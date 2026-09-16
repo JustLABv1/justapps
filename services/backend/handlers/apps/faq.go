@@ -13,6 +13,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,17 +38,18 @@ type faqQuestionRow struct {
 }
 
 type faqAnswerRow struct {
-	ID           uuid.UUID `bun:"id"`
-	QuestionID   uuid.UUID `bun:"question_id"`
-	AppID        string    `bun:"app_id"`
-	UserID       uuid.UUID `bun:"user_id"`
-	Username     string    `bun:"username"`
-	Answer       string    `bun:"answer"`
-	IsPinned     bool      `bun:"is_pinned"`
-	CreatorLiked bool      `bun:"creator_liked"`
-	CreatedAt    time.Time `bun:"created_at"`
-	UpvoteCount  int       `bun:"upvote_count"`
-	UserUpvoted  bool      `bun:"user_upvoted"`
+	ID               uuid.UUID `bun:"id"`
+	QuestionID       uuid.UUID `bun:"question_id"`
+	AppID            string    `bun:"app_id"`
+	UserID           uuid.UUID `bun:"user_id"`
+	Username         string    `bun:"username"`
+	Answer           string    `bun:"answer"`
+	IsPinned         bool      `bun:"is_pinned"`
+	CreatorLiked     bool      `bun:"creator_liked"`
+	AcceptedByAuthor bool      `bun:"accepted_by_author"`
+	CreatedAt        time.Time `bun:"created_at"`
+	UpvoteCount      int       `bun:"upvote_count"`
+	UserUpvoted      bool      `bun:"user_upvoted"`
 }
 
 type faqQuestionRequest struct {
@@ -174,8 +176,8 @@ func parseFAQUUID(c *gin.Context, parameter, label string) (uuid.UUID, bool) {
 	return parsed, true
 }
 
-func faqUserCanManageApp(app models.Apps, userID uuid.UUID, role string) bool {
-	return role == "admin" || (userID != uuid.Nil && app.OwnerID == userID)
+func faqUserCanManageApp(app models.Apps, userID uuid.UUID, role string, permission permissions.Permission) bool {
+	return permissions.Has(role, permission) || (userID != uuid.Nil && app.OwnerID == userID)
 }
 
 func faqQuestionResponse(row faqQuestionRow) models.FAQQuestion {
@@ -256,15 +258,15 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 	viewerID, _, _ := getViewerContext(c)
 	rows := make([]faqAnswerRow, 0)
 	query := db.NewSelect().TableExpr("faq_answers AS a").
-		ColumnExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at").
+		ColumnExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).
-		GroupExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.created_at")
+		GroupExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at")
 	total, err := db.NewSelect().TableExpr("faq_answers AS a").Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).Count(c)
 	if err == nil {
-		err = query.OrderExpr("a.is_pinned DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
+		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ answers", err)
@@ -272,7 +274,7 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.FAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
 }
@@ -451,7 +453,7 @@ func DeleteFAQQuestion(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Question not found", err)
 		return
 	}
-	if question.UserID != userID && !faqUserCanManageApp(app, userID, role) {
+	if question.UserID != userID && !faqUserCanManageApp(app, userID, role, permissions.DeleteFAQQuestions) {
 		httperror.Forbidden(c, "You are not allowed to delete this question", errors.New("FAQ question ownership required"))
 		return
 	}
@@ -489,7 +491,7 @@ func DeleteFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.StatusNotFound(c, "Answer not found", err)
 		return
 	}
-	if answer.UserID != userID && !faqUserCanManageApp(app, userID, role) {
+	if answer.UserID != userID && !faqUserCanManageApp(app, userID, role, permissions.DeleteFAQAnswers) {
 		httperror.Forbidden(c, "You are not allowed to delete this answer", errors.New("FAQ answer ownership required"))
 		return
 	}
@@ -567,7 +569,7 @@ func RemoveFAQAnswerUpvote(c *gin.Context, db *bun.DB) {
 	setFAQAnswerUpvote(c, db, false)
 }
 
-// UpdateFAQAnswerHighlights lets the app owner or an admin control the two
+// UpdateFAQAnswerHighlights lets the app owner or an FAQ moderator control the two
 // prominent answer signals. Both fields are optional so pin and like can be
 // changed independently in one endpoint.
 func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
@@ -577,10 +579,6 @@ func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	userID, role, ok := getRequiredViewerContext(c)
 	if !ok {
-		return
-	}
-	if !faqUserCanManageApp(app, userID, role) {
-		httperror.Forbidden(c, "Only the app creator or an admin can promote FAQ answers", errors.New("FAQ moderation permission required"))
 		return
 	}
 	answerID, ok := parseFAQUUID(c, "answerId", "answer ID")
@@ -595,6 +593,14 @@ func UpdateFAQAnswerHighlights(c *gin.Context, db *bun.DB) {
 	}
 	if request.IsPinned == nil && request.CreatorLiked == nil {
 		httperror.StatusBadRequest(c, "No FAQ highlight change supplied", errors.New("at least one highlight field is required"))
+		return
+	}
+	if request.IsPinned != nil && !faqUserCanManageApp(app, userID, role, permissions.PinFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to pin FAQ answers", errors.New("FAQ pin permission required"))
+		return
+	}
+	if request.CreatorLiked != nil && !faqUserCanManageApp(app, userID, role, permissions.RecommendFAQAnswers) {
+		httperror.Forbidden(c, "You are not allowed to recommend FAQ answers", errors.New("FAQ recommendation permission required"))
 		return
 	}
 

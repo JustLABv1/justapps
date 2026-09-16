@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,6 +41,10 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 	var user models.Users
 	err := db.NewSelect().Model(&user).Where("email = ? OR username = ?", request.Email, request.Email).Scan(context)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httperror.Unauthorized(context, "E-Mail/Benutzername oder Passwort ist falsch", errors.New("invalid credentials"))
+			return
+		}
 		httperror.InternalServerError(context, "Benutzer nicht gefunden", err)
 		return
 	}
@@ -51,7 +57,11 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 	// check if password is correct
 	credentialError := user.CheckPassword(request.Password)
 	if credentialError != nil {
-		httperror.Unauthorized(context, "Passwort ist falsch", errors.New("passwort ist falsch"))
+		httperror.Unauthorized(context, "E-Mail/Benutzername oder Passwort ist falsch", errors.New("invalid credentials"))
+		return
+	}
+	if err := permissions.LoadRole(context.Request.Context(), db, user.Role); err != nil {
+		httperror.InternalServerError(context, "Error loading role permissions", err)
 		return
 	}
 
@@ -94,6 +104,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		DisabledReason string    `json:"disabled_reason"`
 		Role           string    `json:"role"`
 		CanSubmitApps  bool      `json:"canSubmitApps"`
+		Permissions    []string  `json:"permissions"`
 	}
 	userResponse := UserResponse{
 		ID:             user.ID,
@@ -103,6 +114,7 @@ func GenerateTokenUser(db *bun.DB, context *gin.Context) {
 		DisabledReason: user.DisabledReason,
 		Role:           user.Role,
 		CanSubmitApps:  user.CanSubmitApps,
+		Permissions:    permissions.KeysForRole(user.Role),
 	}
 
 	context.JSON(http.StatusOK, gin.H{"user": userResponse, "expires_at": ExpiresAt})

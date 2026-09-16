@@ -28,7 +28,7 @@ type exportBackupRequest struct {
 	Passphrase string   `json:"passphrase"`
 }
 
-const schemaVersion = "2026-09-08"
+const schemaVersion = "2026-09-16"
 
 var allSections = []string{
 	"apps",
@@ -123,6 +123,12 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 				return
 			}
 			manifest.Data.Users = users
+			roles, sectionErr := exportRoles(c, db)
+			if sectionErr != nil {
+				respondSectionError(c, section, sectionErr)
+				return
+			}
+			manifest.Data.Roles = roles
 			appendSummary(&manifest, section, len(users))
 			if redacted {
 				manifest.Warnings = append(manifest.Warnings, "User password hashes were omitted in safe mode.")
@@ -368,6 +374,26 @@ func exportUsers(c *gin.Context, db *bun.DB, mode models.BackupMode) ([]models.B
 	}
 
 	return backupUsers, redacted && len(users) > 0, nil
+}
+
+func exportRoles(c *gin.Context, db *bun.DB) ([]models.BackupRole, error) {
+	roles := make([]models.Role, 0)
+	if err := db.NewSelect().Model(&roles).Order("key ASC").Scan(c.Request.Context()); err != nil {
+		return nil, err
+	}
+	rows := make([]models.RolePermission, 0)
+	if err := db.NewSelect().Model(&rows).Order("role_key ASC", "permission ASC").Scan(c.Request.Context()); err != nil {
+		return nil, err
+	}
+	byRole := make(map[string][]string)
+	for _, row := range rows {
+		byRole[row.RoleKey] = append(byRole[row.RoleKey], row.Permission)
+	}
+	result := make([]models.BackupRole, 0, len(roles))
+	for _, role := range roles {
+		result = append(result, models.BackupRole{Key: role.Key, Name: role.Name, Description: role.Description, IsSystem: role.IsSystem, Permissions: byRole[role.Key]})
+	}
+	return result, nil
 }
 
 func exportSettings(c *gin.Context, db *bun.DB) (*models.PlatformSettings, error) {

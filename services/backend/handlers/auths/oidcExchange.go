@@ -3,6 +3,7 @@ package auths
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"justapps-backend/functions/auth"
 	"justapps-backend/functions/httperror"
@@ -155,6 +156,12 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 		return
 	}
 	auth.SetSessionCookie(c, sessionToken, expiresAt)
+	loggedInAt := time.Now()
+	if err := recordOIDCLogin(c.Request.Context(), db, user.ID, loggedInAt); err != nil {
+		log.WithError(err).WithField("email", user.Email).Warn("OIDC Exchange: Failed to update last login")
+	} else {
+		user.LastLoginAt = &loggedInAt
+	}
 
 	log.WithFields(log.Fields{
 		"email":    user.Email,

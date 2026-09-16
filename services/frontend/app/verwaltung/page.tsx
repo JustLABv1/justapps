@@ -79,6 +79,9 @@ const OPERATION_LABELS: Record<string, string> = {
   'user.delete': 'Benutzer gelöscht',
   'user.enable': 'Benutzer aktiviert',
   'user.disable': 'Benutzer deaktiviert',
+  'role.create': 'Rolle erstellt',
+  'role.update': 'Rolle aktualisiert',
+  'role.delete': 'Rolle gelöscht',
   'settings.update': 'Einstellungen geändert',
 };
 
@@ -148,6 +151,15 @@ function normalizeStatsResponse(data: RawStatsResponse): StatsResponse {
 }
 
 export default function VerwaltungPage() {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Plattform im Überblick</h1>
+      <AdminDashboard />
+    </div>
+  );
+}
+
+function AdminDashboard() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +224,7 @@ export default function VerwaltungPage() {
   return (
     <div className="space-y-8">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-6">
         {statCards.map(({ label, value, icon: Icon, sub }) => (
           <div key={label} className="rounded-2xl border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
             <div className="flex items-center justify-between">

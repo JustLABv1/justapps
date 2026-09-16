@@ -219,13 +219,13 @@ function MyAppsContent() {
 
   const handleEditApp = (app: AppConfig) => {
     const permissions = getAppPermissions(app);
-    if (app.isLocked || !permissions.canEdit) return;
+    if (!permissions.canEdit) return;
     router.push(`/meine-apps/${app.id}/edit`);
   };
 
   const handleDeleteApp = (app: AppConfig) => {
     const permissions = getAppPermissions(app);
-    if (app.isLocked || !permissions.canDelete) return;
+    if (!permissions.canDelete) return;
     setDeleteCandidate(app);
   };
 
@@ -418,8 +418,8 @@ function MyAppsContent() {
                 const iconSrc = getImageAssetUrl(app.icon);
                 const permissions = getAppPermissions(app);
                 const appHealth = healthByAppId.get(app.id);
-                const canEdit = permissions.canEdit && !app.isLocked;
-                const canDelete = permissions.canDelete && !app.isLocked;
+                const canEdit = permissions.canEdit;
+                const canDelete = permissions.canDelete;
                 const canCopy = user.role === 'admin' || app.ownerId === user.id;
                 return (
                   <article key={app.id} className="group flex flex-col gap-4 px-4 py-5 transition-colors duration-200 ease-out hover:bg-surface-secondary/45 sm:px-5 lg:flex-row lg:items-center">
@@ -491,6 +491,11 @@ function MyAppsContent() {
                           {permissions.accessRole === 'editor' && (
                             <Chip size="sm" color="accent" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
                               <UsersRound className="w-3 h-3" /> Bearbeiter
+                            </Chip>
+                          )}
+                          {permissions.accessRole === 'moderator' && (
+                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Moderation
                             </Chip>
                           )}
                         </div>

@@ -3,6 +3,7 @@ package router
 import (
 	"justapps-backend/handlers/apps"
 	"justapps-backend/middlewares"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uptrace/bun"
@@ -11,7 +12,7 @@ import (
 func RegisterFAQ(router *gin.RouterGroup, db *bun.DB) {
 	faq := router.Group("/faq")
 	faq.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.GetGlobalFAQ(c, db) })
-	faq.GET("/insights", middlewares.Admin(db), func(c *gin.Context) { apps.GetFAQInsights(c, db) })
+	faq.GET("/insights", middlewares.Auth(db), middlewares.RequirePermission(permissions.ViewFAQInsights), func(c *gin.Context) { apps.GetFAQInsights(c, db) })
 	faq.GET("/questions/:questionId/answers", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.GetGlobalFAQAnswers(c, db) })
 
 	questions := faq.Group("/questions")
@@ -23,6 +24,7 @@ func RegisterFAQ(router *gin.RouterGroup, db *bun.DB) {
 
 	answers := faq.Group("/answers/:answerId")
 	answers.Use(middlewares.Auth(db))
+	answers.PATCH("/acceptance", func(c *gin.Context) { apps.SetFAQAnswerAcceptance(c, db, true) })
 	answers.POST("/upvote", func(c *gin.Context) { apps.SetGlobalFAQAnswerUpvote(c, db, true) })
 	answers.DELETE("/upvote", func(c *gin.Context) { apps.SetGlobalFAQAnswerUpvote(c, db, false) })
 	answers.PATCH("", func(c *gin.Context) { apps.UpdateGlobalFAQAnswerHighlights(c, db) })

@@ -28,6 +28,10 @@ func Admin(router *gin.RouterGroup, db *bun.DB) {
 		admin.DELETE("/users/:userID", func(c *gin.Context) {
 			admins.DeleteUser(c, db)
 		})
+		admin.GET("/roles", func(c *gin.Context) { admins.GetRoles(c, db) })
+		admin.POST("/roles", func(c *gin.Context) { admins.CreateRole(c, db) })
+		admin.PUT("/roles/:roleKey", func(c *gin.Context) { admins.UpdateRole(c, db) })
+		admin.DELETE("/roles/:roleKey", func(c *gin.Context) { admins.DeleteRole(c, db) })
 		// stats & audit
 		admin.GET("/stats", func(c *gin.Context) {
 			admins.GetStats(c, db)

@@ -11,6 +11,7 @@ import (
 	aifunc "justapps-backend/functions/ai"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -419,13 +420,13 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	if c.Query("owner") == "me" && hasViewer {
 		query = query.Where("a.owner_id = ?", viewerID)
 	}
-	if c.Query("editable") == "me" && hasViewer {
+	if c.Query("editable") == "me" && hasViewer && !permissions.HasAny(viewerRole, permissions.EditApps, permissions.DeleteApps, permissions.ViewAppHealth) {
 		query = query.Where("a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
 	}
 
 	// Apply the same draft visibility rule in SQL as canViewApp so paginated
 	// totals and pages do not contain entries that will later be discarded.
-	if viewerRole != "admin" {
+	if !permissions.Has(viewerRole, permissions.ViewAppDrafts) {
 		if hasViewer {
 			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') OR a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
 		} else {
