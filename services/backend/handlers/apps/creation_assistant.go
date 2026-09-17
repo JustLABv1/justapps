@@ -148,6 +148,7 @@ func SuggestAppCreation(c *gin.Context, db *bun.DB) {
 		Repository:      repository,
 	})
 	if err != nil {
+		var providerHTTPError *aifunc.ProviderHTTPError
 		switch {
 		case errors.Is(err, aifunc.ErrAIDisabled):
 			httperror.Forbidden(c, "AI-Funktion ist deaktiviert", err)
@@ -155,6 +156,12 @@ func SuggestAppCreation(c *gin.Context, db *bun.DB) {
 			httperror.StatusBadRequest(c, "Kein aktiver AI-Provider ist konfiguriert", err)
 		case errors.Is(err, aifunc.ErrAIInvalidPayload):
 			httperror.InternalServerError(c, "AI-App-Vorschlag war unvollständig", err)
+		case errors.As(err, &providerHTTPError):
+			if providerHTTPError.StatusCode == 401 || providerHTTPError.StatusCode == 403 {
+				httperror.StatusBadGateway(c, "Der AI-Provider hat die Authentifizierung abgelehnt. Bitte API-Key und Provider-Konfiguration prüfen.", err)
+			} else {
+				httperror.StatusBadGateway(c, "Der AI-Provider konnte die Anfrage nicht verarbeiten. Bitte Provider-Konfiguration prüfen oder später erneut versuchen.", err)
+			}
 		default:
 			httperror.InternalServerError(c, "AI-App-Vorschlag konnte nicht erzeugt werden", err)
 		}
@@ -181,15 +188,15 @@ func scanRepositoryForCreation(c *gin.Context, db *bun.DB, input aifunc.AppCreat
 		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, err
 	}
 	if !found || !provider.Enabled {
-		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("repository provider is not configured")
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("der gewählte Repository-Provider ist nicht konfiguriert")
 	}
 
-	projectPath := gitlabsync.NormalizeProjectPath(input.ProjectPath)
-	if projectPath == "" {
-		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("missing repository project path")
+	projectPath, err := gitlabsync.NormalizeProjectReference(input.ProjectPath, provider.Type, provider.BaseURL)
+	if err != nil {
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, err
 	}
 	if !gitlabsync.IsProjectAllowed(config.RepositoryProviderConf{NamespaceAllowlist: provider.NamespaceAllowlist}, projectPath) {
-		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("repository project is outside the configured namespace allowlist")
+		return models.GitLabSyncSnapshot{}, appCreationRepositoryScanResponse{}, errors.New("das Repository liegt außerhalb der erlaubten Namespaces")
 	}
 
 	readmePath := strings.TrimSpace(input.ReadmePath)

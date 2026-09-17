@@ -29,13 +29,18 @@ export async function uploadFile(endpoint: string, file: File): Promise<string> 
   return data.url;
 }
 
-export async function fetchApi(endpoint: string, options: RequestInit = {}) {
+export interface FetchApiOptions extends RequestInit {
+  suppressServerErrorReport?: boolean;
+}
+
+export async function fetchApi(endpoint: string, options: FetchApiOptions = {}) {
   // Ensure we don't have double slashes if endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_URL}${cleanEndpoint}`;
 
-  const headers = new Headers(options.headers);
-  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const { suppressServerErrorReport = false, ...requestOptions } = options;
+  const headers = new Headers(requestOptions.headers);
+  const isFormDataBody = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData;
 
   if (!isFormDataBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -45,12 +50,12 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...requestOptions,
       headers,
       credentials: 'include',
     });
 
-    if (response.status >= 500) {
+    if (response.status >= 500 && !suppressServerErrorReport) {
       reportBackendUnavailable(response.status);
     }
 

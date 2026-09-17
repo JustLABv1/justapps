@@ -284,6 +284,7 @@ export async function suggestAppCreation(payload: AppCreationSuggestionPayload):
   const response = await fetchApi('/apps/creation/suggest', {
     method: 'POST',
     body: JSON.stringify(payload),
+    suppressServerErrorReport: true,
   });
   if (!response.ok) throw await parseError(response, 'AI-App-Vorschlag konnte nicht erzeugt werden.');
   return response.json() as Promise<AppCreationSuggestionResponse>;

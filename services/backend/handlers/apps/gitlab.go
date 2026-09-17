@@ -89,9 +89,9 @@ func UpsertGitLabIntegration(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	projectPath := gitlabsync.NormalizeProjectPath(req.ProjectPath)
-	if projectPath == "" {
-		httperror.StatusBadRequest(c, "Bitte geben Sie ein GitLab-Projekt an", errors.New("missing project path"))
+	projectPath, normalizeErr := gitlabsync.NormalizeProjectReference(req.ProjectPath, provider.Type, provider.BaseURL)
+	if normalizeErr != nil {
+		httperror.StatusBadRequest(c, normalizeErr.Error(), normalizeErr)
 		return
 	}
 	if !gitlabsync.IsProjectAllowed(config.RepositoryProviderConf{NamespaceAllowlist: provider.NamespaceAllowlist}, projectPath) {
