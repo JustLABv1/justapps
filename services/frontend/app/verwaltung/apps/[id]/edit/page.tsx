@@ -36,5 +36,5 @@ export default function EditAppPage() {
 
   if (app === null) return notFound();
 
-  return <AppEditorForm initialApp={app} existingApps={existingApps} />;
+  return <AppEditorForm key={app.id} initialApp={app} existingApps={existingApps} />;
 }

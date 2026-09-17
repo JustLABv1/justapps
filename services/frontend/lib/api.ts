@@ -70,7 +70,7 @@ export async function fetchApi(endpoint: string, options: FetchApiOptions = {}) 
     if (typeof window === 'undefined') {
       console.error(`Fetch error in SSR for ${url}:`, err);
     }
-    reportBackendUnavailable();
+    if (!suppressServerErrorReport) reportBackendUnavailable();
     throw err;
   }
 }

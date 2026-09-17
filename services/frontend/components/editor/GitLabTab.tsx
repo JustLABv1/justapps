@@ -25,6 +25,7 @@ interface GitLabTabProps {
   gitLabStatus: { label: string; className: string };
   gitLabSnapshot: GitLabSyncSnapshot | undefined;
   onSave: () => void;
+  saveLabel?: string;
   onSync: () => void;
   onDelete: () => void;
   onApprove: () => void;
@@ -195,7 +196,7 @@ export function GitLabTab({
   currentApp, gitLabIntegration, gitLabForm, setGitLabForm,
   loadingGitLab, savingGitLab, syncingGitLab, gitLabError,
   hasGitLabProviders, gitLabStatus, gitLabSnapshot,
-  onSave, onSync, onDelete, onApprove,
+  onSave, onSync, onDelete, onApprove, saveLabel = "Verknüpfung speichern",
   onApplyReadme, onApplyMetadata, onApplyDeployment,
 }: GitLabTabProps) {
   const approvalDiffItems = gitLabIntegration?.approvalRequired && gitLabIntegration.pendingSnapshot
@@ -323,7 +324,7 @@ export function GitLabTab({
               className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {savingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Verknüpfung speichern
+              {saveLabel}
             </button>
             <button
               type="button"
