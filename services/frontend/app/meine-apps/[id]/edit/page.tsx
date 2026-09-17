@@ -68,5 +68,5 @@ export default function EditMyAppPage() {
     );
   }
 
-  return <AppEditorForm initialApp={app} existingApps={existingApps} />;
+  return <AppEditorForm key={app.id} initialApp={app} existingApps={existingApps} />;
 }

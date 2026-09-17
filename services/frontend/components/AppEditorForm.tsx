@@ -15,7 +15,7 @@ import {
 } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
-import { fetchApi, uploadFile } from "@/lib/api";
+import { fetchApi as apiFetch, uploadFile } from "@/lib/api";
 import { suggestChangelog, type ChangelogSuggestion } from "@/lib/ai";
 import {
   DRAFT_STATUS,
@@ -49,7 +49,6 @@ import {
   GitBranch,
   Info,
   Layers,
-  Link2,
   Loader2,
   Pencil,
   Plus,
@@ -57,7 +56,6 @@ import {
   Scale,
   Server,
   Share2,
-  Star,
   Sparkles,
   Tag,
   Terminal,
@@ -65,9 +63,12 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { GitHubIcon } from "./GitHubIcon";
+
+// Editor failures stay in the form, preserving local work even on network errors.
+const fetchApi: typeof apiFetch = (endpoint, options = {}) => apiFetch(endpoint, { ...options, suppressServerErrorReport: true });
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -304,6 +305,7 @@ export function AppEditorForm({
   copySource = null,
 }: AppEditorFormProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, profileReady, refreshUser } = useAuth();
   const { settings } = useSettings();
 
@@ -314,7 +316,7 @@ export function AppEditorForm({
 	const canManageGroups = isAdmin || !!user?.canSubmitApps;
   const isOwner = !!user?.id && initialApp?.ownerId === user.id;
   const canManageAppStructure = isNew || isAdmin || isOwner;
-  const backUrl = isAdmin ? "/verwaltung/katalog/apps" : "/meine-apps";
+  const backUrl = pathname.startsWith("/verwaltung") ? "/verwaltung/katalog/apps" : "/meine-apps";
 
   // ── Form data ──
   const [formData, setFormData] = useState<Partial<AppConfig>>(
@@ -354,9 +356,6 @@ export function AppEditorForm({
   const [techInput, setTechInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [showCategoryPicker, setShowCategoryPicker] = useState(isNew);
-  const [editorMode, setEditorMode] = useState<"basic" | "advanced">(
-    isNew ? "basic" : "advanced",
-  );
   const [currentCreateStep, setCurrentCreateStep] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(
     null,
@@ -399,6 +398,14 @@ export function AppEditorForm({
   >([]);
   const [preCreatedAppId, setPreCreatedAppId] = useState<string | null>(null);
   const skipUnsavedWarningRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const [activeEditorTab, setActiveEditorTab] = useState("general");
+  const [repositoryAction, setRepositoryAction] = useState<"sync" | "approve" | null>(null);
+  const [pendingUnlink, setPendingUnlink] = useState(false);
+  const [savedRepositoryForm, setSavedRepositoryForm] = useState<string | null>(null);
+  const persistedRelatedIds = useRef(new Set((initialApp?.relatedApps || []).map(app => app.id)));
+  const persistedGroupIds = useRef(new Set((initialApp?.appGroups || []).map(group => group.id)));
+  const createdGroupIds = useRef(new Map<string, string>());
 
   // ── Auto-save state ──
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
@@ -407,6 +414,7 @@ export function AppEditorForm({
 
   // ── Auto-save effect (drafts only) ──
   useEffect(() => {
+    if (!isNew) return; // Editing uses explicit Save / Discard, including drafts.
     const isDraftNow = isDraftStatus(formData.status);
     if (!isDraftNow) return;
 
@@ -454,8 +462,7 @@ export function AppEditorForm({
     }, 30_000);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDraftStatus(formData.status), saving]);
+  }, [isNew, formData, saving]);
 
   const isIdTaken =
     isNew &&
@@ -501,6 +508,7 @@ export function AppEditorForm({
         const data = (await response.json()) as GitLabIntegrationState;
         setGitLabIntegration(data);
         setGitLabForm(normalizeGitLabFormState(data));
+        setSavedRepositoryForm(JSON.stringify(normalizeGitLabFormState(data)));
         setGitLabError(null);
       })
       .catch((error) => {
@@ -554,6 +562,7 @@ export function AppEditorForm({
       const integration = (await syncRes.json()) as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
+      setSavedRepositoryForm(JSON.stringify(normalizeGitLabFormState(integration)));
 
       // Auto-apply all available snapshot data immediately
       const snapshot = integration.snapshot;
@@ -734,25 +743,28 @@ export function AppEditorForm({
     toast.success("AI-Changelog als Entwurf übernommen.");
   };
 
-  const repositories =
-    formData.repositories && formData.repositories.length > 0
-      ? formData.repositories
-      : [];
-  const customLinks = formData.customLinks || [];
-  const liveDemos =
-    formData.liveDemos && formData.liveDemos.length > 0
-      ? formData.liveDemos
-      : [];
-
   // ── Save ──
-  const handleSave = async (navigateAfterSave = true) => {
+  const handleSave = async (navigateAfterSave = false) => {
+    if (saveInFlightRef.current || syncingGitLab || savingGitLab) return;
+    if (!canSave) {
+      setSaveError("Bitte ergänzen Sie die Pflichtfelder unter Allgemein.");
+      setActiveEditorTab("general");
+      return;
+    }
+    if (repositoryDirty && !pendingUnlink && (!gitLabForm.providerKey || !gitLabForm.projectPath.trim())) {
+      setSaveError("Bitte geben Sie Provider und Projektpfad oder Repository-URL an.");
+      setActiveEditorTab("gitlab");
+      return;
+    }
+    saveInFlightRef.current = true;
     if (!profileReady) {
-      const refreshed = await refreshUser();
+      const refreshed = await refreshUser().catch(() => null);
       if (!refreshed) {
         const message =
           "Ihr Benutzerprofil wird noch synchronisiert. Bitte erneut versuchen.";
         setSaveError(message);
         toast.danger(message);
+        saveInFlightRef.current = false;
         return;
       }
     }
@@ -760,6 +772,8 @@ export function AppEditorForm({
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
+    let savedSnapshot = createSnapshot();
+    let completedSteps = 0;
     try {
       const effectiveAppId = getEffectiveAppId();
       const method = effectiveAppId ? "PUT" : "POST";
@@ -780,7 +794,7 @@ export function AppEditorForm({
         status:
           formData.status?.trim() || (isNew ? DRAFT_STATUS : formData.status),
       };
-      const res = await fetchApi(url, { method, body: JSON.stringify(body) });
+      const res = await fetchApi(url, { method, body: JSON.stringify(body), suppressServerErrorReport: true });
       if (res.ok) {
         const savedApp =
           method === "POST"
@@ -804,7 +818,86 @@ export function AppEditorForm({
             body: JSON.stringify(gitLabForm),
           }).catch(() => null);
         }
-        setInitialSnapshot(createSnapshot());
+        completedSteps++;
+        if (!isNew && savedAppId) {
+          // Each successful operation advances its own baseline. Retrying a
+          // partially failed save must not duplicate already-created relations.
+          const persist = async (path: string, method: string, body?: unknown) => {
+            const response = await fetchApi(path, {
+              method, body: body === undefined ? undefined : JSON.stringify(body),
+              suppressServerErrorReport: true,
+            });
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.message || "Eine Verknüpfung konnte nicht gespeichert werden.");
+            }
+            completedSteps++;
+            return response;
+          };
+          if (canManageAppStructure) {
+            if (pendingUnlink) {
+              const response = await persist(`/apps/${savedAppId}/repository`, "DELETE");
+              const integration = await response.json() as GitLabIntegrationState;
+              setGitLabIntegration(integration);
+              const normalized = normalizeGitLabFormState(integration);
+              setGitLabForm(normalized);
+              setSavedRepositoryForm(JSON.stringify(normalized));
+              setPendingUnlink(false);
+            } else if (repositoryDirty) {
+              const response = await persist(`/apps/${savedAppId}/repository`, "PUT", gitLabForm);
+              const integration = await response.json() as GitLabIntegrationState;
+              setGitLabIntegration(integration);
+              const normalized = normalizeGitLabFormState(integration);
+              setGitLabForm(normalized);
+              setSavedRepositoryForm(JSON.stringify(normalized));
+            }
+            const nextRelated = new Set(relatedApps.map(app => app.id));
+            for (const id of persistedRelatedIds.current) {
+              if (!nextRelated.has(id)) {
+                await persist(`/apps/${savedAppId}/related/${id}`, "DELETE");
+                persistedRelatedIds.current.delete(id);
+              }
+            }
+            for (const id of nextRelated) {
+              if (!persistedRelatedIds.current.has(id)) {
+                await persist(`/apps/${savedAppId}/related`, "POST", { relatedAppId: id });
+                persistedRelatedIds.current.add(id);
+              }
+            }
+          }
+          if (canManageGroups) {
+            const nextGroups = new Set<string>();
+            for (const localId of appGroupIds) {
+              let id = createdGroupIds.current.get(localId) || localId;
+              if (id.startsWith("pending:")) {
+                const response = await persist("/app-groups", "POST", { name: groups.find(group => group.id === localId)?.name });
+                const group = await response.json() as { id: string; name: string };
+                id = group.id;
+                createdGroupIds.current.set(localId, id);
+                setGroups(previous => previous.map(item => item.id === localId ? group : item));
+                setAppGroupIds(previous => new Set([...previous].map(value => value === localId ? group.id : value)));
+              }
+              nextGroups.add(id);
+              savedSnapshot = savedSnapshot.replace(JSON.stringify(localId), JSON.stringify(id));
+              if (!persistedGroupIds.current.has(id)) {
+                await persist(`/app-groups/${id}/members`, "POST", { appId: savedAppId });
+                persistedGroupIds.current.add(id);
+              }
+            }
+            for (const id of persistedGroupIds.current) {
+              if (!nextGroups.has(id)) {
+                await persist(`/app-groups/${id}/members/${savedAppId}`, "DELETE");
+                persistedGroupIds.current.delete(id);
+              }
+            }
+            setAppGroupIds(nextGroups);
+            // Keep the snapshot's canonical ordering after temporary IDs resolve.
+            const parsed = JSON.parse(savedSnapshot);
+            parsed.appGroupIds = [...nextGroups].sort();
+            savedSnapshot = JSON.stringify(parsed);
+          }
+        }
+        setInitialSnapshot(savedSnapshot);
         setLastAutoSave(new Date());
         setSaveSuccess(true);
         toast.success(
@@ -816,7 +909,7 @@ export function AppEditorForm({
         );
         if (navigateAfterSave) {
           skipUnsavedWarningRef.current = true;
-          setTimeout(() => router.push(backUrl), 1200);
+          router.push(backUrl);
         } else {
           setTimeout(() => setSaveSuccess(false), 3000);
         }
@@ -830,16 +923,22 @@ export function AppEditorForm({
         );
       }
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Fehler");
-      toast.danger(
-        err instanceof Error ? err.message : "Fehler beim Speichern",
-      );
+      const message = (completedSteps ? "Teilweise gespeichert. Die übrigen Änderungen bleiben im Formular; bitte erneut speichern. " : "") +
+        (err instanceof Error ? err.message : "Fehler beim Speichern");
+      setSaveError(message);
+      toast.danger(message);
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   };
 
   const handleAddRelated = async (app: AppConfig) => {
+    if (!isNew) {
+      setRelatedApps(previous => previous.some(item => item.id === app.id) ? previous : [...previous, { id: app.id, name: app.name, icon: app.icon }]);
+      setRelatedSearch("");
+      return;
+    }
     setAddingRelated(true);
     try {
       const appId = await ensureEditableAppId();
@@ -873,6 +972,10 @@ export function AppEditorForm({
   };
 
   const handleRemoveRelated = async (relatedId: string) => {
+    if (!isNew) {
+      setRelatedApps(previous => previous.filter(app => app.id !== relatedId));
+      return;
+    }
     const appId = getEffectiveAppId();
     if (!appId) return;
 
@@ -885,6 +988,14 @@ export function AppEditorForm({
   };
 
   const handleToggleGroup = async (groupId: string) => {
+    if (!isNew) {
+      setAppGroupIds(previous => {
+        const next = new Set(previous);
+        if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+        return next;
+      });
+      return;
+    }
     try {
       const appId = await ensureEditableAppId();
       const inGroup = appGroupIds.has(groupId);
@@ -917,6 +1028,13 @@ export function AppEditorForm({
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
+    if (!isNew) {
+      const group = { id: `pending:${crypto.randomUUID()}`, name: newGroupName.trim() };
+      setGroups(previous => [...previous, group]);
+      setAppGroupIds(previous => new Set([...previous, group.id]));
+      setNewGroupName("");
+      return;
+    }
     setCreatingGroup(true);
     try {
       const res = await fetchApi("/app-groups", {
@@ -949,48 +1067,16 @@ export function AppEditorForm({
     const response = await fetchApi(`/apps/${initialApp.id}`, {
       cache: "no-store",
     });
-    if (!response.ok) return;
+    if (!response.ok) throw new Error("Die App konnte nach der Synchronisation nicht neu geladen werden. Bitte laden Sie die Seite erneut, bevor Sie weiterarbeiten.");
     const data = (await response.json()) as AppConfig;
     setFormData(data);
     setInitialSnapshot(buildSnapshot(data));
   };
 
-  const handleSaveGitLabLink = async () => {
-    if (!initialApp) return;
-    setSavingGitLab(true);
-    setGitLabError(null);
-    try {
-      const response = await fetchApi(`/apps/${initialApp.id}/gitlab`, {
-        method: "PUT",
-        body: JSON.stringify(gitLabForm),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(
-          (data as { message?: string }).message ||
-            "Repository-Verknüpfung konnte nicht gespeichert werden.",
-        );
-      }
-
-      const integration = data as GitLabIntegrationState;
-      setGitLabIntegration(integration);
-      setGitLabForm(normalizeGitLabFormState(integration));
-      toast.success("Repository-Verknüpfung gespeichert.");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Repository-Verknüpfung konnte nicht gespeichert werden.";
-      setGitLabError(message);
-      toast.danger(message);
-    } finally {
-      setSavingGitLab(false);
-    }
-  };
+  const handleSaveGitLabLink = async () => { await handleSave(false); };
 
   const handleSyncGitLab = async () => {
-    if (!initialApp) return;
+    if (!initialApp || hasUnsavedChanges || saveInFlightRef.current) return;
     setSyncingGitLab(true);
     setGitLabError(null);
     try {
@@ -1009,6 +1095,7 @@ export function AppEditorForm({
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
+      setSavedRepositoryForm(JSON.stringify(normalizeGitLabFormState(integration)));
       if (integration.approvalRequired) {
         toast.success("Repository-Sync erzeugt eine freizugebende Änderung.");
       } else {
@@ -1032,40 +1119,13 @@ export function AppEditorForm({
   };
 
   const handleDeleteGitLabLink = async () => {
-    if (!initialApp) return;
-    setSavingGitLab(true);
-    setGitLabError(null);
-    try {
-      const response = await fetchApi(`/apps/${initialApp.id}/gitlab`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(
-          (data as { message?: string }).message ||
-            "Repository-Verknüpfung konnte nicht entfernt werden.",
-        );
-      }
-
-      const integration = data as GitLabIntegrationState;
-      setGitLabIntegration(integration);
-      setGitLabForm(normalizeGitLabFormState(integration));
-      toast.success("Repository-Verknüpfung entfernt.");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Repository-Verknüpfung konnte nicht entfernt werden.";
-      setGitLabError(message);
-      toast.danger(message);
-    } finally {
-      setSavingGitLab(false);
-    }
+    setPendingUnlink(true);
+    setGitLabForm(defaultGitLabFormState);
+    toast.success("Verknüpfung wird beim Speichern entfernt.");
   };
 
   const handleApproveGitLab = async () => {
-    if (!initialApp) return;
+    if (!initialApp || hasUnsavedChanges || saveInFlightRef.current) return;
     setSavingGitLab(true);
     setGitLabError(null);
     try {
@@ -1084,6 +1144,7 @@ export function AppEditorForm({
       const integration = data as GitLabIntegrationState;
       setGitLabIntegration(integration);
       setGitLabForm(normalizeGitLabFormState(integration));
+      setSavedRepositoryForm(JSON.stringify(normalizeGitLabFormState(integration)));
       await reloadCurrentApp();
       toast.success("Repository-Änderung wurde freigegeben und übernommen.");
     } catch (error) {
@@ -1475,7 +1536,9 @@ export function AppEditorForm({
     buildSnapshot(formData),
   );
 
-  const hasUnsavedChanges = createSnapshot() !== initialSnapshot;
+  const repositoryDirty = JSON.stringify(gitLabForm) !== (savedRepositoryForm ?? JSON.stringify(defaultGitLabFormState));
+  const hasUnsavedChanges = createSnapshot() !== initialSnapshot || repositoryDirty || pendingUnlink;
+  const editorBusy = saving || syncingGitLab || savingGitLab;
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -1488,8 +1551,35 @@ export function AppEditorForm({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor || (anchor.target && anchor.target !== "_self") || anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.pathname === window.location.pathname && destination.search === window.location.search && destination.origin === window.location.origin) return;
+      if (!hasUnsavedChanges || skipUnsavedWarningRef.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!editorBusy) setPendingNavigation(destination.href);
+    };
+    // Navigation API can cancel browser Back/Forward before React unmounts.
+    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
+    const onNavigate = (event: Event) => {
+      const navigationEvent = event as Event & { navigationType?: string; hashChange?: boolean };
+      if (navigationEvent.navigationType !== "traverse" || navigationEvent.hashChange || !event.cancelable || skipUnsavedWarningRef.current || !hasUnsavedChanges) return;
+      if (editorBusy || !window.confirm("Ungespeicherte Änderungen verwerfen und die Seite verlassen?")) event.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    navigation?.addEventListener("navigate", onNavigate);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      navigation?.removeEventListener("navigate", onNavigate);
+    };
+  }, [hasUnsavedChanges, editorBusy]);
+
   const requestNavigation = (path: string) => {
-    if (saving) return;
+    if (editorBusy) return;
     if (!skipUnsavedWarningRef.current && hasUnsavedChanges) {
       setPendingNavigation(path);
       return;
@@ -1500,7 +1590,9 @@ export function AppEditorForm({
   const confirmNavigation = () => {
     if (!pendingNavigation) return;
     skipUnsavedWarningRef.current = true;
-    router.push(pendingNavigation);
+    const destination = new URL(pendingNavigation, window.location.href);
+    if (destination.origin === window.location.origin) router.push(destination.pathname + destination.search + destination.hash);
+    else window.location.assign(destination.href);
   };
 
   if (isNew) {
@@ -3504,8 +3596,8 @@ export function AppEditorForm({
             </>
           }
         >
-          {hasUnsavedChanges && !saveError && !saveSuccess && (
-            <p className="truncate text-xs text-muted">
+          {hasUnsavedChanges && !saveError && (
+            <p className="text-xs text-muted">
               Ungespeicherte Änderungen. Erfasste Angaben:{" "}
               <span className="font-semibold">
                 {requiredDoneCount}/{requiredItems.length}
@@ -3513,13 +3605,13 @@ export function AppEditorForm({
             </p>
           )}
           {!canProceedCreateStep && !saveError && !saveSuccess && (
-            <p className="truncate text-xs text-muted">
+            <p className="text-xs text-muted">
               Ergänzen Sie die offenen Punkte in diesem Schritt, bevor Sie
               weitergehen.
             </p>
           )}
           {!profileReady && !saveError && !saveSuccess && (
-            <p className="truncate text-xs text-muted">
+            <p className="text-xs text-muted">
               Ihr Benutzerprofil wird noch synchronisiert. Speichern ist
               möglich, sobald die Sitzung bestätigt ist.
             </p>
@@ -3529,13 +3621,13 @@ export function AppEditorForm({
               {saveError}
             </p>
           )}
-          {saveSuccess && (
+          {saveSuccess && !hasUnsavedChanges && (
             <span className="flex items-center gap-1 text-sm font-medium text-success">
               <CheckCircle2 className="size-4" /> Entwurf gespeichert.
             </span>
           )}
           {lastAutoSave && !saveError && !saveSuccess && (
-            <p className="truncate text-xs text-muted">
+            <p className="text-xs text-muted">
               Zuletzt gespeichert um{" "}
               {lastAutoSave.toLocaleTimeString("de-DE", {
                 hour: "2-digit",
@@ -3586,7 +3678,7 @@ export function AppEditorForm({
               {formData.name || "App bearbeiten"}
             </h1>
             <p className="mt-1 text-sm text-muted">
-              Änderungen werden über die feste Aktionsleiste gespeichert.
+              Alle Formularänderungen bleiben bis zum Speichern lokal. Auch bei Entwürfen.
             </p>
           </div>
           <Chip
@@ -3599,79 +3691,7 @@ export function AppEditorForm({
             {getAppStatusLabel(formData.status || DRAFT_STATUS) || "Entwurf"}
           </Chip>
         </div>
-        <div className="mt-4">
-          <EditorStatusPicker
-            onChange={(status) =>
-              setFormData((previous) => ({ ...previous, status }))
-            }
-            value={formData.status || DRAFT_STATUS}
-          />
-        </div>
       </section>
-      {isNew && (
-        <section className="mb-6 rounded-3xl border border-border bg-surface p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
-                Neue App anlegen
-              </p>
-              <h2 className="text-xl font-bold text-foreground">
-                Starten Sie mit einem Entwurf und ergänzen Sie technische
-                Details später.
-              </h2>
-              <p className="text-sm text-muted">
-                Für den ersten Entwurf reichen Name und ID. Sobald die App einen
-                fachlichen Status erhält, sollten Kategorie und Kurzbeschreibung
-                ergänzt werden.
-              </p>
-            </div>
-
-            <div className="flex rounded-2xl border border-border bg-surface-secondary p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setEditorMode("basic")}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${editorMode === "basic" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}
-              >
-                Basisdaten
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditorMode("advanced")}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${editorMode === "advanced" ? "bg-accent text-white" : "text-muted hover:text-foreground"}`}
-              >
-                Erweiterte Angaben
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {requiredItems.map((item) => (
-              <div
-                key={item.label}
-                className={`rounded-2xl border px-4 py-3 text-sm ${item.done ? "border-success/30 bg-success/10 text-foreground" : "border-border bg-surface-secondary/50 text-muted"}`}
-              >
-                <div className="flex items-center gap-2 font-semibold">
-                  {item.done ? (
-                    <Check className="w-4 h-4 text-success" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border border-border" />
-                  )}
-                  {item.label}
-                </div>
-                <p className="mt-1 text-xs">
-                  {item.done
-                    ? "Erledigt"
-                    : item.label === "Kategorie" ||
-                        item.label === "Kurzbeschreibung"
-                      ? "Für sichtbare App empfohlen"
-                      : "Noch offen"}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ── Nav row (matches detail page) ── */}
       <div className="mb-6 flex items-center">
         <button
@@ -3683,7 +3703,29 @@ export function AppEditorForm({
         </button>
       </div>
 
-      {/* ── App banner (editable, matches detail page position) ── */}
+<fieldset disabled={editorBusy} inert={editorBusy} className="min-w-0" aria-busy={editorBusy}>
+      <Tabs selectedKey={activeEditorTab} onSelectionChange={key => setActiveEditorTab(String(key))} className="w-full min-w-0">
+        <Tabs.ListContainer className="sticky top-16 z-20 mb-6 rounded-xl border border-border bg-background/95 p-1 backdrop-blur-sm">
+          <Tabs.List aria-label="App bearbeiten – Bereiche" className="w-full">
+            {[
+              ["general", "Allgemein"], ["links", "Links"], ["docs", "Dokumentation"],
+              ["details", "Fachliche Details"], ["deployment", "Deployment"],
+              ...(canManageAppStructure ? [["gitlab", "Repository"], ["related", "Zuordnungen"]] : []),
+            ].map(([id, label]) => <Tabs.Tab key={id} id={id} className="w-auto shrink-0 whitespace-nowrap px-3 py-3 text-sm">{label}<Tabs.Indicator /></Tabs.Tab>)}
+          </Tabs.List>
+        </Tabs.ListContainer>
+        <Tabs.Panel id="general">
+        <div className="mb-6">
+          <EditorStatusPicker
+            onChange={(status) =>
+              setFormData((previous) => ({ ...previous, status }))
+            }
+            value={formData.status || DRAFT_STATUS}
+          />
+        </div>
+          <h2 className="mb-2 text-xl font-semibold">Allgemeine Angaben</h2>
+          <p className="mb-6 text-sm text-muted">Name, Logo, Einordnung und Darstellung Ihrer App.</p>
+                {/* ── App banner (editable, matches detail page position) ── */}
       {formData.bannerText ? (
         <div
           className={`mb-4 px-4 py-3 rounded-xl border flex items-start gap-3 ${
@@ -3825,17 +3867,13 @@ export function AppEditorForm({
       )}
 
       {/* ── Hero (editable, identical layout to detail page) ── */}
-      <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-8">
-        {/* Decorative background */}
-        <div className="absolute top-0 right-0 w-full h-full max-w-2xl pointer-events-none opacity-30 dark:opacity-20">
-          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] rounded-full bg-accent/20 blur-3xl" />
-        </div>
-
+      <header className="relative overflow-hidden rounded-3xl bg-surface border border-border p-5 md:p-6 mb-6">
         <div className="relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-8">
           {/* Icon (clickable picker) */}
           <div className="relative shrink-0">
             <button
               type="button"
+              aria-label="App-Logo ändern"
               onClick={() => setShowIconPicker((v) => !v)}
               className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border-2 border-dashed border-accent/40 hover:border-accent shadow-sm flex items-center justify-center text-4xl md:text-6xl overflow-hidden group transition-all"
             >
@@ -3894,7 +3932,7 @@ export function AppEditorForm({
           <div className="flex-1 min-w-0">
             {/* Required field note */}
             <p className="text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">
-              Entwurf: Name &amp; ID{" "}
+              Name und Identität{" "}
               <span className="text-danger font-normal normal-case">
                 * Pflichtfelder
               </span>
@@ -3904,7 +3942,8 @@ export function AppEditorForm({
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <input
                 className="bg-transparent text-2xl md:text-3xl font-extrabold text-foreground outline-none border-b-2 border-accent/20 hover:border-accent/50 focus:border-accent transition-colors pb-1 placeholder:text-muted/40 min-w-[200px] flex-shrink"
-                placeholder="App Name..."
+                aria-label="App-Name"
+                placeholder="App-Name"
                 value={formData.name || ""}
                 onChange={(e) => {
                   const n = e.target.value;
@@ -4018,6 +4057,7 @@ export function AppEditorForm({
             </label>
             <textarea
               className="w-full bg-transparent text-base md:text-md text-muted leading-relaxed outline-none border-b border-accent/15 hover:border-accent/30 focus:border-accent transition-colors pb-1 resize-none placeholder:text-muted/40 max-w-3xl mb-5"
+              aria-label="Kurzbeschreibung"
               placeholder="Kurzbeschreibung eingeben..."
               value={formData.description || ""}
               rows={2}
@@ -4102,44 +4142,12 @@ export function AppEditorForm({
 
             {/* Quick links (matches detail page position and style exactly) */}
             <div className="flex items-center gap-3 flex-wrap">
-              {liveDemos.map((demo, idx) => (
-                <span
-                  key={`demo-${idx}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold shadow-sm"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  {demo.label || "Live-Zugang"}
-                </span>
-              ))}
-              {repositories.map((repo, idx) => (
-                <span
-                  key={`repo-${idx}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm"
-                >
-                  <GitHubIcon className="w-4 h-4" />
-                  {repo.label || "Quellcode"}
-                </span>
-              ))}
-              {customLinks.map((link, idx) => (
-                <span
-                  key={`link-${idx}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  {link.label || "Link"}
-                </span>
-              ))}
-              {formData.docsUrl && (
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-foreground shadow-sm">
-                  <BookOpen className="w-4 h-4" />
-                  Dokumentation
-                </span>
-              )}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border shadow-sm">
                 <Scale className="w-4 h-4 shrink-0 text-muted/60" />
                 <input
-                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted/40 w-28"
-                  placeholder="Lizenz..."
+                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted/40 w-48"
+                  aria-label="Lizenz"
+                  placeholder="Lizenz, z. B. MIT"
                   value={formData.license || ""}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, license: e.target.value }))
@@ -4148,28 +4156,6 @@ export function AppEditorForm({
               </div>
             </div>
 
-            {/* Skip link probe toggle — shown directly below the link buttons */}
-            <div className="mt-3 flex items-center justify-between gap-4 px-1">
-              <p className="text-xs text-muted">
-                <span className="font-semibold text-foreground">
-                  Status-Prüfung deaktivieren:
-                </span>{" "}
-                Aktivieren, wenn die Live-Links hinter Authentifizierung oder
-                VPN liegen.
-              </p>
-              <Switch
-                isSelected={formData.skipLinkProbe || false}
-                onChange={(val) =>
-                  setFormData((p) => ({ ...p, skipLinkProbe: val }))
-                }
-              >
-                <Switch.Content>
-                  <Switch.Control>
-                    <Switch.Thumb />
-                  </Switch.Control>
-                </Switch.Content>
-              </Switch>
-            </div>
           </div>
         </div>
 
@@ -4313,93 +4299,7 @@ export function AppEditorForm({
           </div>
         )}
 
-        <div className="relative z-10 mt-5 rounded-2xl border border-border bg-surface p-5 shadow-lg">
-          <div className="mb-5 flex flex-col gap-1">
-            <span className="text-sm font-bold text-foreground">
-              Ressourcen & Links
-            </span>
-            <p className="text-sm text-muted">
-              Hinterlegen Sie direkte Einstiege, Quellcode und weiterführende
-              Dokumentation sichtbar an einer Stelle.
-            </p>
-          </div>
-          <div className="space-y-6">
-            <LinkListEditor
-              title="Live-Zugänge"
-              icon={<ExternalLink className="w-4 h-4 text-muted" />}
-              items={formData.liveDemos || []}
-              onChange={(demos) =>
-                setFormData((p) => ({ ...p, liveDemos: demos }))
-              }
-              addLabel="Hinzufügen"
-              placeholderLabel="Produktivumgebung"
-              placeholderUrl="https://..."
-            />
-            <LinkListEditor
-              title="Quellcode"
-              icon={<GitHubIcon className="w-4 h-4 text-muted" />}
-              items={formData.repositories || []}
-              onChange={(repos) =>
-                setFormData((p) => ({ ...p, repositories: repos }))
-              }
-              addLabel="Hinzufügen"
-              placeholderLabel="Repository"
-              placeholderUrl="https://github.com/..."
-            />
-            <LinkListEditor
-              title="Weitere Links"
-              icon={<ExternalLink className="w-4 h-4 text-muted" />}
-              items={formData.customLinks || []}
-              onChange={(links) =>
-                setFormData((p) => ({ ...p, customLinks: links }))
-              }
-              addLabel="Hinzufügen"
-              placeholderLabel="Link"
-              placeholderUrl="https://..."
-            />
-            <div className="grid grid-cols-1 gap-4 border-t border-border pt-2 md:grid-cols-2">
-              <TextField
-                onChange={(val) => setFormData((p) => ({ ...p, docsUrl: val }))}
-              >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
-                  Dokumentation URL
-                </Label>
-                <Input
-                  value={formData.docsUrl || ""}
-                  placeholder="https://docs..."
-                  className="bg-field-background h-8 font-mono text-sm"
-                />
-              </TextField>
-              <TextField
-                onChange={(val) =>
-                  setFormData((p) => ({ ...p, authority: val }))
-                }
-              >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
-                  Herausgeber
-                </Label>
-                <Input
-                  value={formData.authority || ""}
-                  placeholder="z.B. Firma"
-                  className="bg-field-background h-8 text-sm"
-                />
-              </TextField>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {isNew && editorMode === "basic" && (
-        <div className="mb-8 rounded-2xl border border-dashed border-border/70 bg-surface-secondary/40 p-4 text-sm text-muted">
-          Erweiterte Angaben wie Technik, ausführliche Dokumentation, Deployment
-          und Verknüpfungen können Sie jetzt oder nach dem ersten Speichern
-          ergänzen.
-        </div>
-      )}
-
-      {(!isNew || editorMode === "advanced") && (
-        <>
-          {/* ── Tech stack strip (matches detail page position exactly) ── */}
+      </header>          {/* ── Tech stack strip (matches detail page position exactly) ── */}
           <div className="flex items-start gap-4 mb-8 bg-surface-secondary/50 p-4 rounded-2xl border border-border">
             <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2 pt-1">
               <Layers className="w-4 h-4 text-accent" />
@@ -4550,74 +4450,107 @@ export function AppEditorForm({
             </div>
           )}
 
-          {/* ── Tabbed content (matches detail page tabs exactly) ── */}
-          <Tabs variant="secondary" className="w-full">
-            <Tabs.ListContainer className="border-b border-border mb-6">
-              <Tabs.List aria-label="App-Details Bereiche" className="gap-8">
-                <Tabs.Tab
-                  id="docs"
-                  className="gap-2 py-3 text-sm font-semibold"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Dokumentation
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                <Tabs.Tab
-                  id="details"
-                  className="gap-2 py-3 text-sm font-semibold whitespace-nowrap"
-                >
-                  <Layers className="w-4 h-4" />
-                  Fachliche Details
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                <Tabs.Tab
-                  id="deployment"
-                  className="gap-2 py-3 text-sm font-semibold"
-                >
-                  <Server className="w-4 h-4" />
-                  Deployment
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                <Tabs.Tab
-                  id="ratings"
-                  className="gap-2 py-3 text-sm font-semibold"
-                >
-                  <Star className="w-4 h-4" />
-                  Bewertungen
-                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-secondary border border-border text-muted/70 ml-1">
-                    Nur Ansicht
-                  </span>
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-                {canManageAppStructure && (
-                  <>
-                    <Tabs.Tab
-                      id="gitlab"
-                      className="gap-2 py-3 text-sm font-semibold whitespace-nowrap"
-                    >
-                      <GitBranch className="w-4 h-4" />
-                      Repository
-                      <Tabs.Indicator />
-                    </Tabs.Tab>
-                    <Tabs.Tab
-                      id="related"
-                      className="gap-2 py-3 text-sm font-semibold whitespace-nowrap"
-                    >
-                      <Link2 className="w-4 h-4" />
-                      Verwandte Apps
-                      {!isNew && relatedApps.length > 0 && (
-                        <span className="text-[10px] bg-surface border border-border rounded-full px-2 py-0.5 font-bold shadow-sm">
-                          {relatedApps.length}
-                        </span>
-                      )}
-                      <Tabs.Indicator />
-                    </Tabs.Tab>
-                  </>
-                )}
-              </Tabs.List>
-            </Tabs.ListContainer>
 
-            {/* Dokumentation tab */}
+
+        </Tabs.Panel>
+        <Tabs.Panel id="links">        <div className="relative z-10 mt-5 rounded-2xl border border-border bg-surface p-5 shadow-lg">
+          <div className="mb-5 flex flex-col gap-1">
+            <span className="text-sm font-bold text-foreground">
+              Ressourcen & Links
+            </span>
+            <p className="text-sm text-muted">
+              Hinterlegen Sie direkte Einstiege, Quellcode und weiterführende
+              Dokumentation sichtbar an einer Stelle.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <LinkListEditor
+              title="Live-Zugänge"
+              icon={<ExternalLink className="w-4 h-4 text-muted" />}
+              items={formData.liveDemos || []}
+              onChange={(demos) =>
+                setFormData((p) => ({ ...p, liveDemos: demos }))
+              }
+              addLabel="Hinzufügen"
+              placeholderLabel="Produktivumgebung"
+              placeholderUrl="https://..."
+            />
+            <LinkListEditor
+              title="Quellcode"
+              icon={<GitHubIcon className="w-4 h-4 text-muted" />}
+              items={formData.repositories || []}
+              onChange={(repos) =>
+                setFormData((p) => ({ ...p, repositories: repos }))
+              }
+              addLabel="Hinzufügen"
+              placeholderLabel="Repository"
+              placeholderUrl="https://github.com/..."
+            />
+            <LinkListEditor
+              title="Weitere Links"
+              icon={<ExternalLink className="w-4 h-4 text-muted" />}
+              items={formData.customLinks || []}
+              onChange={(links) =>
+                setFormData((p) => ({ ...p, customLinks: links }))
+              }
+              addLabel="Hinzufügen"
+              placeholderLabel="Link"
+              placeholderUrl="https://..."
+            />
+            <div className="grid grid-cols-1 gap-4 border-t border-border pt-2 md:grid-cols-2">
+              <TextField
+                onChange={(val) => setFormData((p) => ({ ...p, docsUrl: val }))}
+              >
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                  Dokumentation URL
+                </Label>
+                <Input
+                  value={formData.docsUrl || ""}
+                  placeholder="https://docs..."
+                  className="bg-field-background h-8 font-mono text-sm"
+                />
+              </TextField>
+              <TextField
+                onChange={(val) =>
+                  setFormData((p) => ({ ...p, authority: val }))
+                }
+              >
+                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                  Herausgeber
+                </Label>
+                <Input
+                  value={formData.authority || ""}
+                  placeholder="z.B. Firma"
+                  className="bg-field-background h-8 text-sm"
+                />
+              </TextField>
+            </div>
+          </div>
+        </div>
+            {/* Skip link probe toggle — shown directly below the link buttons */}
+            <div className="mt-3 flex items-center justify-between gap-4 px-1">
+              <p className="text-xs text-muted">
+                <span className="font-semibold text-foreground">
+                  Status-Prüfung deaktivieren:
+                </span>{" "}
+                Aktivieren, wenn die Live-Links hinter Authentifizierung oder
+                VPN liegen.
+              </p>
+              <Switch
+                isSelected={formData.skipLinkProbe || false}
+                onChange={(val) =>
+                  setFormData((p) => ({ ...p, skipLinkProbe: val }))
+                }
+              >
+                <Switch.Content>
+                  <Switch.Control>
+                    <Switch.Thumb />
+                  </Switch.Control>
+                </Switch.Content>
+              </Switch>
+            </div>
+</Tabs.Panel>
+                    {/* Dokumentation tab */}
             <Tabs.Panel id="docs">
               <div className="space-y-4">
                 <p className="text-xs text-muted">
@@ -4794,55 +4727,35 @@ export function AppEditorForm({
               <DeploymentTab formData={formData} setFormData={setFormData} />
             </Tabs.Panel>
 
-            {/* Bewertungen tab */}
-            <Tabs.Panel id="ratings">
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-surface-secondary border border-border flex items-center justify-center">
-                  <Star className="w-8 h-8 text-muted/30" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">
-                  Bewertungen
-                </h3>
-                <p className="text-sm text-muted text-center max-w-md">
-                  Bewertungen werden von Nutzern abgegeben und können hier nicht
-                  bearbeitet werden. Nach dem Veröffentlichen können Nutzer Ihre
-                  App bewerten.
-                </p>
-                {!isNew &&
-                  initialApp?.ratingCount !== undefined &&
-                  initialApp.ratingCount > 0 && (
-                    <div className="flex items-center gap-2 mt-2 px-4 py-2 rounded-xl bg-surface border border-border">
-                      <Star className="w-5 h-5 fill-gov-gold text-gov-gold" />
-                      <span className="font-bold text-foreground">
-                        {(initialApp.ratingAvg || 0).toFixed(1)}
-                      </span>
-                      <span className="text-muted">
-                        ({initialApp.ratingCount} Bewertungen)
-                      </span>
-                    </div>
-                  )}
-              </div>
-            </Tabs.Panel>
-
             {canManageAppStructure && (
               <>
                 <Tabs.Panel id="gitlab">
+                  <h2 className="mb-2 text-xl font-semibold">Repository-Anbindung</h2>
+                  <p className="mb-4 text-sm text-muted">Die Konfiguration wird gemeinsam mit der App gespeichert. Synchronisieren und Freigeben sind separate Aktionen und können gespeicherte App-Inhalte ersetzen.</p>
+                  {pendingUnlink && <p role="status" className="mb-4 rounded-xl bg-warning/10 p-4 text-sm">Die Repository-Verknüpfung wird beim nächsten Speichern entfernt.</p>}
                   <GitLabTab
                     currentApp={formData}
                     gitLabIntegration={gitLabIntegration}
                     gitLabForm={gitLabForm}
-                    setGitLabForm={setGitLabForm}
+                    setGitLabForm={(next) => { setPendingUnlink(false); setGitLabForm(next); }}
                     loadingGitLab={loadingGitLab}
-                    savingGitLab={savingGitLab}
+                    savingGitLab={savingGitLab || saving}
+                    saveLabel="Alle Änderungen speichern"
                     syncingGitLab={syncingGitLab}
                     gitLabError={gitLabError}
                     hasGitLabProviders={hasGitLabProviders}
                     gitLabStatus={gitLabStatus}
                     gitLabSnapshot={gitLabSnapshot}
                     onSave={handleSaveGitLabLink}
-                    onSync={handleSyncGitLab}
+                    onSync={() => {
+                      if (hasUnsavedChanges) { setGitLabError("Bitte speichern oder verwerfen Sie zuerst Ihre Änderungen."); return; }
+                      setRepositoryAction("sync");
+                    }}
                     onDelete={handleDeleteGitLabLink}
-                    onApprove={handleApproveGitLab}
+                    onApprove={() => {
+                      if (hasUnsavedChanges) { setGitLabError("Bitte speichern oder verwerfen Sie zuerst Ihre Änderungen."); return; }
+                      setRepositoryAction("approve");
+                    }}
                     onApplyReadme={handleApplyGitLabReadme}
                     onApplyMetadata={handleApplyGitLabMetadata}
                     onApplyDeployment={handleApplyGitLabDeployment}
@@ -4851,6 +4764,8 @@ export function AppEditorForm({
 
                 {/* Verwandte Apps + Gruppen tab */}
                 <Tabs.Panel id="related">
+                  <h2 className="mb-2 text-xl font-semibold">Zuordnungen</h2>
+                  <p className="mb-6 text-sm text-muted">Verwandte Apps und Gruppen auswählen. Neue Gruppen und Zuordnungen werden erst beim Speichern angelegt.</p>
                   <RelatedAppsTab
                     showDraftHint={false}
                     canManageGroups={canManageGroups}
@@ -4872,9 +4787,9 @@ export function AppEditorForm({
                 </Tabs.Panel>
               </>
             )}
-          </Tabs>
-        </>
-      )}
+
+      </Tabs>
+      </fieldset>
 
       {/* ── Footer meta (matches detail page) ── */}
       <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted">
@@ -4921,27 +4836,27 @@ export function AppEditorForm({
               Abbrechen
             </Button>
             <Button
-              isDisabled={saving || !canSave || !profileReady}
+              isDisabled={editorBusy || !canSave || !profileReady || !hasUnsavedChanges || loadingGitLab || uploadingIcon}
               isPending={saving}
-              onPress={() => void handleSave()}
+              onPress={() => void handleSave(false)}
               size="sm"
             >
               <Save className="size-4" />
-              {isDraft ? "Entwurf speichern" : "Änderungen speichern"}
+              Speichern
+            </Button>
+            <Button variant="secondary" size="sm" isDisabled={editorBusy || !canSave || !profileReady || loadingGitLab || uploadingIcon} onPress={() => void handleSave(true)}>
+              Speichern &amp; schließen
             </Button>
           </>
         }
       >
-        {hasUnsavedChanges && !saveError && !saveSuccess && (
-          <p className="truncate text-xs text-muted">
-            Ungespeicherte Änderungen. Erfasste Angaben:{" "}
-            <span className="font-semibold">
-              {requiredDoneCount}/{requiredItems.length}
-            </span>
+        {hasUnsavedChanges && !saveError && (
+          <p className="text-xs text-muted">
+            Ungespeicherte Änderungen – noch nicht übernommen.
           </p>
         )}
         {!canSave && !saveError && !saveSuccess && (
-          <p className="truncate text-xs text-muted">
+          <p className="text-xs text-muted">
             Für einen Entwurf sind <span className="font-semibold">Name</span>
             {" "}und <span className="font-semibold">ID</span> nötig. Für
             Status außer Entwurf zusätzlich{" "}
@@ -4950,23 +4865,35 @@ export function AppEditorForm({
           </p>
         )}
         {!profileReady && !saveError && !saveSuccess && (
-          <p className="truncate text-xs text-muted">
+          <p className="text-xs text-muted">
             Ihr Benutzerprofil wird noch synchronisiert. Sobald das Backend die
             Sitzung bestätigt hat, können Sie speichern.
           </p>
         )}
         {saveError && (
-          <p className="truncate text-sm font-medium text-danger">
+          <p role="alert" className="text-sm font-medium text-danger">
             {saveError}
           </p>
         )}
-        {saveSuccess && (
+        {saveSuccess && !hasUnsavedChanges && (
           <span className="flex items-center gap-1 text-sm font-medium text-success">
             <CheckCircle2 className="size-4" /> Gespeichert!
           </span>
         )}
       </EditorActionBar>
 
+      <ConfirmDialog
+        title={repositoryAction === "approve" ? "Repository-Änderungen übernehmen?" : "Repository synchronisieren?"}
+        description="Diese Aktion kann gespeicherte Dokumentation, Metadaten und Deployment-Angaben durch Repository-Inhalte ersetzen. Sie wird unmittelbar ausgeführt."
+        confirmLabel={repositoryAction === "approve" ? "Übernehmen" : "Synchronisieren"}
+        isOpen={repositoryAction !== null}
+        onOpenChange={open => { if (!open) setRepositoryAction(null); }}
+        onConfirm={() => {
+          const action = repositoryAction;
+          setRepositoryAction(null);
+          if (action === "approve") void handleApproveGitLab(); else void handleSyncGitLab();
+        }}
+      />
       <ConfirmDialog
         confirmLabel="Seite verlassen"
         description="Es gibt ungespeicherte Änderungen. Wenn Sie die Seite jetzt verlassen, gehen diese Anpassungen verloren."

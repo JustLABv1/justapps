@@ -301,6 +301,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       setQuestionDraft('');
       setComposerOpen(false);
       if (await loadFAQ(1, false)) {
+        window.dispatchEvent(new Event('faq:changed'));
         toast.success('Frage veröffentlicht.');
       }
     } catch (reason) {
@@ -334,6 +335,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (await loadFAQ(1, false)) {
         setExpandedQuestionId(questionId);
         await loadAnswers(questionId);
+        window.dispatchEvent(new Event('faq:changed'));
         toast.success('Antwort veröffentlicht.');
       }
     } catch (reason) {
@@ -355,6 +357,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
         throw new Error(await responseError(response, 'Frage konnte nicht gelöscht werden.'));
       }
       if (await loadFAQ(1, false)) {
+        window.dispatchEvent(new Event('faq:changed'));
         toast.success('Frage gelöscht.');
       }
     } catch (reason) {
@@ -378,6 +381,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (await loadFAQ(1, false)) {
         setExpandedQuestionId(questionId);
         await loadAnswers(questionId);
+        window.dispatchEvent(new Event('faq:changed'));
         toast.success('Antwort gelöscht.');
       }
     } catch (reason) {

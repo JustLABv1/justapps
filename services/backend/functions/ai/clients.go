@@ -18,6 +18,20 @@ type httpChatProvider struct {
 	client  *http.Client
 }
 
+// ProviderHTTPError distinguishes an upstream AI-provider response from a
+// failure of the JustApps backend itself.
+type ProviderHTTPError struct {
+	ProviderKey  string
+	ProviderType string
+	StatusCode   int
+	Status       string
+	Message      string
+}
+
+func (err *ProviderHTTPError) Error() string {
+	return fmt.Sprintf("ai provider %q (%s) returned %s: %s", err.ProviderKey, err.ProviderType, err.Status, err.Message)
+}
+
 type providerTextMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -489,7 +503,13 @@ func (provider *httpChatProvider) doJSON(request *http.Request, target any) erro
 		return fmt.Errorf("ai provider %q response read failed: %w", provider.runtime.Key, err)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("ai provider %q (%s) returned %s for %s: %s", provider.runtime.Key, provider.runtime.Type, response.Status, request.URL.Redacted(), redactProviderError(body))
+		return &ProviderHTTPError{
+			ProviderKey:  provider.runtime.Key,
+			ProviderType: provider.runtime.Type,
+			StatusCode:   response.StatusCode,
+			Status:       response.Status,
+			Message:      redactProviderError(body),
+		}
 	}
 	contentType := strings.ToLower(response.Header.Get("Content-Type"))
 	if !looksLikeJSON(contentType, body) {

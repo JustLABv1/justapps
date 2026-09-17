@@ -85,6 +85,58 @@ func NormalizeProjectPath(projectPath string) string {
 	return strings.Trim(strings.TrimSpace(projectPath), "/")
 }
 
+// NormalizeProjectReference accepts either a provider-relative project path or
+// a complete repository URL and returns the canonical path used by the APIs.
+func NormalizeProjectReference(reference, providerType, baseURL string) (string, error) {
+	value := strings.TrimSpace(reference)
+	if value == "" {
+		return "", fmt.Errorf("Projektpfad oder Repository-URL fehlt")
+	}
+
+	projectPath := value
+	if strings.Contains(value, "://") {
+		parsed, err := url.Parse(value)
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+			return "", fmt.Errorf("Repository-URL ist ungültig")
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return "", fmt.Errorf("Repository-URL muss HTTP oder HTTPS verwenden")
+		}
+
+		providerURL, err := url.Parse(normalizeProviderBaseURL(providerType, baseURL))
+		if err != nil || providerURL.Host == "" {
+			return "", fmt.Errorf("Provider-URL ist ungültig")
+		}
+		if !strings.EqualFold(parsed.Host, providerURL.Host) {
+			return "", fmt.Errorf("Repository-URL gehört nicht zum gewählten Provider %s", providerURL.Host)
+		}
+
+		basePath := strings.TrimRight(providerURL.Path, "/")
+		if basePath != "" && parsed.Path != basePath && !strings.HasPrefix(parsed.Path, basePath+"/") {
+			return "", fmt.Errorf("Repository-URL gehört nicht zum konfigurierten Provider-Pfad %s", basePath)
+		}
+		projectPath = strings.TrimPrefix(parsed.Path, basePath)
+	}
+
+	projectPath = strings.Trim(strings.TrimSpace(projectPath), "/")
+	if marker := strings.Index(projectPath, "/-/"); marker >= 0 {
+		projectPath = projectPath[:marker]
+	}
+	projectPath = strings.TrimSuffix(projectPath, ".git")
+
+	parts := strings.Split(projectPath, "/")
+	if NormalizeProviderType(providerType) == "github" {
+		if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+			return "", fmt.Errorf("GitHub-Projekt muss als owner/repository oder vollständige URL angegeben werden")
+		}
+		projectPath = strings.Join(parts[:2], "/")
+	} else if len(parts) < 2 {
+		return "", fmt.Errorf("GitLab-Projekt muss Namespace und Projekt enthalten")
+	}
+
+	return projectPath, nil
+}
+
 func providerLabel(provider config.RepositoryProviderConf) string {
 	if strings.TrimSpace(provider.Label) != "" {
 		return provider.Label

@@ -122,7 +122,7 @@ export function RelatedAppsTab({
                   variant="danger-soft"
                   onPress={() => onRemoveRelated(related.id)}
                   aria-label={`${related.name} entfernen`}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </Button>

@@ -57,9 +57,6 @@ const formatAIAssistantError = (error: unknown) => {
   if (normalized.includes("kein aktiver ai-provider")) {
     return "Es ist kein aktiver AI-Provider konfiguriert. Bitte richte zuerst einen Provider in der Verwaltung ein.";
   }
-  if (normalized.includes("repository konnte nicht analysiert werden")) {
-    return "Das Repository konnte nicht analysiert werden. Prüfe Provider, Projektpfad und Berechtigungen und versuche es erneut.";
-  }
   return message;
 };
 
@@ -137,6 +134,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const [aiSuggestion, setAiSuggestion] = useState<AppCreationSuggestionResponse | null>(null);
   const [aiScanRepository, setAiScanRepository] = useState(false);
   const [repositoryScannedByAI, setRepositoryScannedByAI] = useState(false);
+  const [repositoryError, setRepositoryError] = useState<string | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const iconInput = useRef<HTMLInputElement>(null);
@@ -248,17 +246,21 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const syncRepository = async () => {
     if (!repo.providerKey || !repo.projectPath) return;
     setSyncing(true);
+    setRepositoryError(null);
     try {
       const id = await save();
       await saveRepositoryConnection(id);
       await syncRepositoryForApp(id);
       toast.success("Repositorydaten wurden übernommen.");
-    } catch (error) { const message = error instanceof Error ? error.message : "Repository-Synchronisation fehlgeschlagen."; setSaveError(message); toast.danger(message); } finally { setSyncing(false); }
+    } catch (error) { const message = error instanceof Error ? error.message : "Repository-Synchronisation fehlgeschlagen."; setRepositoryError(message); setSaveError(message); toast.danger(message); } finally { setSyncing(false); }
   };
 
   const saveRepositoryConnection = async (id: string) => {
     const linked = await fetchApi(`/apps/${id}/repository`, { method: "PUT", body: JSON.stringify(repo) });
-    if (!linked.ok) throw new Error("Repository-Verknüpfung konnte nicht gespeichert werden.");
+    if (!linked.ok) {
+      const error = await linked.json().catch(() => ({})) as { message?: string };
+      throw new Error(error.message || "Repository-Verknüpfung konnte nicht gespeichert werden.");
+    }
   };
   const saveEditors = async (id: string, userIds = Array.from(editorIds)) => {
     const response = await fetchApi(`/apps/${id}/editors`, { method: "PUT", body: JSON.stringify({ userIds }) });
@@ -270,6 +272,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
     if ((!brief && !hasRepositoryInput) || aiGenerating) return;
     setAiGenerating(true);
     setAiError(null);
+    setRepositoryError(null);
     try {
       const suggestion = await suggestAppCreation({
         brief,
@@ -292,7 +295,9 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       });
       setAiSuggestion(suggestion);
     } catch (error) {
-      setAiError(formatAIAssistantError(error));
+      const message = formatAIAssistantError(error);
+      setAiError(message);
+      if (aiScanRepository) setRepositoryError(message);
     } finally {
       setAiGenerating(false);
     }
@@ -306,6 +311,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
   const applyAIDraft = () => {
     if (!aiSuggestion) return;
     const snapshot = aiSuggestion.repositorySnapshot;
+    const repositoryReadme = snapshot?.readmeContent?.trim();
     const hasDockerSetup = Boolean(aiSuggestion.dockerRepo || aiSuggestion.customDockerCommand);
     const hasComposeSetup = Boolean(aiSuggestion.customComposeCommand || snapshot?.composeFileContent);
     const hasHelmSetup = Boolean(aiSuggestion.helmRepo || aiSuggestion.customHelmCommand);
@@ -320,7 +326,10 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       license: aiSuggestion.license || snapshot?.license || previous.license,
       isReuse: previous.isReuse || aiSuggestion.isReuse,
       reuseRequirements: aiSuggestion.reuseRequirements || previous.reuseRequirements,
-      markdownContent: aiSuggestion.markdownContent || snapshot?.readmeContent || previous.markdownContent,
+      // A repository README is the canonical documentation for a scanned
+      // project. Keep it verbatim instead of replacing it with the AI's
+      // generated summary.
+      markdownContent: repositoryReadme || aiSuggestion.markdownContent || previous.markdownContent,
       repositories: snapshot?.projectWebUrl
         ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
         : previous.repositories,
@@ -339,7 +348,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       repository: previous.repository || Boolean(aiSuggestion.repositoryScan),
       deployment: previous.deployment || hasDockerSetup || hasComposeSetup || hasHelmSetup,
       resources: previous.resources || Boolean(snapshot?.projectWebUrl),
-      documentation: previous.documentation || Boolean(aiSuggestion.markdownContent || snapshot?.readmeContent),
+      documentation: previous.documentation || Boolean(repositoryReadme || aiSuggestion.markdownContent),
     }));
     if (aiSuggestion.repositoryScan) {
       setRepo((previous) => ({
@@ -354,7 +363,10 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       setRepositoryScannedByAI(true);
     }
     setAiAssistantOpen(false);
-    setCurrentId("description");
+    // The suggestion pre-fills the wizard; it must not make reviewable fields
+    // disappear. Start at the name so name/ID, logo, categories, and status are
+    // explicitly confirmed before continuing with the description.
+    setCurrentId("name");
     setAttemptedNext(false);
     toast.success("AI-Vorschlag übernommen. Bitte prüfe die Angaben.");
   };
@@ -466,7 +478,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
       case "description": return <TextField isRequired={nonDraft} isInvalid={attemptedNext && nonDraft && !formData.description?.trim()} onChange={(description) => setFormData((previous) => ({ ...previous, description }))}><Label>Kurzbeschreibung</Label><TextArea autoFocus value={formData.description || ""} placeholder="Wofür steht die App? Welche Wirkung hat sie im Alltag?" className="min-h-52" /><FieldError>{attemptedNext && nonDraft && !formData.description?.trim() ? "Für diesen Status ist eine Kurzbeschreibung erforderlich." : undefined}</FieldError></TextField>;
       case "metadata": return <div className="space-y-5"><TextField onChange={(license) => setFormData((previous) => ({ ...previous, license }))}><Label>Lizenz</Label><Input value={formData.license || ""} placeholder="z. B. MIT oder EUPL" /></TextField><Label>Schlagwörter</Label><div className="flex flex-wrap gap-2">{(formData.tags || []).map((tag) => <Chip key={tag} variant="soft">{tag}<button type="button" onClick={() => setFormData((previous) => ({ ...previous, tags: previous.tags?.filter((value) => value !== tag) }))}><X className="ml-1 h-3 w-3" /></button></Chip>)}</div><div className="flex gap-2"><Input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Schlagwort" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); toggleList("tags", tagInput); setTagInput(""); } }} /><Button variant="secondary" onPress={() => { toggleList("tags", tagInput); setTagInput(""); }}>Hinzufügen</Button></div></div>;
       case "repository": return <SectionGate title="Repository" description="Wir übernehmen auf Wunsch Beschreibung, Tags, Dokumentation und verfügbare Deployment-Dateien." enabled={branches.repository} onChange={(value) => setBranches((previous) => ({ ...previous, repository: value }))} icon={<FolderGit2 className="h-5 w-5" />} />;
-      case "repo-project": return <div className="grid gap-5 sm:grid-cols-2"><div className="space-y-2"><Label>Provider <span className="text-danger">*</span></Label><Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => setRepo((previous) => ({ ...previous, providerKey: String(key) }))} isDisabled={!providers.length} isInvalid={attemptedNext && !repo.providerKey}><Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger><Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover></Select></div><TextField isRequired isInvalid={attemptedNext && !repo.projectPath.trim()} onChange={(projectPath) => setRepo((previous) => ({ ...previous, projectPath }))}><Label>Projektpfad</Label><Input value={repo.projectPath} placeholder="gruppe/projekt" /></TextField></div>;
+      case "repo-project": return <div className="grid gap-5 sm:grid-cols-2"><div className="space-y-2"><Label>Provider <span className="text-danger">*</span></Label><Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, providerKey: String(key) })); }} isDisabled={!providers.length} isInvalid={attemptedNext && !repo.providerKey}><Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger><Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover></Select></div><TextField isRequired isInvalid={(attemptedNext && !repo.projectPath.trim()) || !!repositoryError} onChange={(projectPath) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, projectPath })); }}><Label>Projektpfad oder Repository-URL</Label><Input value={repo.projectPath} placeholder="gruppe/projekt oder https://…" /><FieldError>{repositoryError || (attemptedNext && !repo.projectPath.trim() ? "Gib einen Projektpfad oder eine Repository-URL an." : undefined)}</FieldError></TextField></div>;
       case "repo-paths": return <div className="space-y-5"><div className="grid gap-5 sm:grid-cols-2"><TextField onChange={(branch) => setRepo((previous) => ({ ...previous, branch }))}><Label>Branch oder Ref</Label><Input value={repo.branch} placeholder="Standard-Branch" /></TextField><TextField onChange={(readmePath) => setRepo((previous) => ({ ...previous, readmePath }))}><Label>README-Pfad</Label><Input value={repo.readmePath} placeholder="README.md" /></TextField><TextField onChange={(helmValuesPath) => setRepo((previous) => ({ ...previous, helmValuesPath }))}><Label>Helm Values</Label><Input value={repo.helmValuesPath} placeholder="chart/values.yaml" /></TextField><TextField onChange={(composeFilePath) => setRepo((previous) => ({ ...previous, composeFilePath }))}><Label>Compose-Datei</Label><Input value={repo.composeFilePath} placeholder="docker-compose.yml" /></TextField></div><Button variant="secondary" isDisabled={!repo.providerKey || !repo.projectPath} isPending={syncing} onPress={syncRepository}><FolderGit2 className="h-4 w-4" />Jetzt importieren</Button></div>;
       case "reuse": return <div className="space-y-5"><SectionGate title="Nachnutzung" description="Andere Stellen können die App als bestehende Lösung verwenden." enabled={!!formData.isReuse} onChange={(value) => setFormData((previous) => ({ ...previous, isReuse: value }))} icon={<Layers className="h-5 w-5" />} />{formData.isReuse && <TextField isRequired isInvalid={attemptedNext && !formData.reuseRequirements?.trim()} onChange={(reuseRequirements) => setFormData((previous) => ({ ...previous, reuseRequirements }))}><Label>Voraussetzungen und Grenzen</Label><TextArea value={formData.reuseRequirements || ""} placeholder="Welche Stellen können die App nachnutzen?" /><FieldError>{attemptedNext && !formData.reuseRequirements?.trim() ? "Bitte beschreibe die Voraussetzungen oder Grenzen." : undefined}</FieldError></TextField>}</div>;
       case "deployment": return <SectionGate title="Installationshilfe" description="Lege Installationswege und die dazugehörigen Informationen fest." enabled={branches.deployment} onChange={(value) => setBranches((previous) => ({ ...previous, deployment: value }))} icon={<Rocket className="h-5 w-5" />} />;
@@ -513,8 +525,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
     <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3"><Button variant="secondary" isDisabled={currentIndex === 0} onPress={() => move(-1)}><ArrowLeft className="h-4 w-4" />Zurück</Button>{current.id === "review" ? <Button isPending={saveState === "saving"} onPress={finish}>App erstellen<Check className="h-4 w-4" /></Button> : <Button onPress={() => returnToReview ? (validCurrent() ? setCurrentId("review") : setAttemptedNext(true)) : move(1)}>{returnToReview ? "Zur Übersicht" : "Weiter"}<ArrowRight className="h-4 w-4" /></Button>}</div></footer>
     <Modal>
       <Modal.Backdrop isOpen={aiAssistantOpen} onOpenChange={setAiAssistantOpen}>
-        <Modal.Container size="lg">
-          <Modal.Dialog className="max-h-[min(760px,calc(100vh-2rem))] w-full overflow-hidden">
+        <Modal.Container size="lg" scroll="inside">
+          <Modal.Dialog className="max-h-[calc(100dvh-2rem)] !w-[calc(100vw-2rem)] !max-w-none overflow-hidden sm:!max-w-[760px] lg:!max-w-[880px]">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Icon className="bg-accent/10 text-accent"><Sparkles className="h-5 w-5" /></Modal.Icon>
@@ -523,7 +535,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                 <p className="mt-1 text-xs text-muted">Erstellt einen Vorschlag. Gespeichert wird erst nach deiner Prüfung.</p>
               </div>
             </Modal.Header>
-            <Modal.Body className="max-h-[62vh] space-y-5 overflow-y-auto">
+            <Modal.Body className="min-h-0 space-y-6 overflow-y-auto px-5 sm:px-7">
               {aiError && <Alert status="danger" className="border-danger/30 bg-danger/10" aria-live="assertive">
                 <Alert.Indicator />
                 <Alert.Content>
@@ -550,7 +562,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                   className="min-h-36"
                 />
               </TextField>
-              <div className="rounded-2xl border border-border bg-surface-secondary/50 p-4">
+              <div className="rounded-2xl border border-border bg-surface-secondary/50 p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-semibold text-foreground">Repository mit analysieren</p>
@@ -560,17 +572,18 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                     <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Content>
                   </Switch>
                 </div>
-                {aiScanRepository && <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                {aiScanRepository && <div className="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
+                  <div className="min-w-0 space-y-2">
                     <Label>Repository-Provider</Label>
-                    <Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => setRepo((previous) => ({ ...previous, providerKey: String(key) }))} isDisabled={!providers.length}>
+                    <Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, providerKey: String(key) })); }} isDisabled={!providers.length}>
                       <Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger>
                       <Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover>
                     </Select>
                   </div>
-                  <TextField isRequired isInvalid={aiScanRepository && !repo.projectPath.trim()} onChange={(projectPath) => setRepo((previous) => ({ ...previous, projectPath }))}>
-                    <Label>Projektpfad</Label>
-                    <Input value={repo.projectPath} placeholder="gruppe/projekt" />
+                  <TextField className="min-w-0" isRequired isInvalid={(aiScanRepository && !repo.projectPath.trim()) || !!repositoryError} onChange={(projectPath) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, projectPath })); }}>
+                    <Label>Projektpfad oder Repository-URL</Label>
+                    <Input value={repo.projectPath} placeholder="gruppe/projekt oder https://…" />
+                    <FieldError>{repositoryError || undefined}</FieldError>
                   </TextField>
                   <TextField onChange={(branch) => setRepo((previous) => ({ ...previous, branch }))}>
                     <Label>Branch oder Ref</Label>
@@ -611,10 +624,10 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                 </div>
               )}
             </Modal.Body>
-            <Modal.Footer>
+            <Modal.Footer className="flex-col-reverse items-stretch gap-2 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-7 sm:py-5">
               <Button variant="secondary" onPress={() => setAiAssistantOpen(false)}>Abbrechen</Button>
-              {!aiSuggestion && <Button onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={aiGenerating || ((!aiBrief.trim() && !(aiScanRepository && repo.providerKey && repo.projectPath.trim())) || (aiScanRepository && !providers.length))}><Sparkles className="h-4 w-4" />{aiError ? "Erneut versuchen" : aiScanRepository ? "Repository analysieren & Vorschlag erstellen" : "Vorschlag erstellen"}</Button>}
-              {aiSuggestion && <Button onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
+              {!aiSuggestion && <Button className="sm:min-w-72" onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={aiGenerating || ((!aiBrief.trim() && !(aiScanRepository && repo.providerKey && repo.projectPath.trim())) || (aiScanRepository && !providers.length))}><Sparkles className="h-4 w-4" />{aiError ? "Erneut versuchen" : aiScanRepository ? "Repository analysieren & Vorschlag erstellen" : "Vorschlag erstellen"}</Button>}
+              {aiSuggestion && <Button className="sm:min-w-52" onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>
