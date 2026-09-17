@@ -624,7 +624,7 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
                 </div>
               )}
             </Modal.Body>
-            <Modal.Footer className="flex-col-reverse items-stretch gap-2 border-t border-border px-5 sm:flex-row sm:items-center sm:justify-end sm:px-7">
+            <Modal.Footer className="flex-col-reverse items-stretch gap-2 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-7 sm:py-5">
               <Button variant="secondary" onPress={() => setAiAssistantOpen(false)}>Abbrechen</Button>
               {!aiSuggestion && <Button className="sm:min-w-72" onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={aiGenerating || ((!aiBrief.trim() && !(aiScanRepository && repo.providerKey && repo.projectPath.trim())) || (aiScanRepository && !providers.length))}><Sparkles className="h-4 w-4" />{aiError ? "Erneut versuchen" : aiScanRepository ? "Repository analysieren & Vorschlag erstellen" : "Vorschlag erstellen"}</Button>}
               {aiSuggestion && <Button className="sm:min-w-52" onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
