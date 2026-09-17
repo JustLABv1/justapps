@@ -37,6 +37,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useUpdates } from "../context/UpdatesContext";
 import { adminNavGroups, adminNavLinks } from "../lib/admin-navigation";
 import { canAccessAI } from "../lib/ai-access";
+import { fetchApi } from "../lib/api";
 import { JustAppsLogo } from "./JustAppsLogo";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -47,10 +48,37 @@ export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [openFAQCount, setOpenFAQCount] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
   const { totalUnread } = useUpdates();
   const { resolvedTheme, setTheme } = useTheme();
+
+  useEffect(() => {
+    if (!settings.faqEnabled) {
+      return;
+    }
+
+    let active = true;
+    const refreshOpenFAQCount = async () => {
+      try {
+        const response = await fetchApi('/faq?status=open&page=1&pageSize=1', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json() as { total?: number };
+        if (active) setOpenFAQCount(Math.max(0, data.total ?? 0));
+      } catch {
+        // The badge is supplemental; navigation remains usable if counting fails.
+      }
+    };
+
+    void refreshOpenFAQCount();
+    const handleFAQChanged = () => void refreshOpenFAQCount();
+    window.addEventListener('faq:changed', handleFAQChanged);
+    return () => {
+      active = false;
+      window.removeEventListener('faq:changed', handleFAQChanged);
+    };
+  }, [settings.faqEnabled, user?.id, pathname]);
 
   // Close search and clear on navigation
   useEffect(() => {
@@ -228,6 +256,17 @@ export function Navigation() {
                     className="text-[10px] font-bold"
                   >
                     {totalUnread > 99 ? "99+" : totalUnread}
+                  </Chip>
+                )}
+                {link.href === "/faq" && openFAQCount > 0 && (
+                  <Chip
+                    size="sm"
+                    color="accent"
+                    variant="soft"
+                    className="text-[10px] font-bold"
+                    aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}
+                  >
+                    {openFAQCount > 99 ? "99+" : openFAQCount}
                   </Chip>
                 )}
               </Link>
@@ -519,6 +558,22 @@ export function Navigation() {
               >
                 <Icon className="h-4 w-4 shrink-0 text-muted" />
                 <span>{link.label}</span>
+                {link.href === "/faq" && openFAQCount > 0 && (
+                  <Chip
+                    size="sm"
+                    color="accent"
+                    variant="soft"
+                    className="ml-auto text-[10px] font-bold"
+                    aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}
+                  >
+                    {openFAQCount > 99 ? "99+" : openFAQCount}
+                  </Chip>
+                )}
+                {link.href === "/updates" && totalUnread > 0 && (
+                  <Chip size="sm" color="accent" variant="soft" className="ml-auto text-[10px] font-bold">
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </Chip>
+                )}
               </Link>
             );
           })}
