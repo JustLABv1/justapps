@@ -428,9 +428,9 @@ func GetApps(c *gin.Context, db *bun.DB) {
 	// totals and pages do not contain entries that will later be discarded.
 	if !permissions.Has(viewerRole, permissions.ViewAppDrafts) {
 		if hasViewer {
-			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') OR a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
+			query = query.Where("(LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') AND a.is_hidden = false) OR a.owner_id = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id = ?)", viewerID, viewerID)
 		} else {
-			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')")
+			query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf') AND a.is_hidden = false")
 		}
 	}
 
@@ -646,15 +646,16 @@ func GetApp(c *gin.Context, db *bun.DB) {
 		Icon         string    `bun:"icon"`
 		OwnerID      uuid.UUID `bun:"owner_id"`
 		Status       string    `bun:"status"`
+		IsHidden     bool      `bun:"is_hidden"`
 	}
 	var related []relRow
 	_ = db.NewRaw(`
-		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status
+		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status, a.is_hidden
 		FROM app_relations r
 		JOIN apps a ON a.id = r.related_app_id
 		WHERE r.app_id = ?
 		UNION
-		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status
+		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status, a.is_hidden
 		FROM app_relations r
 		JOIN apps a ON a.id = r.app_id
 		WHERE r.related_app_id = ?
@@ -662,7 +663,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 
 	app.RelatedApps = make([]models.AppRelationSummary, 0, len(related))
 	for _, r := range related {
-		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: NormalizeAppStatus(r.Status)}
+		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: NormalizeAppStatus(r.Status), IsHidden: r.IsHidden}
 		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}

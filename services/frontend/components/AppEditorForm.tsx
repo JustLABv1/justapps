@@ -3125,6 +3125,36 @@ export function AppEditorForm({
                       </div>
                     </div>
 
+                    <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            App temporär verstecken
+                          </p>
+                          <p className="mt-1 text-xs text-muted">
+                            Nur Eigentümer, Bearbeiter und Moderatoren können die
+                            App sehen, solange sie versteckt ist.
+                          </p>
+                        </div>
+                        <Switch
+                          isSelected={formData.isHidden || false}
+                          onChange={(value) =>
+                            setFormData((previous) => ({
+                              ...previous,
+                              isHidden: value,
+                            }))
+                          }
+                          aria-label="App temporär verstecken"
+                        >
+                          <Switch.Content>
+                            <Switch.Control>
+                              <Switch.Thumb />
+                            </Switch.Control>
+                          </Switch.Content>
+                        </Switch>
+                      </div>
+                    </div>
+
                     {isAdmin && (
                       <div className="rounded-3xl border border-accent/10 bg-accent/5 p-5">
                         <div className="flex items-center justify-between gap-3">
@@ -4694,6 +4724,34 @@ export function AppEditorForm({
                 </dl>
 
                 {/* Admin: featured toggle */}
+                <div className="flex items-center justify-between rounded-xl border border-border bg-surface-secondary/40 p-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold text-foreground">
+                      App temporär verstecken
+                    </span>
+                    <p className="text-xs text-muted">
+                      Solange die App versteckt ist, sehen sie nur Eigentümer,
+                      Bearbeiter und Moderatoren.
+                    </p>
+                  </div>
+                  <Switch
+                    isSelected={formData.isHidden || false}
+                    onChange={(value) =>
+                      setFormData((previous) => ({
+                        ...previous,
+                        isHidden: value,
+                      }))
+                    }
+                    aria-label="App temporär verstecken"
+                  >
+                    <Switch.Content>
+                      <Switch.Control>
+                        <Switch.Thumb />
+                      </Switch.Control>
+                    </Switch.Content>
+                  </Switch>
+                </div>
+
                 {isAdmin && (
                   <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
                     <div className="flex flex-col gap-0.5">

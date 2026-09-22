@@ -40,3 +40,22 @@ func TestRegularUserCannotModerateLockedApp(t *testing.T) {
 		t.Fatalf("locked app must not be editable by its regular owner, got %#v", got)
 	}
 }
+
+func TestHiddenAppVisibility(t *testing.T) {
+	ownerID := uuid.New()
+	editorID := uuid.New()
+	app := models.Apps{ID: "app-1", OwnerID: ownerID, Status: "etabliert", IsHidden: true}
+
+	if canViewApp(app, uuid.Nil, "", false, map[string]struct{}{}) {
+		t.Fatal("anonymous viewers must not see hidden apps")
+	}
+	if !canViewApp(app, ownerID, "user", true, map[string]struct{}{}) {
+		t.Fatal("owner should see a hidden app")
+	}
+	if !canViewApp(app, editorID, "user", true, map[string]struct{}{"app-1": {}}) {
+		t.Fatal("editor should see a hidden app")
+	}
+	if !canViewApp(app, uuid.New(), "moderator", true, map[string]struct{}{}) {
+		t.Fatal("moderator should see hidden apps")
+	}
+}

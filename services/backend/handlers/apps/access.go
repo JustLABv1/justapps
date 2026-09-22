@@ -50,22 +50,16 @@ func isEditorForApp(ctx context.Context, db *bun.DB, appID string, userID uuid.U
 }
 
 func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewer bool, editorAppIDs map[string]struct{}) bool {
-	if !isDraftApp(app) {
+	restricted := app.IsHidden || isDraftApp(app)
+	if !restricted || permissions.Has(viewerRole, permissions.ViewAppDrafts) {
 		return true
 	}
-
-	if permissions.Has(viewerRole, permissions.ViewAppDrafts) {
-		return true
-	}
-
 	if !hasViewer {
 		return false
 	}
-
 	if app.OwnerID == viewerID {
 		return true
 	}
-
 	_, isEditor := editorAppIDs[app.ID]
 	return isEditor
 }
