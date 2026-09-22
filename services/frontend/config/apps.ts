@@ -289,6 +289,8 @@ export interface AppConfig {
   showCompose?: boolean;
   showHelm?: boolean;
   isLocked?: boolean;
+  /** Hidden apps are only visible to their owner, editors, and moderators. */
+  isHidden?: boolean;
   isReuse?: boolean;
   reuseRequirements?: string;
   ownerId?: string;

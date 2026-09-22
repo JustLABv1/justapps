@@ -46,15 +46,16 @@ func GetRelatedApps(c *gin.Context, db *bun.DB) {
 		Icon         string    `bun:"icon"`
 		OwnerID      uuid.UUID `bun:"owner_id"`
 		Status       string    `bun:"status"`
+		IsHidden     bool      `bun:"is_hidden"`
 	}
 	var rows []relRow
 	err := db.NewRaw(`
-		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status
+		SELECT r.related_app_id, a.name, a.icon, a.owner_id, a.status, a.is_hidden
 		FROM app_relations r
 		JOIN apps a ON a.id = r.related_app_id
 		WHERE r.app_id = ?
 		UNION
-		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status
+		SELECT r.app_id AS related_app_id, a.name, a.icon, a.owner_id, a.status, a.is_hidden
 		FROM app_relations r
 		JOIN apps a ON a.id = r.app_id
 		WHERE r.related_app_id = ?
@@ -66,7 +67,7 @@ func GetRelatedApps(c *gin.Context, db *bun.DB) {
 
 	result := make([]models.AppRelationSummary, 0, len(rows))
 	for _, r := range rows {
-		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		relatedApp := models.Apps{ID: r.RelatedAppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status, IsHidden: r.IsHidden}
 		if !canViewApp(relatedApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}
@@ -230,15 +231,16 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 
 	type memberRow struct {
-		AppID   string    `bun:"app_id"`
-		Name    string    `bun:"name"`
-		Icon    string    `bun:"icon"`
-		OwnerID uuid.UUID `bun:"owner_id"`
-		Status  string    `bun:"status"`
+		AppID    string    `bun:"app_id"`
+		Name     string    `bun:"name"`
+		Icon     string    `bun:"icon"`
+		OwnerID  uuid.UUID `bun:"owner_id"`
+		Status   string    `bun:"status"`
+		IsHidden bool      `bun:"is_hidden"`
 	}
 	var rows []memberRow
 	err := db.NewRaw(`
-		SELECT m.app_id, a.name, a.icon, a.owner_id, a.status
+		SELECT m.app_id, a.name, a.icon, a.owner_id, a.status, a.is_hidden
 		FROM app_group_members m
 		JOIN apps a ON a.id = m.app_id
 		WHERE m.app_group_id = ?::uuid
@@ -259,7 +261,7 @@ func GetGroupMembers(c *gin.Context, db *bun.DB) {
 		}
 	}
 	for _, r := range rows {
-		memberApp := models.Apps{ID: r.AppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status}
+		memberApp := models.Apps{ID: r.AppID, Name: r.Name, Icon: r.Icon, OwnerID: r.OwnerID, Status: r.Status, IsHidden: r.IsHidden}
 		if !canViewApp(memberApp, viewerID, viewerRole, hasViewer, editorAppIDs) {
 			continue
 		}

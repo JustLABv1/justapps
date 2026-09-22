@@ -104,6 +104,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 			"banner_text", "banner_type", "banner_color", "banner_title",
 			"deployment_variants", "version", "changelog",
 			"skip_link_probe",
+			"is_hidden",
 			"owner_id", "created_at", "updated_at",
 		).
 		Value("has_deployment_assistant", "?", app.HasDeploymentAssistant).
@@ -223,6 +224,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 			"banner_text", "banner_type", "banner_color", "banner_title",
 			"deployment_variants", "version", "changelog",
 			"skip_link_probe",
+			"is_hidden",
 		)
 
 	// Admin can also update admin-only fields if they are sent?
@@ -248,6 +250,66 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		log.WithError(err).WithField("appID", id).Warn("Failed to refresh AI knowledge index after app update")
 	}
 	c.JSON(200, app)
+}
+
+func SetAppVisibility(c *gin.Context, db *bun.DB) {
+	id := c.Param("id")
+	viewerID, viewerRole, ok := getRequiredViewerContext(c)
+	if !ok {
+		return
+	}
+
+	var app models.Apps
+	if err := db.NewSelect().Model(&app).Where("id = ?", id).Scan(c); err != nil {
+		httperror.StatusNotFound(c, "App not found", err)
+		return
+	}
+
+	canModerateApps := permissions.Has(viewerRole, permissions.EditApps)
+	isOwner := app.OwnerID == viewerID
+	isEditor := false
+	var err error
+	if !canModerateApps && !isOwner {
+		isEditor, err = isEditorForApp(c.Request.Context(), db, id, viewerID)
+		if err != nil {
+			httperror.InternalServerError(c, "Error checking app editor permissions", err)
+			return
+		}
+	}
+	if !canModerateApps && !isOwner && !isEditor {
+		httperror.Forbidden(c, "You do not have permission to edit this app", errors.New("not owner or editor"))
+		return
+	}
+	if !canModerateApps && app.IsLocked {
+		httperror.Forbidden(c, "This app is locked and cannot be edited", errors.New("app locked"))
+		return
+	}
+
+	var body struct {
+		IsHidden *bool `json:"isHidden" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.IsHidden == nil {
+		httperror.StatusBadRequest(c, "isHidden is required", err)
+		return
+	}
+
+	now := time.Now()
+	if _, err := db.NewUpdate().
+		Model((*models.Apps)(nil)).
+		Set("is_hidden = ?", *body.IsHidden).
+		Set("updated_at = ?", now).
+		Where("id = ?", id).
+		Exec(c.Request.Context()); err != nil {
+		httperror.InternalServerError(c, "Error updating app visibility", err)
+		return
+	}
+
+	action := "made visible"
+	if *body.IsHidden {
+		action = "hidden"
+	}
+	audit.WriteAudit(c.Request.Context(), db, viewerID.String(), "app.visibility.update", fmt.Sprintf("%s app %s", action, id))
+	c.JSON(200, gin.H{"id": id, "isHidden": *body.IsHidden, "updatedAt": now})
 }
 
 func DeleteApp(c *gin.Context, db *bun.DB) {

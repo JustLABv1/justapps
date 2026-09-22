@@ -22,6 +22,8 @@ import {
     CircleHelp,
     Copy,
     ExternalLink,
+    Eye,
+    EyeOff,
     Lock,
     MoreHorizontal,
     Pencil,
@@ -109,6 +111,7 @@ function MyAppsContent() {
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [visibilityPending, setVisibilityPending] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
 
   // Auth check
@@ -227,6 +230,33 @@ function MyAppsContent() {
     const permissions = getAppPermissions(app);
     if (!permissions.canDelete) return;
     setDeleteCandidate(app);
+  };
+
+  const handleVisibilityChange = async (app: AppConfig, isHidden: boolean) => {
+    if (!getAppPermissions(app).canEdit || visibilityPending.has(app.id)) return;
+
+    setVisibilityPending((current) => new Set(current).add(app.id));
+    setApps((current) => current.map((entry) => entry.id === app.id ? { ...entry, isHidden } : entry));
+    try {
+      const response = await fetchApi(`/apps/${app.id}/visibility`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isHidden }),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error((error as { message?: string }).message || 'Sichtbarkeit konnte nicht geändert werden.');
+      }
+      toast.success(isHidden ? `„${app.name}“ ist jetzt versteckt.` : `„${app.name}“ ist wieder sichtbar.`);
+    } catch (error) {
+      setApps((current) => current.map((entry) => entry.id === app.id ? { ...entry, isHidden: app.isHidden } : entry));
+      toast.danger(error instanceof Error ? error.message : 'Sichtbarkeit konnte nicht geändert werden.');
+    } finally {
+      setVisibilityPending((current) => {
+        const next = new Set(current);
+        next.delete(app.id);
+        return next;
+      });
+    }
   };
 
   const getAppPermissions = (app: AppConfig) => {
@@ -488,6 +518,11 @@ function MyAppsContent() {
                               <Lock className="w-3 h-3" /> Gesperrt
                             </Chip>
                           )}
+                          {app.isHidden && (
+                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                              <EyeOff className="w-3 h-3" /> Versteckt
+                            </Chip>
+                          )}
                           {permissions.accessRole === 'editor' && (
                             <Chip size="sm" color="accent" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
                               <UsersRound className="w-3 h-3" /> Bearbeiter
@@ -534,10 +569,21 @@ function MyAppsContent() {
                             <Dropdown.Menu aria-label={`Aktionen für ${app.name}`} onAction={(key) => {
                               if (key === 'copy') void handleCopyApp(app);
                               if (key === 'editors') handleManageEditors(app);
+                              if (key === 'visibility') void handleVisibilityChange(app, !app.isHidden);
                               if (key === 'delete') handleDeleteApp(app);
                             }}>
                               {canCopy && <Dropdown.Item id="copy" textValue="Kopieren"><div className="flex items-center gap-2"><Copy className="h-4 w-4" />Kopieren</div></Dropdown.Item>}
                               {permissions.canManageEditors && <Dropdown.Item id="editors" textValue="Bearbeiter verwalten"><div className="flex items-center gap-2"><UsersRound className="h-4 w-4" />Bearbeiter verwalten</div></Dropdown.Item>}
+                              <Dropdown.Item
+                                id="visibility"
+                                textValue={app.isHidden ? 'Wieder sichtbar machen' : 'App verstecken'}
+                                isDisabled={!canEdit || visibilityPending.has(app.id)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {app.isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                  {app.isHidden ? 'Wieder sichtbar machen' : 'App verstecken'}
+                                </div>
+                              </Dropdown.Item>
                               <Dropdown.Item id="delete" textValue="Löschen" isDisabled={!canDelete} className="text-danger"><div className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Löschen</div></Dropdown.Item>
                             </Dropdown.Menu>
                           </Dropdown.Popover>

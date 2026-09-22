@@ -104,6 +104,9 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 			userGroup.PUT("/:id", func(c *gin.Context) {
 				apps.UpdateApp(c, db)
 			})
+			userGroup.PATCH("/:id/visibility", func(c *gin.Context) {
+				apps.SetAppVisibility(c, db)
+			})
 			userGroup.DELETE("/:id", func(c *gin.Context) {
 				apps.DeleteApp(c, db)
 			})

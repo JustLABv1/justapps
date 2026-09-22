@@ -110,6 +110,10 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 				OR ? OR (? AND (app.owner_id = ? OR EXISTS (
 					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
 				))))
+			AND (COALESCE(app.is_hidden, false) = false
+				OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
+				))))
 		)
 		SELECT *, COUNT(*) OVER()::int AS total
 		FROM combined
@@ -123,6 +127,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		LIMIT ? OFFSET ?`,
 		search, pattern, pattern, pattern, pattern,
 		search, pattern, pattern, pattern, pattern,
+		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		scope, scope, appID, appID, owner, viewerID,
 		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
@@ -141,8 +146,12 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 
 	apps := make([]globalFAQAppOption, 0)
 	err = db.NewRaw(`SELECT DISTINCT app.id, app.name, app.icon FROM apps app JOIN faq_questions q ON q.app_id = app.id
-		WHERE LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
-			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))) ORDER BY app.name`, canViewAppDrafts, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
+		WHERE (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))))
+		AND (COALESCE(app.is_hidden, false) = false OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?)))) ORDER BY app.name`,
+		canViewAppDrafts, hasViewer, viewerID, viewerID,
+		canViewAppDrafts, hasViewer, viewerID, viewerID).Scan(c.Request.Context(), &apps)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ apps", err)
 		return

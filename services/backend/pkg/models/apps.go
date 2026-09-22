@@ -85,6 +85,7 @@ type Apps struct {
 	OwnerID                uuid.UUID             `bun:"owner_id,type:uuid,nullzero" json:"ownerId"`
 	Owner                  *Users                `bun:"rel:belongs-to,join:owner_id=id" json:"owner"`
 	IsLocked               bool                  `bun:"is_locked,notnull,default:false" json:"isLocked"`
+	IsHidden               bool                  `bun:"is_hidden,notnull,default:false" json:"isHidden"`
 	SkipLinkProbe          bool                  `bun:"skip_link_probe,notnull,default:false" json:"skipLinkProbe"`
 	LinkProbeStatus        string                `bun:"link_probe_status,notnull,default:'unknown'" json:"linkProbeStatus"`
 	BannerText             string                `bun:"banner_text,notnull,default:''" json:"bannerText"`
