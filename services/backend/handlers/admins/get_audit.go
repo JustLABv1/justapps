@@ -29,8 +29,8 @@ func GetAudit(c *gin.Context, db *bun.DB) {
 		ColumnExpr("a.id, a.user_id, a.operation, a.details, a.created_at, u.username, u.email, u.role").
 		Join("LEFT JOIN users AS u ON u.id::text = a.user_id").
 		OrderExpr("a.created_at DESC").
-		Limit(limit).
-		Offset(offset)
+		Limit(int64(limit)).
+		Offset(int64(offset))
 
 	if operation != "" {
 		q = q.Where("a.operation = ?", operation)

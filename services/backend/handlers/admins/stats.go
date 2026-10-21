@@ -76,9 +76,9 @@ func GetStats(c *gin.Context, db *bun.DB) {
 		linkProbingEnabled = settings.EnableLinkProbing
 	}
 
-	appsWithProbeIssues := 0
-	downApps := 0
-	partialApps := 0
+	var appsWithProbeIssues int64
+	var downApps int64
+	var partialApps int64
 	linkProbeIssues := make([]LinkProbeIssue, 0)
 
 	if linkProbingEnabled {

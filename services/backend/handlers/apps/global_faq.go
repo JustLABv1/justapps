@@ -191,7 +191,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at")
 	total, err := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID).Count(c)
 	if err == nil {
-		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
+		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(int64(pageSize)).Offset(int64(page-1)*int64(pageSize)).Scan(c, &rows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ answers", err)
@@ -201,7 +201,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	for _, row := range rows {
 		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
-	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
+	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }
 
 func CreateGlobalFAQQuestion(c *gin.Context, db *bun.DB) {

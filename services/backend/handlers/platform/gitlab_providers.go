@@ -312,7 +312,7 @@ func loadGitLabProviderSettings(ctx context.Context, db *bun.DB, providerKey str
 	return settings, true, nil
 }
 
-func countGitLabProviderLinks(ctx context.Context, db *bun.DB, providerKey string) (int, error) {
+func countGitLabProviderLinks(ctx context.Context, db *bun.DB, providerKey string) (int64, error) {
 	count, err := db.NewSelect().Model((*models.GitLabAppLink)(nil)).Where("provider_key = ?", strings.TrimSpace(providerKey)).Count(ctx)
 	if err != nil {
 		return 0, err
