@@ -455,14 +455,14 @@ func GetApps(c *gin.Context, db *bun.DB) {
 		}
 	}
 
-	total := 0
+	var total int64
 	if paginationRequested {
 		total, err = query.Count(c)
 		if err != nil {
 			httperror.InternalServerError(c, "Error counting apps", err)
 			return
 		}
-		query = query.Limit(pageSize).Offset((page - 1) * pageSize)
+		query = query.Limit(int64(pageSize)).Offset(int64(page-1) * int64(pageSize))
 	}
 
 	err = query.Scan(c)
@@ -599,7 +599,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 			"page":                 page,
 			"pageSize":             pageSize,
 			"total":                total,
-			"hasMore":              page*pageSize < total,
+			"hasMore":              int64(page)*int64(pageSize) < total,
 			"searchMode":           map[bool]string{true: "semantic", false: "lexical"}[semanticMode],
 			"searchInterpretation": searchIntent,
 		})

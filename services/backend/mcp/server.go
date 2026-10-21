@@ -41,7 +41,7 @@ type SearchAppsInput struct {
 // SearchAppsOutput is intentionally compact so agents can use it for discovery.
 type SearchAppsOutput struct {
 	Apps     []AppSummary `json:"apps"`
-	Total    int          `json:"total"`
+	Total    int64        `json:"total"`
 	Returned int          `json:"returned"`
 }
 
@@ -224,7 +224,7 @@ func (r catalogReader) get(ctx context.Context, _ *mcpsdk.CallToolRequest, input
 	return nil, details, nil
 }
 
-func (r catalogReader) queryApps(ctx context.Context, input SearchAppsInput, limit int) ([]models.Apps, int, error) {
+func (r catalogReader) queryApps(ctx context.Context, input SearchAppsInput, limit int) ([]models.Apps, int64, error) {
 	if r.db == nil {
 		return nil, 0, errors.New("JustApps database is not configured")
 	}
@@ -265,7 +265,7 @@ func (r catalogReader) queryApps(ctx context.Context, input SearchAppsInput, lim
 		OrderExpr("LOWER(a.name) ASC").
 		OrderExpr("a.id ASC")
 	if limit > 0 {
-		query = query.Limit(limit)
+		query = query.Limit(int64(limit))
 	}
 	if err := query.Scan(ctx); err != nil {
 		return nil, 0, fmt.Errorf("loading JustApps entries: %w", err)
@@ -458,12 +458,12 @@ func (r catalogReader) readCatalog(ctx context.Context, req *mcpsdk.ReadResource
 
 	document := struct {
 		Apps      []AppSummary `json:"apps"`
-		Total     int          `json:"total"`
+		Total     int64        `json:"total"`
 		Truncated bool         `json:"truncated"`
 	}{
 		Apps:      make([]AppSummary, 0, len(apps)),
 		Total:     total,
-		Truncated: total > len(apps),
+		Truncated: total > int64(len(apps)),
 	}
 	for _, app := range apps {
 		document.Apps = append(document.Apps, publicAppSummary(app))

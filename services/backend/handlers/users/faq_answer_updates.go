@@ -53,7 +53,7 @@ func ListFAQAnswerNotifications(c *gin.Context, db *bun.DB) {
 			WHERE n.user_id = ? AND n.global_answer_id IS NOT NULL
 		) AS notification` + seenFilter
 	countQuery := `SELECT COUNT(*) FROM (` + baseQuery + `) AS counted_notifications`
-	var total int
+	var total int64
 	if err := db.NewRaw(countQuery, userID, userID).Scan(c.Request.Context(), &total); err != nil {
 		httperror.InternalServerError(c, "Antwort-Benachrichtigungen konnten nicht gezählt werden", err)
 		return

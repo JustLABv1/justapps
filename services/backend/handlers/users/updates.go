@@ -167,7 +167,7 @@ func ListReleaseUpdates(context *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(context, "Updates konnten nicht gezählt werden", err)
 		return
 	}
-	query = query.Limit(pageSize).Offset((page - 1) * pageSize)
+	query = query.Limit(int64(pageSize)).Offset(int64(page-1) * int64(pageSize))
 
 	if err := query.Scan(context.Request.Context(), &items); err != nil {
 		httperror.InternalServerError(context, "Updates konnten nicht geladen werden", err)
@@ -191,7 +191,7 @@ func GetReleaseUpdateSummary(context *gin.Context, db *bun.DB) {
 		Count int    `bun:"count"`
 	}
 
-	var totalUnread int
+	var totalUnread int64
 	totalUnread, _ = db.NewSelect().
 		TableExpr("user_release_inbox_items").
 		Where("user_id = ?", userID).

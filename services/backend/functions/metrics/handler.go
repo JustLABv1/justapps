@@ -435,7 +435,7 @@ func (c *collector) loadAuditCounts(ctx context.Context) (map[string]int64, erro
 	return counts, nil
 }
 
-func (c *collector) countRows(ctx context.Context, table string) (int, error) {
+func (c *collector) countRows(ctx context.Context, table string) (int64, error) {
 	count, err := c.db.NewSelect().TableExpr(table).Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("metrics: count %s: %w", table, err)

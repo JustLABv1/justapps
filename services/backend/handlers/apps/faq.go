@@ -228,7 +228,7 @@ func GetFAQ(c *gin.Context, db *bun.DB) {
 	}
 	total, err := query.Clone().Count(ctx)
 	if err == nil {
-		err = applyFAQQuestionOrder(query, c.Query("sort")).Limit(pageSize).Offset((page-1)*pageSize).Scan(ctx, &questionRows)
+		err = applyFAQQuestionOrder(query, c.Query("sort")).Limit(int64(pageSize)).Offset(int64(page-1)*int64(pageSize)).Scan(ctx, &questionRows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ questions", err)
@@ -239,7 +239,7 @@ func GetFAQ(c *gin.Context, db *bun.DB) {
 	for _, row := range questionRows {
 		questions = append(questions, faqQuestionResponse(row))
 	}
-	c.JSON(http.StatusOK, gin.H{"questions": questions, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
+	c.JSON(http.StatusOK, gin.H{"questions": questions, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }
 
 func GetFAQAnswers(c *gin.Context, db *bun.DB) {
@@ -266,7 +266,7 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 		GroupExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at")
 	total, err := db.NewSelect().TableExpr("faq_answers AS a").Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).Count(c)
 	if err == nil {
-		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(pageSize).Offset((page-1)*pageSize).Scan(c, &rows)
+		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(int64(pageSize)).Offset(int64(page-1)*int64(pageSize)).Scan(c, &rows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load FAQ answers", err)
@@ -276,7 +276,7 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 	for _, row := range rows {
 		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
-	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": page*pageSize < total})
+	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }
 
 func CreateFAQQuestion(c *gin.Context, db *bun.DB) {

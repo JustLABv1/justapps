@@ -62,7 +62,7 @@ func ListFAQQuestionNotifications(context *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht gezählt werden", err)
 		return
 	}
-	query = query.Limit(pageSize).Offset((page - 1) * pageSize)
+	query = query.Limit(int64(pageSize)).Offset(int64(page-1) * int64(pageSize))
 
 	if err := query.Scan(context.Request.Context(), &items); err != nil {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht geladen werden", err)

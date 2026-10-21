@@ -29,12 +29,12 @@ func parseNotificationPagination(c *gin.Context) (int, int, bool) {
 	return page, pageSize, true
 }
 
-func paginatedResponse(items any, page, pageSize, total int) gin.H {
+func paginatedResponse(items any, page, pageSize int, total int64) gin.H {
 	return gin.H{
 		"items":    items,
 		"page":     page,
 		"pageSize": pageSize,
 		"total":    total,
-		"hasMore":  page*pageSize < total,
+		"hasMore":  int64(page)*int64(pageSize) < total,
 	}
 }

@@ -130,7 +130,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 	selectQuery := db.NewSelect().
 		Model(&chunks).
 		Join("JOIN apps AS a ON a.id = aikc.app_id").
-		Limit(limit)
+		Limit(int64(limit))
 
 	if viewer.Role != "admin" {
 		if viewer.HasUser && strings.TrimSpace(viewer.UserID) != "" {
@@ -171,7 +171,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 			Join("JOIN apps AS a ON a.id = aikc.app_id").
 			Where("aikc.app_id = ?", strings.TrimSpace(query.AppID)).
 			OrderExpr("aikc.indexed_at DESC").
-			Limit(limit)
+			Limit(int64(limit))
 		if viewer.Role != "admin" {
 			fallback = fallback.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
 		}
