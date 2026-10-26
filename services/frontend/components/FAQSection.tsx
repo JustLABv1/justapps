@@ -4,13 +4,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useStoreName } from '@/context/SettingsContext';
 import { PageFilters } from '@/components/PageHeader';
 import { fetchApi } from '@/lib/api';
-import { AlertDialog, Button, Card, Chip, Input, Label, ListBox, Select, TextArea, TextField, Tooltip, toast } from '@heroui/react';
-import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import { groupFAQThreads } from '@/lib/faqThreads';
+import { AlertDialog, Button, Card, Chip, Dropdown, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
+import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, MoreHorizontal, Reply, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
 import Image from 'next/image';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { getImageAssetUrl } from '@/lib/assets';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
@@ -18,6 +19,9 @@ interface FAQAnswer {
   userId: string;
   username: string;
   answer: string;
+  replyToAnswerId?: string;
+  replyToUsername?: string;
+  replyToText?: string;
   isPinned: boolean;
   creatorLiked: boolean;
   acceptedByAuthor: boolean;
@@ -80,64 +84,55 @@ function userFacingError(reason: unknown, fallback: string) {
   return fallback;
 }
 
-function AnswerActionTooltip({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return (
-    <Tooltip delay={350} closeDelay={100}>
-      {children}
-      <Tooltip.Content showArrow placement="top" className="max-w-72 px-3 py-2.5">
-        <Tooltip.Arrow />
-        <p className="font-semibold text-foreground">{title}</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted">{description}</p>
-      </Tooltip.Content>
-    </Tooltip>
-  );
-}
-
-function DeleteAction({
-  title,
-  description,
-  isLoading,
-  onConfirm,
-}: {
+function FAQDeleteConfirmation({ title, description, isOpen, onOpenChange, onConfirm }: {
   title: string;
   description: string;
-  isLoading: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog>
-      <AlertDialog.Trigger>
-        <Button
-          variant="ghost"
-          size="sm"
-          isDisabled={isLoading}
-          className="gap-1.5 text-xs text-muted hover:text-danger"
-          aria-label={title}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Löschen
+    <AlertDialog.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialog.Container>
+        <AlertDialog.Dialog className="sm:max-w-[420px]">
+          <AlertDialog.Header>
+            <AlertDialog.Icon status="danger" />
+            <AlertDialog.Heading>{title}</AlertDialog.Heading>
+          </AlertDialog.Header>
+          <AlertDialog.Body>{description}</AlertDialog.Body>
+          <AlertDialog.Footer>
+            <Button slot="close" variant="tertiary">Abbrechen</Button>
+            <Button slot="close" variant="danger" onPress={onConfirm}>Löschen</Button>
+          </AlertDialog.Footer>
+        </AlertDialog.Dialog>
+      </AlertDialog.Container>
+    </AlertDialog.Backdrop>
+  );
+}
+
+function FAQAnswerComposer({ recipient, value, onChange, onSubmit, onCancel, pending, disabled }: {
+  recipient?: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onCancel?: () => void;
+  pending: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <TextField value={value} onChange={onChange} className="flex flex-col gap-2">
+        <Label className="text-xs font-medium text-muted">{recipient ? `Antwort an ${recipient}` : 'Ihre Antwort auf die Frage'}</Label>
+        <TextArea autoComplete="off" placeholder={recipient ? 'Diskussion fortsetzen …' : 'Teilen Sie Ihre Erfahrung oder Empfehlung …'}
+          variant="secondary" className="min-h-24 w-full rounded-lg border border-border bg-surface text-sm leading-relaxed" rows={3} maxLength={5000} />
+      </TextField>
+      <div className="flex justify-end gap-2">
+        {onCancel && <Button size="sm" variant="ghost" onPress={onCancel} isDisabled={pending}>Abbrechen</Button>}
+        <Button size="sm" variant="primary" onPress={onSubmit} isDisabled={!value.trim() || disabled} isPending={pending} className="gap-1.5">
+          <Send className="h-3.5 w-3.5" />{recipient ? 'Antwort senden' : 'Antwort veröffentlichen'}
         </Button>
-      </AlertDialog.Trigger>
-      <AlertDialog.Backdrop>
-        <AlertDialog.Container>
-          <AlertDialog.Dialog className="sm:max-w-[420px]">
-            <AlertDialog.Header>
-              <AlertDialog.Icon status="danger" />
-              <AlertDialog.Heading>{title}</AlertDialog.Heading>
-            </AlertDialog.Header>
-            <AlertDialog.Body>
-              <p>{description}</p>
-            </AlertDialog.Body>
-            <AlertDialog.Footer>
-              <Button slot="close" variant="tertiary">Abbrechen</Button>
-              <Button slot="close" variant="danger" onPress={onConfirm} isPending={isLoading}>
-                Löschen
-              </Button>
-            </AlertDialog.Footer>
-          </AlertDialog.Dialog>
-        </AlertDialog.Container>
-      </AlertDialog.Backdrop>
-    </AlertDialog>
+      </div>
+    </div>
   );
 }
 
@@ -146,6 +141,11 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   const storeName = useStoreName();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
   const [questionDraft, setQuestionDraft] = useState('');
+  const [questionToDelete, setQuestionToDelete] = useState<FAQQuestion | null>(null);
+  const [answerToDelete, setAnswerToDelete] = useState<FAQAnswer | null>(null);
+  const [replyTargets, setReplyTargets] = useState<Record<string, FAQAnswer | undefined>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [collapsedThreads, setCollapsedThreads] = useState<Record<string, boolean>>({});
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -168,6 +168,15 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   const loadMoreQuestionsRef = useRef<HTMLDivElement>(null);
   const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
+
+  useEffect(() => {
+    for (const questionId of Object.keys(replyTargets)) {
+      if (!replyTargets[questionId]) continue;
+      const composer = document.getElementById(`faq-reply-composer-${questionId}`);
+      composer?.querySelector('textarea')?.focus({ preventScroll: true });
+      composer?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [replyTargets]);
 
   const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
 
@@ -221,7 +230,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       [questionId]: { answers: append ? current[questionId]?.answers ?? [] : [], page, hasMore: false, loading: true },
     }));
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_ANSWER_PAGE_SIZE) });
+      const params = new URLSearchParams({ page: String(page), pageSize: String(FAQ_ANSWER_PAGE_SIZE), threaded: 'true' });
       const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}/answers?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(await responseError(response, 'Antworten konnten nicht geladen werden.'));
       const data = await response.json() as { answers?: FAQAnswer[]; page?: number; hasMore?: boolean };
@@ -313,21 +322,24 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
   };
 
-  const handleAnswer = async (questionId: string) => {
-    const answer = (answerDrafts[questionId] || '').trim();
-    if (!user || !answer || submitting) return;
+  const handleAnswer = async (questionId: string, reply = false) => {
+    const target = reply ? replyTargets[questionId] : undefined;
+    const answer = ((reply ? replyDrafts : answerDrafts)[questionId] || '').trim();
+    if (!user || !answer || submitting || (reply && !target)) return;
 
     setSubmitting(`answer:${questionId}`);
     setError(null);
     try {
       const response = await fetchApi(`${endpointForQuestion(questionId)}/questions/${questionId}/answers`, {
         method: 'POST',
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify({ answer, replyToAnswerId: target?.id }),
       });
       if (!response.ok) {
         throw new Error(await responseError(response, 'Antwort konnte nicht veröffentlicht werden.'));
       }
-      setAnswerDrafts((previous) => {
+      if (reply) setReplyTargets((previous) => ({ ...previous, [questionId]: undefined }));
+      const clearDraft = reply ? setReplyDrafts : setAnswerDrafts;
+      clearDraft((previous) => {
         const next = { ...previous };
         delete next[questionId];
         return next;
@@ -335,6 +347,11 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (await loadFAQ(1, false)) {
         setExpandedQuestionId(questionId);
         await loadAnswers(questionId);
+        if (reply) {
+          for (let page = 2; page <= (answerPages[questionId]?.page ?? 1); page++) {
+            if (!await loadAnswers(questionId, page, true)) break;
+          }
+        }
         window.dispatchEvent(new Event('faq:changed'));
         toast.success('Antwort veröffentlicht.');
       }
@@ -657,19 +674,115 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
         <div className="space-y-4">
           {questions.map((question) => {
             const canDeleteQuestion = canDeleteQuestions || user?.id === question.userId;
+            const replyTarget = replyTargets[question.id];
             const answerDraft = answerDrafts[question.id] || '';
             const answerPage = answerPages[question.id];
             const isExpanded = expandedQuestionId === question.id;
             const appIconSrc = getImageAssetUrl(question.appIcon);
 
+            const threads = groupFAQThreads(answerPage?.answers ?? []);
+            const renderAnswer = (answer: FAQAnswer, isReply: boolean, threadRootId: string) => {
+              const canDeleteAnswer = canDeleteAnswers || user?.id === answer.userId;
+              const answerBusy = busyAction === `upvote:${answer.id}`
+                || busyAction === `acceptance:${answer.id}`
+                || busyAction === `isPinned:${answer.id}`
+                || busyAction === `creatorLiked:${answer.id}`
+                || busyAction === `delete-answer:${answer.id}`;
+
+              return (
+                <div id={`faq-answer-${answer.id}`} key={answer.id}
+                  className="grid min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-start gap-x-2.5 py-3">
+                  <span aria-hidden="true" className="row-span-3 flex h-7 w-7 items-center justify-center rounded-full bg-surface-secondary text-[10px] font-semibold uppercase text-muted">
+                    {(answer.username || 'Anonymer Nutzer').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}
+                  </span>
+                  <div className="flex min-h-7 min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="break-words text-sm font-semibold text-foreground">{answer.username || 'Anonymer Nutzer'}</span>
+                    <time dateTime={answer.createdAt} className="text-[11px] text-muted">{formatDate(answer.createdAt)}</time>
+                    {answer.isPinned && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-accent"><Pin className="h-3 w-3" />Angepinnt</span>
+                    )}
+                    {answer.creatorLiked && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-success"><Heart className="h-3 w-3" />Empfohlen</span>
+                    )}
+                    {answer.acceptedByAuthor && (
+                      <span title="Vom Fragensteller bestätigt" className="inline-flex items-center gap-1 text-[11px] text-success"><CheckCircle2 className="h-3 w-3" />Bestätigt</span>
+                    )}
+                  </div>
+                  {(canPinAnswers || canRecommendAnswers || canDeleteAnswer || user?.id === question.userId) ? (
+                    <Dropdown>
+                      <Button isIconOnly size="sm" variant="ghost" isDisabled={answerBusy}
+                        aria-label={`Weitere Aktionen für die Antwort von ${answer.username || 'Anonymer Nutzer'}`}
+                        className="h-7 min-h-7 w-7 min-w-7 text-muted">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                      <Dropdown.Popover placement="bottom end" className="min-w-56">
+                        <Dropdown.Menu aria-label="Antwort verwalten" onAction={(key) => {
+                          if (key === 'pin') void handleHighlight(answer, 'isPinned');
+                          if (key === 'recommend') void handleHighlight(answer, 'creatorLiked');
+                          if (key === 'accept') void handleAcceptance(answer);
+                          if (key === 'delete') setAnswerToDelete(answer);
+                        }}>
+                          {canPinAnswers && (
+                            <Dropdown.Item id="pin" textValue={answer.isPinned ? 'Anheftung entfernen' : 'Antwort anheften'}>
+                              <Pin className="h-4 w-4 text-muted" /><Label>{answer.isPinned ? 'Anheftung entfernen' : 'Antwort anheften'}</Label>
+                            </Dropdown.Item>
+                          )}
+                          {canRecommendAnswers && (
+                            <Dropdown.Item id="recommend" textValue={answer.creatorLiked ? 'Empfehlung entfernen' : 'Antwort empfehlen'}>
+                              <Heart className="h-4 w-4 text-muted" /><Label>{answer.creatorLiked ? 'Empfehlung entfernen' : 'Antwort empfehlen'}</Label>
+                            </Dropdown.Item>
+                          )}
+                          {user?.id === question.userId && (
+                            <Dropdown.Item id="accept" textValue={answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}>
+                              <CheckCircle2 className="h-4 w-4 text-muted" /><Label>{answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}</Label>
+                            </Dropdown.Item>
+                          )}
+                          {canDeleteAnswer && (
+                            <Dropdown.Item id="delete" textValue="Antwort löschen" variant="danger">
+                              <Trash2 className="h-4 w-4 text-danger" /><Label>Antwort löschen</Label>
+                            </Dropdown.Item>
+                          )}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown>
+                  ) : <span />}
+                  <div className="col-start-2 col-end-4 min-w-0">
+                    {isReply && answer.replyToAnswerId !== threadRootId && (
+                      <p className="mb-1 flex items-center gap-1 text-[11px] text-muted"><Reply className="h-3 w-3" />an {answer.replyToUsername || 'Anonymer Nutzer'}</p>
+                    )}
+                    <p className="max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{answer.answer}</p>
+                  </div>
+                  <div className="col-start-2 col-end-4 mt-1 flex flex-wrap items-center gap-2">
+                    <Button size="sm" variant="ghost" isDisabled={!user || answerBusy}
+                      onPress={() => void handleUpvote(answer)}
+                      className={`h-7 min-h-7 gap-1 px-1 text-xs ${answer.userUpvoted ? 'text-accent' : 'text-muted'}`}
+                      aria-pressed={answer.userUpvoted} aria-label={user ? 'Antwort als hilfreich markieren' : 'Zum Abstimmen anmelden'}>
+                      <ArrowUp className="h-3.5 w-3.5" />{answer.upvoteCount}<span>Hilfreich</span>
+                    </Button>
+                    {user && (
+                      <Button size="sm" variant="ghost" className="h-7 min-h-7 gap-1 px-1 text-xs text-muted hover:text-foreground"
+                        aria-label={`Auf die Antwort von ${answer.username || 'Anonymer Nutzer'} antworten`}
+                        onPress={() => {
+                          setReplyTargets((previous) => ({ ...previous, [question.id]: answer }));
+                          setCollapsedThreads((previous) => ({ ...previous, [threadRootId]: false }));
+                        }}>
+                        <Reply className="h-3.5 w-3.5" />Antworten
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            };
+
             return (
               <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
+                <div className="flex items-start gap-2 p-5 sm:p-6">
                 <button
                   type="button"
                   onClick={() => toggleQuestion(question.id)}
                   aria-expanded={isExpanded}
                   aria-controls={`faq-answer-panel-${question.id}`}
-                  className="flex w-full cursor-pointer items-start justify-between gap-4 p-5 text-left outline-none hover:bg-surface-secondary/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:p-6"
+                  className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-4 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <div className="min-w-0 space-y-2">
                     {global && (
@@ -698,145 +811,77 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                   </div>
                   <ChevronDown className={`mt-1 h-5 w-5 shrink-0 text-muted ${isExpanded ? 'rotate-180' : ''}`} />
                 </button>
+                {canDeleteQuestion && (
+                  <Dropdown>
+                    <Button isIconOnly size="sm" variant="ghost"
+                      aria-label="Weitere Aktionen für diese Frage"
+                      isDisabled={busyAction === `delete-question:${question.id}`}
+                      className="h-7 min-h-7 w-7 min-w-7 shrink-0 text-muted">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                    <Dropdown.Popover placement="bottom end">
+                      <Dropdown.Menu aria-label="Frage verwalten" onAction={(key) => {
+                        if (key === 'delete') setQuestionToDelete(question);
+                      }}>
+                        <Dropdown.Item id="delete" textValue="Frage löschen" variant="danger">
+                          <Trash2 className="h-4 w-4 text-danger" /><Label>Frage löschen</Label>
+                        </Dropdown.Item>
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown>
+                )}
+                </div>
 
                 {isExpanded && (
                 <div className="px-5 pb-6 sm:px-6">
                   <div id={`faq-answer-panel-${question.id}`}>
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h4 className="font-medium text-foreground">{question.answerCount === 1 ? 'Antwort' : 'Antworten'}</h4>
-                      {global && question.scope === 'app' && question.appId && (
-                        <Link href={`/apps/${question.appId}`} className="font-medium text-accent hover:underline">
-                          Zu {question.appName || 'dieser App'}
-                        </Link>
-                      )}
-                    </div>
-                  {canDeleteQuestion && (
-                    <DeleteAction
-                      title="Frage löschen?"
-                      description="Möchten Sie diese Frage einschließlich aller Antworten wirklich löschen?"
-                      isLoading={busyAction === `delete-question:${question.id}`}
-                      onConfirm={() => void handleDeleteQuestion(question.id)}
-                    />
+                  {global && question.scope === 'app' && question.appId && (
+                    <Link href={`/apps/${question.appId}`} className="mb-2 inline-block text-xs font-medium text-accent hover:underline">
+                      Zu {question.appName || 'dieser App'}
+                    </Link>
                   )}
-                </div>
                 <div className="space-y-3">
                   {answerPage?.loading && answerPage.answers.length === 0 ? (
                     <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
                     </div>
-                  ) : (answerPage?.answers.length ?? 0) > 0 ? answerPage!.answers.map((answer) => {
-                    const canDeleteAnswer = canDeleteAnswers || user?.id === answer.userId;
-                    const answerBusy = busyAction === `upvote:${answer.id}`
-                      || busyAction === `acceptance:${answer.id}`
-                      || busyAction === `isPinned:${answer.id}`
-                      || busyAction === `creatorLiked:${answer.id}`
-                      || busyAction === `delete-answer:${answer.id}`;
-
+                  ) : (answerPage?.answers.length ?? 0) > 0 ? threads.map(({ root, replies }) => {
+                    const targetInThread = replyTarget && (replyTarget.id === root.id || replies.some((reply) => reply.id === replyTarget.id));
+                    const expanded = !collapsedThreads[root.id];
                     return (
-                      <div
-                        key={answer.id}
-                        className={`rounded-xl border p-4 sm:p-5 ${answer.isPinned || answer.creatorLiked ? 'border-accent/25 bg-accent/5' : 'border-transparent bg-surface-secondary/60'}`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-surface text-xs font-semibold uppercase text-accent">
-                              {(answer.username || 'Anonymer Nutzer').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="break-words text-sm font-semibold text-foreground">{answer.username || 'Anonymer Nutzer'}</p>
-                              <time dateTime={answer.createdAt} className="text-xs text-muted">{formatDate(answer.createdAt)}</time>
+                      <section key={root.id} className="border-b border-border/60 pb-3 last:border-b-0" aria-label={`Antwort von ${root.username || 'Anonymer Nutzer'} mit Diskussion`}>
+                        {renderAnswer(root, false, root.id)}
+                        {(replies.length > 0 || targetInThread) && (
+                          <div className="ml-3.5 border-l border-border pl-4 sm:pl-6">
+                            {replies.length > 0 && (
+                              <Button size="sm" variant="ghost" className="my-1 gap-1.5 text-xs text-muted"
+                                aria-expanded={expanded} aria-controls={`faq-thread-${root.id}`}
+                                onPress={() => setCollapsedThreads((previous) => ({ ...previous, [root.id]: expanded }))}>
+                                <ChevronDown className={`h-3.5 w-3.5 ${expanded ? '' : '-rotate-90'}`} />
+                                {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'} in dieser Diskussion
+                              </Button>
+                            )}
+                            <div id={`faq-thread-${root.id}`} hidden={!expanded}>
+                              <div className="space-y-0.5">
+                                {replies.map((reply) => renderAnswer(reply, true, root.id))}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex flex-wrap justify-end gap-1.5">
-                            {answer.acceptedByAuthor && (
-                              <Chip size="sm" variant="soft" color="success" className="gap-1 text-xs">
-                                <CheckCircle2 className="h-3 w-3" /> Vom Fragensteller bestätigt
-                              </Chip>
-                            )}
-                            {answer.isPinned && (
-                              <Chip size="sm" variant="soft" color="accent" className="gap-1 text-[10px] font-bold">
-                                <Pin className="h-3 w-3" /> Angepinnt
-                              </Chip>
-                            )}
-                            {answer.creatorLiked && (
-                              <Chip size="sm" variant="soft" color="success" className="gap-1 text-[10px] font-bold">
-                                <Heart className="h-3 w-3 fill-current" /> Empfohlen
-                              </Chip>
+                            {targetInThread && user && (
+                              <div id={`faq-reply-composer-${question.id}`} className="pb-4 pt-3">
+                                <FAQAnswerComposer
+                                  recipient={replyTarget.username || 'Anonymer Nutzer'}
+                                  value={replyDrafts[question.id] || ''}
+                                  onChange={(value) => setReplyDrafts((previous) => ({ ...previous, [question.id]: value }))}
+                                  onSubmit={() => void handleAnswer(question.id, true)}
+                                  onCancel={() => setReplyTargets((previous) => ({ ...previous, [question.id]: undefined }))}
+                                  pending={submitting === `answer:${question.id}`}
+                                  disabled={submitting !== null}
+                                />
+                              </div>
                             )}
                           </div>
-                        </div>
-
-                        <p className="my-4 max-w-3xl whitespace-pre-wrap break-words text-sm leading-7 text-foreground sm:ml-12">{answer.answer}</p>
-
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:ml-12">
-                          <Button
-                            size="sm"
-                            variant={answer.userUpvoted ? 'secondary' : 'ghost'}
-                            isDisabled={!user || answerBusy}
-                            onPress={() => void handleUpvote(answer)}
-                            className={`gap-1.5 text-xs ${answer.userUpvoted ? 'text-accent' : 'text-muted'}`}
-                            aria-pressed={answer.userUpvoted}
-                            aria-label={user ? 'Antwort hochstufen' : 'Zum Abstimmen anmelden'}
-                          >
-                            <ArrowUp className="h-3.5 w-3.5" />
-                            <span>{answer.upvoteCount}</span>
-                            <span className="text-xs">Hilfreich</span>
-                          </Button>
-
-                          {(canPinAnswers || canRecommendAnswers) && (
-                            <>
-                              {canPinAnswers && <AnswerActionTooltip title="Anheften" description="Hält diese Antwort oben in der Liste. Das sagt nicht aus, ob das konkrete Anliegen gelöst wurde.">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                isDisabled={answerBusy}
-                                onPress={() => void handleHighlight(answer, 'isPinned')}
-                                className={`gap-1.5 text-xs ${answer.isPinned ? 'text-accent' : 'text-muted'}`}
-                                aria-pressed={answer.isPinned}
-                              >
-                                <Pin className="h-3.5 w-3.5" />
-                                {answer.isPinned ? 'Lösen' : 'Anheften'}
-                              </Button>
-                              </AnswerActionTooltip>}
-                              {canRecommendAnswers && <AnswerActionTooltip title="Empfehlen" description="Zeichnet eine fachlich besonders hilfreiche Antwort aus. Das ist unabhängig von der Bestätigung des Fragenstellers.">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                isDisabled={answerBusy}
-                                onPress={() => void handleHighlight(answer, 'creatorLiked')}
-                                className={`gap-1.5 text-xs ${answer.creatorLiked ? 'text-accent' : 'text-muted'}`}
-                                aria-pressed={answer.creatorLiked}
-                              >
-                                <Heart className={`h-3.5 w-3.5 ${answer.creatorLiked ? 'fill-current' : ''}`} />
-                                {answer.creatorLiked ? 'Empfehlung entfernen' : 'Empfehlen'}
-                              </Button>
-                              </AnswerActionTooltip>}
-                            </>
-                          )}
-
-                          {user?.id === question.userId && (
-                            <AnswerActionTooltip title="Hat meine Frage beantwortet" description="Nur der Fragensteller bestätigt damit, dass diese Antwort sein konkretes Anliegen gelöst hat. Das ist keine redaktionelle Empfehlung.">
-                            <Button size="sm" variant="ghost" isDisabled={answerBusy}
-                              aria-pressed={answer.acceptedByAuthor}
-                              className={`gap-1.5 text-xs ${answer.acceptedByAuthor ? 'text-success' : 'text-muted'}`}
-                              onPress={() => void handleAcceptance(answer)}>
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              {answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}
-                            </Button>
-                            </AnswerActionTooltip>
-                          )}
-
-                          {canDeleteAnswer && (
-                            <DeleteAction
-                              title="Antwort löschen?"
-                              description="Möchten Sie diese Antwort wirklich unwiderruflich löschen?"
-                              isLoading={busyAction === `delete-answer:${answer.id}`}
-                              onConfirm={() => void handleDeleteAnswer(question.id, answer.id)}
-                            />
-                          )}
-                        </div>
-                      </div>
+                        )}
+                      </section>
                     );
                   }) : (
                     <p className="rounded-xl border border-dashed border-border bg-surface-secondary/20 px-4 py-5 text-center text-sm text-muted">
@@ -857,37 +902,16 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                   )}
 
                   {user && (
-                    <details className="group rounded-xl border border-border">
-                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4 group-open:rotate-45" />Antwort schreiben</summary>
-                      <div className="px-4 pb-4">
-                      <TextField
-                        value={answerDraft}
-                        onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
-                        className="flex flex-col gap-1.5"
-                      >
-                        <Label className="sr-only">Ihre Antwort</Label>
-                        <TextArea
-                          aria-label={`Antwort auf: ${question.question}`}
-                          placeholder="Was ist Ihre Erfahrung oder Empfehlung?"
-                          variant="secondary"
-                          className="min-h-28 w-full rounded-lg border border-border bg-surface text-sm leading-relaxed"
-                          rows={3}
-                          maxLength={5000}
+                    <details id={`faq-composer-${question.id}`} className="group border-t border-border/60 pt-2">
+                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-medium text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4 group-open:rotate-45" />Antwort auf Frage schreiben</summary>
+                      <div className="pb-3 pt-2">
+                        <FAQAnswerComposer
+                          value={answerDraft}
+                          onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
+                          onSubmit={() => void handleAnswer(question.id)}
+                          pending={submitting === `answer:${question.id}`}
+                          disabled={submitting !== null}
                         />
-                      </TextField>
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onPress={() => void handleAnswer(question.id)}
-                          isDisabled={!answerDraft.trim() || submitting !== null}
-                          isPending={submitting === `answer:${question.id}`}
-                          className="gap-1.5 font-bold"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                          Antwort senden
-                        </Button>
-                      </div>
                       </div>
                     </details>
                   )}
@@ -909,6 +933,20 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
           )}
         </div>
       )}
+      <FAQDeleteConfirmation
+        title="Antwort löschen?"
+        description="Möchten Sie diese Antwort wirklich unwiderruflich löschen?"
+        isOpen={answerToDelete !== null}
+        onOpenChange={(open) => { if (!open) setAnswerToDelete(null); }}
+        onConfirm={() => { if (answerToDelete) void handleDeleteAnswer(answerToDelete.questionId, answerToDelete.id); }}
+      />
+      <FAQDeleteConfirmation
+        title="Frage löschen?"
+        description="Möchten Sie diese Frage einschließlich aller Antworten wirklich löschen?"
+        isOpen={questionToDelete !== null}
+        onOpenChange={(open) => { if (!open) setQuestionToDelete(null); }}
+        onConfirm={() => { if (questionToDelete) void handleDeleteQuestion(questionToDelete.id); }}
+      />
       {!user && <p className="text-center text-sm text-muted"><a href="/login" className="font-medium text-accent underline underline-offset-4">Anmelden</a>, um eigene Fragen zu stellen oder Antworten beizutragen.</p>}
     </div>
   );
