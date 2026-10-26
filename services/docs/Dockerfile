@@ -1,4 +1,4 @@
-FROM reg.mini.dev/node:26.12.0-dev AS builder
+FROM node:26.12.1-alpine3.24 AS builder
 
 USER root
 WORKDIR /app
@@ -11,7 +11,14 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
-FROM reg.mini.dev/node:26.12.0 AS runner
+# Keep package managers and build headers out of the runtime layers.
+FROM alpine:3.24 AS runner
+RUN apk add --no-cache ca-certificates libstdc++ libatomic \
+    && addgroup -g 1000 node \
+    && adduser -D -u 1000 -G node node
+COPY --from=builder /usr/local/bin/node /usr/local/bin/node
+# Check shared libraries on the target architecture during the build.
+RUN node --version
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -23,4 +30,6 @@ COPY --from=builder --chown=1000:1000 /app/.next/static ./.next/static
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+USER node
+
 CMD ["node", "server.js"]

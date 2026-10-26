@@ -1,4 +1,4 @@
-FROM reg.mini.dev/go:v1.27.3 AS builder
+FROM golang:1.27.3-bookworm AS builder
 USER 0
 # Define cache locations for Go build
 ENV GOCACHE=/tmp/go-cache

@@ -1,8 +1,5 @@
-FROM reg.mini.dev/node:26.12.0-dev AS base
-USER root
-
 # Stage 1: Build the frontend
-FROM reg.mini.dev/node:26.12.0-dev AS frontend-builder
+FROM node:26.12.1-alpine3.24 AS frontend-builder
 USER root
 WORKDIR /app/frontend
 
@@ -18,7 +15,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # Stage 2: Build the documentation service
-FROM reg.mini.dev/node:26.12.0-dev AS docs-builder
+FROM node:26.12.1-alpine3.24 AS docs-builder
 USER root
 WORKDIR /app/docs
 
@@ -33,7 +30,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # Stage 3: Build the backend
-FROM reg.mini.dev/go:v1.27.3 AS backend-builder
+FROM golang:1.27.3-bookworm AS backend-builder
 WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
@@ -41,14 +38,21 @@ COPY services/backend/ ./
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o justapps-backend
 
 # Stage 4: Create the final image
-FROM base AS runner
+FROM alpine:3.24 AS runner
 WORKDIR /app
 
 RUN apk add --upgrade --no-cache \
     ca-certificates \
+    libstdc++ \
+    libatomic \
     tini \
     libcrypto3 \
     libssl3
+
+# Copy only Node so package managers and build headers stay out of runtime layers.
+COPY --from=frontend-builder /usr/local/bin/node /usr/local/bin/node
+# Check shared libraries on the target architecture during the build.
+RUN node --version
 
 # Create user and group
 RUN addgroup --system --gid 1001 nodejs \
