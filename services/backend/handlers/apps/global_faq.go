@@ -40,17 +40,20 @@ type globalFAQAppOption struct {
 }
 
 type globalFAQAnswerRow struct {
-	ID               uuid.UUID `bun:"id"`
-	QuestionID       uuid.UUID `bun:"question_id"`
-	UserID           uuid.UUID `bun:"user_id"`
-	Username         string    `bun:"username"`
-	Answer           string    `bun:"answer"`
-	IsPinned         bool      `bun:"is_pinned"`
-	CreatorLiked     bool      `bun:"creator_liked"`
-	AcceptedByAuthor bool      `bun:"accepted_by_author"`
-	CreatedAt        time.Time `bun:"created_at"`
-	UpvoteCount      int       `bun:"upvote_count"`
-	UserUpvoted      bool      `bun:"user_upvoted"`
+	ID               uuid.UUID  `bun:"id"`
+	QuestionID       uuid.UUID  `bun:"question_id"`
+	UserID           uuid.UUID  `bun:"user_id"`
+	Username         string     `bun:"username"`
+	ReplyToAnswerID  *uuid.UUID `bun:"reply_to_answer_id"`
+	ReplyToUsername  string     `bun:"reply_to_username"`
+	ReplyToText      string     `bun:"reply_to_text"`
+	Answer           string     `bun:"answer"`
+	IsPinned         bool       `bun:"is_pinned"`
+	CreatorLiked     bool       `bun:"creator_liked"`
+	AcceptedByAuthor bool       `bun:"accepted_by_author"`
+	CreatedAt        time.Time  `bun:"created_at"`
+	UpvoteCount      int        `bun:"upvote_count"`
+	UserUpvoted      bool       `bun:"user_upvoted"`
 }
 
 func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
@@ -184,14 +187,31 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	rows := make([]globalFAQAnswerRow, 0)
 	query := db.NewSelect().TableExpr("global_faq_answers AS a").
 		ColumnExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
+		ColumnExpr("a.reply_to_answer_id, COALESCE(parent.username, '') AS reply_to_username, COALESCE(parent.answer, '') AS reply_to_text").
+		Join("LEFT JOIN global_faq_answers AS parent ON parent.id = a.reply_to_answer_id").
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN global_faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ?", questionID).
-		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at")
-	total, err := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID).Count(c)
+		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at, parent.id")
+	countQuery := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID)
+	threaded := c.Query("threaded") == "true"
+	pageQuery := query.Clone()
+	if threaded {
+		countQuery = countQuery.Where("a.reply_to_answer_id IS NULL")
+		pageQuery = pageQuery.Where("a.reply_to_answer_id IS NULL")
+	}
+	total, err := countQuery.Count(c)
 	if err == nil {
-		err = query.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(int64(pageSize)).Offset(int64(page-1)*int64(pageSize)).Scan(c, &rows)
+		err = pageQuery.OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Limit(int64(pageSize)).Offset(int64(page-1)*int64(pageSize)).Scan(c, &rows)
+	}
+	if err == nil && threaded && len(rows) > 0 {
+		rootIDs := make([]uuid.UUID, len(rows))
+		for i, row := range rows {
+			rootIDs[i] = row.ID
+		}
+		err = faqThreadQuery(db, query, "global_faq_answers", questionID, rootIDs).
+			OrderExpr("a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").Scan(c, &rows)
 	}
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ answers", err)
@@ -199,7 +219,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.GlobalFAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToText: row.ReplyToText, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }
@@ -270,7 +290,18 @@ func CreateGlobalFAQAnswer(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Failed to check global FAQ question", err)
 		return
 	}
-	answer := &models.GlobalFAQAnswer{QuestionID: questionID, UserID: userID, Username: strings.TrimSpace(c.GetString("username")), Answer: text}
+	if request.ReplyToAnswerID != nil {
+		exists, err := db.NewSelect().TableExpr("global_faq_answers").Where("id = ? AND question_id = ?", *request.ReplyToAnswerID, questionID).Exists(c)
+		if err != nil {
+			httperror.InternalServerError(c, "Failed to check reply target", err)
+			return
+		}
+		if !exists {
+			httperror.StatusBadRequest(c, "Reply target must belong to this question", errors.New("invalid reply target"))
+			return
+		}
+	}
+	answer := &models.GlobalFAQAnswer{QuestionID: questionID, UserID: userID, Username: strings.TrimSpace(c.GetString("username")), Answer: text, ReplyToAnswerID: request.ReplyToAnswerID}
 	if err := db.RunInTx(c.Request.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
 		if _, err := tx.NewInsert().Model(answer).Exec(ctx); err != nil {
 			return err
