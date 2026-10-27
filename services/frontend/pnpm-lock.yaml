@@ -42,8 +42,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1(supports-color@7.2.0)
       simple-icons:
-        specifier: ^16.35.0
-        version: 16.35.0
+        specifier: ^16.36.0
+        version: 16.36.0
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.3.3
@@ -2398,8 +2398,8 @@ packages:
     resolution: {integrity: sha512-ZX99e6tRweoUXqR+VBrslhda51Nh5MTQwou5tnUDgbtyM0dBgmhEDtWGP/xbKn6hqfPRHujUNwz5fy/wbbhnpw==}
     engines: {node: '>= 0.4'}
 
-  simple-icons@16.35.0:
-    resolution: {integrity: sha512-TCfl/2+GTrx0nCo4pEWGvxhOb8c6NsqOU1OpwjtF4lwJAthB8IYVD0fuIMjLMg6JFuG1YBO0t1iETQqJLqkoJA==}
+  simple-icons@16.36.0:
+    resolution: {integrity: sha512-+VNPPkqSOLidFeSgBKUWX4n50WPpDC09hav+BgS26anIF1oQOlGBb8LvwGR+6fYRjo+B6CiKzNBceMPkSVXANQ==}
     engines: {node: '>=0.12.18'}
 
   source-map-js@1.2.1:
@@ -5399,7 +5399,7 @@ snapshots:
       side-channel-map: 1.0.1
       side-channel-weakmap: 1.0.2
 
-  simple-icons@16.35.0: {}
+  simple-icons@16.36.0: {}
 
   source-map-js@1.2.1: {}
 
