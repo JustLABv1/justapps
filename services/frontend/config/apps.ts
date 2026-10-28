@@ -258,6 +258,7 @@ export interface AppCatalogFilters {
 }
 
 export interface AppConfig {
+  spaceId?: string | null;
   id: string;
   name: string;
   description: string;

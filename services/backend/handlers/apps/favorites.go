@@ -34,6 +34,9 @@ func GetFavorites(c *gin.Context, db *bun.DB) {
 
 // AddFavorite adds an app to the current user's favorites.
 func AddFavorite(c *gin.Context, db *bun.DB) {
+	if !ensurePrivateAppIDAccess(c, db) {
+		return
+	}
 	appID := c.Param("id")
 	userIDVal, exists := c.Get("user_id")
 	if !exists {

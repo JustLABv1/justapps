@@ -3,6 +3,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"justapps-backend/pkg/appaccess"
 
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/models"
@@ -36,6 +37,13 @@ func loadEditorAppIDs(ctx context.Context, db *bun.DB, userID uuid.UUID) (map[st
 	for _, editor := range editors {
 		appIDs[editor.AppID] = struct{}{}
 	}
+	var spaces []models.PrivateSpace
+	if err := db.NewSelect().Model(&spaces).Where("ps.owner_id = ? OR EXISTS (SELECT 1 FROM private_space_members sm WHERE sm.space_id = ps.id AND sm.user_id = ? AND sm.accepted)", userID, userID).Scan(ctx); err != nil {
+		return nil, err
+	}
+	for _, space := range spaces {
+		appIDs["space:"+space.ID.String()] = struct{}{}
+	}
 	return appIDs, nil
 }
 
@@ -50,6 +58,16 @@ func isEditorForApp(ctx context.Context, db *bun.DB, appID string, userID uuid.U
 }
 
 func canViewApp(app models.Apps, viewerID uuid.UUID, viewerRole string, hasViewer bool, editorAppIDs map[string]struct{}) bool {
+	if app.SpaceID != nil {
+		if !hasViewer {
+			return false
+		}
+		if app.OwnerID == viewerID {
+			return true
+		}
+		_, member := editorAppIDs["space:"+app.SpaceID.String()]
+		return member
+	}
 	restricted := app.IsHidden || isDraftApp(app)
 	if !restricted || permissions.Has(viewerRole, permissions.ViewAppDrafts) {
 		return true
@@ -111,4 +129,33 @@ func applyViewerPermissions(app *models.Apps, viewerID uuid.UUID, viewerRole str
 
 func canManageAppEditors(app models.Apps, viewerID uuid.UUID, viewerRole string) bool {
 	return viewerRole == "admin" || app.OwnerID == viewerID
+}
+
+func ensurePrivateAppAccess(c *gin.Context, db *bun.DB, app models.Apps) bool {
+	if app.SpaceID == nil {
+		return true
+	}
+	id, _, hasViewer := getViewerContext(c)
+	if hasViewer && app.OwnerID == id {
+		return true
+	}
+	allowed, err := appaccess.HasSpace(c.Request.Context(), db, app.SpaceID.String(), id.String())
+	if err != nil {
+		httperror.InternalServerError(c, "Space-Zugriff konnte nicht geprüft werden", err)
+		return false
+	}
+	if !hasViewer || !allowed {
+		httperror.StatusNotFound(c, "App not found", nil)
+		return false
+	}
+	return true
+}
+
+func ensurePrivateAppIDAccess(c *gin.Context, db *bun.DB) bool {
+	var app models.Apps
+	if err := db.NewSelect().Model(&app).Where("a.id = ?", c.Param("id")).Scan(c); err != nil {
+		httperror.StatusNotFound(c, "App not found", err)
+		return false
+	}
+	return ensurePrivateAppAccess(c, db, app)
 }

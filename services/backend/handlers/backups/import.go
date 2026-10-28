@@ -165,6 +165,19 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 			}
 		case "apps":
 			if result := applySection(section, func() (importSectionStats, []string, error) {
+				for _, space := range manifest.Data.PrivateSpaces {
+					if _, err := tx.NewInsert().Model(&space).On("CONFLICT (id) DO UPDATE").Set("name = EXCLUDED.name").Set("owner_id = EXCLUDED.owner_id").Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
+					if _, err := tx.NewDelete().Model((*models.PrivateSpaceMember)(nil)).Where("space_id = ?", space.ID).Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
+				}
+				for _, member := range manifest.Data.PrivateSpaceMembers {
+					if _, err := tx.NewInsert().Model(&member).On("CONFLICT (space_id, user_id) DO UPDATE").Set("accepted = EXCLUDED.accepted").Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
+				}
 				return importApps(ctx, tx, manifest.Data.Apps)
 			}); result != nil {
 				return *result

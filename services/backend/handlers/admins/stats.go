@@ -128,7 +128,7 @@ func GetStats(c *gin.Context, db *bun.DB) {
 			SELECT a.id AS app_id, a.name, a.icon, a.link_probe_status, lpr.url, lpr.status_code, lpr.reachable, lpr.probed_at
 			FROM apps a
 			JOIN link_probe_results lpr ON lpr.app_id = a.id
-			WHERE a.skip_link_probe = false
+			WHERE a.space_id IS NULL AND a.skip_link_probe = false
 			  AND a.link_probe_status IN ('partial', 'down')
 			ORDER BY CASE a.link_probe_status WHEN 'down' THEN 0 ELSE 1 END, a.name ASC, lpr.reachable ASC, lpr.probed_at DESC, lpr.url ASC
 		`).Scan(c, &rows)

@@ -14,6 +14,7 @@ function NewMyAppContent() {
   const { user, loading: authLoading, profileReady, profileError, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const spaceId = searchParams?.get('spaceId')?.trim() || null;
   const copyId = searchParams?.get('copy')?.trim() || null;
   const [existingApps, setExistingApps] = useState<AppConfig[]>([]);
   const [initialFormData, setInitialFormData] = useState<Partial<AppConfig> | null>(null);
@@ -41,7 +42,7 @@ function NewMyAppContent() {
         setExistingApps(apps);
 
         if (!copyId) {
-          setInitialFormData(null);
+          setInitialFormData(spaceId ? { spaceId } : null);
           setCopySource(null);
           return;
         }
@@ -81,7 +82,7 @@ function NewMyAppContent() {
     return () => {
       active = false;
     };
-  }, [user, authLoading, profileReady, router, copyId]);
+  }, [user, authLoading, profileReady, router, copyId, spaceId]);
 
   if (authLoading || loading) {
     return (

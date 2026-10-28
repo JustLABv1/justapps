@@ -1,5 +1,8 @@
-'use client';
+"use client";
 
+import { SpaceSwitcher } from "@/components/SpaceSwitcher";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { AppGrid } from "@/components/AppGrid";
 import { AppStoreGate } from "@/components/AppStoreGate";
 import { AppConfig } from "@/config/apps";
@@ -10,11 +13,14 @@ import { Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Suspense, useEffect, useState } from "react";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-async function getApps() {
+async function getApps(spaceId: string) {
   try {
-    const res = await fetchApi('/apps', { cache: 'no-store' });
+    const res = await fetchApi(
+      spaceId ? `/apps?spaceId=${encodeURIComponent(spaceId)}` : "/apps",
+      { cache: "no-store" },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -38,7 +44,10 @@ function HomeLoadingState() {
 
       <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div
+            key={index}
+            className="rounded-3xl border border-border bg-surface p-6 shadow-sm"
+          >
             <div className="mb-4 flex items-start gap-4">
               <div className="h-14 w-14 rounded-2xl bg-default/70" />
               <div className="flex-1 space-y-2">
@@ -64,25 +73,73 @@ function HomeLoadingState() {
 
 function HomeContent() {
   const { theme } = useTheme();
+  const { user, profileReady } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const spaceId = searchParams.get("spaceId") || "";
+  const [spaces, setSpaces] = useState<
+    { id: string; name: string; accepted: boolean }[]
+  >([]);
   const { settings } = useSettings();
+  const catalogKey = `${user?.id || "guest"}:${profileReady}:${spaceId}`;
+  const [loadedCatalogKey, setLoadedCatalogKey] = useState("");
+  const [spacesUserId, setSpacesUserId] = useState("");
+  const visibleSpaces = spacesUserId === user?.id ? spaces : [];
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
 
-  const heroBadge = settings.heroBadge || 'Open Source. Community-getrieben.';
-  const heroTitle = settings.heroTitle || 'Der App Store für alle.';
-  const heroSubtitle = settings.heroSubtitle || 'Entdecken Sie Open-Source-Apps, cloud-native Lösungen und community-entwickelte Tools – frei zugänglich für jeden.';
-  const heroTitleColors = resolveHeroTitleColors(settings.heroTitlePreset, settings.heroTitleColors);
-  const heroTitleGradient = `linear-gradient(90deg, ${heroTitleColors.join(', ')})`;
+  const heroBadge = spaceId
+    ? "Privater Space"
+    : settings.heroBadge || "Open Source. Community-getrieben.";
+  const heroTitle = spaceId
+    ? visibleSpaces.find((space) => space.id === spaceId)?.name ||
+      "Privater Space"
+    : settings.heroTitle || "Der App Store für alle.";
+  const heroSubtitle = spaceId
+    ? "Apps für Sie und die Mitglieder dieses Spaces. Nur berechtigte Nutzer haben Zugriff."
+    : settings.heroSubtitle ||
+      "Entdecken Sie Open-Source-Apps, cloud-native Lösungen und community-entwickelte Tools – frei zugänglich für jeden.";
+  const heroTitleColors = resolveHeroTitleColors(
+    settings.heroTitlePreset,
+    settings.heroTitleColors,
+  );
+  const heroTitleGradient = `linear-gradient(90deg, ${heroTitleColors.join(", ")})`;
 
   useEffect(() => {
-    getApps().then((appsData) => {
-      setApps(appsData);
-      setIsLoading(false);
+    let active = true;
+    getApps(spaceId).then((appsData) => {
+      if (active) {
+        setApps(appsData);
+        setLoadedCatalogKey(catalogKey);
+        setIsLoading(false);
+      }
     });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [spaceId, catalogKey]);
 
-  if (isLoading) return <HomeLoadingState />;
+  useEffect(() => {
+    if (!user || !profileReady) return;
+    let active = true;
+    void fetchApi("/spaces")
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => {
+        if (active) {
+          setSpacesUserId(user.id);
+          setSpaces(
+            data.filter((space: { accepted: boolean }) => space.accepted),
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user, profileReady]);
+
+  if (isLoading || loadedCatalogKey !== catalogKey) return <HomeLoadingState />;
 
   return (
     <div className="flex flex-col gap-10 pb-16">
@@ -115,8 +172,34 @@ function HomeContent() {
       </section>
 
       <div id="all-apps" className="scroll-mt-8">
-        <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-surface-secondary border border-border" />}>
-          <AppGrid initialApps={apps} />
+        <Suspense
+          fallback={
+            <div className="h-64 animate-pulse rounded-2xl bg-surface-secondary border border-border" />
+          }
+        >
+          <AppGrid
+            key={spaceId || "public"}
+            initialApps={apps}
+            spaceId={spaceId}
+            scopeControl={
+              user ? (
+                <SpaceSwitcher
+                  spaces={visibleSpaces}
+                  spaceId={spaceId}
+                  canCreate={!!user.canSubmitApps || user.role === "admin"}
+                  onChange={(nextId) => {
+                    if (nextId === spaceId) return;
+                    setIsLoading(true);
+                    setApps([]);
+                    router.replace(
+                      nextId ? `/?spaceId=${encodeURIComponent(nextId)}` : "/",
+                      { scroll: false },
+                    );
+                  }}
+                />
+              ) : undefined
+            }
+          />
         </Suspense>
       </div>
     </div>
@@ -126,7 +209,9 @@ function HomeContent() {
 export default function Home() {
   return (
     <AppStoreGate>
-      <HomeContent />
+      <Suspense fallback={<HomeLoadingState />}>
+        <HomeContent />
+      </Suspense>
     </AppStoreGate>
   );
 }

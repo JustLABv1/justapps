@@ -363,6 +363,9 @@ function MyAppsContent() {
         description="Verwalten Sie Ihre eigenen Apps und Lösungen, für die Sie freigegeben sind."
         actions={
           <>
+          <Button variant="secondary" onPress={() => router.push('/spaces')}>
+            <Lock className="h-4 w-4" />Private Spaces
+          </Button>
           <Button variant="secondary" onPress={() => router.push('/')}>
             <ChevronLeft className="h-4 w-4" />
             Zum Store

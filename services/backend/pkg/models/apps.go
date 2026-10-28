@@ -46,6 +46,7 @@ type AppField struct {
 type Apps struct {
 	bun.BaseModel `bun:"table:apps,alias:a"`
 
+	SpaceID         *uuid.UUID `bun:"space_id,type:uuid" json:"spaceId"`
 	ID              string     `bun:"id,pk" json:"id"`
 	Name            string     `bun:"name,notnull" json:"name"`
 	Description     string     `bun:"description" json:"description"`

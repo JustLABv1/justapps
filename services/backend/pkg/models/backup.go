@@ -67,6 +67,8 @@ type BackupRole struct {
 }
 
 type BackupData struct {
+	PrivateSpaces       []PrivateSpace           `json:"privateSpaces,omitempty"`
+	PrivateSpaceMembers []PrivateSpaceMember     `json:"privateSpaceMembers,omitempty"`
 	Apps                []Apps                   `json:"apps,omitempty"`
 	AppEditors          []AppEditor              `json:"appEditors,omitempty"`
 	AppGroups           []AppGroup               `json:"appGroups,omitempty"`
@@ -96,6 +98,8 @@ type BackupData struct {
 // versions that still used the GitLab-specific section names.
 func (data *BackupData) UnmarshalJSON(payload []byte) error {
 	type rawBackupData struct {
+		PrivateSpaces       []PrivateSpace           `json:"privateSpaces,omitempty"`
+		PrivateSpaceMembers []PrivateSpaceMember     `json:"privateSpaceMembers,omitempty"`
 		Apps                []Apps                   `json:"apps,omitempty"`
 		AppEditors          []AppEditor              `json:"appEditors,omitempty"`
 		AppGroups           []AppGroup               `json:"appGroups,omitempty"`
@@ -127,7 +131,8 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		return err
 	}
 	*data = BackupData{
-		Apps:                raw.Apps,
+		Apps:          raw.Apps,
+		PrivateSpaces: raw.PrivateSpaces, PrivateSpaceMembers: raw.PrivateSpaceMembers,
 		AppEditors:          raw.AppEditors,
 		AppGroups:           raw.AppGroups,
 		AppRelations:        raw.AppRelations,

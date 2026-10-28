@@ -11,6 +11,7 @@ export function prepareAppCopyDraft(source: AppConfig): Partial<AppConfig> {
   return {
     name: trimmedName ? `${trimmedName} (Kopie)` : 'Neue App (Kopie)',
     id: '',
+    spaceId: source.spaceId,
     description: source.description || '',
     categories: [...(source.categories || [])],
     liveUrl: source.liveUrl || '',

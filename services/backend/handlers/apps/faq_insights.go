@@ -43,7 +43,7 @@ const faqInsightsQuestionsCTE = `
 			q.question, q.username, q.created_at,
 			(SELECT MIN(a.created_at) FROM faq_answers a WHERE a.question_id = q.id) AS first_answer_at
 		FROM faq_questions q
-		JOIN apps app ON app.id = q.app_id
+		JOIN apps app ON app.id = q.app_id AND app.space_id IS NULL
 	)`
 
 func GetFAQInsights(c *gin.Context, db *bun.DB) {

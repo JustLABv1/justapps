@@ -231,7 +231,7 @@ func (r catalogReader) queryApps(ctx context.Context, input SearchAppsInput, lim
 
 	apps := make([]models.Apps, 0)
 	query := r.db.NewSelect().Model(&apps).
-		Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')")
+		Where("a.space_id IS NULL AND a.is_hidden = false AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')")
 
 	terms := searchTerms(input.Query)
 	if len(terms) > 0 {
@@ -252,7 +252,7 @@ func (r catalogReader) queryApps(ctx context.Context, input SearchAppsInput, lim
 		query = query.Where("? = ANY(a.tech_stack)", techStack)
 	}
 	if status := strings.TrimSpace(input.Status); status != "" {
-		query = query.Where("LOWER(TRIM(COALESCE(a.status, ''))) = LOWER(?)", status)
+		query = query.Where("a.space_id IS NULL AND a.is_hidden = false AND LOWER(TRIM(COALESCE(a.status, ''))) = LOWER(?)", status)
 	}
 
 	total, err := query.Count(ctx)
@@ -301,7 +301,7 @@ func (r catalogReader) loadPublicApp(ctx context.Context, id string) (models.App
 	var app models.Apps
 	err := r.db.NewSelect().Model(&app).
 		Where("a.id = ?", trimmedID).
-		Where("LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')").
+		Where("a.space_id IS NULL AND a.is_hidden = false AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')").
 		Scan(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.Apps{}, ErrAppNotFound
@@ -400,13 +400,13 @@ func (r catalogReader) loadRelatedApps(ctx context.Context, appID string) ([]mod
 		FROM apps a
 		JOIN app_relations relation ON relation.related_app_id = a.id
 		WHERE relation.app_id = ?
-		  AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')
+		  AND a.space_id IS NULL AND a.is_hidden = false AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')
 		UNION
 		SELECT DISTINCT a.id, a.name, a.icon
 		FROM apps a
 		JOIN app_relations relation ON relation.app_id = a.id
 		WHERE relation.related_app_id = ?
-		  AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')
+		  AND a.space_id IS NULL AND a.is_hidden = false AND LOWER(TRIM(COALESCE(a.status, ''))) NOT IN ('draft', 'entwurf')
 		ORDER BY name ASC, id ASC
 	`, appID, appID).Scan(ctx, &rows)
 	if err != nil {

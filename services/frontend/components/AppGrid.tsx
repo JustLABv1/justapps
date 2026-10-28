@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizonta
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
 import { AppCardSkeleton } from "./AppCardSkeleton";
 
@@ -19,9 +19,11 @@ const PAGE_SIZE = 24;
 
 interface AppGridProps {
   initialApps: AppConfig[];
+  spaceId?: string;
+  scopeControl?: ReactNode;
 }
 
-export function AppGrid({ initialApps }: AppGridProps) {
+export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,6 +37,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch);
   const paginationKey = [
+    spaceId,
     searchQuery,
     selectedCategory ?? '',
     selectedStatus ?? '',
@@ -54,6 +57,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
   const recentApps = useSyncExternalStore(subscribeToRecentlyViewed, getRecentlyViewed, () => emptyRecentlyViewed);
   const serverFilterKey = useMemo(() => JSON.stringify({
+    spaceId,
     q: searchQuery,
     category: selectedCategory,
     status: selectedStatus,
@@ -62,7 +66,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     sort: selectedSort,
     semantic: semanticSearch,
     favorite: showFavoritesOnly,
-  }), [searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly]);
+  }), [spaceId, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly]);
   const serverResults = hasServerFilter && serverResponse?.key === serverFilterKey
     ? serverResponse.apps
     : null;
@@ -75,6 +79,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams();
+        if (spaceId) params.set("spaceId", spaceId);
         if (searchQuery) params.set('q', searchQuery);
         if (selectedCategory) params.set('category', selectedCategory);
         if (selectedStatus) params.set('status', selectedStatus);
@@ -104,7 +109,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey]);
+  }, [spaceId, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -188,6 +193,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       setServerPageLoading(true);
       try {
         const params = new URLSearchParams();
+        if (spaceId) params.set("spaceId", spaceId);
         if (searchQuery) params.set('q', searchQuery);
         if (selectedCategory) params.set('category', selectedCategory);
         if (selectedStatus) params.set('status', selectedStatus);
@@ -221,7 +227,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
       const previousCount = current.key === visibleAppsKey ? current.count : PAGE_SIZE;
       return { key: visibleAppsKey, count: Math.min(previousCount + PAGE_SIZE, filteredApps.length) };
     });
-  }, [filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
+  }, [spaceId, filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -249,7 +255,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
 
   const clearAllFilters = () => {
     setShowFavoritesOnly(false);
-    router.replace('/', { scroll: false });
+    router.replace(spaceId ? `/?spaceId=${encodeURIComponent(spaceId)}` : '/', { scroll: false });
   };
 
   const activeFilters = useMemo(() => {
@@ -651,7 +657,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
 
         return (
           <>
-            <div className="flex items-center justify-between px-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
               <p className="text-sm font-medium text-muted">
                 {serverLoading ? (
                   <span className="text-muted">Suche läuft...</span>
@@ -659,6 +665,8 @@ export function AppGrid({ initialApps }: AppGridProps) {
                   <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length}</span> {(hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length) === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
                 )}
               </p>
+              <div className="flex flex-wrap items-center gap-2">
+              {scopeControl}
               {hasActiveFilters && (
                 <Button
                   variant="outline"
@@ -670,6 +678,7 @@ export function AppGrid({ initialApps }: AppGridProps) {
                   Filter zurücksetzen
                 </Button>
               )}
+              </div>
             </div>
 
             {/* Apps grid — masonry layout so cards size to their own content */}
