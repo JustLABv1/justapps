@@ -39,7 +39,7 @@ func GenerateHealthCopilot(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	scope := apphealth.Scope{}
+	scope := apphealth.Scope{ViewerID: viewerID.String()}
 	if !permissions.Has(viewerRole, permissions.ViewAppHealth) {
 		scope.EditableBy = &viewerID
 	}

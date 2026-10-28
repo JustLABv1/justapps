@@ -59,3 +59,36 @@ func TestHiddenAppVisibility(t *testing.T) {
 		t.Fatal("moderator should see hidden apps")
 	}
 }
+
+func TestPrivateSpaceVisibilityDoesNotInheritPlatformPermissions(t *testing.T) {
+	spaceID, ownerID, memberID := uuid.New(), uuid.New(), uuid.New()
+	app := models.Apps{ID: "private", SpaceID: &spaceID, OwnerID: ownerID, Status: "etabliert"}
+	for _, role := range []string{"", "user", "moderator", "admin"} {
+		if canViewApp(app, uuid.New(), role, true, map[string]struct{}{"private": {}}) {
+			t.Fatalf("%s or app editor must not bypass space membership", role)
+		}
+	}
+	if canViewApp(app, uuid.Nil, "", false, nil) {
+		t.Fatal("anonymous access must be denied")
+	}
+	if !canViewApp(app, ownerID, "user", true, nil) {
+		t.Fatal("owner must retain access")
+	}
+	membership := map[string]struct{}{"space:" + spaceID.String(): {}}
+	app.Status = "draft"
+	if !canViewApp(app, memberID, "user", true, membership) {
+		t.Fatal("accepted members must see private drafts")
+	}
+	if canViewApp(app, memberID, "user", true, nil) {
+		t.Fatal("revoked or pending members must not see private apps")
+	}
+	permission := appViewerPermissions(app, memberID, "user", true, false)
+	if permission.CanEdit || permission.CanDelete || permission.CanManageEditors {
+		t.Fatal("space membership must not grant app ownership")
+	}
+	app.SpaceID = nil
+	app.Status = "etabliert"
+	if !canViewApp(app, uuid.Nil, "", false, nil) {
+		t.Fatal("published app must be public")
+	}
+}

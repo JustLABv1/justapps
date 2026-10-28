@@ -13,17 +13,24 @@ import (
 type Permission string
 
 const (
-	ModerateFAQ         Permission = "faq:moderate"
-	ModerateApps        Permission = "apps:moderate"
-	ViewFAQInsights     Permission = "faq:insights:view"
-	DeleteFAQQuestions  Permission = "faq:questions:delete"
-	DeleteFAQAnswers    Permission = "faq:answers:delete"
-	PinFAQAnswers       Permission = "faq:answers:pin"
-	RecommendFAQAnswers Permission = "faq:answers:recommend"
-	ViewAppDrafts       Permission = "apps:drafts:view"
-	EditApps            Permission = "apps:edit"
-	DeleteApps          Permission = "apps:delete"
-	ViewAppHealth       Permission = "apps:health:view"
+	CreateSpaces           Permission = "spaces:create"
+	ViewSpaces             Permission = "spaces:view"
+	ManageSpaces           Permission = "spaces:manage"
+	ManageSpaceMembers     Permission = "spaces:members:manage"
+	ManageSpaceGroups      Permission = "spaces:groups:manage"
+	TransferSpaceOwnership Permission = "spaces:ownership:transfer"
+	DeleteSpaces           Permission = "spaces:delete"
+	ModerateFAQ            Permission = "faq:moderate"
+	ModerateApps           Permission = "apps:moderate"
+	ViewFAQInsights        Permission = "faq:insights:view"
+	DeleteFAQQuestions     Permission = "faq:questions:delete"
+	DeleteFAQAnswers       Permission = "faq:answers:delete"
+	PinFAQAnswers          Permission = "faq:answers:pin"
+	RecommendFAQAnswers    Permission = "faq:answers:recommend"
+	ViewAppDrafts          Permission = "apps:drafts:view"
+	EditApps               Permission = "apps:edit"
+	DeleteApps             Permission = "apps:delete"
+	ViewAppHealth          Permission = "apps:health:view"
 )
 
 const (
@@ -50,6 +57,13 @@ type Definition struct {
 
 func Definitions() []Definition {
 	return []Definition{
+		{Key: CreateSpaces, Name: "Spaces erstellen", Description: "Erlaubt die Erstellung im globalen Modus Freigegebene Nutzer oder Rollen. Andere globale Regeln werden nicht übersteuert.", Group: "Spaces"},
+		{Key: ViewSpaces, Name: "Alle Spaces auflisten", Description: "Eigentümer und Kennzahlen aller Spaces einsehen. Gewährt keinen direkten Zugriff auf private App-Inhalte.", Group: "Spaces"},
+		{Key: ManageSpaces, Name: "Spaces verwalten", Description: "Beliebige Spaces umbenennen. Mitglieder, Gruppen, Eigentümerwechsel und Löschen haben eigene Rechte.", Group: "Spaces"},
+		{Key: ManageSpaceMembers, Name: "Space-Mitglieder verwalten", Description: "Mitglieder und Einladungen beliebiger Spaces verwalten und dadurch Zugriff vergeben.", Group: "Spaces"},
+		{Key: ManageSpaceGroups, Name: "Space-Gruppenzugriff verwalten", Description: "OIDC-Gruppenzuordnungen beliebiger Spaces bearbeiten und dadurch Zugriff vergeben.", Group: "Spaces"},
+		{Key: TransferSpaceOwnership, Name: "Space-Eigentümer ändern", Description: "Die Eigentümerschaft beliebiger Spaces übertragen.", Group: "Spaces"},
+		{Key: DeleteSpaces, Name: "Spaces löschen", Description: "Beliebige Spaces einschließlich ihrer Apps und Diskussionen dauerhaft löschen.", Group: "Spaces"},
 		{Key: ViewFAQInsights, Name: "FAQ-Insights ansehen", Description: "Plattformweite FAQ-Kennzahlen und offene Fragen einsehen.", Group: "FAQ"},
 		{Key: DeleteFAQQuestions, Name: "FAQ-Fragen löschen", Description: "Fragen anderer Benutzer einschließlich ihrer Antworten löschen.", Group: "FAQ"},
 		{Key: DeleteFAQAnswers, Name: "FAQ-Antworten löschen", Description: "Antworten anderer Benutzer entfernen.", Group: "FAQ"},
@@ -180,4 +194,8 @@ func EffectiveKeys(values []string) []string {
 		}
 	}
 	return result
+}
+
+func CanOverseeSpaces(role string) bool {
+	return HasAny(role, ViewSpaces, ManageSpaces, ManageSpaceMembers, ManageSpaceGroups, TransferSpaceOwnership, DeleteSpaces)
 }

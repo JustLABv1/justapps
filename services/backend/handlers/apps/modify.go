@@ -3,6 +3,7 @@ package apps
 import (
 	"errors"
 	"fmt"
+	"justapps-backend/pkg/appaccess"
 	"time"
 
 	aifunc "justapps-backend/functions/ai"
@@ -66,6 +67,17 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Invalid input", err)
 		return
 	}
+	if app.SpaceID != nil {
+		allowed, err := appaccess.HasSpace(c, db, app.SpaceID.String(), userID.String())
+		if err != nil {
+			httperror.InternalServerError(c, "Space-Zugriff konnte nicht geprüft werden", err)
+			return
+		}
+		if !allowed {
+			httperror.Forbidden(c, "Kein Zugriff auf diesen Space", errors.New("space membership required"))
+			return
+		}
+	}
 	normalizeAppModelStatus(&app)
 	normalizeAppDetailFields(&app)
 	normalizeAppBanner(&app)
@@ -104,7 +116,7 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 			"banner_text", "banner_type", "banner_color", "banner_title",
 			"deployment_variants", "version", "changelog",
 			"skip_link_probe",
-			"is_hidden",
+			"is_hidden", "space_id",
 			"owner_id", "created_at", "updated_at",
 		).
 		Value("has_deployment_assistant", "?", app.HasDeploymentAssistant).
@@ -168,6 +180,9 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if !ensurePrivateAppAccess(c, db, existingApp) {
+		return
+	}
 	// Verify Ownership / Permissions
 	isOwner := existingApp.OwnerID == userID
 	isAdmin := userRole == "admin"
@@ -203,6 +218,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	if !isAdmin {
 		app.IsFeatured = existingApp.IsFeatured
 	}
+	app.SpaceID = existingApp.SpaceID
 	app.ID = id
 	app.CreatedAt = existingApp.CreatedAt
 	app.UpdatedAt = time.Now()
@@ -265,6 +281,9 @@ func SetAppVisibility(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if !ensurePrivateAppAccess(c, db, app) {
+		return
+	}
 	canModerateApps := permissions.Has(viewerRole, permissions.EditApps)
 	isOwner := app.OwnerID == viewerID
 	isEditor := false
@@ -350,6 +369,9 @@ func DeleteApp(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if !ensurePrivateAppAccess(c, db, existingApp) {
+		return
+	}
 	isOwner := existingApp.OwnerID == userID
 	canModerateApps := permissions.Has(userRole, permissions.DeleteApps)
 
@@ -407,12 +429,16 @@ func TransferApp(c *gin.Context, db *bun.DB) {
 	}
 
 	// Ensure the app exists
-	exists, err := db.NewSelect().TableExpr("apps").Where("id = ?", id).Count(c)
-	if err != nil || exists == 0 {
+	var app models.Apps
+	err = db.NewSelect().Model(&app).Where("a.id = ?", id).Scan(c)
+	if err != nil {
 		httperror.StatusNotFound(c, "App not found", err)
 		return
 	}
 
+	if !ensurePrivateAppAccess(c, db, app) {
+		return
+	}
 	_, err = db.NewUpdate().
 		TableExpr("apps").
 		Set("owner_id = ?", newOwnerUUID).

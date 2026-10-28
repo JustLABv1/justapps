@@ -42,6 +42,7 @@ func ListFAQAnswerNotifications(c *gin.Context, db *bun.DB) {
 			JOIN faq_answers AS answer ON answer.id = n.app_answer_id
 			JOIN apps AS app ON app.id = n.app_id
 			WHERE n.user_id = ? AND n.app_answer_id IS NOT NULL
+ AND (app.space_id IS NULL OR app.owner_id = n.user_id OR EXISTS (SELECT 1 FROM private_spaces ps WHERE ps.id = app.space_id AND (ps.owner_id = n.user_id OR EXISTS (SELECT 1 FROM private_space_members sm WHERE sm.space_id = ps.id AND sm.user_id = n.user_id AND sm.accepted))))
 			UNION ALL
 			SELECT n.id, n.global_question_id AS question_id, n.global_answer_id AS answer_id,
 				'global'::text AS scope, NULL::text AS app_id, ''::text AS app_name,

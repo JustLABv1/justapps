@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/appaccess"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -162,6 +163,7 @@ func ListReleaseUpdates(context *gin.Context, db *bun.DB) {
 	if status == "unread" {
 		query = query.Where("item.seen_at IS NULL")
 	}
+	query = appaccess.FilterSpaces(query, "a", userID.String())
 	total, err := query.Clone().Count(context.Request.Context())
 	if err != nil {
 		httperror.InternalServerError(context, "Updates konnten nicht gezählt werden", err)
@@ -194,6 +196,8 @@ func GetReleaseUpdateSummary(context *gin.Context, db *bun.DB) {
 	var totalUnread int64
 	totalUnread, _ = db.NewSelect().
 		TableExpr("user_release_inbox_items").
+		Join("JOIN apps a ON a.id = user_release_inbox_items.app_id").
+		Where(appaccess.SpaceSQL("a"), userID.String(), userID.String(), userID.String()).
 		Where("user_id = ?", userID).
 		Where("seen_at IS NULL").
 		Count(context.Request.Context())
@@ -201,6 +205,8 @@ func GetReleaseUpdateSummary(context *gin.Context, db *bun.DB) {
 	var rows []appUnreadCount
 	if err := db.NewSelect().
 		TableExpr("user_release_inbox_items").
+		Join("JOIN apps a ON a.id = user_release_inbox_items.app_id").
+		Where(appaccess.SpaceSQL("a"), userID.String(), userID.String(), userID.String()).
 		ColumnExpr("app_id").
 		ColumnExpr("COUNT(*)::int AS count").
 		Where("user_id = ?", userID).

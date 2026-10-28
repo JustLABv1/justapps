@@ -2,6 +2,7 @@ package apphealth
 
 import (
 	"context"
+	"justapps-backend/pkg/appaccess"
 	"strings"
 	"time"
 
@@ -13,8 +14,9 @@ import (
 
 type Scope struct {
 	// EditableBy limits the response to apps owned by or assigned to this user.
-	// A nil value returns the complete catalog for administrators.
+	// A nil value includes all public apps. ViewerID controls private-space access.
 	EditableBy *uuid.UUID
+	ViewerID   string
 }
 
 type AppHealthRow struct {
@@ -57,6 +59,7 @@ func Load(ctx context.Context, db *bun.DB, scope Scope) (Response, error) {
 			*scope.EditableBy,
 		)
 	}
+	query = appaccess.FilterSpaces(query, "a", scope.ViewerID)
 	if err := query.Scan(ctx); err != nil {
 		return Response{}, err
 	}

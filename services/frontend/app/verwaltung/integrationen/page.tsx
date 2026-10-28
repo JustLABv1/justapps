@@ -1,41 +1,19 @@
-import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { Bot, GitBranch, ShieldCheck, Workflow } from 'lucide-react';
-
-export default function VerwaltungIntegrationenPage() {
+import { AdminOverviewPage } from "@/components/admin/AdminOverviewPage";
+import { adminNavGroups } from "@/lib/admin-navigation";
+export default function AdminCategoryPage() {
+  const items = adminNavGroups.find(
+    (group) => group.label === "Integrationen",
+  )!.items;
   return (
     <AdminOverviewPage
       title="Integrationen"
-      description="Verwaltet externe Anbindungen, Synchronisationen und die technische Automatisierung der Plattform."
-      cards={[
-        {
-          href: '/verwaltung/integrationen/repository-sync',
-          title: 'Repository Sync',
-          description: 'Überwachen Sie den Abgleich verknüpfter Apps und greifen Sie in offene Änderungen ein.',
-          icon: Workflow,
-          note: 'Sync und Status',
-        },
-        {
-          href: '/verwaltung/integrationen/repository-providers',
-          title: 'Repository-Provider',
-          description: 'Pflegen Sie GitLab- und GitHub-Provider, Tokens und Standardpfade für den Sync.',
-          icon: GitBranch,
-          note: 'Provider und Tokens',
-        },
-        {
-          href: '/verwaltung/integrationen/auth',
-          title: 'Authentifizierung',
-          description: 'Konfigurieren Sie OIDC-Provider und regeln Sie den Zugriff auf den App Store über Login-Pflicht.',
-          icon: ShieldCheck,
-          note: 'OIDC und Zugriff',
-        },
-        {
-          href: '/verwaltung/integrationen/ai',
-          title: 'AI',
-          description: 'Steuern Sie AI-Zugriff, Provider und den Wissensindex der Plattform an einem Ort.',
-          icon: Bot,
-          note: 'Modelle und Zugriff',
-        },
-      ]}
+      description="Technische Anbindungen und Provider konfigurieren. Nutzungs- und Zugriffsregeln finden Sie unter Zugriff & Berechtigungen."
+      cards={items.map((item) => ({
+        href: item.href,
+        title: item.label,
+        description: item.description,
+        icon: item.icon,
+      }))}
     />
   );
 }

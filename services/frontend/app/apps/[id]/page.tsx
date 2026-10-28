@@ -330,6 +330,7 @@ function AppPageContent() {
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">{app.name}</h1>
+              {app.spaceId && <Link href="/spaces" className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">Privater Space</Link>}
               {app.version && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-border bg-surface text-xs font-mono text-muted shadow-sm">
                   v{app.version}

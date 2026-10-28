@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"justapps-backend/functions/spacemembership"
 	apphandlers "justapps-backend/handlers/apps"
 	"justapps-backend/pkg/models"
 
@@ -92,6 +93,24 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}
 			canonicalizeAppUploadReferences(apps)
 			manifest.Data.Apps = apps
+			policy, err := spacemembership.LoadCreationPolicy(c.Request.Context(), db)
+			if err != nil {
+				respondSectionError(c, section, err)
+				return
+			}
+			manifest.Data.SpaceCreationPolicy = &policy
+			if err := db.NewSelect().Model(&manifest.Data.SpaceGroupMappings).Scan(c); err != nil {
+				respondSectionError(c, section, err)
+				return
+			}
+			if err := db.NewSelect().Model(&manifest.Data.PrivateSpaces).Scan(c); err != nil {
+				respondSectionError(c, section, err)
+				return
+			}
+			if err := db.NewSelect().Model(&manifest.Data.PrivateSpaceMembers).Scan(c); err != nil {
+				respondSectionError(c, section, err)
+				return
+			}
 			appEditors, sectionErr := exportAppEditors(c, db)
 			if sectionErr != nil {
 				respondSectionError(c, section, sectionErr)
@@ -355,17 +374,18 @@ func exportUsers(c *gin.Context, db *bun.DB, mode models.BackupMode) ([]models.B
 	backupUsers := make([]models.BackupUser, 0, len(users))
 	for _, user := range users {
 		backupUser := models.BackupUser{
-			ID:             user.ID,
-			Username:       user.Username,
-			Email:          user.Email,
-			Role:           user.Role,
-			AuthType:       user.AuthType,
-			CanSubmitApps:  user.CanSubmitApps,
-			Disabled:       user.Disabled,
-			DisabledReason: user.DisabledReason,
-			CreatedAt:      user.CreatedAt,
-			UpdatedAt:      user.UpdatedAt,
-			LastLoginAt:    user.LastLoginAt,
+			ID:              user.ID,
+			Username:        user.Username,
+			Email:           user.Email,
+			Role:            user.Role,
+			AuthType:        user.AuthType,
+			CanCreateSpaces: user.CanCreateSpaces,
+			CanSubmitApps:   user.CanSubmitApps,
+			Disabled:        user.Disabled,
+			DisabledReason:  user.DisabledReason,
+			CreatedAt:       user.CreatedAt,
+			UpdatedAt:       user.UpdatedAt,
+			LastLoginAt:     user.LastLoginAt,
 		}
 		if !redacted {
 			backupUser.Password = user.Password

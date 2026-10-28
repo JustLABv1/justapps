@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"justapps-backend/pkg/appaccess"
 	"strings"
 	"time"
 	"unicode"
@@ -140,6 +141,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 		}
 	}
 
+	selectQuery = appaccess.FilterSpaces(selectQuery, "a", viewer.UserID)
 	text := strings.TrimSpace(query.Text)
 	terms := searchTerms(text)
 	if len(terms) > 0 {
@@ -175,6 +177,7 @@ func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query Retri
 		if viewer.Role != "admin" {
 			fallback = fallback.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
 		}
+		fallback = appaccess.FilterSpaces(fallback, "a", viewer.UserID)
 		if err := fallback.Scan(ctx); err != nil {
 			return RetrievedContext{}, err
 		}
@@ -194,6 +197,15 @@ func AppIsViewable(ctx context.Context, db *bun.DB, appID string, viewer Viewer)
 			return false, nil
 		}
 		return false, err
+	}
+	if app.SpaceID != nil {
+		if !viewer.HasUser {
+			return false, nil
+		}
+		if app.OwnerID.String() == viewer.UserID {
+			return true, nil
+		}
+		return appaccess.HasSpace(ctx, db, app.SpaceID.String(), viewer.UserID)
 	}
 	if viewer.Role == "admin" {
 		return true, nil

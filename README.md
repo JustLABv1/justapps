@@ -22,6 +22,7 @@ It runs on your own infrastructure and supports both a compact Docker Compose se
 ## Highlights
 
 - **Searchable app catalog** — organize software with categories, tags, tech stacks, groups, related apps, configurable detail fields, and featured or pinned entries.
+- **Private spaces** — create personal or shared spaces, invite registered users, and publish private apps to the catalog when ready. [Learn more](docs/private-spaces.md).
 - **Ownership and lifecycle** — manage owners and editors, transfer or lock entries, and track apps from draft and proof of concept through established use.
 - **Personal discovery** — favorites, recently viewed apps, release updates, changelogs, and configurable update notifications.
 - **Community knowledge** — ratings, app-specific FAQs, a platform-wide FAQ, answers, upvotes, and notifications for new questions and responses.

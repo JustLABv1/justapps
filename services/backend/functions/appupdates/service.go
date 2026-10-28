@@ -396,8 +396,23 @@ func collectRecipientReasons(ctx context.Context, tx bun.Tx, app models.Apps) (m
 	}
 
 	recipients := make(map[uuid.UUID]string, len(rows))
+	allowed := map[uuid.UUID]bool{}
+	if app.SpaceID != nil {
+		var members []struct {
+			UserID uuid.UUID `bun:"user_id"`
+		}
+		if err := tx.NewRaw("SELECT owner_id AS user_id FROM private_spaces WHERE id = ? UNION SELECT user_id FROM private_space_members WHERE space_id = ? AND accepted", app.SpaceID, app.SpaceID).Scan(ctx, &members); err != nil {
+			return nil, err
+		}
+		allowed[app.OwnerID] = true
+		for _, member := range members {
+			allowed[member.UserID] = true
+		}
+	}
 	for _, row := range rows {
-		recipients[row.UserID] = row.Reason
+		if app.SpaceID == nil || allowed[row.UserID] {
+			recipients[row.UserID] = row.Reason
+		}
 	}
 
 	return recipients, nil

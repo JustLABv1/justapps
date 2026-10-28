@@ -1,6 +1,6 @@
 'use client';
 
-import { AppCreationFlow } from '@/components/AppCreationFlow';
+import { AppCreationFlow, type AppCreationSpace } from '@/components/AppCreationFlow';
 import { AppConfig } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
@@ -14,7 +14,9 @@ function NewMyAppContent() {
   const { user, loading: authLoading, profileReady, profileError, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const spaceId = searchParams?.get('spaceId')?.trim() || null;
   const copyId = searchParams?.get('copy')?.trim() || null;
+  const [availableSpaces, setAvailableSpaces] = useState<AppCreationSpace[]>([]);
   const [existingApps, setExistingApps] = useState<AppConfig[]>([]);
   const [initialFormData, setInitialFormData] = useState<Partial<AppConfig> | null>(null);
   const [copySource, setCopySource] = useState<{ id: string; name: string } | null>(null);
@@ -35,13 +37,26 @@ function NewMyAppContent() {
       setCopyError(null);
 
       try {
+        if (user.role !== 'admin' && !user.canSubmitApps) {
+          setCopyError('Sie haben keine Berechtigung, Apps zu erstellen.');
+          return;
+        }
+        const spacesResponse = await fetchApi('/spaces');
+        if (!spacesResponse.ok) throw new Error('Die verfügbaren Spaces konnten nicht geladen werden. Bitte laden Sie die Seite erneut.');
+        const spaces = (await spacesResponse.json() as (AppCreationSpace & { accepted: boolean })[]).filter((space) => space.accepted);
+        if (!active) return;
+        setAvailableSpaces(spaces);
+        if (spaceId && !spaces.some((space) => space.id === spaceId)) {
+          setCopyError('Sie dürfen in diesem Space keine App erstellen. Eine angenommene Mitgliedschaft oder Eigentümerschaft ist erforderlich.');
+          return;
+        }
         const appsResponse = await fetchApi('/apps');
         const apps = appsResponse.ok ? await appsResponse.json() as AppConfig[] : [];
         if (!active) return;
         setExistingApps(apps);
 
         if (!copyId) {
-          setInitialFormData(null);
+          setInitialFormData(spaceId ? { spaceId } : null);
           setCopySource(null);
           return;
         }
@@ -64,7 +79,12 @@ function NewMyAppContent() {
           return;
         }
 
-        setInitialFormData(prepareAppCopyDraft(sourceApp));
+        const targetSpaceId = spaceId || sourceApp.spaceId || null;
+        if (targetSpaceId && !spaces.some((space) => space.id === targetSpaceId)) {
+          setCopyError('Sie dürfen im Space dieser Vorlage keine App erstellen.');
+          return;
+        }
+        setInitialFormData({ ...prepareAppCopyDraft(sourceApp), spaceId: targetSpaceId });
         setCopySource({ id: sourceApp.id, name: sourceApp.name });
       } catch (error) {
         if (!active) return;
@@ -81,7 +101,7 @@ function NewMyAppContent() {
     return () => {
       active = false;
     };
-  }, [user, authLoading, profileReady, router, copyId]);
+  }, [user, authLoading, profileReady, router, copyId, spaceId]);
 
   if (authLoading || loading) {
     return (
@@ -120,7 +140,7 @@ function NewMyAppContent() {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <p className="text-base font-semibold text-foreground mb-2">Kopie konnte nicht vorbereitet werden</p>
+              <p className="text-base font-semibold text-foreground mb-2">App-Erstellung nicht verfügbar</p>
               <p className="text-sm text-muted mb-4">{copyError}</p>
               <Button variant="secondary" onPress={() => router.push('/meine-apps')}>Zurück zu Meine Apps</Button>
             </div>
@@ -130,7 +150,7 @@ function NewMyAppContent() {
     );
   }
 
-  return <AppCreationFlow initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} />;
+  return <AppCreationFlow availableSpaces={availableSpaces} initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} />;
 }
 
 export default function NewMyAppPage() {

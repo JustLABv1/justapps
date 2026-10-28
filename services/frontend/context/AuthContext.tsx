@@ -13,6 +13,7 @@ interface User {
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
+  canCreateSpaces?: boolean;
   permissions?: string[];
 }
 

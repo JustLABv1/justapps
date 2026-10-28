@@ -9,6 +9,21 @@ import (
 )
 
 func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
+	spaces := router.Group("/spaces", middlewares.Auth(db))
+	spaces.GET("/management", func(c *gin.Context) { apps.ListAdminSpaces(c, db) })
+	spaces.PATCH("/:spaceId/owner", func(c *gin.Context) { apps.TransferSpaceOwner(c, db) })
+	spaces.GET("/creation-policy", func(c *gin.Context) { apps.GetSpaceCreationEligibility(c, db) })
+	spaces.GET("", func(c *gin.Context) { apps.ListSpaces(c, db) })
+	spaces.PATCH("/:spaceId", func(c *gin.Context) { apps.UpdateSpace(c, db) })
+	spaces.DELETE("/:spaceId", func(c *gin.Context) { apps.DeleteSpace(c, db) })
+	spaces.POST("", func(c *gin.Context) { apps.CreateSpace(c, db) })
+	spaces.GET("/:spaceId/group-mappings", func(c *gin.Context) { apps.ListSpaceGroupMappings(c, db) })
+	spaces.POST("/:spaceId/group-mappings", func(c *gin.Context) { apps.AddSpaceGroupMapping(c, db) })
+	spaces.DELETE("/:spaceId/group-mappings/:mappingId", func(c *gin.Context) { apps.DeleteSpaceGroupMapping(c, db) })
+	spaces.GET("/:spaceId/members", func(c *gin.Context) { apps.ListSpaceMembers(c, db) })
+	spaces.POST("/:spaceId/invitations", func(c *gin.Context) { apps.InviteSpaceMember(c, db) })
+	spaces.POST("/:spaceId/accept", func(c *gin.Context) { apps.AcceptSpaceInvitation(c, db) })
+	spaces.DELETE("/:spaceId/members/:userId", func(c *gin.Context) { apps.RemoveSpaceMember(c, db) })
 	appsGroup := router.Group("/apps")
 	{
 		appsGroup.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) {
@@ -98,6 +113,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		userGroup := appsGroup.Group("")
 		userGroup.Use(middlewares.Auth(db))
 		{
+			userGroup.POST("/:id/publish", func(c *gin.Context) { apps.PublishSpaceApp(c, db) })
 			userGroup.POST("", func(c *gin.Context) {
 				apps.CreateApp(c, db)
 			})

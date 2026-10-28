@@ -59,3 +59,23 @@ func TestLegacyUmbrellaPermissionsExpand(t *testing.T) {
 		}
 	}
 }
+
+func TestSpacePermissionsAreIndependent(t *testing.T) {
+	SetRole("space-creator", []string{string(CreateSpaces)})
+	SetRole("space-manager", []string{string(ManageSpaces)})
+	t.Cleanup(func() { RemoveRole("space-creator"); RemoveRole("space-manager") })
+	if !Has("space-creator", CreateSpaces) || CanOverseeSpaces("space-creator") {
+		t.Fatal("creation must not grant management")
+	}
+	if !CanOverseeSpaces("space-manager") || Has("space-manager", DeleteSpaces) || Has("space-manager", ManageSpaceMembers) || Has("space-manager", ManageSpaceGroups) || Has("space-manager", TransferSpaceOwnership) {
+		t.Fatal("metadata management must not grant access or destructive rights")
+	}
+	if CanOverseeSpaces(RoleModerator) {
+		t.Fatal("app moderation must not imply space management")
+	}
+	for _, p := range []Permission{CreateSpaces, ViewSpaces, ManageSpaces, ManageSpaceMembers, ManageSpaceGroups, TransferSpaceOwnership, DeleteSpaces} {
+		if !Has(RoleAdmin, p) {
+			t.Fatalf("admin missing %s", p)
+		}
+	}
+}

@@ -27,7 +27,7 @@ func RunCatalogSteward(c *gin.Context, db *bun.DB) {
 	}
 
 	apps := make([]models.Apps, 0)
-	if err := db.NewSelect().Model(&apps).Relation("Owner").OrderExpr("LOWER(a.name) ASC").Scan(c.Request.Context()); err != nil {
+	if err := db.NewSelect().Model(&apps).Where("a.space_id IS NULL").Relation("Owner").OrderExpr("LOWER(a.name) ASC").Scan(c.Request.Context()); err != nil {
 		httperror.InternalServerError(c, "Katalog konnte nicht geladen werden", err)
 		return
 	}

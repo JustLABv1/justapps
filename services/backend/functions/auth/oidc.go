@@ -97,16 +97,24 @@ type ResourceRole struct {
 	Roles []string `json:"roles"`
 }
 
-func GetOIDCClaims(idToken *oidc.IDToken) (*OIDCClaims, error) {
+func GetOIDCClaims(idToken *oidc.IDToken, groupPaths ...string) (*OIDCClaims, error) {
 	var rawClaims map[string]interface{}
 	if err := idToken.Claims(&rawClaims); err != nil {
 		return nil, err
 	}
 
+	path := "groups"
+	if len(groupPaths) > 0 {
+		path = groupPaths[0]
+	}
+	groups, err := GroupsFromClaims(rawClaims, path)
+	if err != nil {
+		return nil, err
+	}
 	claims := &OIDCClaims{
 		Email:         getString(rawClaims, "email"),
 		PreferredUser: getString(rawClaims, "preferred_username"),
-		Groups:        getStringSlice(rawClaims, "groups"),
+		Groups:        groups,
 		Roles:         getStringSlice(rawClaims, "roles"),
 	}
 

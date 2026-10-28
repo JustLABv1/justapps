@@ -1,11 +1,11 @@
-import { AdminSettingsWorkspace } from '../../einstellungen/page';
+import { AdminSettingsWorkspace } from "@/components/admin/AdminSettingsWorkspace";
 
 export default function VerwaltungIntegrationenAIPage() {
   return (
     <AdminSettingsWorkspace
-      title="AI"
-      description="Steuert globalen AI-Zugriff, anonyme Nutzung sowie die dahinterliegenden Provider und Indizes."
-      sections={['ai']}
+      title="KI-Provider & Modelle"
+      description="Konfigurieren Sie KI-Provider, Modelle und den Wissensindex. Die Nutzungsregeln liegen zentral unter Zugriff & Berechtigungen."
+      sections={["ai"]}
     />
   );
 }

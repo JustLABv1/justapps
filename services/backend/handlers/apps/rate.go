@@ -16,6 +16,9 @@ import (
 )
 
 func AddRating(c *gin.Context, db *bun.DB) {
+	if !ensurePrivateAppIDAccess(c, db) {
+		return
+	}
 	appID := c.Param("id")
 	var rating models.Rating
 	if err := c.ShouldBindJSON(&rating); err != nil {
@@ -115,6 +118,9 @@ func AddRating(c *gin.Context, db *bun.DB) {
 }
 
 func GetRatings(c *gin.Context, db *bun.DB) {
+	if !ensurePrivateAppIDAccess(c, db) {
+		return
+	}
 	if !ensureAppStoreAccess(c, db) {
 		return
 	}
@@ -136,6 +142,9 @@ func GetRatings(c *gin.Context, db *bun.DB) {
 }
 
 func DeleteRating(c *gin.Context, db *bun.DB) {
+	if !ensurePrivateAppIDAccess(c, db) {
+		return
+	}
 	appID := c.Param("id")
 	ratingID := c.Param("ratingId")
 

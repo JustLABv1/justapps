@@ -105,7 +105,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 				q.user_id, q.username, q.question, q.created_at,
 				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
 			FROM faq_questions q
-			JOIN apps app ON app.id = q.app_id
+			JOIN apps app ON app.id = q.app_id AND app.space_id IS NULL
 			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
 				SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
 			))
@@ -149,7 +149,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 
 	apps := make([]globalFAQAppOption, 0)
 	err = db.NewRaw(`SELECT DISTINCT app.id, app.name, app.icon FROM apps app JOIN faq_questions q ON q.app_id = app.id
-		WHERE (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
+		WHERE app.space_id IS NULL AND (LOWER(TRIM(COALESCE(app.status, ''))) NOT IN ('draft', 'entwurf') OR ? OR (? AND (app.owner_id = ? OR EXISTS (
 			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?))))
 		AND (COALESCE(app.is_hidden, false) = false OR ? OR (? AND (app.owner_id = ? OR EXISTS (
 			SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?)))) ORDER BY app.name`,

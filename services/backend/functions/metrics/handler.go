@@ -363,6 +363,7 @@ func (c *collector) loadApps(ctx context.Context) ([]appRow, error) {
 			FROM user_favorites
 			GROUP BY app_id
 		) AS f ON f.app_id = a.id
+ WHERE a.space_id IS NULL
 		ORDER BY a.id ASC
 	`).Scan(ctx, &rows)
 	if err != nil {

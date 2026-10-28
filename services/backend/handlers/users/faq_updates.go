@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"justapps-backend/functions/httperror"
+	"justapps-backend/pkg/appaccess"
 	"justapps-backend/pkg/models"
 
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,8 @@ func ListFAQQuestionNotifications(context *gin.Context, db *bun.DB) {
 	if unreadOnly {
 		countQuery = countQuery.Where("item.seen_at IS NULL")
 	}
+	query = appaccess.FilterSpaces(query, "app", userID.String())
+	countQuery = appaccess.FilterSpaces(countQuery.Join("JOIN apps app ON app.id = item.app_id"), "app", userID.String())
 	total, err := countQuery.Count(context.Request.Context())
 	if err != nil {
 		httperror.InternalServerError(context, "FAQ-Benachrichtigungen konnten nicht gezählt werden", err)
@@ -84,6 +87,8 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 	totalUnread, err := db.NewSelect().
 		TableExpr("user_faq_inbox_items AS item").
 		Join("JOIN faq_questions AS question ON question.id = item.question_id").
+		Join("JOIN apps app ON app.id = item.app_id").
+		Where(appaccess.SpaceSQL("app"), userID.String(), userID.String(), userID.String()).
 		Where("item.user_id = ?", userID).
 		Where("item.seen_at IS NULL").
 		Where("NOT EXISTS (SELECT 1 FROM faq_answers AS resolved_answer WHERE resolved_answer.question_id = question.id)").
@@ -94,6 +99,7 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 	}
 	answerUnread, err := db.NewSelect().
 		Model((*models.UserFAQAnswerNotification)(nil)).
+		Where("ufan.app_id IS NULL OR EXISTS (SELECT 1 FROM apps app WHERE app.id = ufan.app_id AND "+appaccess.SpaceSQL("app")+")", userID.String(), userID.String(), userID.String()).
 		Where("user_id = ?", userID).
 		Where("seen_at IS NULL").
 		Count(context.Request.Context())
@@ -111,6 +117,8 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 	if err := db.NewSelect().
 		TableExpr("user_faq_inbox_items AS item").
 		Join("JOIN faq_questions AS question ON question.id = item.question_id").
+		Join("JOIN apps app ON app.id = item.app_id").
+		Where(appaccess.SpaceSQL("app"), userID.String(), userID.String(), userID.String()).
 		ColumnExpr("item.app_id AS app_id").
 		ColumnExpr("COUNT(*)::int AS count").
 		Where("item.user_id = ?", userID).
@@ -129,6 +137,7 @@ func GetFAQQuestionNotificationSummary(context *gin.Context, db *bun.DB) {
 	var answerRows []appUnreadCount
 	if err := db.NewSelect().
 		Model((*models.UserFAQAnswerNotification)(nil)).
+		Where("ufan.app_id IS NULL OR EXISTS (SELECT 1 FROM apps app WHERE app.id = ufan.app_id AND "+appaccess.SpaceSQL("app")+")", userID.String(), userID.String(), userID.String()).
 		ColumnExpr("app_id").
 		ColumnExpr("COUNT(*)::int AS count").
 		Where("user_id = ?", userID).

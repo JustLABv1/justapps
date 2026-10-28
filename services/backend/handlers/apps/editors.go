@@ -153,6 +153,9 @@ func loadAppForEditorManagement(c *gin.Context, db *bun.DB) (models.Apps, bool) 
 		httperror.StatusNotFound(c, "App not found", err)
 		return models.Apps{}, false
 	}
+	if !ensurePrivateAppAccess(c, db, app) {
+		return models.Apps{}, false
+	}
 	return app, true
 }
 

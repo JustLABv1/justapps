@@ -1,48 +1,19 @@
-import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { Activity, ExternalLink, Layers, Layers2, SortAsc } from 'lucide-react';
-
-export default function VerwaltungKatalogPage() {
+import { AdminOverviewPage } from "@/components/admin/AdminOverviewPage";
+import { adminNavGroups } from "@/lib/admin-navigation";
+export default function AdminCategoryPage() {
+  const items = adminNavGroups.find(
+    (group) => group.label === "Katalog",
+  )!.items;
   return (
     <AdminOverviewPage
       title="Katalog"
-      description="Steuert den Anwendungsbestand, Gruppenstrukturen und die fachliche Darstellung des App-Katalogs."
-      cards={[
-        {
-          href: '/verwaltung/katalog/apps',
-          title: 'Apps',
-          description: 'Verwalten Sie den gesamten App-Bestand, bearbeiten Sie Einträge und legen Sie neue Apps an.',
-          icon: Layers,
-          note: 'Bestand und Bearbeitung',
-        },
-        {
-          href: '/verwaltung/katalog/gruppen',
-          title: 'Gruppen',
-          description: 'Pflegen Sie App-Gruppen, Mitgliedschaften und Strukturierung für Sammlungen.',
-          icon: Layers2,
-          note: 'Kategorien und Cluster',
-        },
-        {
-          href: '/verwaltung/katalog/inhalte',
-          title: 'Inhalte',
-          description: 'Definieren Sie Detailfelder und Footer-Links, die den Kataloginhalt und Metadaten strukturieren.',
-          icon: ExternalLink,
-          note: 'Felder und Metadaten',
-        },
-        {
-          href: '/verwaltung/katalog/app-verhalten',
-          title: 'App-Verhalten',
-          description: 'Konfigurieren Sie Standards für Sortierung, Pinning und Link-Prüfung im Katalog.',
-          icon: SortAsc,
-          note: 'Reihenfolge und Regeln',
-        },
-        {
-          href: '/verwaltung/katalog/gesundheit',
-          title: 'App-Gesundheit',
-          description: 'Erkennen Sie defekte Live-Links, fehlerhafte Repository-Syncs, verwaiste Apps und veraltete Katalogeinträge.',
-          icon: Activity,
-          note: 'Betrieb und Verantwortung',
-        },
-      ]}
+      description="Verwalten Sie Apps, private Spaces und App-Gruppen. Die Katalogdarstellung konfigurieren Sie gesammelt unter Katalog konfigurieren."
+      cards={items.map((item) => ({
+        href: item.href,
+        title: item.label,
+        description: item.description,
+        icon: item.icon,
+      }))}
     />
   );
 }
