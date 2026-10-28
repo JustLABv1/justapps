@@ -72,3 +72,9 @@ Unter **Benutzer & Zugriff → Zugriffssteuerung → Rollen** können Rollen fol
 Verwaltungsrechte gelten für alle Spaces. Eigentümer behalten ihre bisherigen Rechte an eigenen Spaces. Die Übersicht gewährt keinen Zugriff auf private App-Inhalte.
 Delegierte Verwalter erreichen die Übersicht über **Ihre Spaces → Alle Spaces verwalten** (`/spaces/verwaltung`), ohne Zugriff auf die übrige Administration zu benötigen.
 Das Erstellungsrecht greift im globalen Modus **Nur für freigegebene Nutzer oder Rollen** zusätzlich zur individuellen Freigabe. Die Modi **Nur Administratoren** und **OIDC-Gruppe** werden dadurch nicht übersteuert.
+
+
+### Sichtbarkeit beim Erstellen einer App
+
+`/meine-apps/new` bietet Nutzern mit App-Erstellungsfreigabe einen ersten Schritt zur Auswahl des öffentlichen Katalogs oder eines privaten Spaces an, sofern mindestens ein berechtigter Space vorhanden ist. Angezeigt werden eigene Spaces und angenommene Mitgliedschaften; offene Einladungen zählen nicht. Ein `spaceId`-Link wird geprüft und vorausgewählt. Kopien behalten standardmäßig ihren privaten Space.
+Die Auswahl erfolgt vor dem ersten gespeicherten Entwurf und ist danach festgelegt. Private Apps lassen sich später über **Meine Apps** veröffentlichen. Der Server prüft App-Erstellungsfreigabe und Space-Zugriff unabhängig von der UI erneut.
