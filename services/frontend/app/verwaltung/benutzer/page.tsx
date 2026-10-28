@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { UserTable } from '@/components/UserTable';
 import { fetchApi } from '@/lib/api';
@@ -166,7 +167,7 @@ export default function BenutzerPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted">{users.length} Benutzer registriert</p>
+        <div><p className="text-sm text-muted">{users.length} Benutzer registriert</p><p className="mt-1 text-xs text-muted">Individuelle Freigaben pro Konto. <Link href="/verwaltung/sicherheit/zugriff" className="font-medium text-accent hover:underline">Globale Regeln und Rollen verwalten</Link></p></div>
         <Button size="sm" onPress={handleCreateUser} className="bg-accent text-white gap-2">
           <UserPlus className="w-4 h-4" /> Benutzer einladen
         </Button>

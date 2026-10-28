@@ -7,7 +7,9 @@ import {
   Select,
   TextField,
   toast,
+  Surface,
 } from "@heroui/react";
+import { ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 
@@ -38,9 +40,9 @@ const modes = [
   },
   {
     key: "allowed_users",
-    label: "Nur für erlaubte Nutzer",
+    label: "Nur für freigegebene Nutzer oder Rollen",
     description:
-      "Nur Benutzer mit der individuellen Freigabe „Spaces erstellen erlauben“ dürfen Spaces erstellen.",
+      "Eine individuelle Freigabe „Spaces erstellen erlauben“ oder das Rollenrecht „Spaces erstellen“ ist erforderlich.",
   },
 ];
 async function request(path: string, body?: unknown) {
@@ -90,9 +92,11 @@ export function SpaceCreationPolicyPanel() {
     };
   }, []);
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+    <Surface className="p-6 border border-border/50 shadow-sm">
       <div className="mb-5">
-        <h2 className="font-semibold">Wer darf Spaces erstellen?</h2>
+        <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-accent" /> Spaces-Erstellung
+        </h3>
         <p className="mt-1 text-sm text-muted">
           Die globale Regel steuert die Erstellung. Bestehende Spaces und
           Mitgliedschaften bleiben erhalten.
@@ -217,7 +221,7 @@ export function SpaceCreationPolicyPanel() {
                   (!policy.providerKey || !policy.groupName.trim()))
               }
             >
-              Regel speichern
+              Speichern
             </Button>
           </div>
         </form>
@@ -227,6 +231,6 @@ export function SpaceCreationPolicyPanel() {
           {error}
         </p>
       )}
-    </section>
+    </Surface>
   );
 }

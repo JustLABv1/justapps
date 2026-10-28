@@ -11,11 +11,12 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/functions/spacemembership"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 	"strings"
 )
 
 func ListSpaceGroupMappings(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.ManageSpaceGroups)
 	if !ok {
 		return
 	}
@@ -27,7 +28,7 @@ func ListSpaceGroupMappings(c *gin.Context, db *bun.DB) {
 	c.JSON(200, mappings)
 }
 func AddSpaceGroupMapping(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.ManageSpaceGroups)
 	if !ok {
 		return
 	}
@@ -62,7 +63,7 @@ func AddSpaceGroupMapping(c *gin.Context, db *bun.DB) {
 	c.Status(204)
 }
 func DeleteSpaceGroupMapping(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.ManageSpaceGroups)
 	if !ok {
 		return
 	}

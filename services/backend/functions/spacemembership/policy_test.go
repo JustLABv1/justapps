@@ -7,6 +7,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 	"testing"
 )
 
@@ -56,5 +57,23 @@ func TestOIDCCreationPolicyRequiresVerifiedProviderGroup(t *testing.T) {
 			t.Fatal(err)
 		}
 		db.Close()
+	}
+}
+
+func TestRoleCreationRespectsGlobalPolicy(t *testing.T) {
+	permissions.SetRole("space-creator", []string{string(permissions.CreateSpaces)})
+	t.Cleanup(func() { permissions.RemoveRole("space-creator") })
+	user := models.Users{Role: "space-creator"}
+	if !CreationDecision("allowed_users", user, false) {
+		t.Fatal("role creation permission should grant creation")
+	}
+	for _, mode := range []string{"admins", "oidc_group"} {
+		if CreationDecision(mode, user, false) {
+			t.Fatalf("role must not bypass %s", mode)
+		}
+	}
+	user.Disabled = true
+	if CreationDecision("allowed_users", user, false) {
+		t.Fatal("disabled creator must be denied")
 	}
 }

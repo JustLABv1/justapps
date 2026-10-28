@@ -11,6 +11,7 @@ import (
 	"justapps-backend/functions/spacemembership"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 	"strings"
 	"time"
 )
@@ -68,14 +69,14 @@ func CreateSpace(c *gin.Context, db *bun.DB) {
 	c.JSON(201, space)
 }
 
-func loadSpace(c *gin.Context, db *bun.DB, ownerOnly bool) (models.PrivateSpace, bool) {
+func loadSpace(c *gin.Context, db *bun.DB, ownerOnly bool, delegated ...permissions.Permission) (models.PrivateSpace, bool) {
 	id, role, ok := getRequiredViewerContext(c)
 	if !ok {
 		return models.PrivateSpace{}, false
 	}
 	var space models.PrivateSpace
 	query := db.NewSelect().Model(&space).Where("ps.id::text = ?", c.Param("spaceId"))
-	if role == "admin" {
+	if role == "admin" || permissions.HasAny(role, delegated...) {
 		// Administrators can manage metadata and access without joining the space.
 	} else if ownerOnly {
 		query = query.Where("ps.owner_id = ?", id)
@@ -90,7 +91,7 @@ func loadSpace(c *gin.Context, db *bun.DB, ownerOnly bool) (models.PrivateSpace,
 }
 
 func ListSpaceMembers(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, false)
+	space, ok := loadSpace(c, db, false, permissions.ManageSpaceMembers)
 	if !ok {
 		return
 	}
@@ -109,7 +110,7 @@ func ListSpaceMembers(c *gin.Context, db *bun.DB) {
 }
 
 func InviteSpaceMember(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.ManageSpaceMembers)
 	if !ok {
 		return
 	}
@@ -160,7 +161,7 @@ func RemoveSpaceMember(c *gin.Context, db *bun.DB) {
 		return
 	}
 	if c.Param("userId") != id.String() {
-		if _, ok := loadSpace(c, db, true); !ok {
+		if _, ok := loadSpace(c, db, true, permissions.ManageSpaceMembers); !ok {
 			return
 		}
 	}
@@ -211,7 +212,7 @@ func PublishSpaceApp(c *gin.Context, db *bun.DB) {
 
 // Space owners can rename their spaces; membership never grants management rights.
 func UpdateSpace(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.ManageSpaces)
 	if !ok {
 		return
 	}
@@ -232,7 +233,7 @@ func UpdateSpace(c *gin.Context, db *bun.DB) {
 
 // Apps are deleted in the same transaction, so deletion never makes them public.
 func DeleteSpace(c *gin.Context, db *bun.DB) {
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.DeleteSpaces)
 	if !ok {
 		return
 	}
@@ -244,7 +245,7 @@ func DeleteSpace(c *gin.Context, db *bun.DB) {
 		if err != nil {
 			return err
 		}
-		if locked && c.GetString("role") != "admin" {
+		if locked && !permissions.Has(c.GetString("role"), permissions.DeleteSpaces) {
 			return errors.New("Der Space enthält gesperrte Apps. Bitte diese zuerst entsperren lassen.")
 		}
 		if _, err := tx.NewDelete().Model((*models.Apps)(nil)).Where("space_id = ?", space.ID).Exec(ctx); err != nil {

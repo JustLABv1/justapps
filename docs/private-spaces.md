@@ -26,7 +26,7 @@ In Keycloak, configure a **Group Membership** protocol mapper for the client:
 
 See the [official Keycloak protocol mapper documentation](https://www.keycloak.org/admin-api/protocol-mappers). Names are case-sensitive and exact: a mapping for `/teams/A` does not automatically match `/teams/A/sub`. Roles and realm/client roles are not interpreted as group membership.
 
-The claim path is configurable per provider under **Verwaltung → Einstellungen → OIDC-Provider → Gruppen-Claim-Pfad**. The default is `groups`. Supported examples:
+The claim path is configurable per provider under **Verwaltung → Benutzer & Zugriff → Zugriff & Berechtigungen → Anmeldung & SSO → Gruppen-Claim-Pfad**. The default is `groups`. Supported examples:
 
 | Setting | Token structure |
 | --- | --- |
@@ -49,7 +49,7 @@ Migration `64_add_oidc_groups_claim.go` adds the provider-specific claim path wi
 
 Administrators can open **Verwaltung → Katalog → Private Spaces** to search all spaces by name or owner. The overview shows owners, app counts, accepted members, invitations and group mappings. Administrators can rename spaces, change ownership, manage membership and group mappings, and delete spaces. Transferring a space does not transfer ownership of its apps.
 
-The global **Wer darf Spaces erstellen?** rule has four modes:
+Under **Zugriff & Berechtigungen → Globale Regeln**, the global **Wer darf Spaces erstellen?** rule has four modes:
 
 | Rule | Who can create spaces |
 | --- | --- |
@@ -60,6 +60,15 @@ The global **Wer darf Spaces erstellen?** rule has four modes:
 
 Administrators can create spaces in every mode. Individual user flags apply only in **Allowed users** mode and cannot bypass the administrator-only or OIDC-group modes. The initial rule is **Allowed users**, with individual grants disabled by default. Existing spaces and membership access are unaffected.
 
-For the OIDC-group rule, configure the provider and exact group under the global rule. The provider's configured claim path is used. Verified group snapshots are refreshed at OIDC login even when no per-space group mappings exist. They are not included in backups. A user may need to sign in again through OIDC before the group rule recognizes their membership. Disabling or deleting the configured provider blocks creation via this rule.
+For the OIDC-group rule, configure the provider and exact group under the global rule in the access workspace. The provider's configured claim path is used. Verified group snapshots are refreshed at OIDC login even when no per-space group mappings exist. They are not included in backups. A user may need to sign in again through OIDC before the group rule recognizes their membership. Disabling or deleting the configured provider blocks creation via this rule.
 
 Rules are checked against current database state for each creation request. Migrations `65_add_space_creation_permission.go` and `66_add_space_creation_policy.go` add the individual flag, global policy and verified group snapshots. The apps backup section includes the global creation policy; individual flags are included with users.
+
+
+### Rollenrechte für Spaces
+
+Unter **Benutzer & Zugriff → Zugriffssteuerung → Rollen** können Rollen folgende unabhängige Rechte erhalten:
+`spaces:create`, `spaces:view`, `spaces:manage` (Umbenennen), `spaces:members:manage`, `spaces:groups:manage`, `spaces:ownership:transfer` und `spaces:delete`.
+Verwaltungsrechte gelten für alle Spaces. Eigentümer behalten ihre bisherigen Rechte an eigenen Spaces. Die Übersicht gewährt keinen Zugriff auf private App-Inhalte.
+Delegierte Verwalter erreichen die Übersicht über **Ihre Spaces → Alle Spaces verwalten** (`/spaces/verwaltung`), ohne Zugriff auf die übrige Administration zu benötigen.
+Das Erstellungsrecht greift im globalen Modus **Nur für freigegebene Nutzer oder Rollen** zusätzlich zur individuellen Freigabe. Die Modi **Nur Administratoren** und **OIDC-Gruppe** werden dadurch nicht übersteuert.

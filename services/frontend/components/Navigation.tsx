@@ -125,7 +125,7 @@ export function Navigation() {
     ...adminNavGroups.flatMap((group) => group.items).filter((item) => [
       '/verwaltung/katalog/apps',
       '/verwaltung/sicherheit/benutzer',
-      '/verwaltung/sicherheit/rollen',
+      '/verwaltung/sicherheit/zugriff?bereich=rollen',
     ].includes(item.href)),
   ];
 

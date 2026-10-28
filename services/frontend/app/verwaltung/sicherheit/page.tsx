@@ -1,48 +1,19 @@
-import { AdminOverviewPage } from '@/components/admin/AdminOverviewPage';
-import { Activity, Archive, KeyRound, ShieldCheck, Users } from 'lucide-react';
-
-export default function VerwaltungSicherheitPage() {
+import { AdminOverviewPage } from "@/components/admin/AdminOverviewPage";
+import { adminNavGroups } from "@/lib/admin-navigation";
+export default function AdminCategoryPage() {
+  const items = adminNavGroups.find(
+    (group) => group.label === "Benutzer & Zugriff",
+  )!.items;
   return (
     <AdminOverviewPage
-      title="Sicherheit"
-      description="Konzentriert Benutzerzugänge, Nachvollziehbarkeit, Tokenverwaltung und Wiederherstellung auf einer Ebene."
-      cards={[
-        {
-          href: '/verwaltung/sicherheit/rollen',
-          title: 'Rollen & Rechte',
-          description: 'Erstellen Sie Rollen und legen Sie einzelne FAQ- und App-Rechte zentral fest.',
-          icon: ShieldCheck,
-          note: 'Rollenmodell',
-        },
-        {
-          href: '/verwaltung/sicherheit/benutzer',
-          title: 'Benutzer',
-          description: 'Verwalten Sie Konten, Rollen und administrative Zugriffsrechte.',
-          icon: Users,
-          note: 'Konten und Rollen',
-        },
-        {
-          href: '/verwaltung/sicherheit/tokens',
-          title: 'Tokens',
-          description: 'Pflegen Sie Zugriffstoken und kontrollieren Sie deren Einsatz in der Plattform.',
-          icon: KeyRound,
-          note: 'API und Zugriffe',
-        },
-        {
-          href: '/verwaltung/sicherheit/audit',
-          title: 'Audit',
-          description: 'Verfolgen Sie Änderungen, Systemereignisse und administrative Aktivitäten nach.',
-          icon: Activity,
-          note: 'Nachvollziehbarkeit',
-        },
-        {
-          href: '/verwaltung/sicherheit/backups',
-          title: 'Backups',
-          description: 'Erstellen und importieren Sie Sicherungen für Wiederherstellung und Migration.',
-          icon: Archive,
-          note: 'Sicherung und Restore',
-        },
-      ]}
+      title="Benutzer & Zugriff"
+      description="Globale Zugriffsregeln und Rollenrechte an einem Ort; individuelle Freigaben direkt am Benutzerkonto."
+      cards={items.map((item) => ({
+        href: item.href,
+        title: item.label,
+        description: item.description,
+        icon: item.icon,
+      }))}
     />
   );
 }

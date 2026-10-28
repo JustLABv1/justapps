@@ -9,12 +9,16 @@ import (
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 	"strconv"
 	"strings"
 )
 
 func ListAdminSpaces(c *gin.Context, db *bun.DB) {
-	if !requireSpaceAdmin(c) {
+	if _, role, ok := getRequiredViewerContext(c); !ok {
+		return
+	} else if !permissions.CanOverseeSpaces(role) {
+		httperror.Forbidden(c, "Space-Übersichtsrecht erforderlich", errors.New("space overview permission required"))
 		return
 	}
 	page := 1
@@ -60,10 +64,13 @@ func ListAdminSpaces(c *gin.Context, db *bun.DB) {
 }
 
 func TransferSpaceOwner(c *gin.Context, db *bun.DB) {
-	if !requireSpaceAdmin(c) {
+	if _, role, ok := getRequiredViewerContext(c); !ok {
+		return
+	} else if !permissions.Has(role, permissions.TransferSpaceOwnership) {
+		httperror.Forbidden(c, "Eigentümerwechsel nicht erlaubt", errors.New("space transfer permission required"))
 		return
 	}
-	space, ok := loadSpace(c, db, true)
+	space, ok := loadSpace(c, db, true, permissions.TransferSpaceOwnership)
 	if !ok {
 		return
 	}

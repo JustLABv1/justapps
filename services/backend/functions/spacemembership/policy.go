@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/uptrace/bun"
 	"justapps-backend/pkg/models"
+	"justapps-backend/pkg/permissions"
 )
 
 func ValidCreationMode(mode string) bool {
@@ -26,7 +27,7 @@ func CreationDecision(mode string, user models.Users, groupMember bool) bool {
 	case "everyone":
 		return true
 	case "allowed_users":
-		return user.CanCreateSpaces
+		return user.CanCreateSpaces || permissions.Has(user.Role, permissions.CreateSpaces)
 	case "oidc_group":
 		return groupMember
 	default:

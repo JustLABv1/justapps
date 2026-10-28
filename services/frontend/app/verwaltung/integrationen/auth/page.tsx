@@ -1,11 +1,4 @@
-import { AdminSettingsWorkspace } from '../../einstellungen/page';
-
-export default function VerwaltungIntegrationenAuthPage() {
-  return (
-    <AdminSettingsWorkspace
-      title="Authentifizierung"
-      description="Verwalten Sie OIDC-Provider und steuern Sie, ob der App Store nur für authentifizierte Nutzer erreichbar ist."
-      sections={['auth']}
-    />
-  );
+import { redirect } from "next/navigation";
+export default function AuthSettingsRedirect() {
+  redirect("/verwaltung/sicherheit/zugriff?bereich=anmeldung");
 }

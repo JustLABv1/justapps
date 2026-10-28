@@ -22,7 +22,7 @@ export function SpaceOwnerModal({
     setSaving(true);
     setError("");
     try {
-      const response = await fetchApi(`/admin/spaces/${space.id}/owner`, {
+      const response = await fetchApi(`/spaces/${space.id}/owner`, {
         method: "PATCH",
         body: JSON.stringify({ userId }),
       });

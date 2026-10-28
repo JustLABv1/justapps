@@ -1,11 +1,4 @@
-import { AdminSettingsWorkspace } from '../../einstellungen/page';
-
-export default function VerwaltungKatalogInhaltePage() {
-  return (
-    <AdminSettingsWorkspace
-      title="Inhalte"
-      description="Strukturiert fachliche Detailfelder und Footer-Links, die im Katalog und auf App-Seiten sichtbar sind."
-      sections={['inhalte']}
-    />
-  );
+import { redirect } from "next/navigation";
+export default function LegacySettingsRedirect() {
+  redirect("/verwaltung/katalog/einstellungen?bereich=felder");
 }

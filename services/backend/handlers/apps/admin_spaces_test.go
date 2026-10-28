@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
+	"justapps-backend/pkg/permissions"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -161,5 +162,43 @@ func TestAdminCanTransferSpaceToActiveUser(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDelegatedSpacePermissionOnlyBypassesOwnerForMatchingAction(t *testing.T) {
+	permissions.SetRole("space-renamer", []string{string(permissions.ManageSpaces)})
+	t.Cleanup(func() { permissions.RemoveRole("space-renamer") })
+	for _, permission := range []permissions.Permission{permissions.ManageSpaces, permissions.ManageSpaceMembers, permissions.ManageSpaceGroups, permissions.DeleteSpaces, permissions.TransferSpaceOwnership} {
+		t.Run(string(permission), func(t *testing.T) {
+			sqlDB, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatal(err)
+			}
+			db := bun.NewDB(sqlDB, pgdialect.New())
+			defer db.Close()
+			spaceID, viewerID := uuid.New(), uuid.New()
+			pattern := "SELECT .*private_spaces.*ps.id::text"
+			rows := sqlmock.NewRows([]string{"id", "owner_id", "name"})
+			if permission == permissions.ManageSpaces {
+				pattern += " = '" + spaceID.String() + "'\\)$"
+				rows.AddRow(spaceID, uuid.New(), "Team")
+			} else {
+				pattern += ".*ps.owner_id = '" + viewerID.String() + "'"
+			}
+			mock.ExpectQuery(pattern).WillReturnRows(rows)
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			c.Request = httptest.NewRequest("PATCH", "/spaces", nil)
+			c.Set("user_id", viewerID)
+			c.Set("role", "space-renamer")
+			c.Params = gin.Params{{Key: "spaceId", Value: spaceID.String()}}
+			_, ok := loadSpace(c, db, true, permission)
+			if ok != (permission == permissions.ManageSpaces) {
+				t.Fatalf("unexpected authorization for %s: %s; %v", permission, recorder.Body.String(), mock.ExpectationsWereMet())
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }

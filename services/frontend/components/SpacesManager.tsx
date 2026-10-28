@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/PageHeader";
 import { SpaceGroupMappingsModal } from "@/components/SpaceGroupMappingsModal";
-import { SpaceCreationPolicyPanel } from "@/components/SpaceCreationPolicyPanel";
 import { SpaceOwnerModal } from "@/components/SpaceOwnerModal";
 import { SpaceMembersModal } from "@/components/SpaceMembersModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuth } from "@/context/AuthContext";
+import { Permission, hasPermission, canOverseeSpaces } from "@/lib/permissions";
 import { fetchApi } from "@/lib/api";
 
 type Space = {
@@ -96,8 +96,11 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
       active = false;
     };
   }, [user, profileReady]);
+  const canOversee = canOverseeSpaces(user?.role, user?.permissions);
+  const permitted = (permission: Parameters<typeof hasPermission>[1]) =>
+    hasPermission(user?.role, permission, user?.permissions);
   const endpoint = adminMode
-    ? `/admin/spaces?q=${encodeURIComponent(query)}&page=${page}`
+    ? `/spaces/management?q=${encodeURIComponent(query)}&page=${page}`
     : "/spaces";
   const readSpaces = useCallback(async () => {
     const data = await (await request(endpoint)).json();
@@ -116,7 +119,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
       );
   }, [readSpaces, adminMode]);
   useEffect(() => {
-    if (!user || !profileReady) return;
+    if (!user || !profileReady || (adminMode && !canOversee)) return;
     let active = true;
     const timer = window.setTimeout(
       () => {
@@ -145,7 +148,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [user, profileReady, readSpaces, adminMode]);
+  }, [user, profileReady, readSpaces, adminMode, canOversee]);
 
   const act = async (action: () => Promise<void>) => {
     setPending(true);
@@ -184,6 +187,12 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
         />
       </PageContainer>
     );
+  if (adminMode && !canOversee)
+    return (
+      <PageContainer>
+        <p>Keine Berechtigung zur Space-Verwaltung.</p>
+      </PageContainer>
+    );
   const canCreate =
     user.role === "admin" ||
     (creationAccess?.userId === user.id && creationAccess.canCreate);
@@ -201,12 +210,26 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
         }
         actions={
           <>
-            {adminMode && (
+            {adminMode && user.role === "admin" && (
               <Button
                 variant="secondary"
-                onPress={() => router.push("/verwaltung/sicherheit/benutzer")}
+                onPress={() => router.push("/verwaltung/sicherheit/zugriff")}
               >
-                Erstellungsrechte verwalten
+                Zugriffsregeln
+              </Button>
+            )}
+            {!adminMode && canOversee && (
+              <Button
+                variant="secondary"
+                onPress={() =>
+                  router.push(
+                    user.role === "admin"
+                      ? "/verwaltung/katalog/spaces"
+                      : "/spaces/verwaltung",
+                  )
+                }
+              >
+                Alle Spaces verwalten
               </Button>
             )}
             {canCreate && (
@@ -226,7 +249,6 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           {error}
         </p>
       )}
-      {adminMode && <SpaceCreationPolicyPanel />}
       {invitations.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold">Einladungen</h2>
@@ -336,15 +358,19 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label={`Mitglieder von ${space.name} ${adminMode || space.ownerId === user.id ? "verwalten" : "ansehen"}`}
-                    onPress={() => void openMembers(space)}
-                  >
-                    <Users className="h-4 w-4" />
-                    Mitglieder
-                  </Button>
+                  {(!adminMode ||
+                    space.ownerId === user.id ||
+                    permitted(Permission.ManageSpaceMembers)) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Mitglieder von ${space.name} ${permitted(Permission.ManageSpaceMembers) || space.ownerId === user.id ? "verwalten" : "ansehen"}`}
+                      onPress={() => void openMembers(space)}
+                    >
+                      <Users className="h-4 w-4" />
+                      Mitglieder
+                    </Button>
+                  )}
                   {(!adminMode || space.canViewApps) && (
                     <Button
                       variant="secondary"
@@ -355,7 +381,13 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                       <ArrowUpRight className="h-4 w-4" />
                     </Button>
                   )}
-                  {(adminMode || space.ownerId === user.id) && (
+                  {(space.ownerId === user.id ||
+                    [
+                      Permission.ManageSpaces,
+                      Permission.ManageSpaceGroups,
+                      Permission.TransferSpaceOwnership,
+                      Permission.DeleteSpaces,
+                    ].some(permitted)) && (
                     <Dropdown>
                       <Button
                         isIconOnly
@@ -376,7 +408,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                             if (key === "delete") setDeleteSpace(space);
                           }}
                         >
-                          {adminMode && (
+                          {permitted(Permission.TransferSpaceOwnership) && (
                             <Dropdown.Item
                               id="owner"
                               textValue="Eigentümer ändern"
@@ -385,23 +417,38 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                               <Label>Eigentümer ändern</Label>
                             </Dropdown.Item>
                           )}
-                          <Dropdown.Item id="rename" textValue="Umbenennen">
-                            <Pencil className="h-4 w-4 text-muted" />
-                            <Label>Umbenennen</Label>
-                          </Dropdown.Item>
-                          <Dropdown.Item id="groups" textValue="Gruppenzugriff">
-                            <Users className="h-4 w-4 text-muted" />
-                            <Label>Gruppenzugriff</Label>
-                          </Dropdown.Item>
-                          <Separator />
-                          <Dropdown.Item
-                            id="delete"
-                            textValue="Space löschen"
-                            className="text-danger"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <Label>Space löschen</Label>
-                          </Dropdown.Item>
+                          {(space.ownerId === user.id ||
+                            permitted(Permission.ManageSpaces)) && (
+                            <Dropdown.Item id="rename" textValue="Umbenennen">
+                              <Pencil className="h-4 w-4 text-muted" />
+                              <Label>Umbenennen</Label>
+                            </Dropdown.Item>
+                          )}
+                          {(space.ownerId === user.id ||
+                            permitted(Permission.ManageSpaceGroups)) && (
+                            <Dropdown.Item
+                              id="groups"
+                              textValue="Gruppenzugriff"
+                            >
+                              <Users className="h-4 w-4 text-muted" />
+                              <Label>Gruppenzugriff</Label>
+                            </Dropdown.Item>
+                          )}
+                          {(space.ownerId === user.id ||
+                            permitted(Permission.DeleteSpaces)) && (
+                            <Separator />
+                          )}
+                          {(space.ownerId === user.id ||
+                            permitted(Permission.DeleteSpaces)) && (
+                            <Dropdown.Item
+                              id="delete"
+                              textValue="Space löschen"
+                              className="text-danger"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <Label>Space löschen</Label>
+                            </Dropdown.Item>
+                          )}
                         </Dropdown.Menu>
                       </Dropdown.Popover>
                     </Dropdown>
@@ -474,7 +521,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           key={memberSpace.id}
           space={memberSpace}
           viewerId={user.id}
-          canManage={adminMode}
+          canManage={permitted(Permission.ManageSpaceMembers)}
           onOpenChange={(open) => {
             if (!open) setMemberSpace(null);
           }}
