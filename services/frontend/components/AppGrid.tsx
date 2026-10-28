@@ -658,13 +658,6 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
         return (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-              <p className="text-sm font-medium text-muted">
-                {serverLoading ? (
-                  <span className="text-muted">Suche läuft...</span>
-                ) : (
-                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length}</span> {(hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length) === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
-                )}
-              </p>
               <div className="flex flex-wrap items-center gap-2">
               {scopeControl}
               {hasActiveFilters && (
@@ -679,6 +672,13 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
                 </Button>
               )}
               </div>
+              <p className="ml-auto text-right text-sm font-medium text-muted">
+                {serverLoading ? (
+                  <span className="text-muted">Suche läuft...</span>
+                ) : (
+                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length}</span> {(hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length) === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                )}
+              </p>
             </div>
 
             {/* Apps grid — masonry layout so cards size to their own content */}
