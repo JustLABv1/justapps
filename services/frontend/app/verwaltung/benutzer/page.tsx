@@ -11,6 +11,7 @@ import {
     Modal,
     Select,
     TextField,
+    Switch,
     toast
 } from '@heroui/react';
 import { Loader2, ShieldCheck, UserPlus } from 'lucide-react';
@@ -23,6 +24,7 @@ interface SystemUser {
   role: string;
   disabled: boolean;
   canSubmitApps?: boolean;
+  canCreateSpaces?: boolean;
   disabledReason?: string;
   createdAt?: string;
   authType?: string;
@@ -144,6 +146,10 @@ export default function BenutzerPage() {
     } catch (err) { console.error(err); }
   };
 
+  const handleToggleUserSpaces = async (u: SystemUser) => {
+    try { const response=await fetchApi(`/admin/users/${u.id}`,{method:'PUT',body:JSON.stringify({...u,canCreateSpaces:!u.canCreateSpaces})});if(!response.ok)throw new Error('Berechtigung konnte nicht geändert werden.');await loadUsers();toast.success('Space-Berechtigung aktualisiert.'); }catch(err){toast.danger(err instanceof Error?err.message:'Aktualisierung fehlgeschlagen.');}
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = selectedUser ? 'PUT' : 'POST';
@@ -187,6 +193,7 @@ export default function BenutzerPage() {
           handleDeleteUser={handleDeleteUser}
           handleToggleUserState={handleToggleUserState}
           handleToggleUserSubmission={handleToggleUserSubmission}
+          handleToggleUserSpaces={handleToggleUserSpaces}
           roleLabels={Object.fromEntries(roles.map((role) => [role.key, role.name]))}
         />
       )}
@@ -237,6 +244,7 @@ export default function BenutzerPage() {
                       </ListBox>
                     </Select.Popover>
                   </Select>
+                  <div className="rounded-xl border border-border p-3"><Switch isSelected={formData.role === 'admin' || !!formData.canCreateSpaces} isDisabled={formData.role === 'admin'} onChange={(value) => setFormData({...formData,canCreateSpaces:value})}><Switch.Control><Switch.Thumb /></Switch.Control><Switch.Content><Label>Spaces erstellen erlauben</Label><p className="text-xs text-muted">Gilt bei der globalen Regel „Nur für erlaubte Nutzer“. Bestehende Mitgliedschaften bleiben beim Entzug erhalten.</p></Switch.Content></Switch></div>
                 </Modal.Body>
                 <Modal.Footer className="px-8 py-6 border-t border-border">
                   <div className="flex justify-end gap-3 w-full">

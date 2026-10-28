@@ -12,6 +12,10 @@ import (
 func Admin(router *gin.RouterGroup, db *bun.DB) {
 	admin := router.Group("/admin").Use(middlewares.Admin(db))
 	{
+		admin.GET("/space-creation-policy", func(c *gin.Context) { appHandlers.GetSpaceCreationPolicy(c, db) })
+		admin.PUT("/space-creation-policy", func(c *gin.Context) { appHandlers.SetSpaceCreationPolicy(c, db) })
+		admin.GET("/spaces", func(c *gin.Context) { appHandlers.ListAdminSpaces(c, db) })
+		admin.PATCH("/spaces/:spaceId/owner", func(c *gin.Context) { appHandlers.TransferSpaceOwner(c, db) })
 		// users
 		admin.GET("/users", func(c *gin.Context) {
 			admins.GetUsers(c, db)

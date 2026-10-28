@@ -10,6 +10,7 @@ import (
 
 func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 	spaces := router.Group("/spaces", middlewares.Auth(db))
+	spaces.GET("/creation-policy", func(c *gin.Context) { apps.GetSpaceCreationEligibility(c, db) })
 	spaces.GET("", func(c *gin.Context) { apps.ListSpaces(c, db) })
 	spaces.PATCH("/:spaceId", func(c *gin.Context) { apps.UpdateSpace(c, db) })
 	spaces.DELETE("/:spaceId", func(c *gin.Context) { apps.DeleteSpace(c, db) })

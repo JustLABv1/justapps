@@ -32,6 +32,10 @@ func TestSyncOIDCGroupsScopesGrantsAndRetainsManualAccess(t *testing.T) {
 			userID, spaceID, mappingID := uuid.New(), uuid.New(), uuid.New()
 			mock.ExpectBegin()
 			mock.ExpectQuery("SELECT .*users.*FOR UPDATE").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(userID))
+			mock.ExpectExec("DELETE FROM user_oidc_groups").WillReturnResult(sqlmock.NewResult(0, 1))
+			if hasGroup {
+				mock.ExpectExec("INSERT INTO user_oidc_groups").WillReturnResult(sqlmock.NewResult(0, 1))
+			}
 			mock.ExpectExec("DELETE FROM private_space_oidc_grants g USING private_space_group_mappings m.*g.user_id = '" + userID.String() + "'.*m.provider_key = 'keycloak'").WillReturnResult(sqlmock.NewResult(0, 1))
 			groups := []string{}
 			if hasGroup {
@@ -63,6 +67,7 @@ func TestSyncOIDCGroupsRollsBackOnFailure(t *testing.T) {
 	userID := uuid.New()
 	mock.ExpectBegin()
 	mock.ExpectQuery("SELECT .*users.*FOR UPDATE").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(userID))
+	mock.ExpectExec("DELETE FROM user_oidc_groups").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM private_space_oidc_grants").WillReturnError(errors.New("database unavailable"))
 	mock.ExpectRollback()
 	if err := SyncOIDCGroups(context.Background(), db, userID, "keycloak", "issuer", nil); err == nil {

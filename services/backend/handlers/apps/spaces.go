@@ -39,6 +39,20 @@ func CreateSpace(c *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
+	var creator models.Users
+	if err := db.NewSelect().Model(&creator).Column("id", "role", "disabled", "can_create_spaces").Where("id = ?", id).Scan(c); err != nil {
+		httperror.InternalServerError(c, "Berechtigung konnte nicht geprüft werden", err)
+		return
+	}
+	allowed, err := spacemembership.CanCreate(c, db, creator)
+	if err != nil {
+		httperror.InternalServerError(c, "Berechtigung konnte nicht geprüft werden", err)
+		return
+	}
+	if !allowed {
+		httperror.Forbidden(c, "Sie dürfen keine Spaces erstellen", errors.New("space creation not permitted"))
+		return
+	}
 	var body struct {
 		Name string `json:"name"`
 	}
@@ -55,13 +69,15 @@ func CreateSpace(c *gin.Context, db *bun.DB) {
 }
 
 func loadSpace(c *gin.Context, db *bun.DB, ownerOnly bool) (models.PrivateSpace, bool) {
-	id, _, ok := getRequiredViewerContext(c)
+	id, role, ok := getRequiredViewerContext(c)
 	if !ok {
 		return models.PrivateSpace{}, false
 	}
 	var space models.PrivateSpace
 	query := db.NewSelect().Model(&space).Where("ps.id::text = ?", c.Param("spaceId"))
-	if ownerOnly {
+	if role == "admin" {
+		// Administrators can manage metadata and access without joining the space.
+	} else if ownerOnly {
 		query = query.Where("ps.owner_id = ?", id)
 	} else {
 		query = query.Where("ps.owner_id = ? OR EXISTS (SELECT 1 FROM private_space_members m WHERE m.space_id = ps.id AND m.user_id = ? AND m.accepted)", id, id)
@@ -84,7 +100,7 @@ func ListSpaceMembers(c *gin.Context, db *bun.DB) {
 		Accepted     bool      `json:"accepted"`
 		GroupManaged bool      `bun:"group_managed" json:"groupManaged"`
 	}, 0)
-	err := db.NewSelect().TableExpr("private_space_members m").ColumnExpr("u.id, u.username, m.accepted, EXISTS (SELECT 1 FROM private_space_oidc_grants g WHERE g.space_id = m.space_id AND g.user_id = m.user_id) AS group_managed").Join("JOIN users u ON u.id = m.user_id").Where("m.space_id = ?", space.ID).OrderExpr("u.username").Scan(c, &rows)
+	err := db.NewSelect().TableExpr("private_space_members m").ColumnExpr("u.id, u.username, m.accepted, EXISTS (SELECT 1 FROM private_space_oidc_grants g WHERE g.space_id = m.space_id AND g.user_id = m.user_id) AS group_managed").Join("JOIN users u ON u.id = m.user_id").Where("m.space_id = ? AND m.user_id <> ?", space.ID, space.OwnerID).OrderExpr("u.username").Scan(c, &rows)
 	if err != nil {
 		httperror.InternalServerError(c, "Mitglieder konnten nicht geladen werden", err)
 		return
@@ -228,7 +244,7 @@ func DeleteSpace(c *gin.Context, db *bun.DB) {
 		if err != nil {
 			return err
 		}
-		if locked {
+		if locked && c.GetString("role") != "admin" {
 			return errors.New("Der Space enthält gesperrte Apps. Bitte diese zuerst entsperren lassen.")
 		}
 		if _, err := tx.NewDelete().Model((*models.Apps)(nil)).Where("space_id = ?", space.ID).Exec(ctx); err != nil {
@@ -241,6 +257,7 @@ func DeleteSpace(c *gin.Context, db *bun.DB) {
 		httperror.InternalServerError(c, "Space konnte nicht gelöscht werden", err)
 		return
 	}
-	audit.WriteAudit(c.Request.Context(), db, space.OwnerID.String(), "space.delete", fmt.Sprintf("deleted private space %s and its apps", space.ID))
+	actorID, _, _ := getViewerContext(c)
+	audit.WriteAudit(c.Request.Context(), db, actorID.String(), "space.delete", fmt.Sprintf("deleted private space %s and its apps", space.ID))
 	c.Status(204)
 }

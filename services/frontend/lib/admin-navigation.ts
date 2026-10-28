@@ -70,6 +70,7 @@ export type AdminDestination = {
 export const adminNavGroups: { label: string; items: AdminDestination[] }[] = [
   { label: 'Apps & Inhalte', items: [
     { href: '/verwaltung/katalog/apps', label: 'Apps verwalten', description: 'Apps anlegen, bearbeiten und veröffentlichen.', icon: Layers, aliases: ['/verwaltung/apps'], keywords: 'Katalog Entwürfe Anwendungen' },
+    { href: '/verwaltung/katalog/spaces', label: 'Private Spaces', description: 'Alle Spaces, Eigentümer und Zugriffsrechte verwalten.', icon: Layers, keywords: 'Space privat Mitglieder Gruppenberechtigung' },
     { href: '/verwaltung/katalog/gruppen', label: 'Gruppen', description: 'Apps in Gruppen organisieren.', icon: Users, aliases: ['/verwaltung/gruppen'] },
     { href: '/verwaltung/katalog/inhalte', label: 'Felder & Links', description: 'Detailfelder, Metadaten und Footer-Links konfigurieren.', icon: FileText, keywords: 'Inhalte Fußzeile' },
     { href: '/verwaltung/katalog/app-verhalten', label: 'Katalog-Einstellungen', description: 'Sortierung, angepinnte Apps und Link-Prüfung einstellen.', icon: SlidersHorizontal, keywords: 'App Verhalten Pinning Reihenfolge' },

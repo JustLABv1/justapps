@@ -30,6 +30,7 @@ interface SystemUser {
   role: string;
   disabled: boolean;
   canSubmitApps?: boolean;
+  canCreateSpaces?: boolean;
   disabledReason?: string;
   createdAt?: string;
   authType?: string;
@@ -42,6 +43,7 @@ interface UserTableProps {
   handleDeleteUser: (userId: string) => void;
   handleToggleUserState: (u: SystemUser) => void | Promise<void>;
   handleToggleUserSubmission: (u: SystemUser) => void | Promise<void>;
+  handleToggleUserSpaces?: (u: SystemUser) => void | Promise<void>;
   roleLabels?: Record<string, string>;
 }
 
@@ -51,6 +53,7 @@ export function UserTable({
   handleDeleteUser,
   handleToggleUserState,
   handleToggleUserSubmission,
+  handleToggleUserSpaces,
   roleLabels = {}
 }: UserTableProps) {
   const [filterValue, setFilterValue] = useState("");
@@ -243,6 +246,7 @@ export function UserTable({
                         <Dropdown.Menu onAction={(key) => {
                             if (key === 'state') handleToggleUserState(u);
                             if (key === 'submission') handleToggleUserSubmission(u);
+                            if (key === 'spaces') handleToggleUserSpaces?.(u);
                             if (key === 'edit') handleEditUser(u);
                             if (key === 'delete') handleDeleteUser(u.id);
                           }}>
@@ -258,6 +262,7 @@ export function UserTable({
                                 {u.canSubmitApps === false ? 'Einreichung erlauben' : 'Einreichung sperren'}
                               </div>
                             </Dropdown.Item>
+                            {handleToggleUserSpaces && u.role !== 'admin' && <Dropdown.Item id="spaces" textValue={u.canCreateSpaces ? 'Space-Erstellung sperren' : 'Space-Erstellung erlauben'}><div className="flex items-center gap-2">{u.canCreateSpaces ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}{u.canCreateSpaces ? 'Space-Erstellung sperren' : 'Space-Erstellung erlauben'}</div></Dropdown.Item>}
                             <Dropdown.Item id="delete" textValue="Löschen" className="text-danger">
                               <div className="flex items-center gap-2">
                                 <Trash2 className="w-4 h-4" /> Löschen

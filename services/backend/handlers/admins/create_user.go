@@ -50,13 +50,14 @@ func CreateUser(context *gin.Context, db *bun.DB) {
 		return
 	}
 
-	_, err = db.NewInsert().Model(&user).Column("email", "username", "password", "role").Exec(context)
+	_, err = db.NewInsert().Model(&user).Column("email", "username", "password", "role", "can_create_spaces").Exec(context)
 	if err != nil {
 		httperror.InternalServerError(context, "Error creating user on db", err)
 		return
 	}
 
-	callerID := context.GetString("user_id")
+	actor, _ := context.Get("user_id")
+	callerID := audit.ActorID(actor, "unknown")
 	audit.WriteAudit(context.Request.Context(), db, callerID, "user.create", fmt.Sprintf("created user %s", user.Email))
 	context.JSON(http.StatusCreated, gin.H{"result": "success"})
 }

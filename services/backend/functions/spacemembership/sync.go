@@ -40,6 +40,14 @@ func SyncOIDCGroups(ctx context.Context, db *bun.DB, userID uuid.UUID, providerK
 		if err := tx.NewSelect().Model(&user).Column("id").Where("id = ?", userID).For("UPDATE").Scan(ctx); err != nil {
 			return err
 		}
+		if _, err := tx.NewRaw(`DELETE FROM user_oidc_groups WHERE user_id = ? AND provider_key = ?`, userID, providerKey).Exec(ctx); err != nil {
+			return err
+		}
+		for _, group := range groups {
+			if _, err := tx.NewRaw(`INSERT INTO user_oidc_groups(user_id,provider_key,issuer,group_name) VALUES (?,?,?,?)`, userID, providerKey, issuer, group).Exec(ctx); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.NewRaw(`DELETE FROM private_space_oidc_grants g USING private_space_group_mappings m WHERE g.mapping_id = m.id AND g.user_id = ? AND m.provider_key = ?`, userID, providerKey).Exec(ctx); err != nil {
 			return err
 		}

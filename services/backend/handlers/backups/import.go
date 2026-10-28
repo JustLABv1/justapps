@@ -165,6 +165,14 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 			}
 		case "apps":
 			if result := applySection(section, func() (importSectionStats, []string, error) {
+				if manifest.Data.SpaceCreationPolicy != nil {
+					policy := *manifest.Data.SpaceCreationPolicy
+					policy.ID = "default"
+					if _, err := tx.NewInsert().Model(&policy).On("CONFLICT (id) DO UPDATE").Set("mode = EXCLUDED.mode").Set("provider_key = EXCLUDED.provider_key").Set("issuer = EXCLUDED.issuer").Set("group_name = EXCLUDED.group_name").Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
+				}
+
 				for _, space := range manifest.Data.PrivateSpaces {
 					if _, err := tx.NewInsert().Model(&space).On("CONFLICT (id) DO UPDATE").Set("name = EXCLUDED.name").Set("owner_id = EXCLUDED.owner_id").Exec(ctx); err != nil {
 						return importSectionStats{}, nil, err
@@ -515,18 +523,19 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		}
 
 		user := models.Users{
-			ID:             backupUser.ID,
-			Username:       backupUser.Username,
-			Email:          backupUser.Email,
-			Password:       password,
-			Role:           strings.ToLower(strings.TrimSpace(backupUser.Role)),
-			AuthType:       authType,
-			CanSubmitApps:  backupUser.CanSubmitApps,
-			Disabled:       backupUser.Disabled,
-			DisabledReason: backupUser.DisabledReason,
-			CreatedAt:      backupUser.CreatedAt,
-			UpdatedAt:      backupUser.UpdatedAt,
-			LastLoginAt:    backupUser.LastLoginAt,
+			ID:              backupUser.ID,
+			Username:        backupUser.Username,
+			Email:           backupUser.Email,
+			Password:        password,
+			Role:            strings.ToLower(strings.TrimSpace(backupUser.Role)),
+			AuthType:        authType,
+			CanCreateSpaces: backupUser.CanCreateSpaces,
+			CanSubmitApps:   backupUser.CanSubmitApps,
+			Disabled:        backupUser.Disabled,
+			DisabledReason:  backupUser.DisabledReason,
+			CreatedAt:       backupUser.CreatedAt,
+			UpdatedAt:       backupUser.UpdatedAt,
+			LastLoginAt:     backupUser.LastLoginAt,
 		}
 		if user.Role == "" {
 			user.Role = "user"
@@ -538,7 +547,7 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		if exists {
 			_, err = tx.NewUpdate().Model(&user).
 				Where("id = ?", user.ID).
-				Column("username", "email", "password", "role", "auth_type", "can_submit_apps", "disabled", "disabled_reason", "updated_at", "last_login_at").
+				Column("username", "email", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "updated_at", "last_login_at").
 				Exec(ctx)
 			if err != nil {
 				return stats, warnings, err
@@ -548,7 +557,7 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		}
 
 		_, err = tx.NewInsert().Model(&user).
-			Column("id", "username", "email", "password", "role", "auth_type", "can_submit_apps", "disabled", "disabled_reason", "created_at", "updated_at", "last_login_at").
+			Column("id", "username", "email", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "created_at", "updated_at", "last_login_at").
 			Exec(ctx)
 		if err != nil {
 			return stats, warnings, err

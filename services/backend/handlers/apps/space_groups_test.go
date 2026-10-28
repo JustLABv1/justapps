@@ -27,7 +27,7 @@ func TestSpaceGroupMappingsRequireSpaceOwner(t *testing.T) {
 			c.Request = httptest.NewRequest("POST", "/spaces/group-mappings", strings.NewReader(`{"providerKey":"keycloak","groupName":"/team"}`))
 			c.Request.Header.Set("Content-Type", "application/json")
 			c.Set("user_id", uuid.New())
-			c.Set("role", "admin")
+			c.Set("role", "user")
 			c.Params = gin.Params{{Key: "spaceId", Value: uuid.New().String()}}
 			switch action {
 			case "list":
@@ -38,7 +38,7 @@ func TestSpaceGroupMappingsRequireSpaceOwner(t *testing.T) {
 				DeleteSpaceGroupMapping(c, db)
 			}
 			if recorder.Code != 404 {
-				t.Fatalf("platform role must not bypass space ownership: %d %s", recorder.Code, recorder.Body.String())
+				t.Fatalf("regular users must not bypass space ownership: %d %s", recorder.Code, recorder.Body.String())
 			}
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Fatal(err)

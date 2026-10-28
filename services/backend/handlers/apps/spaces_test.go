@@ -200,7 +200,7 @@ func TestSpaceManagementRejectsNonOwner(t *testing.T) {
 			c.Request.Header.Set("Content-Type", "application/json")
 			c.Params = gin.Params{{Key: "spaceId", Value: uuid.New().String()}}
 			c.Set("user_id", uuid.New())
-			c.Set("role", "admin")
+			c.Set("role", "user")
 			if method == "PATCH" {
 				UpdateSpace(c, db)
 			} else {

@@ -32,18 +32,19 @@ type BackupAsset struct {
 }
 
 type BackupUser struct {
-	ID             uuid.UUID  `json:"id"`
-	Username       string     `json:"username"`
-	Email          string     `json:"email"`
-	Password       string     `json:"password,omitempty"`
-	Role           string     `json:"role"`
-	AuthType       string     `json:"authType"`
-	CanSubmitApps  bool       `json:"canSubmitApps"`
-	Disabled       bool       `json:"disabled"`
-	DisabledReason string     `json:"disabledReason"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
-	LastLoginAt    *time.Time `json:"lastLoginAt,omitempty"`
+	ID              uuid.UUID  `json:"id"`
+	Username        string     `json:"username"`
+	Email           string     `json:"email"`
+	Password        string     `json:"password,omitempty"`
+	Role            string     `json:"role"`
+	AuthType        string     `json:"authType"`
+	CanCreateSpaces bool       `json:"canCreateSpaces"`
+	CanSubmitApps   bool       `json:"canSubmitApps"`
+	Disabled        bool       `json:"disabled"`
+	DisabledReason  string     `json:"disabledReason"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+	LastLoginAt     *time.Time `json:"lastLoginAt,omitempty"`
 }
 
 type BackupToken struct {
@@ -67,6 +68,7 @@ type BackupRole struct {
 }
 
 type BackupData struct {
+	SpaceCreationPolicy *SpaceCreationPolicy       `json:"spaceCreationPolicy,omitempty"`
 	SpaceGroupMappings  []PrivateSpaceGroupMapping `json:"spaceGroupMappings,omitempty"`
 	PrivateSpaces       []PrivateSpace             `json:"privateSpaces,omitempty"`
 	PrivateSpaceMembers []PrivateSpaceMember       `json:"privateSpaceMembers,omitempty"`
@@ -99,6 +101,7 @@ type BackupData struct {
 // versions that still used the GitLab-specific section names.
 func (data *BackupData) UnmarshalJSON(payload []byte) error {
 	type rawBackupData struct {
+		SpaceCreationPolicy *SpaceCreationPolicy       `json:"spaceCreationPolicy,omitempty"`
 		SpaceGroupMappings  []PrivateSpaceGroupMapping `json:"spaceGroupMappings,omitempty"`
 		PrivateSpaces       []PrivateSpace             `json:"privateSpaces,omitempty"`
 		PrivateSpaceMembers []PrivateSpaceMember       `json:"privateSpaceMembers,omitempty"`
@@ -133,9 +136,10 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		return err
 	}
 	*data = BackupData{
-		Apps:               raw.Apps,
-		SpaceGroupMappings: raw.SpaceGroupMappings,
-		PrivateSpaces:      raw.PrivateSpaces, PrivateSpaceMembers: raw.PrivateSpaceMembers,
+		Apps:                raw.Apps,
+		SpaceCreationPolicy: raw.SpaceCreationPolicy,
+		SpaceGroupMappings:  raw.SpaceGroupMappings,
+		PrivateSpaces:       raw.PrivateSpaces, PrivateSpaceMembers: raw.PrivateSpaceMembers,
 		AppEditors:          raw.AppEditors,
 		AppGroups:           raw.AppGroups,
 		AppRelations:        raw.AppRelations,

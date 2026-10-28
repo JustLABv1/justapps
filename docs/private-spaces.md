@@ -1,6 +1,6 @@
 # Private Spaces
 
-Use the **Space** selector on the homepage to switch between the public catalog and your accepted spaces. Search, filters and pagination stay within the selected space. Open **Private Spaces** from the navigation to create a personal space. A space without invited members is visible only to its owner. Space creation is available to authenticated users; creating apps still requires the existing app submission permission.
+Use the **Space** selector on the homepage to switch between the public catalog and your accepted spaces. Search, filters and pagination stay within the selected space. Open **Private Spaces** from the navigation to create a personal space. A space without invited members is visible only to its owner. Space creation follows the global rule configured by an administrator. Creating apps still requires the existing app submission permission.
 
 The space owner can rename a space or delete it with all contained private apps after confirmation. Published apps remain in the public catalog.
 
@@ -43,3 +43,23 @@ On a successful OIDC login, the backend synchronizes the verified token's groups
 Manual invitations and accepted manual memberships are stored separately and survive group changes. Multiple mappings/providers can independently grant access. Group-managed members are marked **Über OIDC verwaltet** and cannot be deselected in the manual member picker. Existing app ownership remains an independent source of access to an owner's own apps.
 
 Migration `64_add_oidc_groups_claim.go` adds the provider-specific claim path with `groups` as its default. Migration `63_add_space_oidc_groups.go` adds mappings and independent membership sources. Backups include mappings and manual memberships. Group grants are regenerated from a verified token on the next OIDC login after restore; they are not trusted from backup data.
+
+
+## Central administration and creation rules
+
+Administrators can open **Verwaltung → Katalog → Private Spaces** to search all spaces by name or owner. The overview shows owners, app counts, accepted members, invitations and group mappings. Administrators can rename spaces, change ownership, manage membership and group mappings, and delete spaces. Transferring a space does not transfer ownership of its apps.
+
+The global **Wer darf Spaces erstellen?** rule has four modes:
+
+| Rule | Who can create spaces |
+| --- | --- |
+| Everyone | All authenticated, active accounts |
+| OIDC group | Accounts in the configured provider's exact group, from their latest verified OIDC login |
+| Administrators | Administrators only |
+| Allowed users | Accounts explicitly granted **Spaces erstellen erlauben** in the user administration |
+
+Administrators can create spaces in every mode. Individual user flags apply only in **Allowed users** mode and cannot bypass the administrator-only or OIDC-group modes. The initial rule is **Allowed users**, with individual grants disabled by default. Existing spaces and membership access are unaffected.
+
+For the OIDC-group rule, configure the provider and exact group under the global rule. The provider's configured claim path is used. Verified group snapshots are refreshed at OIDC login even when no per-space group mappings exist. They are not included in backups. A user may need to sign in again through OIDC before the group rule recognizes their membership. Disabling or deleting the configured provider blocks creation via this rule.
+
+Rules are checked against current database state for each creation request. Migrations `65_add_space_creation_permission.go` and `66_add_space_creation_policy.go` add the individual flag, global policy and verified group snapshots. The apps backup section includes the global creation policy; individual flags are included with users.

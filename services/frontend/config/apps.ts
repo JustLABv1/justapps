@@ -236,6 +236,7 @@ export interface SystemUser {
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
+  canCreateSpaces?: boolean;
   disabled?: boolean;
 }
 

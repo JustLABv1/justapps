@@ -14,6 +14,7 @@ export default function VerwaltungKatalogPage() {
           icon: Layers,
           note: 'Bestand und Bearbeitung',
         },
+        {href:'/verwaltung/katalog/spaces',title:'Private Spaces',description:'Alle privaten Spaces, Eigentümer, Mitglieder und Gruppenzugriffe verwalten.',icon:Layers,note:'Zentrale Space-Verwaltung'},
         {
           href: '/verwaltung/katalog/gruppen',
           title: 'Gruppen',

@@ -7,7 +7,12 @@ import { UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { UserAccessPicker } from "./UserAccessPicker";
 
-type Space = { id: string; name: string; ownerId: string };
+type Space = {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerUsername?: string;
+};
 type Member = {
   id: string;
   username: string;
@@ -32,15 +37,18 @@ async function request(path: string, method = "GET", body?: unknown) {
 export function SpaceMembersModal({
   space,
   viewerId,
+  canManage: adminManage = false,
   onOpenChange,
   onSaved,
 }: {
   space: Space;
   viewerId: string;
+  canManage?: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => Promise<void>;
 }) {
   const isOwner = space.ownerId === viewerId;
+  const canManage = isOwner || adminManage;
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -130,7 +138,7 @@ export function SpaceMembersModal({
       ];
     }),
   );
-  const visibleUsers = isOwner
+  const visibleUsers = canManage
     ? users
     : users.filter((user) => selectedIds.has(user.id));
 
@@ -149,7 +157,7 @@ export function SpaceMembersModal({
               <UsersRound className="h-5 w-5" />
             </Modal.Icon>
             <Modal.Heading>
-              {isOwner ? "Mitglieder verwalten" : "Mitglieder ansehen"}
+              {canManage ? "Mitglieder verwalten" : "Mitglieder ansehen"}
             </Modal.Heading>
           </Modal.Header>
           <Modal.Body>
@@ -164,7 +172,10 @@ export function SpaceMembersModal({
                   Besitzer:{" "}
                   <span className="font-medium text-foreground">
                     {users.find((user) => user.id === space.ownerId)
-                      ?.username || (isOwner ? "Sie" : "Space-Eigentümer")}
+                      ?.username ||
+                      (isOwner
+                        ? "Sie"
+                        : space.ownerUsername || "Space-Eigentümer")}
                   </span>
                 </p>
               </div>
@@ -203,14 +214,14 @@ export function SpaceMembersModal({
                 }
                 loading={loading}
                 disabled={saving}
-                readOnly={!isOwner}
+                readOnly={!canManage}
                 statusById={statusById}
                 loadingLabel="Mitglieder werden geladen..."
               />
             </div>
           </Modal.Body>
           <Modal.Footer>
-            {!isOwner && (
+            {!canManage && (
               <Button
                 variant="ghost"
                 isDisabled={
@@ -249,9 +260,9 @@ export function SpaceMembersModal({
               isDisabled={saving}
               onPress={() => onOpenChange(false)}
             >
-              {isOwner ? "Abbrechen" : "Schließen"}
+              {canManage ? "Abbrechen" : "Schließen"}
             </Button>
-            {isOwner && (
+            {canManage && (
               <Button
                 className="bg-accent text-white"
                 isPending={saving}
