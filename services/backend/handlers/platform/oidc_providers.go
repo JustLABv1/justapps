@@ -23,6 +23,7 @@ type createOIDCProviderRequest struct {
 	Issuer           string   `json:"issuer"`
 	ClientID         string   `json:"clientId"`
 	ClientSecret     string   `json:"clientSecret"`
+	GroupsClaim      string   `json:"groupsClaim"`
 	AdminGroup       string   `json:"adminGroup"`
 	Enabled          bool     `json:"enabled"`
 	Insecure         bool     `json:"insecure"`
@@ -36,6 +37,7 @@ type updateOIDCProviderRequest struct {
 	ClientID         string   `json:"clientId"`
 	ClientSecret     string   `json:"clientSecret"`
 	ClearSecret      bool     `json:"clearSecret"`
+	GroupsClaim      string   `json:"groupsClaim"`
 	AdminGroup       string   `json:"adminGroup"`
 	Enabled          bool     `json:"enabled"`
 	Insecure         bool     `json:"insecure"`
@@ -73,6 +75,10 @@ func CreateOIDCProvider(c *gin.Context, db *bun.DB) {
 	providerKey := authfunc.NormalizeOIDCProviderKey(req.ProviderKey)
 	if providerKey == "" {
 		httperror.StatusBadRequest(c, "OIDC-Provider-Schlüssel fehlt", errors.New("missing provider key"))
+		return
+	}
+	if err := authfunc.ValidateOIDCGroupsClaim(req.GroupsClaim); err != nil {
+		httperror.StatusBadRequest(c, "Ungültiger Gruppen-Claim-Pfad", err)
 		return
 	}
 	issuer := strings.TrimRight(strings.TrimSpace(req.Issuer), "/")
@@ -113,6 +119,7 @@ func CreateOIDCProvider(c *gin.Context, db *bun.DB) {
 		Label:            strings.TrimSpace(req.Label),
 		Issuer:           issuer,
 		ClientID:         clientID,
+		GroupsClaim:      authfunc.NormalizeOIDCGroupsClaim(req.GroupsClaim),
 		AdminGroup:       normalizeOIDCAdminGroup(req.AdminGroup),
 		EncryptedSecret:  encryptedSecret,
 		SecretNonce:      secretNonce,
@@ -162,6 +169,10 @@ func UpdateOIDCProvider(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if err := authfunc.ValidateOIDCGroupsClaim(req.GroupsClaim); err != nil {
+		httperror.StatusBadRequest(c, "Ungültiger Gruppen-Claim-Pfad", err)
+		return
+	}
 	issuer := strings.TrimRight(strings.TrimSpace(req.Issuer), "/")
 	if issuer == "" {
 		issuer = strings.TrimRight(strings.TrimSpace(existing.Issuer), "/")
@@ -203,6 +214,7 @@ func UpdateOIDCProvider(c *gin.Context, db *bun.DB) {
 		Label:            strings.TrimSpace(req.Label),
 		Issuer:           issuer,
 		ClientID:         clientID,
+		GroupsClaim:      authfunc.NormalizeOIDCGroupsClaim(req.GroupsClaim),
 		AdminGroup:       normalizeOIDCAdminGroup(req.AdminGroup),
 		EncryptedSecret:  encryptedSecret,
 		SecretNonce:      secretNonce,
@@ -220,7 +232,7 @@ func UpdateOIDCProvider(c *gin.Context, db *bun.DB) {
 		Model(&settings).
 		Where("provider_key = ?", providerKey).
 		Column(
-			"label", "issuer", "client_id", "admin_group", "encrypted_secret", "secret_nonce", "secret_key_version", "secret_configured",
+			"label", "issuer", "client_id", "admin_group", "groups_claim", "encrypted_secret", "secret_nonce", "secret_key_version", "secret_configured",
 			"enabled", "insecure", "disable_local_auth", "scopes", "updated_at",
 		).
 		Exec(c.Request.Context())

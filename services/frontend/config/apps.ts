@@ -65,6 +65,7 @@ export interface OIDCProviderSummary {
   issuer: string;
   clientId: string;
   adminGroup: string;
+  groupsClaim?: string;
   insecure: boolean;
   disableLocalAuth: boolean;
   scopes: string[];
@@ -77,6 +78,7 @@ export interface OIDCProviderAdminSettings {
   issuer: string;
   clientId: string;
   adminGroup: string;
+  groupsClaim?: string;
   enabled: boolean;
   insecure: boolean;
   disableLocalAuth: boolean;

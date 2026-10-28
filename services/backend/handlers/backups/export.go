@@ -92,6 +92,10 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}
 			canonicalizeAppUploadReferences(apps)
 			manifest.Data.Apps = apps
+			if err := db.NewSelect().Model(&manifest.Data.SpaceGroupMappings).Scan(c); err != nil {
+				respondSectionError(c, section, err)
+				return
+			}
 			if err := db.NewSelect().Model(&manifest.Data.PrivateSpaces).Scan(c); err != nil {
 				respondSectionError(c, section, err)
 				return

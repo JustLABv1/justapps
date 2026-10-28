@@ -13,6 +13,7 @@ type OIDCProviderSettings struct {
 	Label            string    `bun:"label,notnull,default:''" json:"label"`
 	Issuer           string    `bun:"issuer,notnull,default:''" json:"issuer"`
 	ClientID         string    `bun:"client_id,notnull,default:''" json:"clientId"`
+	GroupsClaim      string    `bun:"groups_claim,notnull,default:'groups'" json:"groupsClaim"`
 	AdminGroup       string    `bun:"admin_group,notnull,default:'admin'" json:"adminGroup"`
 	EncryptedSecret  string    `bun:"encrypted_secret,notnull,default:''" json:"encryptedSecret,omitempty"`
 	SecretNonce      string    `bun:"secret_nonce,notnull,default:''" json:"secretNonce,omitempty"`
@@ -31,6 +32,7 @@ type OIDCProviderAdminResponse struct {
 	Label            string   `json:"label"`
 	Issuer           string   `json:"issuer"`
 	ClientID         string   `json:"clientId"`
+	GroupsClaim      string   `json:"groupsClaim"`
 	AdminGroup       string   `json:"adminGroup"`
 	Enabled          bool     `json:"enabled"`
 	Insecure         bool     `json:"insecure"`
@@ -45,6 +47,7 @@ type OIDCProviderSummary struct {
 	Label            string   `json:"label"`
 	Issuer           string   `json:"issuer"`
 	ClientID         string   `json:"clientId"`
+	GroupsClaim      string   `json:"groupsClaim"`
 	AdminGroup       string   `json:"adminGroup"`
 	Insecure         bool     `json:"insecure"`
 	DisableLocalAuth bool     `json:"disableLocalAuth"`

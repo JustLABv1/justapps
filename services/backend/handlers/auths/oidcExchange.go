@@ -2,6 +2,8 @@ package auths
 
 import (
 	"errors"
+	"justapps-backend/config"
+	"justapps-backend/functions/spacemembership"
 	"net/http"
 	"time"
 
@@ -55,8 +57,20 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	providers, err := auth.ListOIDCProviderSummaries(c.Request.Context(), db, config.Config)
+	if err != nil {
+		httperror.InternalServerError(c, "OIDC-Provider konnten nicht geladen werden", err)
+		return
+	}
+	groupClaim := "groups"
+	for _, provider := range providers {
+		if provider.Issuer == idToken.Issuer && provider.ClientID == config.Config.OIDC.ClientID {
+			groupClaim = provider.GroupsClaim
+			break
+		}
+	}
 	// Extract claims from the validated token
-	claims, err := auth.GetOIDCClaims(idToken)
+	claims, err := auth.GetOIDCClaims(idToken, groupClaim)
 	if err != nil {
 		log.WithError(err).Error("OIDC Exchange: Failed to extract claims")
 		httperror.InternalServerError(c, "Failed to extract user claims from token", err)
@@ -147,6 +161,20 @@ func OIDCExchange(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	for _, provider := range providers {
+		if provider.Issuer != idToken.Issuer || provider.ClientID != config.Config.OIDC.ClientID {
+			continue
+		}
+		providerClaims, err := auth.GetOIDCClaims(idToken, provider.GroupsClaim)
+		if err != nil {
+			httperror.InternalServerError(c, "Gruppen-Claim konnte nicht gelesen werden", err)
+			return
+		}
+		if err := spacemembership.SyncOIDCGroups(c.Request.Context(), db, user.ID, provider.Key, provider.Issuer, providerClaims.Groups); err != nil {
+			httperror.InternalServerError(c, "Space-Berechtigungen konnten nicht synchronisiert werden", err)
+			return
+		}
+	}
 	// Generate a dedicated OIDC session JWT.
 	// The auth middleware resolves the live user from the database via email.
 	sessionToken, expiresAt, err := auth.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)

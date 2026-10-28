@@ -18,6 +18,7 @@ type OIDCProviderRuntime struct {
 	Issuer           string
 	ClientID         string
 	ClientSecret     string
+	GroupsClaim      string
 	AdminGroup       string
 	Enabled          bool
 	Insecure         bool
@@ -100,6 +101,7 @@ func ListOIDCProviderSummaries(ctx context.Context, db *bun.DB, conf *config.Res
 			Label:            OIDCProviderLabel(record),
 			Issuer:           strings.TrimSpace(record.Issuer),
 			ClientID:         strings.TrimSpace(record.ClientID),
+			GroupsClaim:      NormalizeOIDCGroupsClaim(record.GroupsClaim),
 			AdminGroup:       strings.TrimSpace(record.AdminGroup),
 			Insecure:         record.Insecure,
 			DisableLocalAuth: record.DisableLocalAuth,
@@ -141,6 +143,7 @@ func ResolveOIDCProvider(ctx context.Context, db *bun.DB, conf *config.RestfulCo
 		Issuer:           strings.TrimRight(strings.TrimSpace(record.Issuer), "/"),
 		ClientID:         strings.TrimSpace(record.ClientID),
 		ClientSecret:     strings.TrimSpace(secret),
+		GroupsClaim:      NormalizeOIDCGroupsClaim(record.GroupsClaim),
 		AdminGroup:       normalizeOIDCAdminGroup(record.AdminGroup),
 		Enabled:          record.Enabled,
 		Insecure:         record.Insecure,
@@ -170,6 +173,7 @@ func ListOIDCAdminProviders(ctx context.Context, db *bun.DB, conf *config.Restfu
 			Label:            OIDCProviderLabel(record),
 			Issuer:           strings.TrimSpace(record.Issuer),
 			ClientID:         strings.TrimSpace(record.ClientID),
+			GroupsClaim:      NormalizeOIDCGroupsClaim(record.GroupsClaim),
 			AdminGroup:       strings.TrimSpace(record.AdminGroup),
 			Enabled:          record.Enabled,
 			Insecure:         record.Insecure,

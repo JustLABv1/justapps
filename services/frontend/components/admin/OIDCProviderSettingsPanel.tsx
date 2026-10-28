@@ -3,15 +3,15 @@
 import { OIDCProviderAdminSettings } from "@/config/apps";
 import { fetchApi } from "@/lib/api";
 import {
-    Button,
-    Disclosure,
-    Input,
-    Label,
-    Modal,
-    Surface,
-    Switch,
-    TextField,
-    Tooltip,
+  Button,
+  Disclosure,
+  Input,
+  Label,
+  Modal,
+  Surface,
+  Switch,
+  TextField,
+  Tooltip,
 } from "@heroui/react";
 import { KeyRound, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { ClipboardEvent, useEffect, useState } from "react";
@@ -23,6 +23,7 @@ type OIDCProviderDraft = {
   clientId: string;
   clientSecret: string;
   adminGroup: string;
+  groupsClaim: string;
   enabled: boolean;
   insecure: boolean;
   disableLocalAuth: boolean;
@@ -36,6 +37,7 @@ const defaultProviderDraft = (): OIDCProviderDraft => ({
   clientId: "",
   clientSecret: "",
   adminGroup: "admin",
+  groupsClaim: "groups",
   enabled: true,
   insecure: false,
   disableLocalAuth: false,
@@ -234,6 +236,7 @@ export function OIDCProviderSettingsPanel() {
             clientSecret: options?.clearSecret ? "" : secretDraft,
             clearSecret: options?.clearSecret ?? false,
             adminGroup: provider.adminGroup,
+            groupsClaim: provider.groupsClaim || "groups",
             enabled: provider.enabled,
             insecure: provider.insecure,
             disableLocalAuth: provider.disableLocalAuth,
@@ -283,6 +286,7 @@ export function OIDCProviderSettingsPanel() {
           clientId: createDraft.clientId.trim(),
           clientSecret: createDraft.clientSecret,
           adminGroup: createDraft.adminGroup,
+          groupsClaim: createDraft.groupsClaim,
           enabled: createDraft.enabled,
           insecure: createDraft.insecure,
           disableLocalAuth: createDraft.disableLocalAuth,
@@ -511,6 +515,29 @@ export function OIDCProviderSettingsPanel() {
                     </TextField>
 
                     <TextField
+                      value={provider.groupsClaim || "groups"}
+                      onChange={(value) =>
+                        updateProvider(provider.providerKey, {
+                          groupsClaim: value,
+                        })
+                      }
+                    >
+                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                        Gruppen-Claim-Pfad
+                      </Label>
+                      <Input
+                        placeholder="groups"
+                        className="bg-field-background font-mono text-sm"
+                        maxLength={512}
+                      />
+                      <p className="mt-1 text-xs leading-relaxed text-muted">
+                        Zum Beispiel groups, realm.groups oder
+                        /organization/acme/groups. Der Claim muss eine Liste von
+                        Gruppennamen enthalten.
+                      </p>
+                    </TextField>
+
+                    <TextField
                       value={provider.adminGroup}
                       onChange={(val) =>
                         updateProvider(provider.providerKey, {
@@ -527,6 +554,7 @@ export function OIDCProviderSettingsPanel() {
                       />
                     </TextField>
 
+                    <div className="space-y-2">
                     <TextField>
                       <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
                         Client Secret ersetzen
@@ -572,31 +600,12 @@ export function OIDCProviderSettingsPanel() {
                         }}
                       />
                     </TextField>
-
-                    <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <div className="flex h-full flex-col justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Secret-Status
-                          </p>
-                          <p className="mt-1 text-xs text-muted">
-                            Ohne Secret kann der Provider nicht für die
-                            Anmeldung genutzt werden.
-                          </p>
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="text-danger"
-                            isDisabled={saving || !provider.secretConfigured}
-                            onPress={() =>
-                              saveProvider(provider, { clearSecret: true })
-                            }
-                          >
-                            Secret löschen
-                          </Button>
-                        </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                        <p className="flex items-center gap-2 text-xs text-muted">
+                          <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${provider.secretConfigured ? 'bg-success' : 'bg-warning'}`} />
+                          {provider.secretConfigured ? 'Secret hinterlegt' : 'Kein Secret hinterlegt – Anmeldung nicht möglich'}
+                        </p>
+                        {provider.secretConfigured && <Button size="sm" variant="ghost" className="h-auto min-h-0 rounded-md px-2 py-1 text-xs text-danger" aria-label="Client Secret löschen" isDisabled={saving} onPress={() => saveProvider(provider, {clearSecret:true})}>Secret löschen</Button>}
                       </div>
                     </div>
 
@@ -844,6 +853,29 @@ export function OIDCProviderSettingsPanel() {
                       }
                     }}
                   />
+                </TextField>
+
+                <TextField
+                  value={createDraft.groupsClaim}
+                  onChange={(value) =>
+                    setCreateDraft((previous) => ({
+                      ...previous,
+                      groupsClaim: value,
+                    }))
+                  }
+                >
+                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    Gruppen-Claim-Pfad
+                  </Label>
+                  <Input
+                    placeholder="groups"
+                    className="bg-field-background font-mono text-sm"
+                    maxLength={512}
+                  />
+                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                    groups, realm.groups oder ein JSON Pointer wie
+                    /organization/acme/groups.
+                  </p>
                 </TextField>
 
                 <TextField

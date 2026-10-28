@@ -67,72 +67,75 @@ type BackupRole struct {
 }
 
 type BackupData struct {
-	PrivateSpaces       []PrivateSpace           `json:"privateSpaces,omitempty"`
-	PrivateSpaceMembers []PrivateSpaceMember     `json:"privateSpaceMembers,omitempty"`
-	Apps                []Apps                   `json:"apps,omitempty"`
-	AppEditors          []AppEditor              `json:"appEditors,omitempty"`
-	AppGroups           []AppGroup               `json:"appGroups,omitempty"`
-	AppRelations        []AppRelation            `json:"appRelations,omitempty"`
-	Users               []BackupUser             `json:"users,omitempty"`
-	Roles               []BackupRole             `json:"roles,omitempty"`
-	Settings            *PlatformSettings        `json:"settings,omitempty"`
-	RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
-	RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
-	AIProviders         []AIProviderSettings     `json:"aiProviders,omitempty"`
-	AIConversations     []AIConversation         `json:"aiConversations,omitempty"`
-	AIMessages          []AIMessage              `json:"aiMessages,omitempty"`
-	Tokens              []BackupToken            `json:"tokens,omitempty"`
-	Favorites           []UserFavorite           `json:"favorites,omitempty"`
-	Ratings             []Rating                 `json:"ratings,omitempty"`
-	FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
-	FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
-	FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
-	GlobalFAQQuestions  []GlobalFAQQuestion      `json:"globalFaqQuestions,omitempty"`
-	GlobalFAQAnswers    []GlobalFAQAnswer        `json:"globalFaqAnswers,omitempty"`
-	GlobalFAQUpvotes    []GlobalFAQAnswerUpvote  `json:"globalFaqAnswerUpvotes,omitempty"`
-	Audit               []Audit                  `json:"audit,omitempty"`
-	Assets              []BackupAsset            `json:"assets,omitempty"`
+	SpaceGroupMappings  []PrivateSpaceGroupMapping `json:"spaceGroupMappings,omitempty"`
+	PrivateSpaces       []PrivateSpace             `json:"privateSpaces,omitempty"`
+	PrivateSpaceMembers []PrivateSpaceMember       `json:"privateSpaceMembers,omitempty"`
+	Apps                []Apps                     `json:"apps,omitempty"`
+	AppEditors          []AppEditor                `json:"appEditors,omitempty"`
+	AppGroups           []AppGroup                 `json:"appGroups,omitempty"`
+	AppRelations        []AppRelation              `json:"appRelations,omitempty"`
+	Users               []BackupUser               `json:"users,omitempty"`
+	Roles               []BackupRole               `json:"roles,omitempty"`
+	Settings            *PlatformSettings          `json:"settings,omitempty"`
+	RepositoryProviders []GitLabProviderSettings   `json:"repositoryProviders,omitempty"`
+	RepositoryAppLinks  []GitLabAppLink            `json:"repositoryAppLinks,omitempty"`
+	AIProviders         []AIProviderSettings       `json:"aiProviders,omitempty"`
+	AIConversations     []AIConversation           `json:"aiConversations,omitempty"`
+	AIMessages          []AIMessage                `json:"aiMessages,omitempty"`
+	Tokens              []BackupToken              `json:"tokens,omitempty"`
+	Favorites           []UserFavorite             `json:"favorites,omitempty"`
+	Ratings             []Rating                   `json:"ratings,omitempty"`
+	FAQQuestions        []FAQQuestion              `json:"faqQuestions,omitempty"`
+	FAQAnswers          []FAQAnswer                `json:"faqAnswers,omitempty"`
+	FAQAnswerUpvotes    []FAQAnswerUpvote          `json:"faqAnswerUpvotes,omitempty"`
+	GlobalFAQQuestions  []GlobalFAQQuestion        `json:"globalFaqQuestions,omitempty"`
+	GlobalFAQAnswers    []GlobalFAQAnswer          `json:"globalFaqAnswers,omitempty"`
+	GlobalFAQUpvotes    []GlobalFAQAnswerUpvote    `json:"globalFaqAnswerUpvotes,omitempty"`
+	Audit               []Audit                    `json:"audit,omitempty"`
+	Assets              []BackupAsset              `json:"assets,omitempty"`
 }
 
 // UnmarshalJSON keeps backwards compatibility with backups produced by older
 // versions that still used the GitLab-specific section names.
 func (data *BackupData) UnmarshalJSON(payload []byte) error {
 	type rawBackupData struct {
-		PrivateSpaces       []PrivateSpace           `json:"privateSpaces,omitempty"`
-		PrivateSpaceMembers []PrivateSpaceMember     `json:"privateSpaceMembers,omitempty"`
-		Apps                []Apps                   `json:"apps,omitempty"`
-		AppEditors          []AppEditor              `json:"appEditors,omitempty"`
-		AppGroups           []AppGroup               `json:"appGroups,omitempty"`
-		AppRelations        []AppRelation            `json:"appRelations,omitempty"`
-		Users               []BackupUser             `json:"users,omitempty"`
-		Roles               []BackupRole             `json:"roles,omitempty"`
-		Settings            *PlatformSettings        `json:"settings,omitempty"`
-		RepositoryProviders []GitLabProviderSettings `json:"repositoryProviders,omitempty"`
-		RepositoryAppLinks  []GitLabAppLink          `json:"repositoryAppLinks,omitempty"`
-		LegacyProviders     []GitLabProviderSettings `json:"gitLabProviders,omitempty"`
-		LegacyAppLinks      []GitLabAppLink          `json:"gitLabAppLinks,omitempty"`
-		AIProviders         []AIProviderSettings     `json:"aiProviders,omitempty"`
-		AIConversations     []AIConversation         `json:"aiConversations,omitempty"`
-		AIMessages          []AIMessage              `json:"aiMessages,omitempty"`
-		Tokens              []BackupToken            `json:"tokens,omitempty"`
-		Favorites           []UserFavorite           `json:"favorites,omitempty"`
-		Ratings             []Rating                 `json:"ratings,omitempty"`
-		FAQQuestions        []FAQQuestion            `json:"faqQuestions,omitempty"`
-		FAQAnswers          []FAQAnswer              `json:"faqAnswers,omitempty"`
-		FAQAnswerUpvotes    []FAQAnswerUpvote        `json:"faqAnswerUpvotes,omitempty"`
-		GlobalFAQQuestions  []GlobalFAQQuestion      `json:"globalFaqQuestions,omitempty"`
-		GlobalFAQAnswers    []GlobalFAQAnswer        `json:"globalFaqAnswers,omitempty"`
-		GlobalFAQUpvotes    []GlobalFAQAnswerUpvote  `json:"globalFaqAnswerUpvotes,omitempty"`
-		Audit               []Audit                  `json:"audit,omitempty"`
-		Assets              []BackupAsset            `json:"assets,omitempty"`
+		SpaceGroupMappings  []PrivateSpaceGroupMapping `json:"spaceGroupMappings,omitempty"`
+		PrivateSpaces       []PrivateSpace             `json:"privateSpaces,omitempty"`
+		PrivateSpaceMembers []PrivateSpaceMember       `json:"privateSpaceMembers,omitempty"`
+		Apps                []Apps                     `json:"apps,omitempty"`
+		AppEditors          []AppEditor                `json:"appEditors,omitempty"`
+		AppGroups           []AppGroup                 `json:"appGroups,omitempty"`
+		AppRelations        []AppRelation              `json:"appRelations,omitempty"`
+		Users               []BackupUser               `json:"users,omitempty"`
+		Roles               []BackupRole               `json:"roles,omitempty"`
+		Settings            *PlatformSettings          `json:"settings,omitempty"`
+		RepositoryProviders []GitLabProviderSettings   `json:"repositoryProviders,omitempty"`
+		RepositoryAppLinks  []GitLabAppLink            `json:"repositoryAppLinks,omitempty"`
+		LegacyProviders     []GitLabProviderSettings   `json:"gitLabProviders,omitempty"`
+		LegacyAppLinks      []GitLabAppLink            `json:"gitLabAppLinks,omitempty"`
+		AIProviders         []AIProviderSettings       `json:"aiProviders,omitempty"`
+		AIConversations     []AIConversation           `json:"aiConversations,omitempty"`
+		AIMessages          []AIMessage                `json:"aiMessages,omitempty"`
+		Tokens              []BackupToken              `json:"tokens,omitempty"`
+		Favorites           []UserFavorite             `json:"favorites,omitempty"`
+		Ratings             []Rating                   `json:"ratings,omitempty"`
+		FAQQuestions        []FAQQuestion              `json:"faqQuestions,omitempty"`
+		FAQAnswers          []FAQAnswer                `json:"faqAnswers,omitempty"`
+		FAQAnswerUpvotes    []FAQAnswerUpvote          `json:"faqAnswerUpvotes,omitempty"`
+		GlobalFAQQuestions  []GlobalFAQQuestion        `json:"globalFaqQuestions,omitempty"`
+		GlobalFAQAnswers    []GlobalFAQAnswer          `json:"globalFaqAnswers,omitempty"`
+		GlobalFAQUpvotes    []GlobalFAQAnswerUpvote    `json:"globalFaqAnswerUpvotes,omitempty"`
+		Audit               []Audit                    `json:"audit,omitempty"`
+		Assets              []BackupAsset              `json:"assets,omitempty"`
 	}
 	var raw rawBackupData
 	if err := json.Unmarshal(payload, &raw); err != nil {
 		return err
 	}
 	*data = BackupData{
-		Apps:          raw.Apps,
-		PrivateSpaces: raw.PrivateSpaces, PrivateSpaceMembers: raw.PrivateSpaceMembers,
+		Apps:               raw.Apps,
+		SpaceGroupMappings: raw.SpaceGroupMappings,
+		PrivateSpaces:      raw.PrivateSpaces, PrivateSpaceMembers: raw.PrivateSpaceMembers,
 		AppEditors:          raw.AppEditors,
 		AppGroups:           raw.AppGroups,
 		AppRelations:        raw.AppRelations,

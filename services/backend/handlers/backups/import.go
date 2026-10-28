@@ -169,12 +169,25 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 					if _, err := tx.NewInsert().Model(&space).On("CONFLICT (id) DO UPDATE").Set("name = EXCLUDED.name").Set("owner_id = EXCLUDED.owner_id").Exec(ctx); err != nil {
 						return importSectionStats{}, nil, err
 					}
+					if _, err := tx.NewDelete().Model((*models.PrivateSpaceGroupMapping)(nil)).Where("space_id = ?", space.ID).Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
 					if _, err := tx.NewDelete().Model((*models.PrivateSpaceMember)(nil)).Where("space_id = ?", space.ID).Exec(ctx); err != nil {
 						return importSectionStats{}, nil, err
 					}
 				}
+				for _, mapping := range manifest.Data.SpaceGroupMappings {
+					if _, err := tx.NewInsert().Model(&mapping).On("CONFLICT (id) DO UPDATE").Set("provider_key = EXCLUDED.provider_key").Set("issuer = EXCLUDED.issuer").Set("group_name = EXCLUDED.group_name").Exec(ctx); err != nil {
+						return importSectionStats{}, nil, err
+					}
+				}
 				for _, member := range manifest.Data.PrivateSpaceMembers {
-					if _, err := tx.NewInsert().Model(&member).On("CONFLICT (space_id, user_id) DO UPDATE").Set("accepted = EXCLUDED.accepted").Exec(ctx); err != nil {
+					if !member.ManualInvited {
+						continue
+					}
+					member.Accepted = member.ManualAccepted
+
+					if _, err := tx.NewInsert().Model(&member).On("CONFLICT (space_id, user_id) DO UPDATE").Set("accepted = EXCLUDED.accepted").Set("manual_invited = EXCLUDED.manual_invited").Set("manual_accepted = EXCLUDED.manual_accepted").Exec(ctx); err != nil {
 						return importSectionStats{}, nil, err
 					}
 				}

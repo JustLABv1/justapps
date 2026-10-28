@@ -165,12 +165,6 @@ export function Navigation() {
     ...(user
       ? [
           {
-            href: "/spaces",
-            label: "Private Spaces",
-            icon: Package,
-            active: pathname === "/spaces",
-          },
-          {
             href: "/meine-apps",
             label: "Meine Apps",
             icon: Package,

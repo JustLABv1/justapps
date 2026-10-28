@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"justapps-backend/functions/spacemembership"
 	"net/http"
 	"net/url"
 	"strings"
@@ -198,7 +199,7 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 		return
 	}
 
-	claims, err := authfunc.GetOIDCClaims(idToken)
+	claims, err := authfunc.GetOIDCClaims(idToken, provider.GroupsClaim)
 	if err != nil {
 		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "OIDC-Claims konnten nicht gelesen werden")
 		return
@@ -211,6 +212,11 @@ func HandleOIDCCallback(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if err := spacemembership.SyncOIDCGroups(c.Request.Context(), db, user.ID, provider.Key, provider.Issuer, claims.Groups); err != nil {
+		log.WithError(err).Warn("OIDC: failed to synchronize space memberships")
+		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Space-Berechtigungen konnten nicht synchronisiert werden")
+		return
+	}
 	sessionToken, expiresAt, err := authfunc.GenerateOIDCSessionJWT(user.Email, user.Username, user.Role)
 	if err != nil {
 		redirectOIDCError(c, stateClaims.FrontendOrigin, sanitizeCallbackURL(stateClaims.CallbackURL), "Sitzung konnte nicht erstellt werden")

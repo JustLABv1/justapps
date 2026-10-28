@@ -4,7 +4,7 @@ import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppHealthCopilot } from '@/components/AppHealthCopilot';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageContainer, PageFilters, PageHeader } from '@/components/PageHeader';
-import { AppConfig, SystemUser } from '@/config/apps';
+import { AppConfig } from '@/config/apps';
 import { getAppStatusMeta } from '@/lib/appStatus';
 import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
 import { getImageAssetUrl } from '@/lib/assets';
@@ -104,10 +104,11 @@ function MyAppsContent() {
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [health, setHealth] = useState<MyAppsHealthResponse | null>(null);
-  const [users, setUsers] = useState<SystemUser[]>([]);
   const [settings, setSettings] = useState({ allowAppSubmissions: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publishCandidate, setPublishCandidate] = useState<AppConfig | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -151,12 +152,7 @@ function MyAppsContent() {
       } else {
         setHealth(null);
       }
-      const usersRes = await fetchApi('/users');
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        const userList = Array.isArray(data) ? data : data.users || [];
-        setUsers(userList.filter((entry: SystemUser) => !entry.disabled));
-      }
+
     } catch (err) {
       setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -570,11 +566,13 @@ function MyAppsContent() {
                           </Button>
                           <Dropdown.Popover>
                             <Dropdown.Menu aria-label={`Aktionen für ${app.name}`} onAction={(key) => {
+                              if (key === 'publish') setPublishCandidate(app);
                               if (key === 'copy') void handleCopyApp(app);
                               if (key === 'editors') handleManageEditors(app);
                               if (key === 'visibility') void handleVisibilityChange(app, !app.isHidden);
                               if (key === 'delete') handleDeleteApp(app);
                             }}>
+                              {app.spaceId && app.ownerId === user.id && <Dropdown.Item id="publish" textValue="Für alle veröffentlichen" isDisabled={app.isLocked}><div className="flex items-center gap-2"><Eye className="h-4 w-4" />Für alle veröffentlichen</div></Dropdown.Item>}
                               {canCopy && <Dropdown.Item id="copy" textValue="Kopieren"><div className="flex items-center gap-2"><Copy className="h-4 w-4" />Kopieren</div></Dropdown.Item>}
                               {permissions.canManageEditors && <Dropdown.Item id="editors" textValue="Bearbeiter verwalten"><div className="flex items-center gap-2"><UsersRound className="h-4 w-4" />Bearbeiter verwalten</div></Dropdown.Item>}
                               <Dropdown.Item
@@ -626,10 +624,27 @@ function MyAppsContent() {
         title="App wirklich löschen?"
       />
 
+      <ConfirmDialog
+        title="App für alle veröffentlichen?"
+        description={`„${publishCandidate?.name || ''}“ verlässt den privaten Space. Beschreibung, Dokumentation und Diskussionen sind anschließend im öffentlichen Katalog für alle zugänglich.`}
+        confirmLabel="Jetzt veröffentlichen"
+        isOpen={!!publishCandidate}
+        isLoading={isPublishing}
+        onOpenChange={(open) => { if (!open && !isPublishing) setPublishCandidate(null); }}
+        onConfirm={async () => {
+          if (!publishCandidate) return;
+          setIsPublishing(true);
+          try {
+            const response = await fetchApi(`/apps/${publishCandidate.id}/publish`, {method:'POST'});
+            if (!response.ok) {const data = await response.json().catch(() => ({})); throw new Error(data.message || 'Veröffentlichung fehlgeschlagen.');}
+            setPublishCandidate(null);toast.success('Die App ist jetzt für alle veröffentlicht.');await loadData();
+          } catch (err) {toast.danger(err instanceof Error ? err.message : 'Veröffentlichung fehlgeschlagen.');}
+          finally {setIsPublishing(false);}
+        }}
+      />
       <AppEditorsModal
         key={editorApp?.id ?? 'no-editor-app'}
         app={editorApp}
-        users={users}
         onOpenChange={(open) => { if (!open) setEditorApp(null); }}
         onSaved={loadData}
       />

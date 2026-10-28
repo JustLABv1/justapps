@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 	"justapps-backend/functions/httperror"
+	"justapps-backend/functions/spacemembership"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
 	"strings"
@@ -78,11 +79,12 @@ func ListSpaceMembers(c *gin.Context, db *bun.DB) {
 		return
 	}
 	rows := make([]struct {
-		ID       uuid.UUID `json:"id"`
-		Username string    `json:"username"`
-		Accepted bool      `json:"accepted"`
+		ID           uuid.UUID `json:"id"`
+		Username     string    `json:"username"`
+		Accepted     bool      `json:"accepted"`
+		GroupManaged bool      `bun:"group_managed" json:"groupManaged"`
 	}, 0)
-	err := db.NewSelect().TableExpr("private_space_members m").ColumnExpr("u.id, u.username, m.accepted").Join("JOIN users u ON u.id = m.user_id").Where("m.space_id = ?", space.ID).OrderExpr("u.username").Scan(c, &rows)
+	err := db.NewSelect().TableExpr("private_space_members m").ColumnExpr("u.id, u.username, m.accepted, EXISTS (SELECT 1 FROM private_space_oidc_grants g WHERE g.space_id = m.space_id AND g.user_id = m.user_id) AS group_managed").Join("JOIN users u ON u.id = m.user_id").Where("m.space_id = ?", space.ID).OrderExpr("u.username").Scan(c, &rows)
 	if err != nil {
 		httperror.InternalServerError(c, "Mitglieder konnten nicht geladen werden", err)
 		return
@@ -111,7 +113,7 @@ func InviteSpaceMember(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Sie sind bereits Eigentümer dieses Spaces", errors.New("Sie sind bereits Eigentümer dieses Spaces"))
 		return
 	}
-	if _, err := db.NewRaw("INSERT INTO private_space_members (space_id,user_id) VALUES (?,?) ON CONFLICT DO NOTHING", space.ID, user.ID).Exec(c); err != nil {
+	if _, err := db.NewRaw("INSERT INTO private_space_members (space_id,user_id,manual_invited,manual_accepted) VALUES (?,?,true,false) ON CONFLICT (space_id,user_id) DO UPDATE SET manual_invited = true", space.ID, user.ID).Exec(c); err != nil {
 		httperror.InternalServerError(c, "Einladung fehlgeschlagen", err)
 		return
 	}
@@ -123,7 +125,7 @@ func AcceptSpaceInvitation(c *gin.Context, db *bun.DB) {
 	if !ok {
 		return
 	}
-	result, err := db.NewRaw("UPDATE private_space_members SET accepted = true WHERE space_id::text = ? AND user_id = ?", c.Param("spaceId"), id).Exec(c)
+	result, err := db.NewRaw("UPDATE private_space_members SET accepted = true, manual_accepted = true WHERE space_id::text = ? AND user_id = ? AND manual_invited", c.Param("spaceId"), id).Exec(c)
 	if err != nil {
 		httperror.InternalServerError(c, "Einladung konnte nicht angenommen werden", err)
 		return
@@ -146,10 +148,17 @@ func RemoveSpaceMember(c *gin.Context, db *bun.DB) {
 			return
 		}
 	}
-	if _, err := db.NewRaw("DELETE FROM private_space_members WHERE space_id::text = ? AND user_id::text = ?", c.Param("spaceId"), c.Param("userId")).Exec(c); err != nil {
+	err := db.RunInTx(c.Request.Context(), nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewRaw("UPDATE private_space_members SET manual_invited = false, manual_accepted = false WHERE space_id::text = ? AND user_id::text = ?", c.Param("spaceId"), c.Param("userId")).Exec(ctx); err != nil {
+			return err
+		}
+		return spacemembership.Reconcile(ctx, tx, "m.space_id::text = ? AND m.user_id::text = ?", c.Param("spaceId"), c.Param("userId"))
+	})
+	if err != nil {
 		httperror.InternalServerError(c, "Mitglied konnte nicht entfernt werden", err)
 		return
 	}
+
 	c.Status(204)
 }
 
