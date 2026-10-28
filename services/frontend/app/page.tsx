@@ -7,9 +7,11 @@ import { AppGrid } from "@/components/AppGrid";
 import { AppStoreGate } from "@/components/AppStoreGate";
 import { AppConfig } from "@/config/apps";
 import { useSettings } from "@/context/SettingsContext";
+import { canOverseeSpaces } from "@/lib/permissions";
 import { fetchApi } from "@/lib/api";
 import { resolveHeroTitleColors } from "@/lib/branding";
-import { Rocket } from "lucide-react";
+import { Button } from "@heroui/react";
+import { Plus, Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Suspense, useEffect, useState } from "react";
 
@@ -83,8 +85,14 @@ function HomeContent() {
   const { settings } = useSettings();
   const catalogKey = `${user?.id || "guest"}:${profileReady}:${spaceId}`;
   const [loadedCatalogKey, setLoadedCatalogKey] = useState("");
+  const [spaceCreationAccess, setSpaceCreationAccess] = useState<{ userId: string; canCreate: boolean } | null>(null);
   const [spacesUserId, setSpacesUserId] = useState("");
   const visibleSpaces = spacesUserId === user?.id ? spaces : [];
+  const showSpaceSwitcher = profileReady && !!user && (
+    visibleSpaces.length > 0 ||
+    canOverseeSpaces(user.role, user.permissions) ||
+    (spaceCreationAccess?.userId === user.id && spaceCreationAccess.canCreate)
+  );
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const isDark = theme === "dark";
@@ -139,6 +147,19 @@ function HomeContent() {
     };
   }, [user, profileReady]);
 
+  useEffect(() => {
+    if (!user || !profileReady) return;
+    let active = true;
+    void fetchApi("/spaces/creation-policy")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) setSpaceCreationAccess({ userId: user.id, canCreate: data.canCreate === true });
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [user, profileReady]);
+
   if (isLoading || loadedCatalogKey !== catalogKey) return <HomeLoadingState />;
 
   return (
@@ -168,6 +189,7 @@ function HomeContent() {
           <p className="text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {heroSubtitle}
           </p>
+
         </div>
       </section>
 
@@ -181,8 +203,16 @@ function HomeContent() {
             key={spaceId || "public"}
             initialApps={apps}
             spaceId={spaceId}
+            catalogAction={
+              profileReady && user && (user.role === "admin" || user.canSubmitApps) && (!spaceId || visibleSpaces.some((space) => space.id === spaceId)) ? (
+            <Button size="sm" variant="secondary" className="shrink-0" onPress={() => router.push(spaceId ? `/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}` : "/meine-apps/new")}>
+              <Plus className="h-4 w-4" />
+              App erstellen
+            </Button>
+              ) : undefined
+            }
             scopeControl={
-              user ? (
+              showSpaceSwitcher && user ? (
                 <SpaceSwitcher
                   spaces={visibleSpaces}
                   spaceId={spaceId}
