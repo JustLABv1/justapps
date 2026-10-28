@@ -48,7 +48,7 @@ export function AppCard({ app }: { app: AppConfig }) {
 
   return (
     <Card
-      className={`relative w-full flex flex-col group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-surface overflow-visible p-0 cursor-pointer
+      className={`relative w-full flex flex-col group transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none hover:shadow-lg bg-surface overflow-visible p-0 cursor-pointer
         ${isFeatured
           ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10'
           : 'hover:border-accent/40 border-border'
@@ -63,7 +63,7 @@ export function AppCard({ app }: { app: AppConfig }) {
       )}
       {/* ── Header: icon, name, metadata ── */}
       <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
-        <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0 transition-all duration-300 group-hover:scale-110
+        <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0
           ${isFeatured 
             ? 'bg-gradient-to-br from-accent/30 to-accent/5 border-accent/40 shadow-inner' 
             : 'bg-gradient-to-br from-surface-secondary to-surface border-border'

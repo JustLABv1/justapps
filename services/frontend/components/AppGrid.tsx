@@ -21,9 +21,10 @@ interface AppGridProps {
   initialApps: AppConfig[];
   spaceId?: string;
   scopeControl?: ReactNode;
+  catalogAction?: ReactNode;
 }
 
-export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProps) {
+export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction }: AppGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -52,6 +53,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
   const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[]; page: number; total: number; hasMore: boolean } | null>(null);
   const [serverPageLoading, setServerPageLoading] = useState(false);
   const [visibleAppsState, setVisibleAppsState] = useState({ key: paginationKey, count: PAGE_SIZE });
+  const pageRequestRef = useRef<AbortController | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
@@ -76,6 +78,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
   useEffect(() => {
     if (!hasServerFilter) return;
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams();
@@ -90,9 +93,12 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
         if (showFavoritesOnly) params.set('favorite', 'me');
         params.set('page', '1');
         params.set('pageSize', String(PAGE_SIZE));
-        const res = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store' });
+        const res = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store', signal: controller.signal });
+        if (controller.signal.aborted) return;
         if (res.ok) {
           const data = await res.json();
+          if (controller.signal.aborted) return;
+          setServerPageLoading(false);
           const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
           setServerResponse({
             key: serverFilterKey,
@@ -105,11 +111,19 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
           setServerResponse({ key: serverFilterKey, apps: [], page: 1, total: 0, hasMore: false });
         }
       } catch {
+        if (controller.signal.aborted) return;
         setServerResponse({ key: serverFilterKey, apps: [], page: 1, total: 0, hasMore: false });
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [spaceId, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey]);
+
+  useEffect(() => {
+    return () => {
+      pageRequestRef.current?.abort();
+      pageRequestRef.current = null;
+    };
+  }, [serverFilterKey]);
 
   const updateParam = useCallback((key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -188,7 +202,9 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
   const loadMoreApps = useCallback(async () => {
     if (hasServerFilter) {
       const current = serverResponse;
-      if (!current || !current.hasMore || serverPageLoading) return;
+      if (!current || current.key !== serverFilterKey || !current.hasMore || pageRequestRef.current) return;
+      const controller = new AbortController();
+      pageRequestRef.current = controller;
 
       setServerPageLoading(true);
       try {
@@ -204,21 +220,27 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
         if (showFavoritesOnly) params.set('favorite', 'me');
         params.set('page', String(current.page + 1));
         params.set('pageSize', String(PAGE_SIZE));
-        const response = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store' });
+        const response = await fetchApi(`/apps?${params.toString()}`, { cache: 'no-store', signal: controller.signal });
         if (!response.ok) return;
         const data = await response.json();
+        if (controller.signal.aborted) return;
         const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
-        setServerResponse((previous) => previous && previous.key === serverFilterKey
+        setServerResponse((previous) => previous && previous.key === serverFilterKey && previous.page === current.page
           ? {
               ...previous,
-              apps: [...previous.apps, ...items],
+              apps: [...previous.apps, ...items.filter((item: AppConfig) => !previous.apps.some((app) => app.id === item.id))],
               page: typeof data.page === 'number' ? data.page : current.page + 1,
               total: typeof data.total === 'number' ? data.total : previous.total,
               hasMore: data.hasMore === true,
             }
           : previous);
+      } catch {
+        // Keep the existing results; the next scroll or button press can retry.
       } finally {
-        setServerPageLoading(false);
+        if (pageRequestRef.current === controller) {
+          pageRequestRef.current = null;
+          setServerPageLoading(false);
+        }
       }
       return;
     }
@@ -227,7 +249,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
       const previousCount = current.key === visibleAppsKey ? current.count : PAGE_SIZE;
       return { key: visibleAppsKey, count: Math.min(previousCount + PAGE_SIZE, filteredApps.length) };
     });
-  }, [spaceId, filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey, serverPageLoading, serverResponse, visibleAppsKey]);
+  }, [spaceId, filteredApps.length, hasServerFilter, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, selectedSort, semanticSearch, showFavoritesOnly, serverFilterKey, serverResponse, visibleAppsKey]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
@@ -660,6 +682,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
             <div className="flex flex-wrap items-center justify-between gap-3 px-1">
               <div className="flex flex-wrap items-center gap-2">
               {scopeControl}
+              {catalogAction}
               {hasActiveFilters && (
                 <Button
                   variant="outline"
@@ -681,17 +704,17 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
               </p>
             </div>
 
-            {/* Apps grid — masonry layout so cards size to their own content */}
-            <section id="apps" className="columns-1 md:columns-2 lg:columns-3 gap-x-5 pb-4" aria-label="App-Liste">
+            {/* Apps stay in row order when more results are appended */}
+            <section id="apps" className="grid grid-cols-1 items-start gap-5 pb-4 md:grid-cols-2 lg:grid-cols-3" aria-label="App-Liste">
               {serverLoading ? (
                 [...Array(6)].map((_, i) => (
-                  <div key={`skeleton-${i}`} className="break-inside-avoid mb-5">
+                  <div key={`skeleton-${i}`} className="min-w-0">
                     <AppCardSkeleton />
                   </div>
                 ))
               ) : (
                 visibleApps.map((app) => (
-                  <div key={app.id} className="break-inside-avoid mb-5">
+                  <div key={app.id} className="min-w-0">
                     <AppCard app={app} />
                   </div>
                 ))
@@ -720,7 +743,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl }: AppGridProp
             {!serverLoading && hasMoreApps && (
               <div ref={loadMoreRef} className="flex flex-col items-center gap-3 pb-8 pt-2" aria-live="polite">
                 <span className="text-sm text-muted">Weitere Apps werden geladen, sobald Sie weiter scrollen.</span>
-                <Button variant="secondary" onPress={loadMoreApps}>
+                <Button variant="secondary" isPending={serverPageLoading} onPress={loadMoreApps}>
                   Weitere Apps laden
                 </Button>
               </div>
