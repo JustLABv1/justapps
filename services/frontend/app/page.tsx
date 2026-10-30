@@ -136,9 +136,7 @@ function HomeContent() {
       .then((data) => {
         if (active) {
           setSpacesUserId(user.id);
-          setSpaces(
-            data.filter((space: { accepted: boolean }) => space.accepted),
-          );
+          setSpaces(data);
         }
       })
       .catch(() => {});
@@ -214,7 +212,8 @@ function HomeContent() {
             scopeControl={
               showSpaceSwitcher && user ? (
                 <SpaceSwitcher
-                  spaces={visibleSpaces}
+                  spaces={visibleSpaces.filter((space) => space.accepted)}
+                  invitationCount={visibleSpaces.filter((space) => !space.accepted).length}
                   spaceId={spaceId}
                   canCreate={!!user.canSubmitApps || user.role === "admin"}
                   onChange={(nextId) => {
