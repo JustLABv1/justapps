@@ -8,12 +8,14 @@ import {
   LockKeyhole,
   Plus,
   Settings2,
+  UserPlus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface SpaceSwitcherProps {
   spaces: { id: string; name: string }[];
   spaceId: string;
+  invitationCount: number;
   canCreate: boolean;
   onChange: (spaceId: string) => void;
 }
@@ -21,6 +23,7 @@ interface SpaceSwitcherProps {
 export function SpaceSwitcher({
   spaces,
   spaceId,
+  invitationCount,
   canCreate,
   onChange,
 }: SpaceSwitcherProps) {
@@ -31,7 +34,7 @@ export function SpaceSwitcher({
       <Button
         variant="secondary"
         size="sm"
-        aria-label="Space wechseln"
+        aria-label={invitationCount > 0 ? `Space wechseln, ${invitationCount} offene Einladungen` : "Space wechseln"}
         className="max-w-full justify-between gap-2 sm:max-w-64"
       >
         {spaceId ? (
@@ -42,6 +45,11 @@ export function SpaceSwitcher({
         <span className="truncate">
           {spaceId ? active?.name || "Privater Space" : "Öffentlicher Katalog"}
         </span>
+        {invitationCount > 0 && (
+          <span className="rounded-full bg-accent/10 px-2 text-xs font-semibold text-accent">
+            {invitationCount}
+          </span>
+        )}
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted" />
       </Button>
       <Dropdown.Popover placement="bottom start">
@@ -50,7 +58,7 @@ export function SpaceSwitcher({
           className="min-w-64"
           onAction={(key) => {
             const value = String(key);
-            if (value === "manage") router.push("/spaces");
+            if (value === "manage" || value === "invitations") router.push("/spaces");
             else if (value === "create")
               router.push(
                 `/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}`,
@@ -77,6 +85,12 @@ export function SpaceSwitcher({
             </Dropdown.Item>
           ))}
           <Separator />
+          {invitationCount > 0 && (
+            <Dropdown.Item id="invitations" textValue={`Einladungen (${invitationCount})`}>
+              <UserPlus className="h-4 w-4 text-accent" />
+              <Label>Einladungen ({invitationCount})</Label>
+            </Dropdown.Item>
+          )}
           {spaceId && canCreate && (
             <Dropdown.Item id="create" textValue="Private App erstellen">
               <Plus className="h-4 w-4 text-muted" />
