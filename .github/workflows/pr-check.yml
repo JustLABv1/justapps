@@ -185,6 +185,17 @@ jobs:
           context: services/frontend
           file: services/frontend/Dockerfile
           push: false
+          load: true
+          tags: justapps-frontend:local
+
+      - name: Block fixable HIGH/CRITICAL image vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: justapps-frontend:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
   build-backend-image:
     name: Build Backend Docker Image
@@ -205,6 +216,17 @@ jobs:
           context: services/backend
           file: services/backend/Dockerfile
           push: false
+          load: true
+          tags: justapps-backend:local
+
+      - name: Block fixable HIGH/CRITICAL image vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: justapps-backend:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
   build-docs-image:
     name: Build Documentation Docker Image
@@ -225,6 +247,17 @@ jobs:
           context: services/docs
           file: services/docs/Dockerfile
           push: false
+          load: true
+          tags: justapps-docs:local
+
+      - name: Block fixable HIGH/CRITICAL image vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: justapps-docs:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
   build-combined-image:
     name: Build Combined Docker Image
@@ -245,3 +278,14 @@ jobs:
           context: .
           file: Dockerfile
           push: false
+          load: true
+          tags: justapps-combined:local
+
+      - name: Block fixable HIGH/CRITICAL image vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: justapps-combined:local
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
