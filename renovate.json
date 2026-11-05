@@ -9,6 +9,14 @@
 
   "rangeStrategy": "bump",
 
+  "postUpdateOptions": ["gomodTidy"],
+
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["dependencies", "security"],
+    "minimumReleaseAge": null
+  },
+
   "packageRules": [
     {
       "description": "Keep TypeScript below v7 until Next.js supports its compiler API",
@@ -43,6 +51,15 @@
       "description": "Node / Next.js dependencies",
       "matchManagers": ["npm"],
       "groupName": "frontend dependencies",
+      "minimumReleaseAge": "2 days"
+    },
+    {
+      "description": "Indirect Go modules (for example golang.org/x/net) are skipped by default; update them weekly in their own group so direct updates are not held back",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "enabled": true,
+      "groupName": "go indirect dependencies",
+      "schedule": ["before 6am on monday"],
       "minimumReleaseAge": "2 days"
     }
   ],
