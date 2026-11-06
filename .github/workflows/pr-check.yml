@@ -4,11 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - '.dockerignore'
-      - 'Dockerfile'
-      - 'services/**'
-      - '.github/workflows/pr-check.yml'
 
 jobs:
   changes:
