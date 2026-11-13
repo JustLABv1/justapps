@@ -24,7 +24,7 @@ export function AISourceList({ sources, compact = false }: { sources: AIMessageS
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">Quellen</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quellen</p>
       <div className="flex flex-wrap gap-1.5">
         {visibleSources.slice(0, compact ? 3 : 8).map((source, index) => {
           const label = source.title || source.appName || 'App-Kontext';
@@ -51,11 +51,11 @@ export function AISourceList({ sources, compact = false }: { sources: AIMessageS
           );
         })}
         {visibleSources.length > (compact ? 3 : 8) && (
-          <Chip size="sm" variant="soft" className="text-[10px] text-muted">+{visibleSources.length - (compact ? 3 : 8)} weitere</Chip>
+          <Chip size="sm" variant="soft" className="text-[10px] text-muted-foreground">+{visibleSources.length - (compact ? 3 : 8)} weitere</Chip>
         )}
       </div>
       {!compact && visibleSources[0]?.snippet && (
-        <p className="max-w-2xl text-xs leading-5 text-muted">{visibleSources[0].snippet}</p>
+        <p className="max-w-2xl text-xs leading-5 text-muted-foreground">{visibleSources[0].snippet}</p>
       )}
     </div>
   );

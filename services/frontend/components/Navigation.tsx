@@ -242,8 +242,8 @@ export function Navigation() {
                 href={link.href}
                 className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors no-underline xl:px-3 ${
                   link.active
-                    ? "text-accent bg-accent/8"
-                    : "text-muted hover:text-foreground hover:bg-default"
+                    ? "text-primary bg-primary/8"
+                    : "text-muted-foreground hover:text-foreground hover:bg-default"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -281,8 +281,8 @@ export function Navigation() {
                 size="sm"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors h-auto ${
                   isInVerwaltung
-                    ? "text-accent bg-accent/8"
-                    : "text-muted hover:text-foreground hover:bg-default"
+                    ? "text-primary bg-primary/8"
+                    : "text-muted-foreground hover:text-foreground hover:bg-default"
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
@@ -297,7 +297,7 @@ export function Navigation() {
                   {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
                     <Dropdown.Item key={href} id={href} textValue={label}>
                       <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-muted" />
+                        <Icon className="w-4 h-4 text-muted-foreground" />
                         <span>{label}</span>
                       </div>
                     </Dropdown.Item>
@@ -319,8 +319,8 @@ export function Navigation() {
               aria-current={documentationLink.active ? "page" : undefined}
               className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
                 documentationLink.active
-                  ? "text-accent bg-accent/8"
-                  : "text-muted hover:text-foreground hover:bg-default"
+                  ? "text-primary bg-primary/8"
+                  : "text-muted-foreground hover:text-foreground hover:bg-default"
               }`}
             >
               <BookOpen className="h-3.5 w-3.5 shrink-0" />
@@ -340,7 +340,7 @@ export function Navigation() {
                     if (!searchQuery) setSearchOpen(false);
                   }}
                   placeholder="Apps suchen..."
-                  className="w-52 h-8 rounded-lg border border-border bg-surface-secondary px-3 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/60"
+                  className="w-52 h-8 rounded-lg border border-border bg-surface-secondary px-3 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/60"
                   autoFocus
                 />
                 {searchQuery && (
@@ -350,7 +350,7 @@ export function Navigation() {
                       setSearchQuery("");
                       searchInputRef.current?.focus();
                     }}
-                    className="ml-1 p-1 text-muted hover:text-foreground transition-colors"
+                    className="ml-1 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -362,11 +362,11 @@ export function Navigation() {
                   setSearchOpen(true);
                   setTimeout(() => searchInputRef.current?.focus(), 50);
                 }}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm text-muted hover:text-foreground hover:bg-default transition-colors"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-default transition-colors"
                 aria-label="Suche öffnen (Cmd+K)"
               >
                 <Search className="w-4 h-4" />
-                <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted/70">
+                <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted-foreground/70">
                   ⌘K
                 </kbd>
               </button>
@@ -414,7 +414,7 @@ export function Navigation() {
                       <Label className="font-semibold text-sm">
                         Angemeldet als
                       </Label>
-                      <div className="text-xs text-muted text-balance break-all max-w-[180px]">
+                      <div className="text-xs text-muted-foreground text-balance break-all max-w-[180px]">
                         {user.email}
                       </div>
                       {user.authType === "oidc" && (
@@ -429,7 +429,7 @@ export function Navigation() {
                   <Separator />
                   <Dropdown.Item id="documentation" textValue="Dokumentation öffnen">
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-muted" />
+                      <BookOpen className="w-4 h-4 text-muted-foreground" />
                       <Label>Dokumentation</Label>
                     </div>
                   </Dropdown.Item>
@@ -438,7 +438,7 @@ export function Navigation() {
                     textValue={isDark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}
                   >
                     <div className="flex items-center gap-2">
-                      {isDark ? <Sun className="w-4 h-4 text-muted" /> : <Moon className="w-4 h-4 text-muted" />}
+                      {isDark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
                       <Label>{isDark ? "Heller Modus" : "Dunkler Modus"}</Label>
                     </div>
                   </Dropdown.Item>
@@ -448,7 +448,7 @@ export function Navigation() {
                     textValue="API-Tokens verwalten"
                   >
                     <div className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4 text-muted" />
+                      <KeyRound className="w-4 h-4 text-muted-foreground" />
                       <Label>API-Tokens</Label>
                     </div>
                   </Dropdown.Item>
@@ -457,7 +457,7 @@ export function Navigation() {
                     textValue="MCP für Agenten einrichten"
                   >
                     <div className="flex items-center gap-2">
-                      <PlugZap className="w-4 h-4 text-muted" />
+                      <PlugZap className="w-4 h-4 text-muted-foreground" />
                       <Label>MCP einrichten</Label>
                     </div>
                   </Dropdown.Item>
@@ -526,9 +526,9 @@ export function Navigation() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Apps suchen..."
-              className="w-full h-9 rounded-lg border border-border bg-surface-secondary pl-9 pr-3 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/60"
+              className="w-full h-9 rounded-lg border border-border bg-surface-secondary pl-9 pr-3 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/60"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </form>
 
           {mobileNavLinks.map((link) => {
@@ -551,12 +551,12 @@ export function Navigation() {
                 aria-current={link.active ? "page" : undefined}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline ${
                   link.active
-                    ? "bg-accent/8 text-accent"
+                    ? "bg-primary/8 text-primary"
                     : "text-foreground hover:bg-default"
                 }`}
                 onPress={() => setMobileOpen(false)}
               >
-                <Icon className="h-4 w-4 shrink-0 text-muted" />
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>{link.label}</span>
                 {link.href === "/faq" && openFAQCount > 0 && (
                   <Chip
@@ -581,7 +581,7 @@ export function Navigation() {
           {/* Admin links inline in mobile menu */}
           {user?.role === "admin" && (
             <div className="pt-2 border-t border-separator">
-              <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">
+              <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Verwaltung
               </p>
               {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
@@ -591,7 +591,7 @@ export function Navigation() {
                   className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-default no-underline"
                   onPress={() => setMobileOpen(false)}
                 >
-                  <Icon className="w-4 h-4 text-muted" />
+                  <Icon className="w-4 h-4 text-muted-foreground" />
                   {label}
                 </Link>
               ))}
@@ -600,31 +600,31 @@ export function Navigation() {
 
           {user && (
             <div className="pt-2 border-t border-separator">
-              <p className="px-3 py-1 text-[10px] font-bold text-muted uppercase tracking-widest">
+              <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Mein Konto
               </p>
               <Link
                 href="/profil/tokens"
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
                   pathname.startsWith("/profil/tokens")
-                    ? "bg-accent/8 text-accent"
+                    ? "bg-primary/8 text-primary"
                     : "text-foreground hover:bg-default"
                 }`}
                 onPress={() => setMobileOpen(false)}
               >
-                <KeyRound className="w-4 h-4 text-muted" />
+                <KeyRound className="w-4 h-4 text-muted-foreground" />
                 API-Tokens
               </Link>
               <Link
                 href="/profil/mcp"
                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
                   pathname.startsWith("/profil/mcp")
-                    ? "bg-accent/8 text-accent"
+                    ? "bg-primary/8 text-primary"
                     : "text-foreground hover:bg-default"
                 }`}
                 onPress={() => setMobileOpen(false)}
               >
-                <PlugZap className="w-4 h-4 text-muted" />
+                <PlugZap className="w-4 h-4 text-muted-foreground" />
                 MCP einrichten
               </Link>
             </div>

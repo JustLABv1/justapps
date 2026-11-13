@@ -330,8 +330,8 @@ function MyAppsContent() {
 
   if (authLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-      <p className="text-muted font-medium">Authentifizierung wird geprüft…</p>
+      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <p className="text-muted-foreground font-medium">Authentifizierung wird geprüft…</p>
     </div>
   );
 
@@ -342,7 +342,7 @@ function MyAppsContent() {
       <div className="max-w-3xl mx-auto px-4 md:px-8 pb-8 md:pb-10">
         <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
           <h1 className="text-2xl font-bold text-foreground mb-2">Profil wird noch synchronisiert</h1>
-          <p className="text-sm text-muted mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {profileError || 'Nach der Anmeldung wird Ihr Benutzerprofil gerade mit dem Backend abgeglichen. Versuchen Sie es in wenigen Sekunden erneut.'}
           </p>
           <Button onPress={() => void refreshUser()}>Erneut laden</Button>
@@ -401,13 +401,13 @@ function MyAppsContent() {
             {healthSummaryCards.map(({ label, value, sub, icon: Icon, iconColor, iconBackground }) => (
               <div key={label} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">{label}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                   <span className={['flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', iconBackground].join(' ')}>
                     <Icon className={['h-4 w-4', iconColor].join(' ')} aria-hidden="true" />
                   </span>
                 </div>
                 <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
-                <span className="text-xs text-muted">{sub}</span>
+                <span className="text-xs text-muted-foreground">{sub}</span>
               </div>
             ))}
           </Card.Content>
@@ -434,8 +434,8 @@ function MyAppsContent() {
 
         <Card variant="default" className="overflow-hidden border-border shadow-sm">
           <PageFilters>
-            <div><h2 className="font-semibold text-foreground">Apps</h2><p className="text-sm text-muted">{loading ? 'Wird geladen …' : `${visibleApps.length} ${visibleApps.length === 1 ? 'App' : 'Apps'}`}</p></div>
-            <div className="relative min-w-0 flex-1 lg:ml-auto lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
+            <div><h2 className="font-semibold text-foreground">Apps</h2><p className="text-sm text-muted-foreground">{loading ? 'Wird geladen …' : `${visibleApps.length} ${visibleApps.length === 1 ? 'App' : 'Apps'}`}</p></div>
+            <div className="relative min-w-0 flex-1 lg:ml-auto lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
           </PageFilters>
           <div className="divide-y divide-border">
           {loading ? (
@@ -471,12 +471,12 @@ function MyAppsContent() {
                           )}
                         </div>
 
-                        <div className="mt-1.5 max-w-3xl text-sm text-muted line-clamp-2">
+                        <div className="mt-1.5 max-w-3xl text-sm text-muted-foreground line-clamp-2">
                           {app.description || <span className="italic opacity-50">Keine Beschreibung</span>}
                         </div>
 
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-mono text-muted bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono text-muted-foreground bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
                             <span className="opacity-50">ID:</span> {app.id}
                           </span>
                           {statusMeta && (
@@ -596,7 +596,7 @@ function MyAppsContent() {
 
               {apps.length === 0 && (
                 <div className="py-20 text-center bg-surface-secondary px-4">
-                  <p className="text-muted font-medium mb-4">Sie haben noch keine eigenen oder freigegebenen Apps.</p>
+                  <p className="text-muted-foreground font-medium mb-4">Sie haben noch keine eigenen oder freigegebenen Apps.</p>
                   {(user.canSubmitApps || user.role === 'admin') ? (
                     <Button variant="ghost" onPress={handleCreateApp}>Erste App erstellen</Button>
                   ) : (
@@ -605,7 +605,7 @@ function MyAppsContent() {
                 </div>
               )}
               {apps.length > 0 && visibleApps.length === 0 && (
-                <div className="py-16 text-center"><p className="font-medium text-foreground">Keine Apps gefunden</p><p className="mt-1 text-sm text-muted">Passen Sie den Suchbegriff an.</p></div>
+                <div className="py-16 text-center"><p className="font-medium text-foreground">Keine Apps gefunden</p><p className="mt-1 text-sm text-muted-foreground">Passen Sie den Suchbegriff an.</p></div>
               )}
             </>
           )}
@@ -654,7 +654,7 @@ function MyAppsContent() {
 
 export default function MyAppsPage() {
   return (
-    <Suspense fallback={<div className="p-8 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" /></div>}>
+    <Suspense fallback={<div className="p-8 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
       <MyAppsContent />
     </Suspense>
   );

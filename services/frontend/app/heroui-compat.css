@@ -1,0 +1,47 @@
+/* ── HeroUI compatibility for the PanelUI theme ──
+   Temporary: delete this file together with @heroui/react once every page is
+   on PanelUI.
+
+   The theme now uses shadcn/ui meanings, which PanelUI's components read
+   unchanged. Two names mean something else inside HeroUI:
+
+   - `accent`: in shadcn a subtle hover tint, in HeroUI the solid brand fill
+     of buttons, checkboxes, switches and the like.
+   - `muted`:  in shadcn a surface tint, in HeroUI the colour of quiet text.
+
+   Both are fixed for HeroUI alone, so neither PanelUI nor the theme has to
+   bend: `accent` below, `muted` in postcss-heroui-muted.cjs. */
+
+/* HeroUI's controls fill with `accent`: give them PanelUI's primary instead.
+   HeroUI derives the hover and soft shades once on :root, so they are
+   derived again in this scope. Only leaf controls are listed, so that a
+   PanelUI component placed inside a HeroUI container keeps its own accent. */
+:where(
+  .button,
+  .checkbox,
+  .radio,
+  .switch,
+  .slider,
+  .tabs__indicator,
+  .toggle-button,
+  .chip,
+  .badge,
+  .tag,
+  .progress-bar,
+  .progress-circle,
+  .meter,
+  .spinner,
+  .calendar,
+  .range-calendar,
+  .calendar-year-picker
+) {
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+  --accent-hover: color-mix(in oklab, var(--primary) 88%, var(--primary-foreground));
+  --accent-soft: color-mix(in oklab, var(--primary) 10%, transparent);
+  --accent-soft-hover: color-mix(in oklab, var(--primary) 16%, transparent);
+  --accent-soft-foreground: var(--primary);
+}
+
+/* HeroUI's quiet text (`color: var(--muted)`) is redirected to
+   `--muted-foreground` at build time by postcss-heroui-muted.cjs. */

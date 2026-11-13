@@ -21,7 +21,7 @@ export function AdminSettingsTabs({
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
           {description}
         </p>
       </header>

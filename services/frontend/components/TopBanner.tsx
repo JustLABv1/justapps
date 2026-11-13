@@ -7,9 +7,9 @@ import { startTransition, useEffect, useState } from "react";
 
 const BANNER_STYLES = {
   info: {
-    bg: 'bg-accent/10',
-    border: 'border-accent/20',
-    text: 'text-accent',
+    bg: 'bg-primary/10',
+    border: 'border-primary/20',
+    text: 'text-primary',
     Icon: Sparkles,
   },
   warning: {

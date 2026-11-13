@@ -102,7 +102,7 @@ export function UserTable({
       <div className="flex flex-col gap-4 mb-4">
         <div className="flex justify-between gap-3 items-center">
           <div className="relative w-full sm:max-w-[44%]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none z-10" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
             <Input
               className="w-full pl-9"
               placeholder="Nach Benutzer suchen..."
@@ -178,8 +178,8 @@ export function UserTable({
               items={items}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Info className="w-8 h-8 text-muted opacity-50" />
-                  <span className="text-muted">Keine Benutzer gefunden</span>
+                  <Info className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <span className="text-muted-foreground">Keine Benutzer gefunden</span>
                 </EmptyState>
               )}
             >
@@ -187,12 +187,12 @@ export function UserTable({
                 <Table.Row key={u.id} className={u.disabled ? 'opacity-75' : ''}>
                   <Table.Cell>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-accent/10 border-accent/20 text-accent' : u.role === 'moderator' ? 'bg-warning/10 border-warning/20 text-warning' : 'bg-surface-secondary border-border text-muted'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-primary/10 border-primary/20 text-primary' : u.role === 'moderator' ? 'bg-warning/10 border-warning/20 text-warning' : 'bg-surface-secondary border-border text-muted-foreground'}`}>
                         {u.role === 'admin' ? <ShieldCheck className="w-4 h-4" /> : u.role === 'user' ? <User className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">{u.username}</span>
-                        <span className="text-[10px] text-muted">{u.email}</span>
+                        <span className="text-[10px] text-muted-foreground">{u.email}</span>
                       </div>
                     </div>
                   </Table.Cell>
@@ -236,11 +236,11 @@ export function UserTable({
                   <Table.Cell>
                     <div className="flex items-center justify-end gap-1">
                       <Button isIconOnly size="sm" variant="tertiary" onPress={() => handleEditUser(u)} aria-label="Bearbeiten">
-                        <Pencil className="w-4 h-4 text-muted" />
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Dropdown>
                         <Button isIconOnly size="sm" variant="tertiary" aria-label="Benutzeraktionen">
-                          <MoreVertical className="w-4 h-4 text-muted" />
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
                         </Button>
                         <Dropdown.Popover>
                         <Dropdown.Menu onAction={(key) => {

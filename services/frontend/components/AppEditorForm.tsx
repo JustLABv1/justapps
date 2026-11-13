@@ -152,7 +152,7 @@ function ChangelogSuggestionModal({
           <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <Sparkles className="size-5" />
               </Modal.Icon>
               <Modal.Heading>AI-Changelog-Vorschlag</Modal.Heading>
@@ -177,7 +177,7 @@ function ChangelogSuggestionModal({
                   <TextField
                     onChange={(value) => onChange({ title: value })}
                   >
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Titel
                     </Label>
                     <Input
@@ -189,7 +189,7 @@ function ChangelogSuggestionModal({
                   <TextField
                     onChange={(value) => onChange({ summary: value })}
                   >
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Zusammenfassung
                     </Label>
                     <TextArea
@@ -201,7 +201,7 @@ function ChangelogSuggestionModal({
                   <TextField
                     onChange={(value) => onChange({ changelog: value })}
                   >
-                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Changelog (Markdown)
                     </Label>
                     <TextArea
@@ -284,7 +284,7 @@ function getGitLabStatusMeta(status?: string) {
     default:
       return {
         label: "Noch nicht synchronisiert",
-        className: "border-border bg-surface text-muted",
+        className: "border-border bg-surface text-muted-foreground",
       };
   }
 }
@@ -1600,7 +1600,7 @@ export function AppEditorForm({
       <div className="max-w-6xl mx-auto pb-36 sm:pb-28">
         <section className="rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
           <div className="max-w-2xl space-y-1.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground/80">
               {isCopyFlow ? "App kopieren" : "Neue App erstellen"}
             </p>
             <h1 className="text-2xl font-bold text-foreground">
@@ -1608,7 +1608,7 @@ export function AppEditorForm({
                 ? `Kopie von ${copySource.name} vorbereiten.`
                 : "Schritt für Schritt zum ersten Entwurf."}
             </h1>
-            <p className="max-w-xl text-sm leading-relaxed text-muted">
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
               {isCopyFlow
                 ? "Die Inhalte wurden übernommen. Prüfen Sie Name, vergeben Sie eine neue ID und passen Sie den Entwurf vor dem Speichern an."
                 : "Weniger Felder pro Schritt, gleicher Datenumfang am Ende."}
@@ -1619,7 +1619,7 @@ export function AppEditorForm({
 
         <section className="relative mt-4 overflow-hidden rounded-[2rem] border border-border bg-surface-secondary px-5 py-5 shadow-sm md:px-6 md:py-6">
           <div className="absolute inset-0 pointer-events-none opacity-60">
-            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-accent/15 blur-3xl animate-pulse" />
+            <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-primary/15 blur-3xl animate-pulse" />
             <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-gov-gold/15 blur-3xl animate-pulse" />
           </div>
 
@@ -1642,24 +1642,24 @@ export function AppEditorForm({
                     key={phase}
                     className={`rounded-2xl border px-3.5 py-3 transition-all duration-300 ${
                       isActivePhase
-                        ? "border-accent/30 bg-accent/10 shadow-sm shadow-accent/10"
+                        ? "border-primary/30 bg-primary/10 shadow-sm shadow-primary/10"
                         : "border-border bg-surface/85"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                           Phase
                         </p>
                         <p className="mt-1 text-sm font-semibold text-foreground">
                           {phase}
                         </p>
                       </div>
-                      <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
+                      <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
                         {phaseCompleted}/{phaseSteps.length}
                       </span>
                     </div>
-                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                       {phase === "Basisdaten"
                         ? "Identität und Kurzprofil zuerst."
                         : "Technik, Links und Details danach."}
@@ -1686,9 +1686,9 @@ export function AppEditorForm({
                       disabled={!isEnabled}
                       className={`group min-w-[11.5rem] rounded-2xl border px-3.5 py-3 text-left transition-all duration-300 md:min-w-[12.5rem] ${
                         isActive
-                          ? "border-accent bg-accent text-white shadow-lg shadow-accent/20"
+                          ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
                           : isCompleted
-                            ? "border-accent/20 bg-accent/10 text-foreground hover:border-accent/40 hover:bg-accent/15"
+                            ? "border-primary/20 bg-primary/10 text-foreground hover:border-primary/40 hover:bg-primary/15"
                             : "border-border bg-surface/90 text-foreground hover:border-border/80 disabled:cursor-not-allowed disabled:opacity-60"
                       }`}
                     >
@@ -1698,8 +1698,8 @@ export function AppEditorForm({
                             isActive
                               ? "border-white/20 bg-white/15 text-white"
                               : isCompleted
-                                ? "border-accent/20 bg-accent/15 text-accent"
-                                : "border-border bg-surface-secondary text-muted"
+                                ? "border-primary/20 bg-primary/15 text-primary"
+                                : "border-border bg-surface-secondary text-muted-foreground"
                           }`}
                         >
                           {isCompleted ? (
@@ -1709,7 +1709,7 @@ export function AppEditorForm({
                           )}
                         </span>
                         <span
-                          className={`text-[11px] font-bold uppercase tracking-[0.2em] ${isActive ? "text-white/75" : "text-muted/70"}`}
+                          className={`text-[11px] font-bold uppercase tracking-[0.2em] ${isActive ? "text-white/75" : "text-muted-foreground/70"}`}
                         >
                           {index + 1}
                         </span>
@@ -1720,7 +1720,7 @@ export function AppEditorForm({
                         {step.label}
                       </p>
                       <p
-                        className={`mt-1 text-[11px] leading-relaxed ${isActive ? "text-white/75" : "text-muted"} ${isActive ? "block" : "hidden md:block"}`}
+                        className={`mt-1 text-[11px] leading-relaxed ${isActive ? "text-white/75" : "text-muted-foreground"} ${isActive ? "block" : "hidden md:block"}`}
                       >
                         {step.hint}
                       </p>
@@ -1733,8 +1733,8 @@ export function AppEditorForm({
         </section>
 
         {isCopyFlow && (
-          <section className="mt-4 rounded-[1.5rem] border border-accent/20 bg-accent/5 px-5 py-4 shadow-sm md:px-6">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-accent/80">
+          <section className="mt-4 rounded-[1.5rem] border border-primary/20 bg-primary/5 px-5 py-4 shadow-sm md:px-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary/80">
               Kopie vorbereitet
             </p>
             <p className="mt-2 text-sm text-foreground">
@@ -1749,17 +1749,17 @@ export function AppEditorForm({
         <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <button
             onClick={() => requestNavigation(backUrl)}
-            className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-muted shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
+            className="inline-flex items-center gap-2 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:bg-surface-secondary hover:text-foreground"
           >
             <ChevronLeft className="w-4 h-4" />
             Zurück zur Übersicht
           </button>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted shadow-sm">
+            <span className="inline-flex rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">
               Schritt {currentCreateStep + 1} von {createSteps.length}
             </span>
-            <span className="inline-flex rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-muted shadow-sm">
+            <span className="inline-flex rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs font-semibold text-muted-foreground shadow-sm">
               Arbeitsstand:{" "}
               {getAppStatusLabel(formData.status || DRAFT_STATUS) || "Entwurf"}
             </span>
@@ -1773,17 +1773,17 @@ export function AppEditorForm({
           >
             <div className="mb-6 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   {currentCreateStepDef.icon}
                 </span>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/70">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground/70">
                     {currentCreatePhase}
                   </p>
                   <h2 className="mt-1 text-xl font-bold text-foreground">
                     {currentCreateStepDef.label}
                   </h2>
-                  <p className="mt-0.5 text-sm text-muted">
+                  <p className="mt-0.5 text-sm text-muted-foreground">
                     {currentCreateStepDef.hint}
                   </p>
                 </div>
@@ -1793,7 +1793,7 @@ export function AppEditorForm({
                   {completedCreateStepCount} von {createSteps.length} Schritten
                   vorbereitet
                 </span>
-                <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted shadow-sm">
+                <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted-foreground shadow-sm">
                   Entwurf jederzeit speicherbar
                 </span>
               </div>
@@ -1802,14 +1802,14 @@ export function AppEditorForm({
             {currentCreateStep === 0 && (
               <div className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
-                  <div className="space-y-4 rounded-3xl border border-accent/15 bg-accent/5 p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent/80">
+                  <div className="space-y-4 rounded-3xl border border-primary/15 bg-primary/5 p-5">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/80">
                       App-Icon
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowIconPicker((value) => !value)}
-                      className="group relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[1.75rem] border-2 border-dashed border-accent/30 bg-surface text-6xl shadow-sm transition-all hover:border-accent/50"
+                      className="group relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[1.75rem] border-2 border-dashed border-primary/30 bg-surface text-6xl shadow-sm transition-all hover:border-primary/50"
                     >
                       {formIconSrc ? (
                         <Image
@@ -1843,7 +1843,7 @@ export function AppEditorForm({
                       <button
                         type="button"
                         onClick={() => setShowIconPicker((value) => !value)}
-                        className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
+                        className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-secondary hover:text-foreground"
                       >
                         Emoji
                       </button>
@@ -1891,8 +1891,8 @@ export function AppEditorForm({
                               }}
                               className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl transition-all ${
                                 formData.icon === emoji
-                                  ? "border-accent bg-accent/10 shadow-sm scale-105"
-                                  : "border-border bg-surface-secondary hover:border-accent/30"
+                                  ? "border-primary bg-primary/10 shadow-sm scale-105"
+                                  : "border-border bg-surface-secondary hover:border-primary/30"
                               }`}
                             >
                               {emoji}
@@ -1900,7 +1900,7 @@ export function AppEditorForm({
                           ))}
                         </div>
                         <input
-                          className="mt-3 w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm font-mono outline-none transition-colors focus:border-accent"
+                          className="mt-3 w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm font-mono outline-none transition-colors focus:border-primary"
                           placeholder="Oder Bild-URL: https://..."
                           value={iconUrlInput}
                           onChange={(event) => {
@@ -1935,7 +1935,7 @@ export function AppEditorForm({
                           setFormData(nextFormData);
                         }}
                       >
-                        <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                        <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           App Name
                         </Label>
                         <Input
@@ -1957,7 +1957,7 @@ export function AppEditorForm({
                           }
                           isInvalid={isIdTaken}
                         >
-                          <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                          <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                             Eindeutige ID
                           </Label>
                           <Input
@@ -1967,7 +1967,7 @@ export function AppEditorForm({
                           />
                         </TextField>
                         <p
-                          className={`mt-2 text-xs ${isIdTaken ? "text-danger" : "text-muted"}`}
+                          className={`mt-2 text-xs ${isIdTaken ? "text-danger" : "text-muted-foreground"}`}
                         >
                           {isIdTaken
                             ? "Diese ID ist bereits vergeben."
@@ -1982,7 +1982,7 @@ export function AppEditorForm({
                           <p className="text-sm font-semibold text-foreground">
                             Kategorien
                           </p>
-                          <p className="mt-1 text-xs text-muted">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             Mindestens eine Kategorie ist für die Einordnung
                             erforderlich.
                           </p>
@@ -1992,7 +1992,7 @@ export function AppEditorForm({
                           onClick={() =>
                             setShowCategoryPicker((value) => !value)
                           }
-                          className="inline-flex items-center gap-1 rounded-full border border-dashed border-accent/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent transition-colors hover:bg-accent/10"
+                          className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/10"
                         >
                           <Plus className="w-3 h-3" /> Kategorien wählen
                         </button>
@@ -2025,7 +2025,7 @@ export function AppEditorForm({
                           </Chip>
                         ))}
                         {(formData.categories?.length ?? 0) === 0 && (
-                          <p className="text-sm text-muted">
+                          <p className="text-sm text-muted-foreground">
                             Noch keine Kategorie gesetzt.
                           </p>
                         )}
@@ -2055,8 +2055,8 @@ export function AppEditorForm({
                                   }}
                                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                                     isSelected
-                                      ? "border-accent bg-accent text-white shadow-sm"
-                                      : "border-border bg-surface text-muted hover:border-accent/30 hover:text-foreground"
+                                      ? "border-primary bg-primary text-white shadow-sm"
+                                      : "border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground"
                                   }`}
                                 >
                                   {category}
@@ -2066,7 +2066,7 @@ export function AppEditorForm({
                           </div>
                           <div className="mt-3 flex gap-2">
                             <input
-                              className="flex-1 rounded-xl border border-border bg-field-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+                              className="flex-1 rounded-xl border border-border bg-field-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
                               placeholder="Eigene Kategorie..."
                               value={categoryInput}
                               onChange={(event) =>
@@ -2118,7 +2118,7 @@ export function AppEditorForm({
                                 }
                                 setCategoryInput("");
                               }}
-                              className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-2 text-white transition-colors hover:bg-accent/90"
+                              className="inline-flex items-center justify-center rounded-xl bg-primary px-3 py-2 text-white transition-colors hover:bg-primary/90"
                             >
                               <Plus className="w-4 h-4" />
                             </button>
@@ -2142,11 +2142,11 @@ export function AppEditorForm({
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
                   <div className="rounded-3xl border border-border bg-surface p-5">
-                    <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Kurzbeschreibung
                     </Label>
                     <textarea
-                      className="min-h-[180px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                      className="min-h-[180px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                       placeholder="Wofür steht die App? Welche Wirkung hat sie im Alltag?"
                       value={formData.description || ""}
                       onChange={(event) =>
@@ -2160,11 +2160,11 @@ export function AppEditorForm({
 
                   <div className="space-y-4">
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Lizenz
                       </Label>
                       <input
-                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                         placeholder="z.B. MIT oder EUPL"
                         value={formData.license || ""}
                         onChange={(event) =>
@@ -2177,7 +2177,7 @@ export function AppEditorForm({
                     </div>
 
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Schlagwörter
                       </Label>
                       <div className="flex flex-wrap gap-2">
@@ -2206,9 +2206,9 @@ export function AppEditorForm({
                           </Chip>
                         ))}
                       </div>
-                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-primary">
                         <input
-                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
+                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
                           placeholder="Tag hinzufügen..."
                           value={tagInput}
                           onChange={(event) => setTagInput(event.target.value)}
@@ -2250,7 +2250,7 @@ export function AppEditorForm({
                             }
                           }}
                           disabled={!tagInput.trim()}
-                          className="inline-flex items-center justify-center rounded-full p-1 text-accent transition-colors hover:bg-accent/10 disabled:opacity-30"
+                          className="inline-flex items-center justify-center rounded-full p-1 text-primary transition-colors hover:bg-primary/10 disabled:opacity-30"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -2267,7 +2267,7 @@ export function AppEditorForm({
                   <p className="text-sm font-semibold text-foreground">
                     Repository verknüpfen
                   </p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Optional: Verknüpfen Sie die App mit einem Repository.
                     README, Metadaten und Deployment-Dateien können direkt hier
                     importiert werden, bevor Sie die nächsten Schritte
@@ -2277,7 +2277,7 @@ export function AppEditorForm({
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Provider
                     </label>
                     {creationProviders.length > 0 ? (
@@ -2286,7 +2286,7 @@ export function AppEditorForm({
                         onChange={(e) =>
                           applyGitLabProviderSelection(e.target.value)
                         }
-                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                       >
                         <option value="">— Provider wählen —</option>
                         {creationProviders.map((provider) => (
@@ -2302,12 +2302,12 @@ export function AppEditorForm({
                           applyGitLabProviderSelection(e.target.value)
                         }
                         placeholder="Provider-Schlüssel, z. B. github-com"
-                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                        className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                       />
                     )}
                   </div>
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Projektpfad
                     </label>
                     <input
@@ -2319,11 +2319,11 @@ export function AppEditorForm({
                         }))
                       }
                       placeholder="gruppe/projekt oder owner/repo"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Branch oder Ref
                     </label>
                     <input
@@ -2332,11 +2332,11 @@ export function AppEditorForm({
                         setGitLabForm((p) => ({ ...p, branch: e.target.value }))
                       }
                       placeholder="leer = Default Branch"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       README-Pfad
                     </label>
                     <input
@@ -2348,11 +2348,11 @@ export function AppEditorForm({
                         }))
                       }
                       placeholder="optional, z. B. docs/README.md"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Helm Values Pfad
                     </label>
                     <input
@@ -2364,11 +2364,11 @@ export function AppEditorForm({
                         }))
                       }
                       placeholder="optional, z. B. chart/values.yaml"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                   <div className="rounded-2xl border border-border bg-surface p-4">
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Compose-Datei Pfad
                     </label>
                     <input
@@ -2380,7 +2380,7 @@ export function AppEditorForm({
                         }))
                       }
                       placeholder="optional, z. B. docker-compose.yml"
-                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                      className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     />
                   </div>
                 </div>
@@ -2404,7 +2404,7 @@ export function AppEditorForm({
                     Jetzt synchronisieren
                   </button>
                   {!gitLabForm.projectPath?.trim() && (
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       Kein Repository angegeben – dieser Schritt wird
                       übersprungen.
                     </p>
@@ -2428,14 +2428,14 @@ export function AppEditorForm({
                         </p>
                       </div>
                       {gitLabSnapshot.syncedAt && (
-                        <span className="text-xs text-muted">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(gitLabSnapshot.syncedAt).toLocaleString(
                             "de-DE",
                           )}
                         </span>
                       )}
                     </div>
-                    <ul className="mt-3 space-y-1 pl-6 text-xs text-muted">
+                    <ul className="mt-3 space-y-1 pl-6 text-xs text-muted-foreground">
                       {gitLabSnapshot.readmeContent?.trim() && (
                         <li>README → Dokumentation</li>
                       )}
@@ -2467,7 +2467,7 @@ export function AppEditorForm({
                       <p className="text-sm font-semibold text-foreground">
                         Nachnutzung
                       </p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Aktivieren Sie diesen Modus, wenn die App als bestehende
                         Lösung mitgenutzt werden kann.
                       </p>
@@ -2489,7 +2489,7 @@ export function AppEditorForm({
                     </Switch>
                   </div>
                   <textarea
-                    className="mt-4 min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                    className="mt-4 min-h-[140px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                     placeholder="Welche Stellen können die App nachnutzen? Welche Voraussetzungen oder Grenzen gibt es?"
                     value={formData.reuseRequirements || ""}
                     onChange={(event) =>
@@ -2507,7 +2507,7 @@ export function AppEditorForm({
                       <p className="text-base font-semibold text-foreground">
                         Deployment Assistant
                       </p>
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                         Wählen Sie, welche Installationswege im Store gezeigt
                         werden sollen. Sie können die technischen Angaben auch
                         später noch pro Weg ergänzen.
@@ -2571,30 +2571,30 @@ export function AppEditorForm({
                             }
                             className={`flex min-h-36 flex-col rounded-[1.75rem] border-2 p-5 text-left transition-all ${
                               active
-                                ? "border-accent bg-accent/6 text-accent shadow-sm shadow-accent/10"
-                                : "border-border bg-surface-secondary/55 text-muted hover:border-border/80"
+                                ? "border-primary bg-primary/6 text-primary shadow-sm shadow-primary/10"
+                                : "border-border bg-surface-secondary/55 text-muted-foreground hover:border-border/80"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <span
-                                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${active ? "border-accent/20 bg-accent/12 text-accent" : "border-border bg-surface text-muted"}`}
+                                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${active ? "border-primary/20 bg-primary/12 text-primary" : "border-border bg-surface text-muted-foreground"}`}
                               >
                                 {icon}
                               </span>
                               <span
-                                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${active ? "border-accent/20 bg-accent/12 text-accent" : "border-border bg-surface text-muted"}`}
+                                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${active ? "border-primary/20 bg-primary/12 text-primary" : "border-border bg-surface text-muted-foreground"}`}
                               >
                                 {active ? "Aktiv" : "Ausgeblendet"}
                               </span>
                             </div>
                             <div className="mt-5 space-y-2">
                               <p
-                                className={`text-xl font-semibold leading-tight ${active ? "text-accent" : "text-foreground"}`}
+                                className={`text-xl font-semibold leading-tight ${active ? "text-primary" : "text-foreground"}`}
                               >
                                 {label}
                               </p>
                               <p
-                                className={`text-sm leading-relaxed ${active ? "text-accent/75" : "text-muted"}`}
+                                className={`text-sm leading-relaxed ${active ? "text-primary/75" : "text-muted-foreground"}`}
                               >
                                 {description}
                               </p>
@@ -2611,9 +2611,9 @@ export function AppEditorForm({
                     {formData.showHelm !== false && (
                       <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
                         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <Server className="w-4 h-4 text-accent" /> Helm
+                          <Server className="w-4 h-4 text-primary" /> Helm
                           {gitLabSnapshot?.helmValuesContent?.trim() && (
-                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                               <GitBranch className="h-3 w-3" /> via Repository
                             </span>
                           )}
@@ -2627,7 +2627,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Helm Repo
                             </Label>
                             <Input
@@ -2644,7 +2644,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Hinweis
                             </Label>
                             <Input
@@ -2663,7 +2663,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Helm-Kommando
                             </Label>
                             <TextArea
@@ -2680,7 +2680,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Values.yaml
                             </Label>
                             <TextArea
@@ -2696,10 +2696,10 @@ export function AppEditorForm({
                     {formData.showCompose !== false && (
                       <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
                         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <Terminal className="w-4 h-4 text-accent" /> Docker
+                          <Terminal className="w-4 h-4 text-primary" /> Docker
                           Compose
                           {gitLabSnapshot?.composeFileContent?.trim() && (
-                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                               <GitBranch className="h-3 w-3" /> via Repository
                             </span>
                           )}
@@ -2713,7 +2713,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Compose-Setup
                             </Label>
                             <TextArea
@@ -2730,7 +2730,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Hinweis
                             </Label>
                             <Input
@@ -2746,7 +2746,7 @@ export function AppEditorForm({
                     {formData.showDocker !== false && (
                       <div className="rounded-3xl border border-border bg-surface-secondary/40 p-5">
                         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <Terminal className="w-4 h-4 text-accent" /> Docker
+                          <Terminal className="w-4 h-4 text-primary" /> Docker
                         </div>
                         <div className="grid gap-4 lg:grid-cols-2">
                           <TextField
@@ -2757,7 +2757,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Docker Image
                             </Label>
                             <Input
@@ -2774,7 +2774,7 @@ export function AppEditorForm({
                               }))
                             }
                           >
-                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                            <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Hinweis
                             </Label>
                             <Input
@@ -2792,7 +2792,7 @@ export function AppEditorForm({
                             }))
                           }
                         >
-                          <Label className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-wider text-muted">
+                          <Label className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                             Docker-Kommando
                           </Label>
                           <TextArea
@@ -2814,7 +2814,7 @@ export function AppEditorForm({
                   <p className="text-sm font-semibold text-foreground">
                     Direkte Einstiege
                   </p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Sammeln Sie die wichtigsten Einstiege für Live-Zugänge, Code
                     und weitere Informationen.
                   </p>
@@ -2823,7 +2823,7 @@ export function AppEditorForm({
                 <div className="space-y-6">
                   <LinkListEditor
                     title="Live-Zugänge"
-                    icon={<ExternalLink className="w-4 h-4 text-muted" />}
+                    icon={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
                     items={formData.liveDemos || []}
                     onChange={(liveDemosValue) =>
                       setFormData((previous) => ({
@@ -2837,7 +2837,7 @@ export function AppEditorForm({
                   />
                   <LinkListEditor
                     title="Quellcode"
-                    icon={<GitHubIcon className="w-4 h-4 text-muted" />}
+                    icon={<GitHubIcon className="w-4 h-4 text-muted-foreground" />}
                     items={formData.repositories || []}
                     onChange={(repositoriesValue) =>
                       setFormData((previous) => ({
@@ -2851,7 +2851,7 @@ export function AppEditorForm({
                   />
                   <LinkListEditor
                     title="Weitere Links"
-                    icon={<ExternalLink className="w-4 h-4 text-muted" />}
+                    icon={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
                     items={formData.customLinks || []}
                     onChange={(customLinksValue) =>
                       setFormData((previous) => ({
@@ -2871,7 +2871,7 @@ export function AppEditorForm({
                       }))
                     }
                   >
-                    <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Dokumentation URL
                     </Label>
                     <Input
@@ -2886,7 +2886,7 @@ export function AppEditorForm({
                       <span className="text-sm font-semibold text-foreground">
                         Status-Prüfung deaktivieren
                       </span>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-muted-foreground">
                         Aktivieren, wenn die Live-Links hinter Authentifizierung
                         oder VPN liegen und der Erreichbarkeitscheck immer
                         fehlschlagen würde.
@@ -2917,11 +2917,11 @@ export function AppEditorForm({
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
                   <div className="space-y-6">
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Herausgeber
                       </Label>
                       <input
-                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                        className="w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                         placeholder="z.B. Firma"
                         value={formData.authority || ""}
                         onChange={(event) =>
@@ -2934,7 +2934,7 @@ export function AppEditorForm({
                     </div>
 
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Technik-Stack
                       </Label>
                       <div className="flex flex-wrap gap-2">
@@ -2963,9 +2963,9 @@ export function AppEditorForm({
                           </Chip>
                         ))}
                       </div>
-                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-accent">
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl border border-dashed border-border px-3 py-2 focus-within:border-primary">
                         <input
-                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/40"
+                          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
                           placeholder="Technologie hinzufügen..."
                           value={techInput}
                           onChange={(event) => setTechInput(event.target.value)}
@@ -3007,7 +3007,7 @@ export function AppEditorForm({
                             }
                           }}
                           disabled={!techInput.trim()}
-                          className="inline-flex items-center justify-center rounded-full p-1 text-accent transition-colors hover:bg-accent/10 disabled:opacity-30"
+                          className="inline-flex items-center justify-center rounded-full p-1 text-primary transition-colors hover:bg-primary/10 disabled:opacity-30"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -3017,7 +3017,7 @@ export function AppEditorForm({
 
                   <div className="space-y-6">
                     <div className="rounded-3xl border border-border bg-surface p-5">
-                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Banner (optional)
                       </Label>
                       <div className="space-y-3">
@@ -3051,7 +3051,7 @@ export function AppEditorForm({
                                       : t === "danger"
                                         ? "bg-danger/15 border-danger/40 text-danger"
                                         : "bg-surface-secondary border-border text-foreground"
-                                  : "border-border text-muted hover:border-border/80"
+                                  : "border-border text-muted-foreground hover:border-border/80"
                               }`}
                             >
                               {t === "info"
@@ -3093,12 +3093,12 @@ export function AppEditorForm({
                               }}
                               placeholder="#RRGGBB"
                               maxLength={7}
-                              className="flex-1 rounded-2xl border border-border bg-field-background px-4 py-2 text-sm font-mono text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                              className="flex-1 rounded-2xl border border-border bg-field-background px-4 py-2 text-sm font-mono text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                             />
                           </div>
                         )}
                         <input
-                          className="w-full rounded-2xl border border-border bg-field-background px-4 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                          className="w-full rounded-2xl border border-border bg-field-background px-4 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                           placeholder="Überschrift (optional)"
                           value={formData.bannerTitle || ""}
                           onChange={(event) =>
@@ -3109,7 +3109,7 @@ export function AppEditorForm({
                           }
                         />
                         <textarea
-                          className="min-h-[100px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/40 focus:border-accent"
+                          className="min-h-[100px] w-full resize-none rounded-2xl border border-border bg-field-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary"
                           placeholder="Optional: Banner-Text für diese App"
                           value={formData.bannerText || ""}
                           onChange={(event) =>
@@ -3131,7 +3131,7 @@ export function AppEditorForm({
                           <p className="text-sm font-semibold text-foreground">
                             App temporär verstecken
                           </p>
-                          <p className="mt-1 text-xs text-muted">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             Nur Eigentümer, Bearbeiter und Moderatoren können die
                             App sehen, solange sie versteckt ist.
                           </p>
@@ -3156,13 +3156,13 @@ export function AppEditorForm({
                     </div>
 
                     {isAdmin && (
-                      <div className="rounded-3xl border border-accent/10 bg-accent/5 p-5">
+                      <div className="rounded-3xl border border-primary/10 bg-primary/5 p-5">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-foreground">
                               Ausgezeichnet
                             </p>
-                            <p className="mt-1 text-xs text-muted">
+                            <p className="mt-1 text-xs text-muted-foreground">
                               Nur für Admins: Empfehlung für hervorgehobene
                               Apps.
                             </p>
@@ -3192,7 +3192,7 @@ export function AppEditorForm({
                   <p className="text-sm font-semibold text-foreground">
                     Fachliche Details
                   </p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Nur Felder mit Inhalt erscheinen später in der
                     Detailansicht.
                   </p>
@@ -3200,17 +3200,17 @@ export function AppEditorForm({
                     {metaFields.map((field) => (
                       <div
                         key={field.key}
-                        className="rounded-2xl border border-border bg-surface-secondary/40 p-4 transition-colors hover:border-accent/30"
+                        className="rounded-2xl border border-border bg-surface-secondary/40 p-4 transition-colors hover:border-primary/30"
                       >
-                        <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                        <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {field.icon && (
-                            <span className="text-accent">{field.icon}</span>
+                            <span className="text-primary">{field.icon}</span>
                           )}
                           {field.label}
                         </dt>
                         <dd className="mt-3">
                           <input
-                            className="w-full border-b border-transparent bg-transparent pb-1 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted/40 hover:border-accent/30 focus:border-accent"
+                            className="w-full border-b border-transparent bg-transparent pb-1 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 hover:border-primary/30 focus:border-primary"
                             value={field.value}
                             onChange={(event) => {
                               const value = event.target.value;
@@ -3250,12 +3250,12 @@ export function AppEditorForm({
                       Markdown für die Detailansicht
                     </p>
                     {gitLabSnapshot?.readmeContent?.trim() && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                         <GitBranch className="h-3 w-3" /> via Repository
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Beschreiben Sie die App ausführlicher. Dieser Schritt bleibt
                     bewusst eigenständig, damit die Dokumentation nicht zwischen
                     andere Angaben gequetscht wird.
@@ -3282,7 +3282,7 @@ export function AppEditorForm({
                       <p className="text-sm font-semibold text-foreground">
                         Versionierung und Changelog
                       </p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Lassen Sie sich aus den bisherigen Angaben einen
                         bearbeitbaren Changelog-Vorschlag erstellen.
                       </p>
@@ -3309,7 +3309,7 @@ export function AppEditorForm({
                         }))
                       }
                     >
-                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Version
                       </Label>
                       <Input
@@ -3326,7 +3326,7 @@ export function AppEditorForm({
                         }))
                       }
                     >
-                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <Label className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Changelog
                       </Label>
                       <TextArea
@@ -3343,7 +3343,7 @@ export function AppEditorForm({
                     <p className="text-sm font-semibold text-foreground">
                       Verwandte Apps und Gruppen
                     </p>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Optional: Verknüpfen Sie die App direkt mit bestehenden
                       Einträgen oder ordnen Sie sie einer Gruppe zu.
                     </p>
@@ -3375,8 +3375,8 @@ export function AppEditorForm({
           <aside className="space-y-4">
             <div className="overflow-hidden rounded-[2rem] border border-border bg-surface shadow-sm">
               <div className="relative border-b border-border bg-surface-secondary/60 px-5 py-5">
-                <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-accent/10 blur-3xl" />
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                   Live-Vorschau
                 </p>
                 <div className="relative mt-4 flex items-start gap-4">
@@ -3398,7 +3398,7 @@ export function AppEditorForm({
                     <p className="truncate text-lg font-bold text-foreground">
                       {formData.name || "Neue App"}
                     </p>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {formData.description ||
                         "Kurzbeschreibung folgt in einem der nächsten Schritte."}
                     </p>
@@ -3408,7 +3408,7 @@ export function AppEditorForm({
 
               <div className="space-y-4 px-5 py-5">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                     Status
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -3435,7 +3435,7 @@ export function AppEditorForm({
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                     Kategorien
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -3451,7 +3451,7 @@ export function AppEditorForm({
                         </Chip>
                       ))
                     ) : (
-                      <p className="text-sm text-muted">
+                      <p className="text-sm text-muted-foreground">
                         Noch keine Kategorien gewählt.
                       </p>
                     )}
@@ -3459,7 +3459,7 @@ export function AppEditorForm({
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                     ID
                   </p>
                   <p className="mt-2 rounded-xl border border-border bg-surface-secondary px-3 py-2 font-mono text-xs text-foreground">
@@ -3472,14 +3472,14 @@ export function AppEditorForm({
             <div className="rounded-[2rem] border border-border bg-surface px-5 py-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                     Checkliste
                   </p>
                   <p className="mt-1 text-sm font-semibold text-foreground">
                     {currentCreateStepDef.label}
                   </p>
                 </div>
-                <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted">
+                <span className="rounded-full border border-border bg-surface-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
                   {createChecklist.filter((item) => item.done).length}/
                   {createChecklist.length}
                 </span>
@@ -3488,10 +3488,10 @@ export function AppEditorForm({
                 {createChecklist.map((item) => (
                   <div
                     key={item.label}
-                    className={`flex items-start gap-3 rounded-2xl border px-3 py-3 text-sm ${item.done ? "border-success/25 bg-success/10 text-foreground" : "border-border bg-surface-secondary/45 text-muted"}`}
+                    className={`flex items-start gap-3 rounded-2xl border px-3 py-3 text-sm ${item.done ? "border-success/25 bg-success/10 text-foreground" : "border-border bg-surface-secondary/45 text-muted-foreground"}`}
                   >
                     <span
-                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full ${item.done ? "bg-success/15 text-success" : "bg-surface text-muted border border-border"}`}
+                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full ${item.done ? "bg-success/15 text-success" : "bg-surface text-muted-foreground border border-border"}`}
                     >
                       {item.done ? (
                         <Check className="w-3.5 h-3.5" />
@@ -3506,14 +3506,14 @@ export function AppEditorForm({
             </div>
 
             <div className="rounded-[2rem] border border-border bg-surface px-5 py-5 shadow-sm">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
                 Speicherbereitschaft
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 {requiredItems.map((item) => (
                   <div
                     key={item.label}
-                    className={`rounded-2xl border px-4 py-3 text-sm ${item.done ? "border-success/25 bg-success/10 text-foreground" : "border-border bg-surface-secondary/45 text-muted"}`}
+                    className={`rounded-2xl border px-4 py-3 text-sm ${item.done ? "border-success/25 bg-success/10 text-foreground" : "border-border bg-surface-secondary/45 text-muted-foreground"}`}
                   >
                     <div className="flex items-center gap-2 font-semibold">
                       {item.done ? (
@@ -3627,7 +3627,7 @@ export function AppEditorForm({
           }
         >
           {hasUnsavedChanges && !saveError && (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Ungespeicherte Änderungen. Erfasste Angaben:{" "}
               <span className="font-semibold">
                 {requiredDoneCount}/{requiredItems.length}
@@ -3635,13 +3635,13 @@ export function AppEditorForm({
             </p>
           )}
           {!canProceedCreateStep && !saveError && !saveSuccess && (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Ergänzen Sie die offenen Punkte in diesem Schritt, bevor Sie
               weitergehen.
             </p>
           )}
           {!profileReady && !saveError && !saveSuccess && (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Ihr Benutzerprofil wird noch synchronisiert. Speichern ist
               möglich, sobald die Sitzung bestätigt ist.
             </p>
@@ -3657,7 +3657,7 @@ export function AppEditorForm({
             </span>
           )}
           {lastAutoSave && !saveError && !saveSuccess && (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Zuletzt gespeichert um{" "}
               {lastAutoSave.toLocaleTimeString("de-DE", {
                 hour: "2-digit",
@@ -3701,13 +3701,13 @@ export function AppEditorForm({
       <section className="mb-4 rounded-3xl border border-border bg-surface-secondary p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted/80">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground/80">
               App bearbeiten
             </p>
             <h1 className="mt-1 text-2xl font-bold text-foreground">
               {formData.name || "App bearbeiten"}
             </h1>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-sm text-muted-foreground">
               Alle Formularänderungen bleiben bis zum Speichern lokal. Auch bei Entwürfen.
             </p>
           </div>
@@ -3726,7 +3726,7 @@ export function AppEditorForm({
       <div className="mb-6 flex items-center">
         <button
           onClick={() => requestNavigation(backUrl)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           Zurück zur Übersicht
@@ -3754,7 +3754,7 @@ export function AppEditorForm({
           />
         </div>
           <h2 className="mb-2 text-xl font-semibold">Allgemeine Angaben</h2>
-          <p className="mb-6 text-sm text-muted">Name, Logo, Einordnung und Darstellung Ihrer App.</p>
+          <p className="mb-6 text-sm text-muted-foreground">Name, Logo, Einordnung und Darstellung Ihrer App.</p>
                 {/* ── App banner (editable, matches detail page position) ── */}
       {formData.bannerText ? (
         <div
@@ -3799,7 +3799,7 @@ export function AppEditorForm({
                           : t === "danger"
                             ? "bg-danger/15 border-danger/40 text-danger"
                             : "bg-surface-secondary border-border text-foreground"
-                      : "border-border text-muted hover:border-border/80"
+                      : "border-border text-muted-foreground hover:border-border/80"
                   }`}
                 >
                   {t === "info"
@@ -3837,13 +3837,13 @@ export function AppEditorForm({
                   }}
                   placeholder="#RRGGBB"
                   maxLength={7}
-                  className="flex-1 bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm font-mono text-foreground placeholder:text-muted/50 outline-none focus:border-accent transition-colors"
+                  className="flex-1 bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary transition-colors"
                 />
               </div>
             )}
             {/* Custom title */}
             <input
-              className="w-full bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none focus:border-accent transition-colors"
+              className="w-full bg-white/40 dark:bg-white/5 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary transition-colors"
               placeholder="Überschrift (optional)"
               value={formData.bannerTitle || ""}
               onChange={(e) =>
@@ -3852,7 +3852,7 @@ export function AppEditorForm({
             />
             {/* Banner text */}
             <input
-              className={`w-full bg-white/40 dark:bg-white/5 border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted/50 outline-none transition-colors ${
+              className={`w-full bg-white/40 dark:bg-white/5 border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors ${
                 formData.bannerType === "warning"
                   ? "border-warning/40 focus:border-warning"
                   : formData.bannerType === "danger"
@@ -3877,7 +3877,7 @@ export function AppEditorForm({
                 bannerTitle: "",
               }))
             }
-            className="shrink-0 text-muted/60 hover:text-foreground transition-colors"
+            className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors"
             title="Banner entfernen"
           >
             <X className="w-4 h-4" />
@@ -3889,7 +3889,7 @@ export function AppEditorForm({
           onClick={() =>
             setFormData((p) => ({ ...p, bannerText: " ", bannerType: "info" }))
           }
-          className="mb-4 w-full px-4 py-2.5 rounded-xl border border-dashed border-border/60 text-left flex items-center gap-2 text-xs text-muted/60 hover:text-muted hover:border-border transition-colors"
+          className="mb-4 w-full px-4 py-2.5 rounded-xl border border-dashed border-border/60 text-left flex items-center gap-2 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:border-border transition-colors"
         >
           <Info className="w-3.5 h-3.5 shrink-0" />
           Banner hinzufügen (optional)
@@ -3905,7 +3905,7 @@ export function AppEditorForm({
               type="button"
               aria-label="App-Logo ändern"
               onClick={() => setShowIconPicker((v) => !v)}
-              className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border-2 border-dashed border-accent/40 hover:border-accent shadow-sm flex items-center justify-center text-4xl md:text-6xl overflow-hidden group transition-all"
+              className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl bg-surface border-2 border-dashed border-primary/40 hover:border-primary shadow-sm flex items-center justify-center text-4xl md:text-6xl overflow-hidden group transition-all"
             >
               {formIconSrc ? (
                 <Image
@@ -3926,7 +3926,7 @@ export function AppEditorForm({
             <button
               type="button"
               title="Bild hochladen"
-              className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent rounded-full flex items-center justify-center shadow-md hover:bg-accent/90 transition-colors"
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
               onClick={() => iconFileInputRef.current?.click()}
             >
               {uploadingIcon ? (
@@ -3961,7 +3961,7 @@ export function AppEditorForm({
 
           <div className="flex-1 min-w-0">
             {/* Required field note */}
-            <p className="text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">
+            <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-2 select-none">
               Name und Identität{" "}
               <span className="text-danger font-normal normal-case">
                 * Pflichtfelder
@@ -3971,7 +3971,7 @@ export function AppEditorForm({
             {/* Title row: name + category chips + status chip + reuse chip */}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <input
-                className="bg-transparent text-2xl md:text-3xl font-extrabold text-foreground outline-none border-b-2 border-accent/20 hover:border-accent/50 focus:border-accent transition-colors pb-1 placeholder:text-muted/40 min-w-[200px] flex-shrink"
+                className="bg-transparent text-2xl md:text-3xl font-extrabold text-foreground outline-none border-b-2 border-primary/20 hover:border-primary/50 focus:border-primary transition-colors pb-1 placeholder:text-muted-foreground/40 min-w-[200px] flex-shrink"
                 aria-label="App-Name"
                 placeholder="App-Name"
                 value={formData.name || ""}
@@ -4018,7 +4018,7 @@ export function AppEditorForm({
               <button
                 type="button"
                 onClick={() => setShowCategoryPicker((v) => !v)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-dashed border-accent/40 text-accent hover:bg-accent/10 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
               >
                 <Plus className="w-3 h-3" /> Kategorie *
               </button>
@@ -4047,11 +4047,11 @@ export function AppEditorForm({
             {/* ID field (new only) */}
             {isNew && (
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-muted font-mono shrink-0">
+                <span className="text-xs text-muted-foreground font-mono shrink-0">
                   ID:
                 </span>
                 <input
-                  className={`flex-1 bg-transparent text-xs font-mono outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors ${isIdTaken ? "text-danger" : "text-muted"}`}
+                  className={`flex-1 bg-transparent text-xs font-mono outline-none border-b border-transparent hover:border-primary/30 focus:border-primary transition-colors ${isIdTaken ? "text-danger" : "text-muted-foreground"}`}
                   value={formData.id || ""}
                   onChange={(e) =>
                     setFormData((p) => ({
@@ -4075,18 +4075,18 @@ export function AppEditorForm({
               </div>
             )}
             {isNew && (
-              <p className="text-[11px] text-muted/60 mb-3 -mt-1">
+              <p className="text-[11px] text-muted-foreground/60 mb-3 -mt-1">
                 Die ID ist die eindeutige Adresse der App und wird automatisch
                 aus dem Namen generiert.
               </p>
             )}
 
             {/* Description (matches detail page position) */}
-            <label className="block text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-1.5 select-none">
+            <label className="block text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1.5 select-none">
               Kurzbeschreibung
             </label>
             <textarea
-              className="w-full bg-transparent text-base md:text-md text-muted leading-relaxed outline-none border-b border-accent/15 hover:border-accent/30 focus:border-accent transition-colors pb-1 resize-none placeholder:text-muted/40 max-w-3xl mb-5"
+              className="w-full bg-transparent text-base md:text-md text-muted-foreground leading-relaxed outline-none border-b border-primary/15 hover:border-primary/30 focus:border-primary transition-colors pb-1 resize-none placeholder:text-muted-foreground/40 max-w-3xl mb-5"
               aria-label="Kurzbeschreibung"
               placeholder="Kurzbeschreibung eingeben..."
               value={formData.description || ""}
@@ -4098,7 +4098,7 @@ export function AppEditorForm({
 
             {/* Tags (matches detail page position) */}
             <div className="mb-6">
-              <label className="block text-[10px] font-bold text-muted/60 uppercase tracking-wider mb-2 select-none">
+              <label className="block text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-2 select-none">
                 Schlagwörter
               </label>
               <div className="flex flex-wrap gap-2 items-center">
@@ -4124,9 +4124,9 @@ export function AppEditorForm({
                     </button>
                   </Chip>
                 ))}
-                <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-accent/40 transition-colors focus-within:border-accent">
+                <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-primary/40 transition-colors focus-within:border-primary">
                   <input
-                    className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[90px]"
+                    className="bg-transparent text-xs outline-none placeholder:text-muted-foreground/40 min-w-[90px]"
                     placeholder="Tag eingeben..."
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
@@ -4162,7 +4162,7 @@ export function AppEditorForm({
                       }
                     }}
                     disabled={!tagInput.trim()}
-                    className="text-accent hover:bg-accent/10 rounded-full transition-colors disabled:opacity-30"
+                    className="text-primary hover:bg-primary/10 rounded-full transition-colors disabled:opacity-30"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
@@ -4173,9 +4173,9 @@ export function AppEditorForm({
             {/* Quick links (matches detail page position and style exactly) */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border shadow-sm">
-                <Scale className="w-4 h-4 shrink-0 text-muted/60" />
+                <Scale className="w-4 h-4 shrink-0 text-muted-foreground/60" />
                 <input
-                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted/40 w-48"
+                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground/40 w-48"
                   aria-label="Lizenz"
                   placeholder="Lizenz, z. B. MIT"
                   value={formData.license || ""}
@@ -4193,7 +4193,7 @@ export function AppEditorForm({
         {showIconPicker && (
           <div className="relative z-10 mt-5 p-4 rounded-2xl bg-surface border border-border shadow-lg">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Icon auswählen
               </span>
               <Button
@@ -4219,8 +4219,8 @@ export function AppEditorForm({
                   }}
                   className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all border ${
                     formData.icon === emoji
-                      ? "bg-accent/10 border-accent shadow-sm scale-110"
-                      : "bg-surface border-border hover:border-accent/30 hover:bg-surface-secondary"
+                      ? "bg-primary/10 border-primary shadow-sm scale-110"
+                      : "bg-surface border-border hover:border-primary/30 hover:bg-surface-secondary"
                   }`}
                 >
                   {emoji}
@@ -4248,7 +4248,7 @@ export function AppEditorForm({
         {showCategoryPicker && (
           <div className="relative z-10 mt-5 p-4 rounded-2xl bg-surface border border-border shadow-lg">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Kategorien
               </span>
               <Button
@@ -4279,8 +4279,8 @@ export function AppEditorForm({
                     }}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                       isSelected
-                        ? "bg-accent text-white border-accent shadow-sm"
-                        : "bg-surface border-border text-muted hover:border-accent/30 hover:text-foreground"
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-surface border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
                     }`}
                   >
                     {cat}
@@ -4331,8 +4331,8 @@ export function AppEditorForm({
 
       </header>          {/* ── Tech stack strip (matches detail page position exactly) ── */}
           <div className="flex items-start gap-4 mb-8 bg-surface-secondary/50 p-4 rounded-2xl border border-border">
-            <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2 pt-1">
-              <Layers className="w-4 h-4 text-accent" />
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold shrink-0 flex items-center gap-2 pt-1">
+              <Layers className="w-4 h-4 text-primary" />
               Technik
             </span>
             <div className="flex gap-2 flex-wrap items-center flex-1">
@@ -4358,9 +4358,9 @@ export function AppEditorForm({
                   </button>
                 </Chip>
               ))}
-              <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-accent/40 transition-colors focus-within:border-accent">
+              <div className="flex items-center gap-1 border border-dashed border-border/60 rounded-full px-2 py-1 hover:border-primary/40 transition-colors focus-within:border-primary">
                 <input
-                  className="bg-transparent text-xs outline-none placeholder:text-muted/40 min-w-[110px]"
+                  className="bg-transparent text-xs outline-none placeholder:text-muted-foreground/40 min-w-[110px]"
                   placeholder="Technologie hinzufügen..."
                   value={techInput}
                   onChange={(e) => setTechInput(e.target.value)}
@@ -4396,7 +4396,7 @@ export function AppEditorForm({
                     }
                   }}
                   disabled={!techInput.trim()}
-                  className="text-accent hover:bg-accent/10 rounded-full transition-colors disabled:opacity-30"
+                  className="text-primary hover:bg-primary/10 rounded-full transition-colors disabled:opacity-30"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -4429,17 +4429,17 @@ export function AppEditorForm({
                       </Switch.Content>
                     </Switch>
                   </div>
-                  <p className="text-sm text-muted mb-3">
+                  <p className="text-sm text-muted-foreground mb-3">
                     Diese App kann als bestehende Installation mitgenutzt
                     werden. Eine technische Installationsanleitung kann optional
                     trotzdem zusätzlich hinterlegt werden.
                   </p>
                   <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
-                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                       Voraussetzungen zur Nachnutzung
                     </h4>
                     <textarea
-                      className="w-full bg-transparent text-sm text-foreground outline-none resize-none placeholder:text-muted/40 min-h-[60px]"
+                      className="w-full bg-transparent text-sm text-foreground outline-none resize-none placeholder:text-muted-foreground/40 min-h-[60px]"
                       placeholder="Welche Behörden können die App nachnutzen? Was wird benötigt?"
                       value={formData.reuseRequirements || ""}
                       onChange={(e) =>
@@ -4456,12 +4456,12 @@ export function AppEditorForm({
           ) : (
             <div className="mb-8 flex items-center justify-between p-4 rounded-2xl border border-dashed border-border/60 bg-surface-secondary/30">
               <div className="flex items-center gap-3">
-                <Share2 className="w-4 h-4 text-muted/40 shrink-0" />
+                <Share2 className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                 <div>
-                  <span className="text-sm font-medium text-muted">
+                  <span className="text-sm font-medium text-muted-foreground">
                     Nachnutzung
                   </span>
-                  <p className="text-xs text-muted/60">
+                  <p className="text-xs text-muted-foreground/60">
                     Aktivieren, wenn diese App für andere Behörden zur
                     Mitnutzung bereitgestellt wird.
                   </p>
@@ -4488,7 +4488,7 @@ export function AppEditorForm({
             <span className="text-sm font-bold text-foreground">
               Ressourcen & Links
             </span>
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Hinterlegen Sie direkte Einstiege, Quellcode und weiterführende
               Dokumentation sichtbar an einer Stelle.
             </p>
@@ -4496,7 +4496,7 @@ export function AppEditorForm({
           <div className="space-y-6">
             <LinkListEditor
               title="Live-Zugänge"
-              icon={<ExternalLink className="w-4 h-4 text-muted" />}
+              icon={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
               items={formData.liveDemos || []}
               onChange={(demos) =>
                 setFormData((p) => ({ ...p, liveDemos: demos }))
@@ -4507,7 +4507,7 @@ export function AppEditorForm({
             />
             <LinkListEditor
               title="Quellcode"
-              icon={<GitHubIcon className="w-4 h-4 text-muted" />}
+              icon={<GitHubIcon className="w-4 h-4 text-muted-foreground" />}
               items={formData.repositories || []}
               onChange={(repos) =>
                 setFormData((p) => ({ ...p, repositories: repos }))
@@ -4518,7 +4518,7 @@ export function AppEditorForm({
             />
             <LinkListEditor
               title="Weitere Links"
-              icon={<ExternalLink className="w-4 h-4 text-muted" />}
+              icon={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
               items={formData.customLinks || []}
               onChange={(links) =>
                 setFormData((p) => ({ ...p, customLinks: links }))
@@ -4531,7 +4531,7 @@ export function AppEditorForm({
               <TextField
                 onChange={(val) => setFormData((p) => ({ ...p, docsUrl: val }))}
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                   Dokumentation URL
                 </Label>
                 <Input
@@ -4545,7 +4545,7 @@ export function AppEditorForm({
                   setFormData((p) => ({ ...p, authority: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                   Herausgeber
                 </Label>
                 <Input
@@ -4559,7 +4559,7 @@ export function AppEditorForm({
         </div>
             {/* Skip link probe toggle — shown directly below the link buttons */}
             <div className="mt-3 flex items-center justify-between gap-4 px-1">
-              <p className="text-xs text-muted">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground">
                   Status-Prüfung deaktivieren:
                 </span>{" "}
@@ -4583,7 +4583,7 @@ export function AppEditorForm({
                     {/* Dokumentation tab */}
             <Tabs.Panel id="docs">
               <div className="space-y-4">
-                <p className="text-xs text-muted">
+                <p className="text-xs text-muted-foreground">
                   Verfassen Sie eine ausführliche Dokumentation im
                   Markdown-Format.
                 </p>
@@ -4602,7 +4602,7 @@ export function AppEditorForm({
                 {/* Versionierung */}
                 <div className="flex flex-col gap-4 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Tag className="w-3.5 h-3.5" /> Versionierung
                     </span>
                     {settings.aiEnabled !== false && (
@@ -4623,7 +4623,7 @@ export function AppEditorForm({
                       setFormData((p) => ({ ...p, version: val }))
                     }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Version
                     </Label>
                     <Input
@@ -4637,7 +4637,7 @@ export function AppEditorForm({
                       setFormData((p) => ({ ...p, changelog: val }))
                     }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Änderungsprotokoll
                     </Label>
                     <TextArea
@@ -4653,22 +4653,22 @@ export function AppEditorForm({
             {/* Fachliche Details tab */}
             <Tabs.Panel id="details">
               <div className="space-y-6">
-                <p className="text-xs text-muted">
+                <p className="text-xs text-muted-foreground">
                   Felder ohne Inhalt werden in der App-Detailansicht nicht
                   angezeigt.
                 </p>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Authority card */}
-                  <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
-                    <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
-                      <span className="text-accent">
+                  <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-primary/30 transition-colors">
+                    <dt className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
+                      <span className="text-primary">
                         {resolveIcon("Building2")}
                       </span>
                       Herausgeber
                     </dt>
                     <dd>
                       <input
-                        className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
+                        className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-primary/30 focus:border-primary transition-colors"
                         value={formData.authority || ""}
                         onChange={(e) =>
                           setFormData((p) => ({
@@ -4684,17 +4684,17 @@ export function AppEditorForm({
                   {metaFields.map((field) => (
                     <div
                       key={field.key}
-                      className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors"
+                      className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-primary/30 transition-colors"
                     >
-                      <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
+                      <dt className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
                         {field.icon && (
-                          <span className="text-accent">{field.icon}</span>
+                          <span className="text-primary">{field.icon}</span>
                         )}
                         {field.label}
                       </dt>
                       <dd>
                         <input
-                          className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-accent/30 focus:border-accent transition-colors"
+                          className="w-full bg-transparent text-sm font-medium text-foreground outline-none border-b border-transparent hover:border-primary/30 focus:border-primary transition-colors"
                           value={field.value}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -4729,7 +4729,7 @@ export function AppEditorForm({
                     <span className="text-sm font-bold text-foreground">
                       App temporär verstecken
                     </span>
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       Solange die App versteckt ist, sehen sie nur Eigentümer,
                       Bearbeiter und Moderatoren.
                     </p>
@@ -4753,12 +4753,12 @@ export function AppEditorForm({
                 </div>
 
                 {isAdmin && (
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-bold text-foreground">
                         Ausgezeichnet (Empfehlung)
                       </span>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-muted-foreground">
                         Hervorgehobene Apps erscheinen mit einer speziellen
                         Markierung im Store.
                       </p>
@@ -4789,7 +4789,7 @@ export function AppEditorForm({
               <>
                 <Tabs.Panel id="gitlab">
                   <h2 className="mb-2 text-xl font-semibold">Repository-Anbindung</h2>
-                  <p className="mb-4 text-sm text-muted">Die Konfiguration wird gemeinsam mit der App gespeichert. Synchronisieren und Freigeben sind separate Aktionen und können gespeicherte App-Inhalte ersetzen.</p>
+                  <p className="mb-4 text-sm text-muted-foreground">Die Konfiguration wird gemeinsam mit der App gespeichert. Synchronisieren und Freigeben sind separate Aktionen und können gespeicherte App-Inhalte ersetzen.</p>
                   {pendingUnlink && <p role="status" className="mb-4 rounded-xl bg-warning/10 p-4 text-sm">Die Repository-Verknüpfung wird beim nächsten Speichern entfernt.</p>}
                   <GitLabTab
                     currentApp={formData}
@@ -4823,7 +4823,7 @@ export function AppEditorForm({
                 {/* Verwandte Apps + Gruppen tab */}
                 <Tabs.Panel id="related">
                   <h2 className="mb-2 text-xl font-semibold">Zuordnungen</h2>
-                  <p className="mb-6 text-sm text-muted">Verwandte Apps und Gruppen auswählen. Neue Gruppen und Zuordnungen werden erst beim Speichern angelegt.</p>
+                  <p className="mb-6 text-sm text-muted-foreground">Verwandte Apps und Gruppen auswählen. Neue Gruppen und Zuordnungen werden erst beim Speichern angelegt.</p>
                   <RelatedAppsTab
                     showDraftHint={false}
                     canManageGroups={canManageGroups}
@@ -4850,7 +4850,7 @@ export function AppEditorForm({
       </fieldset>
 
       {/* ── Footer meta (matches detail page) ── */}
-      <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted">
+      <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted-foreground">
         <span>
           ID: <code className="font-mono">{formData.id || "—"}</code>
         </span>
@@ -4909,12 +4909,12 @@ export function AppEditorForm({
         }
       >
         {hasUnsavedChanges && !saveError && (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Ungespeicherte Änderungen – noch nicht übernommen.
           </p>
         )}
         {!canSave && !saveError && !saveSuccess && (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Für einen Entwurf sind <span className="font-semibold">Name</span>
             {" "}und <span className="font-semibold">ID</span> nötig. Für
             Status außer Entwurf zusätzlich{" "}
@@ -4923,7 +4923,7 @@ export function AppEditorForm({
           </p>
         )}
         {!profileReady && !saveError && !saveSuccess && (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Ihr Benutzerprofil wird noch synchronisiert. Sobald das Backend die
             Sitzung bestätigt hat, können Sie speichern.
           </p>

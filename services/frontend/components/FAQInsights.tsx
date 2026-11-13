@@ -66,18 +66,18 @@ export function FAQInsights() {
         <Disclosure.Heading>
           <Button slot="trigger" variant="ghost" className="h-auto w-full justify-between rounded-none px-4 py-3.5 text-left sm:px-5">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"><BarChart3 className="h-5 w-5" /></span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><BarChart3 className="h-5 w-5" /></span>
               <span className="min-w-0">
                 <span className="block font-semibold text-foreground">FAQ Insights</span>
-                <span className="block truncate text-xs font-normal text-muted">Plattformweite Aktivität und offene Fragen</span>
+                <span className="block truncate text-xs font-normal text-muted-foreground">Plattformweite Aktivität und offene Fragen</span>
               </span>
             </span>
             {loading ? <Spinner size="sm" /> : (
               <span className="ml-auto hidden items-center gap-7 lg:flex">
-                {stats.map(({ label, value }) => <span key={label} className="min-w-20 text-right"><span className="block text-xs font-normal text-muted">{label}</span><span className="block font-semibold text-foreground">{value}</span></span>)}
+                {stats.map(({ label, value }) => <span key={label} className="min-w-20 text-right"><span className="block text-xs font-normal text-muted-foreground">{label}</span><span className="block font-semibold text-foreground">{value}</span></span>)}
               </span>
             )}
-            <Disclosure.Indicator className="ml-2 shrink-0 text-muted" />
+            <Disclosure.Indicator className="ml-2 shrink-0 text-muted-foreground" />
           </Button>
         </Disclosure.Heading>
         <Disclosure.Content>
@@ -94,7 +94,7 @@ export function FAQInsights() {
                       ['Antworten · 30 Tage', data.summary.answersLast30Days],
                     ].map(([label, value]) => (
                       <div key={label} className="bg-surface-secondary px-3.5 py-3">
-                        <span className="block text-xs text-muted">{label}</span>
+                        <span className="block text-xs text-muted-foreground">{label}</span>
                         <strong className="mt-0.5 block text-lg text-foreground">{value}</strong>
                       </div>
                     ))}
@@ -112,7 +112,7 @@ export function FAQInsights() {
                     <div className="divide-y divide-border rounded-xl border border-border">
                       {data.oldestOpen.map((question) => (
                         <div key={question.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-                          <div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{question.question}</p><p className="text-xs text-muted">{question.scope === 'global' ? 'Globales FAQ' : question.appName} · {new Date(question.createdAt).toLocaleDateString('de-DE')}</p></div>
+                          <div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{question.question}</p><p className="text-xs text-muted-foreground">{question.scope === 'global' ? 'Globales FAQ' : question.appName} · {new Date(question.createdAt).toLocaleDateString('de-DE')}</p></div>
                           <Button isIconOnly size="sm" variant="ghost" aria-label="Offene Frage anzeigen" onPress={() => router.push(question.scope === 'global' ? '/faq' : `/apps/${question.appId}#faq`)}><ExternalLink className="h-4 w-4" /></Button>
                         </div>
                       ))}

@@ -33,7 +33,7 @@ export function AIMessageActions({
         aria-label="Antwort kopieren"
         size="sm"
         variant="ghost"
-        className="h-7 w-7 text-muted"
+        className="h-7 w-7 text-muted-foreground"
         onPress={() => void copyMessage()}
       >
         {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
@@ -43,7 +43,7 @@ export function AIMessageActions({
         aria-label="Antwort hilfreich"
         size="sm"
         variant="ghost"
-        className={`h-7 w-7 ${feedback === 'positive' ? 'text-success' : 'text-muted'}`}
+        className={`h-7 w-7 ${feedback === 'positive' ? 'text-success' : 'text-muted-foreground'}`}
         onPress={() => onFeedback(feedback === 'positive' ? '' : 'positive')}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
@@ -53,7 +53,7 @@ export function AIMessageActions({
         aria-label="Antwort nicht hilfreich"
         size="sm"
         variant="ghost"
-        className={`h-7 w-7 ${feedback === 'negative' ? 'text-danger' : 'text-muted'}`}
+        className={`h-7 w-7 ${feedback === 'negative' ? 'text-danger' : 'text-muted-foreground'}`}
         onPress={() => onFeedback(feedback === 'negative' ? '' : 'negative')}
       >
         <ThumbsDown className="h-3.5 w-3.5" />

@@ -144,12 +144,12 @@ export default function ProfilTokensPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <KeyRound className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">API-Tokens für Agenten</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Erstelle persönliche Tokens für deinen MCP-Agenten oder andere Integrationen. Ein vollständiger Token wird nur direkt nach der Erstellung angezeigt.
             </p>
           </div>
@@ -161,7 +161,7 @@ export default function ProfilTokensPage() {
       </div>
 
       {createdToken && (
-        <Card variant="secondary" className="border border-accent/30 bg-accent/5">
+        <Card variant="secondary" className="border border-primary/30 bg-primary/5">
           <Card.Header>
             <Card.Title className="flex items-center gap-2 text-base">
               <Check className="h-4 w-4 text-success" />
@@ -188,7 +188,7 @@ export default function ProfilTokensPage() {
       <Card>
         <Card.Header>
           <Card.Title className="flex items-center gap-2 text-base">
-            <Plus className="h-4 w-4 text-accent" />
+            <Plus className="h-4 w-4 text-primary" />
             Neues MCP-Token
           </Card.Title>
           <Card.Description>
@@ -217,7 +217,7 @@ export default function ProfilTokensPage() {
             </Select>
           </Card.Content>
           <Card.Footer className="flex flex-col items-start gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="flex items-start gap-2 text-xs leading-relaxed text-muted">
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               Tokens geben Zugriff im Namen deines Kontos. Teile sie nicht und widerrufe sie bei Verdacht sofort.
             </p>
@@ -235,7 +235,7 @@ export default function ProfilTokensPage() {
             <Card.Title className="text-base">Meine MCP-Tokens</Card.Title>
             <Card.Description>{tokens.length} Token{tokens.length === 1 ? '' : 's'} angelegt</Card.Description>
           </div>
-          <KeyRound className="h-5 w-5 text-muted" />
+          <KeyRound className="h-5 w-5 text-muted-foreground" />
         </Card.Header>
         {error && (
           <Card.Content>
@@ -261,8 +261,8 @@ export default function ProfilTokensPage() {
                   items={loading ? [] : tokens}
                   renderEmptyState={() => (
                     <EmptyState className="flex flex-col items-center justify-center gap-2 py-12">
-                      {loading ? <Loader2 className="h-8 w-8 animate-spin text-muted" /> : <KeyRound className="h-8 w-8 text-muted opacity-50" />}
-                      <span className="text-muted">{loading ? 'Wird geladen…' : 'Noch keine MCP-Tokens vorhanden.'}</span>
+                      {loading ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /> : <KeyRound className="h-8 w-8 text-muted-foreground opacity-50" />}
+                      <span className="text-muted-foreground">{loading ? 'Wird geladen…' : 'Noch keine MCP-Tokens vorhanden.'}</span>
                     </EmptyState>
                   )}
                 >
@@ -272,15 +272,15 @@ export default function ProfilTokensPage() {
                       <Table.Row key={token.id} className={expired || token.disabled ? 'opacity-60' : undefined}>
                         <Table.Cell>
                           <div className="flex items-center gap-2">
-                            <KeyRound className="h-4 w-4 shrink-0 text-muted" />
+                            <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
                             <div className="min-w-0">
                               <div className="truncate text-sm font-semibold text-foreground">{token.description}</div>
-                              <code className="text-[11px] text-muted">{token.key_preview}</code>
+                              <code className="text-[11px] text-muted-foreground">{token.key_preview}</code>
                             </div>
                           </div>
                         </Table.Cell>
-                        <Table.Cell><span className="text-xs text-muted">{formatDate(token.created_at)}</span></Table.Cell>
-                        <Table.Cell><span className={`text-xs ${expired ? 'text-danger' : 'text-muted'}`}>{formatDate(token.expires_at)}</span></Table.Cell>
+                        <Table.Cell><span className="text-xs text-muted-foreground">{formatDate(token.created_at)}</span></Table.Cell>
+                        <Table.Cell><span className={`text-xs ${expired ? 'text-danger' : 'text-muted-foreground'}`}>{formatDate(token.expires_at)}</span></Table.Cell>
                         <Table.Cell>
                           {token.disabled ? (
                             <Chip size="sm" variant="soft" color="danger" className="text-[9px] font-bold uppercase tracking-wider">Widerrufen</Chip>

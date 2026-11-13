@@ -25,7 +25,7 @@ export default function ProfilLayout({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -45,8 +45,8 @@ export default function ProfilLayout({ children }: { children: ReactNode }) {
                 aria-current={active ? 'page' : undefined}
                 className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold no-underline transition-colors ${
                   active
-                    ? 'bg-accent text-white shadow-sm'
-                    : 'text-muted hover:bg-surface-secondary hover:text-foreground'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:bg-surface-secondary hover:text-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />

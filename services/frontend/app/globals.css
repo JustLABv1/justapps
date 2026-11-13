@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "./heroui-compat.css";
 
-/* ── Government themed custom tokens ── */
+/* ── Government brand colours (used for accents in page content) ── */
 @theme {
   --color-gov-blue: #004B76;
   --color-gov-blue-light: #1a6da3;
@@ -11,128 +12,148 @@
   --color-field-background: var(--field-background);
 }
 
-/* ── Light theme overrides ── */
+/* ── PanelUI theme ──
+   The values of PanelUI's default theme (panelui.dev, light and dark), in the
+   shadcn/ui token names its components read. These are the source of truth:
+   HeroUI's variables below are derived from them. */
 :root,
 [data-theme="light"] {
   color-scheme: light;
 
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.20 0.02 260);
+  --radius: 0.625rem;
 
-  --surface: oklch(1 0 0);
-  --surface-foreground: var(--foreground);
+  --background: #ffffff;
+  --foreground: #262626;
+  --card: #ffffff;
+  --card-foreground: #262626;
+  --popover: #ffffff;
+  --popover-foreground: #262626;
+  --primary: #262626;
+  --primary-foreground: #fafafa;
+  --secondary: #0000000f;
+  --secondary-foreground: #262626;
+  --muted: #0000000f;
+  --muted-foreground: #686868;
+  --accent: #0000000f;
+  --accent-foreground: #262626;
+  --destructive: #ef4444;
+  --info: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --border: #00000014;
+  --input: #0000001a;
+  --ring: #a3a3a3;
 
-  --overlay: oklch(1 0 0);
-  --overlay-foreground: var(--foreground);
-
-  --muted: oklch(0.50 0.01 260);
-
-  --default: oklch(0.95 0.004 250);
-  --default-foreground: var(--foreground);
-
-  --accent: oklch(0.42 0.12 245);
-  --accent-foreground: oklch(0.99 0 0);
-
-  --success: oklch(0.65 0.18 155);
-  --success-foreground: oklch(0.20 0.02 155);
-
-  --warning: oklch(0.78 0.16 72);
-  --warning-foreground: oklch(0.20 0.02 72);
-
-  --danger: oklch(0.58 0.22 25);
-  --danger-foreground: oklch(0.99 0 0);
-
-  --border: oklch(0.88 0.008 250);
-  --separator: oklch(0.92 0.004 250);
-  --focus: var(--accent);
-  --link: var(--accent);
-
-  --field-background: oklch(1 0 0);
-  --field-foreground: var(--foreground);
-  --field-border: oklch(0.88 0.008 250);
-
-  --surface-secondary: oklch(0.97 0.002 250);
-  --surface-tertiary: oklch(0.95 0.004 250);
-
-  --surface-shadow: 0 1px 3px 0 rgba(0,0,0,.06), 0 1px 2px -1px rgba(0,0,0,.06);
-  --overlay-shadow: 0 4px 16px 0 rgba(0,0,0,.08), 0 2px 8px 0 rgba(0,0,0,.04);
+  --surface-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --overlay-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* ── Dark theme overrides ── */
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --background: oklch(0.16 0.015 250);
-  --foreground: oklch(0.93 0.005 250);
-
-  --surface: oklch(0.22 0.012 250);
-  --surface-foreground: var(--foreground);
-
-  --overlay: oklch(0.24 0.012 250);
-  --overlay-foreground: var(--foreground);
-
-  --muted: oklch(0.65 0.01 250);
-
-  --default: oklch(0.28 0.008 250);
-  --default-foreground: oklch(0.93 0.005 250);
-
-  --accent: oklch(0.72 0.12 245);
-  --accent-foreground: oklch(0.16 0.015 250);
-
-  --success: oklch(0.70 0.17 155);
-  --success-foreground: oklch(0.16 0.015 155);
-
-  --warning: oklch(0.80 0.14 72);
-  --warning-foreground: oklch(0.16 0.015 72);
-
-  --danger: oklch(0.62 0.20 25);
-  --danger-foreground: oklch(0.99 0 0);
-
-  --border: oklch(0.30 0.008 250);
-  --separator: oklch(0.28 0.006 250);
-  --focus: var(--accent);
-  --link: var(--accent);
-
-  --field-background: oklch(0.25 0.01 250);
-  --field-foreground: var(--foreground);
-  --field-border: oklch(0.32 0.008 250);
-
-  --surface-secondary: oklch(0.18 0.012 250);
-  --surface-tertiary: oklch(0.14 0.012 250);
+  --background: #141414;
+  --foreground: #f5f5f5;
+  --card: #191919;
+  --card-foreground: #f5f5f5;
+  --popover: #1d1d1d;
+  --popover-foreground: #f5f5f5;
+  --primary: #f5f5f5;
+  --primary-foreground: #262626;
+  --secondary: #ffffff14;
+  --secondary-foreground: #f5f5f5;
+  --muted: #ffffff14;
+  --muted-foreground: #878787;
+  --accent: #ffffff14;
+  --accent-foreground: #f5f5f5;
+  --destructive: #f15757;
+  --info: #3b82f6;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --border: #ffffff0f;
+  --input: #ffffff14;
+  --ring: #737373;
 
   --surface-shadow: 0 0 0 0 transparent;
   --overlay-shadow: 0 0 0 0 transparent;
 }
 
+/* ── HeroUI variables, derived from the PanelUI theme ──
+   Declared once on the root element: next-themes sets `.dark` on <html>, so
+   every var() here resolves against the light or dark values above. */
+:root {
+  --surface: var(--card);
+  --surface-foreground: var(--card-foreground);
+  --surface-secondary: color-mix(in oklab, var(--card) 96%, var(--foreground));
+  --surface-secondary-foreground: var(--foreground);
+  --surface-tertiary: color-mix(in oklab, var(--card) 93%, var(--foreground));
+  --surface-tertiary-foreground: var(--foreground);
+
+  --overlay: var(--popover);
+  --overlay-foreground: var(--popover-foreground);
+
+  --default: var(--secondary);
+  --default-foreground: var(--secondary-foreground);
+
+  --success-foreground: #052e1b;
+  --warning-foreground: #3a2201;
+  --danger: var(--destructive);
+  --danger-foreground: #ffffff;
+
+  --separator: var(--border);
+  --focus: var(--ring);
+  --link: var(--foreground);
+
+  --field-background: var(--background);
+  --field-foreground: var(--foreground);
+  --field-border: var(--input);
+  --field-placeholder: var(--muted-foreground);
+}
+
+/* shadcn/ui colour utilities HeroUI does not register itself. */
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
 }
 
 /* ── Markdown prose styling ── */
 .prose-bund h1 { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
 .prose-bund h2 { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
 .prose-bund h3 { @apply text-xl font-semibold text-foreground mb-3 mt-6; }
-.prose-bund p { @apply text-muted leading-relaxed mb-4; }
-.prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-muted; }
-.prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-muted; }
+.prose-bund p { @apply text-muted-foreground leading-relaxed mb-4; }
+.prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-muted-foreground; }
+.prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-muted-foreground; }
 .prose-bund li { @apply pl-1; }
-.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-accent; }
+.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-primary; }
 .prose-bund pre { @apply bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-5 rounded-lg font-mono text-sm overflow-x-auto my-6; }
 .prose-bund pre code { @apply bg-transparent p-0 text-inherit; }
-.prose-bund a { @apply text-accent hover:underline font-medium; }
-.prose-bund blockquote { @apply border-l-4 border-gov-gold pl-4 italic text-muted my-4; }
+.prose-bund a { @apply text-primary hover:underline font-medium; }
+.prose-bund blockquote { @apply border-l-4 border-gov-gold pl-4 italic text-muted-foreground my-4; }
 .prose-bund hr { @apply my-8 border-separator; }
 .prose-bund strong { @apply font-semibold text-foreground; }
 .prose-bund table { @apply w-full text-sm my-4; }
 .prose-bund th { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
-.prose-bund td { @apply border-b border-separator py-2 px-3 text-muted; }
+.prose-bund td { @apply border-b border-separator py-2 px-3 text-muted-foreground; }
 
 /* ── Page transition animation ── */
 @keyframes page-enter {

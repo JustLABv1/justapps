@@ -45,7 +45,7 @@ export default function ProfilMcpPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Bot className="h-5 w-5" />
         </div>
         <div>
@@ -53,13 +53,13 @@ export default function ProfilMcpPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">MCP für deinen Agenten</h1>
             <Chip size="sm" color="success" variant="soft">Streamable HTTP</Chip>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted">
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Verbinde deinen Agenten mit dem {storeName}-Katalog. Er kann veröffentlichte Apps suchen und öffentliche Details sowie Deployment-Anleitungen lesen.
           </p>
         </div>
       </div>
 
-      <Card variant="secondary" className="border border-accent/20 bg-accent/5">
+      <Card variant="secondary" className="border border-primary/20 bg-primary/5">
         <Card.Header>
           <Card.Title className="text-base">1. Endpoint hinterlegen</Card.Title>
           <Card.Description>Das ist die MCP-Adresse deiner {storeName}-Installation.</Card.Description>
@@ -81,7 +81,7 @@ export default function ProfilMcpPage() {
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center gap-2 text-base">
-              <KeyRound className="h-4 w-4 text-accent" />
+              <KeyRound className="h-4 w-4 text-primary" />
               2. Zugriffstoken erstellen
             </Card.Title>
             <Card.Description>
@@ -89,10 +89,10 @@ export default function ProfilMcpPage() {
             </Card.Description>
           </Card.Header>
           <Card.Content className="space-y-4">
-            <ol className="space-y-3 text-sm text-muted">
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">1</span><span>Öffne die <Link href="/profil/tokens" className="font-semibold">Tokenverwaltung</Link>.</span></li>
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">2</span><span>Erstelle ein Token mit einer passenden Bezeichnung und Laufzeit.</span></li>
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">3</span><span>Kopiere es direkt nach der Erstellung in die Konfiguration deines Agenten.</span></li>
+            <ol className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">1</span><span>Öffne die <Link href="/profil/tokens" className="font-semibold">Tokenverwaltung</Link>.</span></li>
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">2</span><span>Erstelle ein Token mit einer passenden Bezeichnung und Laufzeit.</span></li>
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">3</span><span>Kopiere es direkt nach der Erstellung in die Konfiguration deines Agenten.</span></li>
             </ol>
           </Card.Content>
           <Card.Footer>
@@ -106,7 +106,7 @@ export default function ProfilMcpPage() {
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center gap-2 text-base">
-              <Terminal className="h-4 w-4 text-accent" />
+              <Terminal className="h-4 w-4 text-primary" />
               3. Agent konfigurieren
             </Card.Title>
             <Card.Description>Die genaue Bezeichnung des Konfigurationsblocks hängt vom Agenten ab.</Card.Description>
@@ -137,16 +137,16 @@ export default function ProfilMcpPage() {
         <Card.Content className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-surface-secondary p-4">
             <p className="font-mono text-sm font-semibold text-foreground">search_apps</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Apps nach Freitext, Kategorie, Technologie oder Status finden.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Apps nach Freitext, Kategorie, Technologie oder Status finden.</p>
           </div>
           <div className="rounded-xl border border-border bg-surface-secondary p-4">
             <p className="font-mono text-sm font-semibold text-foreground">get_app</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Öffentliche Metadaten, Links und Deployment-Anleitungen zu einer App lesen.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Öffentliche Metadaten, Links und Deployment-Anleitungen zu einer App lesen.</p>
           </div>
         </Card.Content>
         <Card.Footer className="flex items-start gap-3 border-t border-border/60 pt-4">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-          <p className="text-xs leading-relaxed text-muted">Owner-Daten, Provider-Credentials, Berechtigungen und interne Synchronisationsdaten werden nicht an den Agenten ausgeliefert.</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">Owner-Daten, Provider-Credentials, Berechtigungen und interne Synchronisationsdaten werden nicht an den Agenten ausgeliefert.</p>
         </Card.Footer>
       </Card>
     </div>

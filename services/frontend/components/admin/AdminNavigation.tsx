@@ -40,7 +40,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
     setQuery("");
   };
   const linkStyle =
-    "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm no-underline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent";
+    "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm no-underline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary";
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-8">
@@ -50,14 +50,14 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
             <Link
               href="/verwaltung"
               onClick={close}
-              className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <span className="flex size-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Settings2 className="size-5" aria-hidden="true" />
               </span>
               <span>
                 <span className="block text-sm font-semibold">Verwaltung</span>
-                <span className="block text-xs text-muted">
+                <span className="block text-xs text-muted-foreground">
                   Einstellungen & Übersicht
                 </span>
               </span>
@@ -72,7 +72,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
               aria-expanded={mobileOpen}
               aria-controls="admin-navigation"
               onClick={() => setOpenPath(mobileOpen ? null : pathname)}
-              className="flex size-10 items-center justify-center rounded-lg hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+              className="flex size-10 items-center justify-center rounded-lg hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
             >
               {mobileOpen ? (
                 <X className="size-5" />
@@ -86,9 +86,9 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
             className={`${mobileOpen ? "block" : "hidden"} lg:block`}
           >
             <div className="px-3 pb-3">
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 focus-within:ring-2 focus-within:ring-accent">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 focus-within:ring-2 focus-within:ring-primary">
                 <Search
-                  className="size-4 shrink-0 text-muted"
+                  className="size-4 shrink-0 text-muted-foreground"
                   aria-hidden="true"
                 />
                 <input
@@ -99,14 +99,14 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
                   onKeyDown={(event) => {
                     if (event.key === "Escape") setQuery("");
                   }}
-                  className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
+                  className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 {query && (
                   <button
                     type="button"
                     aria-label="Suche zurücksetzen"
                     onClick={() => setQuery("")}
-                    className="rounded p-1 focus-visible:ring-2 focus-visible:ring-accent"
+                    className="rounded p-1 focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <X className="size-4" />
                   </button>
@@ -122,7 +122,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
                   href="/verwaltung"
                   onClick={close}
                   aria-current={pathname === "/verwaltung" ? "page" : undefined}
-                  className={`${linkStyle} ${pathname === "/verwaltung" ? "bg-accent/10 font-semibold text-accent" : "text-muted hover:bg-surface-secondary hover:text-foreground"}`}
+                  className={`${linkStyle} ${pathname === "/verwaltung" ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-surface-secondary hover:text-foreground"}`}
                 >
                   <LayoutDashboard className="size-4 shrink-0" />
                   Übersicht
@@ -130,7 +130,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
               )}
               {groups.map((group) => (
                 <div key={group.label}>
-                  <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <h2 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {group.label}
                   </h2>
                   <ul className="space-y-0.5">
@@ -144,7 +144,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
                             onClick={close}
                             aria-current={active ? "page" : undefined}
                             title={item.description}
-                            className={`${linkStyle} ${active ? "bg-accent/10 font-semibold text-accent" : "text-muted hover:bg-surface-secondary hover:text-foreground"}`}
+                            className={`${linkStyle} ${active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-surface-secondary hover:text-foreground"}`}
                           >
                             <Icon
                               className="size-4 shrink-0"
@@ -159,7 +159,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
                 </div>
               ))}
               {groups.length === 0 && (
-                <p role="status" className="px-3 py-4 text-sm text-muted">
+                <p role="status" className="px-3 py-4 text-sm text-muted-foreground">
                   Keine Einstellung gefunden. Versuchen Sie z. B. „Logo“,
                   „Login“ oder „Rollen“.
                 </p>
@@ -168,7 +168,7 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
             <div className="border-t border-border p-3">
               <Link
                 href="/"
-                className={`${linkStyle} text-muted hover:bg-surface-secondary hover:text-foreground`}
+                className={`${linkStyle} text-muted-foreground hover:bg-surface-secondary hover:text-foreground`}
               >
                 <ArrowLeft className="size-4" />
                 Zur Plattform
@@ -180,11 +180,11 @@ export function AdminNavigation({ children }: { children: React.ReactNode }) {
       <div className="min-w-0 pb-6">
         <nav
           aria-label="Brotkrümelnavigation"
-          className="mb-6 flex flex-wrap items-center gap-2 text-xs text-muted"
+          className="mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
         >
           <Link
             href="/verwaltung"
-            className="rounded hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"
           >
             Verwaltung
           </Link>

@@ -94,16 +94,16 @@ export function SpaceCreationPolicyPanel() {
   return (
     <Surface className="p-6 border border-border/50 shadow-sm">
       <div className="mb-5">
-        <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-accent" /> Spaces-Erstellung
+        <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-primary" /> Spaces-Erstellung
         </h3>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mt-1 text-sm text-muted-foreground">
           Die globale Regel steuert die Erstellung. Bestehende Spaces und
           Mitgliedschaften bleiben erhalten.
         </p>
       </div>
       {loading ? (
-        <p role="status" className="text-sm text-muted">
+        <p role="status" className="text-sm text-muted-foreground">
           Regel wird geladen …
         </p>
       ) : (
@@ -147,7 +147,7 @@ export function SpaceCreationPolicyPanel() {
               </ListBox>
             </Select.Popover>
           </Select>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {modes.find((mode) => mode.key === policy.mode)?.description}
           </p>
           {policy.mode === "oidc_group" && (
@@ -191,7 +191,7 @@ export function SpaceCreationPolicyPanel() {
                   <Input placeholder="/teams/space-creators" maxLength={512} />
                 </TextField>
               </div>
-              <p className="text-xs text-muted">
+              <p className="text-xs text-muted-foreground">
                 Gruppen-Claim-Pfad:{" "}
                 <code>
                   {providers.find(
@@ -209,7 +209,7 @@ export function SpaceCreationPolicyPanel() {
             </>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Administratoren dürfen in allen Modi Spaces erstellen.
             </p>
             <Button

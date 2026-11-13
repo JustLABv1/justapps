@@ -63,7 +63,7 @@ function HealthAppIcon({ icon, name }: { icon?: string; name: string }) {
   const fallback = icon && !isImageAssetSource(icon) ? icon : '🏛️';
 
   return (
-    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-accent/10 text-xl">
+    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-xl">
       {imageSrc ? (
         <Image
           src={imageSrc}
@@ -115,7 +115,7 @@ export default function VerwaltungKatalogGesundheitPage() {
   }, [data, filter]);
 
   if (loading && !data) {
-    return <div className="flex min-h-[40vh] items-center justify-center text-muted"><RefreshCw className="mr-2 h-5 w-5 animate-spin" />Gesundheitsdaten werden geladen…</div>;
+    return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><RefreshCw className="mr-2 h-5 w-5 animate-spin" />Gesundheitsdaten werden geladen…</div>;
   }
 
   if (error && !data) {
@@ -129,7 +129,7 @@ export default function VerwaltungKatalogGesundheitPage() {
     { label: 'Aufmerksamkeit', value: data.attention, icon: CircleHelp, sub: 'Apps mit Hinweisen', iconColor: 'text-warning', iconBackground: 'bg-warning/10' },
     { label: 'Kritisch', value: data.critical, icon: ShieldAlert, sub: 'Dringende Probleme', iconColor: 'text-danger', iconBackground: 'bg-danger/10' },
     { label: 'Live-Link-Probleme', value: data.linkProbeIssues, icon: Link2, sub: 'Erreichbarkeitsfehler', iconColor: 'text-danger', iconBackground: 'bg-danger/10' },
-    { label: 'Sync-Probleme', value: data.syncIssues, icon: RefreshCw, sub: 'Repository-Synchronisation', iconColor: 'text-accent', iconBackground: 'bg-accent/10' },
+    { label: 'Sync-Probleme', value: data.syncIssues, icon: RefreshCw, sub: 'Repository-Synchronisation', iconColor: 'text-primary', iconBackground: 'bg-primary/10' },
     { label: 'Veraltet', value: data.staleDocumentation, icon: Clock3, sub: 'Älter als 90 Tage', iconColor: 'text-warning', iconBackground: 'bg-warning/10' },
     { label: 'Ohne Owner', value: data.unowned, icon: Activity, sub: 'Verantwortlichkeit fehlt', iconColor: 'text-warning', iconBackground: 'bg-warning/10' },
   ] as const;
@@ -138,9 +138,9 @@ export default function VerwaltungKatalogGesundheitPage() {
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-accent">Katalogbetrieb</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">Katalogbetrieb</p>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">App-Gesundheit</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Link-Erreichbarkeit, Repository-Synchronisation, Dokumentationsstand und Verantwortlichkeiten an einem Ort.
           </p>
         </div>
@@ -154,13 +154,13 @@ export default function VerwaltungKatalogGesundheitPage() {
         {statCards.map(({ label, value, icon: Icon, sub, iconColor, iconBackground }) => (
           <div key={label} className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 shadow-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase leading-4 tracking-wider text-muted">{label}</span>
+              <span className="text-xs font-bold uppercase leading-4 tracking-wider text-muted-foreground">{label}</span>
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${iconBackground}`}>
                 <Icon className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
               </div>
             </div>
             <span className="text-3xl font-bold leading-none text-foreground">{value}</span>
-            <span className="text-xs leading-4 text-muted">{sub}</span>
+            <span className="text-xs leading-4 text-muted-foreground">{sub}</span>
           </div>
         ))}
       </div>
@@ -168,7 +168,7 @@ export default function VerwaltungKatalogGesundheitPage() {
       <div className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-surface-secondary/30 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">{apps.length} von {data.total} Apps angezeigt</p>
-          <p className="mt-1 text-xs text-muted">Letzte Prüfung: {relativeDate(data.generatedAt)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Letzte Prüfung: {relativeDate(data.generatedAt)}</p>
         </div>
         <Select aria-label="Gesundheitsfilter" selectedKey={filter} onSelectionChange={(key) => setFilter(String(key))} className="w-full sm:w-64">
           <Select.Trigger className="bg-field-background"><Select.Value /><Select.Indicator /></Select.Trigger>
@@ -188,7 +188,7 @@ export default function VerwaltungKatalogGesundheitPage() {
           <Card.Content className="flex flex-col items-center gap-3 p-10 text-center">
             <CheckCircle2 className="h-8 w-8 text-success" />
             <p className="font-semibold text-foreground">Keine Apps in diesem Filter</p>
-            <p className="text-sm text-muted">Die Katalogdaten sind aktuell unauffällig.</p>
+            <p className="text-sm text-muted-foreground">Die Katalogdaten sind aktuell unauffällig.</p>
           </Card.Content>
         </Card>
       ) : (
@@ -217,7 +217,7 @@ export default function VerwaltungKatalogGesundheitPage() {
                     </Chip>
                   ))}
                 </div>
-                <div className="grid gap-3 text-xs text-muted sm:grid-cols-3">
+                <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
                   <div><span className="block font-semibold text-foreground">Live-Link</span>{app.linkProbeStatus || 'unbekannt'}</div>
                   <div><span className="block font-semibold text-foreground">Repository</span>{app.syncStatus || 'unlinked'}</div>
                   <div><span className="block font-semibold text-foreground">Katalogänderung</span>{relativeDate(app.updatedAt)}</div>
@@ -225,7 +225,7 @@ export default function VerwaltungKatalogGesundheitPage() {
                 {app.syncError && <p className="rounded-xl border border-danger/20 bg-danger/5 p-3 text-xs text-danger">{app.syncError}</p>}
               </Card.Content>
               <Card.Footer className="justify-between border-t border-border/60 p-4">
-                <span className="text-xs text-muted">Sync: {relativeDate(app.lastSyncedAt)}</span>
+                <span className="text-xs text-muted-foreground">Sync: {relativeDate(app.lastSyncedAt)}</span>
                 <div className="flex items-center gap-2">
                   {app.issues.length > 0 && (
                     <AppHealthCopilot
@@ -237,7 +237,7 @@ export default function VerwaltungKatalogGesundheitPage() {
                       syncError={app.syncError}
                     />
                   )}
-                  <NextLink href={`/apps/${encodeURIComponent(app.appId)}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline">
+                  <NextLink href={`/apps/${encodeURIComponent(app.appId)}`} className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
                     Details <ExternalLink className="h-3.5 w-3.5" />
                   </NextLink>
                 </div>
@@ -248,7 +248,7 @@ export default function VerwaltungKatalogGesundheitPage() {
       )}
 
       {error && <p className="text-sm text-danger">{error}</p>}
-      <div className="flex items-center gap-2 text-xs text-muted"><AlertTriangle className="h-3.5 w-3.5" />Stale Dokumentation wird anhand von 90 Tagen ohne Katalogänderung markiert.</div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertTriangle className="h-3.5 w-3.5" />Stale Dokumentation wird anhand von 90 Tagen ohne Katalogänderung markiert.</div>
     </div>
   );
 }

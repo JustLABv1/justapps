@@ -359,7 +359,7 @@ export function OIDCProviderSettingsPanel() {
   if (loading) {
     return (
       <Surface className="p-6 border border-border/50 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-muted">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           OIDC-Provider werden geladen...
         </div>
@@ -369,10 +369,10 @@ export function OIDCProviderSettingsPanel() {
 
   return (
     <Surface className="p-6 border border-border/50 shadow-sm">
-      <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-accent" /> OIDC-Provider
+      <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+        <ShieldCheck className="w-4 h-4 text-primary" /> OIDC-Provider
       </h3>
-      <p className="text-xs text-muted mb-5">
+      <p className="text-xs text-muted-foreground mb-5">
         Verwalten Sie mehrere OIDC-Provider zentral. Client-Secrets werden
         verschlüsselt gespeichert und nach dem Speichern nicht angezeigt.
       </p>
@@ -389,13 +389,13 @@ export function OIDCProviderSettingsPanel() {
             <p className="text-sm font-semibold text-foreground">
               Neuen OIDC-Provider anlegen
             </p>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               Definieren Sie Issuer, Client-ID und Secret je Provider. Der Login
               zeigt anschließend alle aktiven Provider an.
             </p>
           </div>
           <Button
-            className="bg-accent text-white"
+            className="bg-primary text-white"
             onPress={() => setCreateModalOpen(true)}
           >
             <Plus className="w-4 h-4" />
@@ -432,12 +432,12 @@ export function OIDCProviderSettingsPanel() {
                         {provider.providerKey}
                       </p>
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted"}`}
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted-foreground"}`}
                       >
                         {provider.enabled ? "Aktiv" : "Deaktiviert"}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {provider.secretConfigured
                         ? "Client-Secret verschlüsselt gespeichert"
                         : "Kein Secret gespeichert"}
@@ -446,7 +446,7 @@ export function OIDCProviderSettingsPanel() {
                         : " · Konfiguration unvollständig"}
                     </p>
                   </div>
-                  <Disclosure.Indicator className="mt-1 h-4 w-4 text-muted" />
+                  <Disclosure.Indicator className="mt-1 h-4 w-4 text-muted-foreground" />
                 </Disclosure.Trigger>
                 <Tooltip delay={0}>
                   <Tooltip.Trigger>
@@ -475,7 +475,7 @@ export function OIDCProviderSettingsPanel() {
                         updateProvider(provider.providerKey, { label: val })
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Bezeichnung
                       </Label>
                       <Input
@@ -490,7 +490,7 @@ export function OIDCProviderSettingsPanel() {
                         updateProvider(provider.providerKey, { issuer: val })
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Issuer URL
                       </Label>
                       <Input
@@ -505,7 +505,7 @@ export function OIDCProviderSettingsPanel() {
                         updateProvider(provider.providerKey, { clientId: val })
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Client ID
                       </Label>
                       <Input
@@ -522,7 +522,7 @@ export function OIDCProviderSettingsPanel() {
                         })
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Gruppen-Claim-Pfad
                       </Label>
                       <Input
@@ -530,7 +530,7 @@ export function OIDCProviderSettingsPanel() {
                         className="bg-field-background font-mono text-sm"
                         maxLength={512}
                       />
-                      <p className="mt-1 text-xs leading-relaxed text-muted">
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                         Zum Beispiel groups, realm.groups oder
                         /organization/acme/groups. Der Claim muss eine Liste von
                         Gruppennamen enthalten.
@@ -545,7 +545,7 @@ export function OIDCProviderSettingsPanel() {
                         })
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Admin-Gruppe / Rolle
                       </Label>
                       <Input
@@ -556,7 +556,7 @@ export function OIDCProviderSettingsPanel() {
 
                     <div className="space-y-2">
                     <TextField>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Client Secret ersetzen
                       </Label>
                       <Input
@@ -601,7 +601,7 @@ export function OIDCProviderSettingsPanel() {
                       />
                     </TextField>
                       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                        <p className="flex items-center gap-2 text-xs text-muted">
+                        <p className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${provider.secretConfigured ? 'bg-success' : 'bg-warning'}`} />
                           {provider.secretConfigured ? 'Secret hinterlegt' : 'Kein Secret hinterlegt – Anmeldung nicht möglich'}
                         </p>
@@ -610,7 +610,7 @@ export function OIDCProviderSettingsPanel() {
                     </div>
 
                     <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                         Scopes
                       </Label>
                       <textarea
@@ -620,7 +620,7 @@ export function OIDCProviderSettingsPanel() {
                             scopes: normalizeScopes(event.target.value),
                           })
                         }
-                        className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                        className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
                         placeholder={"openid\nprofile\nemail"}
                       />
                     </div>
@@ -631,7 +631,7 @@ export function OIDCProviderSettingsPanel() {
                           <p className="text-sm font-semibold text-foreground">
                             Provider aktiv
                           </p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs text-muted-foreground">
                             Steuert, ob dieser Provider auf der Login-Seite
                             erscheint.
                           </p>
@@ -659,7 +659,7 @@ export function OIDCProviderSettingsPanel() {
                           <p className="text-sm font-semibold text-foreground">
                             TLS-Prüfung deaktivieren
                           </p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs text-muted-foreground">
                             Nur für Entwicklungs- oder Testumgebungen mit
                             selbstsignierten Zertifikaten.
                           </p>
@@ -687,7 +687,7 @@ export function OIDCProviderSettingsPanel() {
                           <p className="text-sm font-semibold text-foreground">
                             Lokale Anmeldung deaktivieren
                           </p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs text-muted-foreground">
                             Wenn aktiv, blendet die Login-Seite die
                             E-Mail/Passwort-Anmeldung aus, sobald mindestens ein
                             Provider das vorgibt.
@@ -713,7 +713,7 @@ export function OIDCProviderSettingsPanel() {
 
                   <div className="mt-5 flex justify-end border-t border-border pt-4">
                     <Button
-                      className="bg-accent text-white"
+                      className="bg-primary text-white"
                       isDisabled={saving}
                       onPress={() => saveProvider(provider)}
                     >
@@ -742,13 +742,13 @@ export function OIDCProviderSettingsPanel() {
           <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <KeyRound className="w-5 h-5" />
               </Modal.Icon>
               <Modal.Heading>Neuen OIDC-Provider anlegen</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-foreground">
                 Provider-Schlüssel, Issuer, Client-ID und Secret werden für den
                 OIDC-Login benötigt.
               </p>
@@ -759,7 +759,7 @@ export function OIDCProviderSettingsPanel() {
                     setCreateDraft((prev) => ({ ...prev, providerKey: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Provider-Schlüssel
                   </Label>
                   <Input
@@ -774,7 +774,7 @@ export function OIDCProviderSettingsPanel() {
                     setCreateDraft((prev) => ({ ...prev, label: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Bezeichnung
                   </Label>
                   <Input
@@ -789,7 +789,7 @@ export function OIDCProviderSettingsPanel() {
                     setCreateDraft((prev) => ({ ...prev, issuer: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Issuer URL
                   </Label>
                   <Input
@@ -804,7 +804,7 @@ export function OIDCProviderSettingsPanel() {
                     setCreateDraft((prev) => ({ ...prev, clientId: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Client ID
                   </Label>
                   <Input
@@ -814,7 +814,7 @@ export function OIDCProviderSettingsPanel() {
                 </TextField>
 
                 <TextField>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Client Secret
                   </Label>
                   <Input
@@ -864,7 +864,7 @@ export function OIDCProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Gruppen-Claim-Pfad
                   </Label>
                   <Input
@@ -872,7 +872,7 @@ export function OIDCProviderSettingsPanel() {
                     className="bg-field-background font-mono text-sm"
                     maxLength={512}
                   />
-                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     groups, realm.groups oder ein JSON Pointer wie
                     /organization/acme/groups.
                   </p>
@@ -884,7 +884,7 @@ export function OIDCProviderSettingsPanel() {
                     setCreateDraft((prev) => ({ ...prev, adminGroup: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Admin-Gruppe / Rolle
                   </Label>
                   <Input
@@ -894,7 +894,7 @@ export function OIDCProviderSettingsPanel() {
                 </TextField>
 
                 <div className="lg:col-span-2">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Scopes
                   </Label>
                   <textarea
@@ -905,7 +905,7 @@ export function OIDCProviderSettingsPanel() {
                         scopesText: event.target.value,
                       }))
                     }
-                    className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     placeholder={"openid\nprofile\nemail"}
                   />
                 </div>
@@ -985,7 +985,7 @@ export function OIDCProviderSettingsPanel() {
                 Abbrechen
               </Button>
               <Button
-                className="bg-accent text-white"
+                className="bg-primary text-white"
                 isDisabled={saving}
                 onPress={createProvider}
               >
@@ -1009,7 +1009,7 @@ export function OIDCProviderSettingsPanel() {
               <Modal.Heading>OIDC-Provider löschen</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-foreground">
                 Soll der OIDC-Provider{" "}
                 <strong>{providerToDelete?.providerKey}</strong> wirklich
                 gelöscht werden?

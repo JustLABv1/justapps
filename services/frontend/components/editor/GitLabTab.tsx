@@ -212,7 +212,7 @@ export function GitLabTab({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Repository-Import{providerHeadingLabel ? ` via ${providerHeadingLabel}` : ''}</p>
-            <p className="text-xs text-muted mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               README, Metadaten und ausgewählte Repository-Dateien werden als Import-Snapshot geladen und bei Bedarf in den Editor übernommen.
             </p>
           </div>
@@ -221,7 +221,7 @@ export function GitLabTab({
           </span>
         </div>
         {gitLabIntegration?.linked && (
-          <div className="flex flex-col gap-1 text-xs text-muted md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
             <span>
               {gitLabIntegration.providerLabel || gitLabIntegration.providerKey} · {gitLabIntegration.projectPath}
             </span>
@@ -238,8 +238,8 @@ export function GitLabTab({
       </div>
 
       {loadingGitLab ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted">
-          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-5 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
           Repository-Daten werden geladen...
         </div>
       ) : !hasGitLabProviders && !gitLabIntegration?.linked ? (
@@ -250,11 +250,11 @@ export function GitLabTab({
         <>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Provider</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Provider</label>
               <select
                 value={gitLabForm.providerKey}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, providerKey: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               >
                 {(gitLabIntegration?.availableProviders || []).map((provider) => (
                   <option key={provider.key} value={provider.key}>
@@ -264,48 +264,48 @@ export function GitLabTab({
               </select>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Projektpfad</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Projektpfad</label>
               <input
                 value={gitLabForm.projectPath}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, projectPath: e.target.value }))}
                 placeholder="gruppe/projekt"
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Branch oder Ref</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Branch oder Ref</label>
               <input
                 value={gitLabForm.branch}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, branch: e.target.value }))}
                 placeholder="leer = Default Branch"
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">README-Pfad</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">README-Pfad</label>
               <input
                 value={gitLabForm.readmePath}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, readmePath: e.target.value }))}
                 placeholder="optional, z. B. docs/README.md"
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Helm Values Pfad</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Helm Values Pfad</label>
               <input
                 value={gitLabForm.helmValuesPath}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, helmValuesPath: e.target.value }))}
                 placeholder="optional, z. B. chart/values.yaml"
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
             <div className="rounded-2xl border border-border bg-surface p-4">
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Compose-Datei Pfad</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Compose-Datei Pfad</label>
               <input
                 value={gitLabForm.composeFilePath}
                 onChange={(e) => setGitLabForm((p) => ({ ...p, composeFilePath: e.target.value }))}
                 placeholder="optional, z. B. docker-compose.yml"
-                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                className="h-10 w-full rounded-xl border border-border bg-field-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
               />
             </div>
           </div>
@@ -321,7 +321,7 @@ export function GitLabTab({
               type="button"
               onClick={onSave}
               disabled={savingGitLab || !gitLabForm.providerKey || !gitLabForm.projectPath.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {savingGitLab ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saveLabel}
@@ -377,14 +377,14 @@ export function GitLabTab({
                   <p className="text-sm font-semibold text-foreground">
                     {gitLabIntegration?.approvalRequired ? 'Freizugebender Import-Snapshot' : 'Letzter Import-Snapshot'}
                   </p>
-                  <p className="text-xs text-muted mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {gitLabIntegration?.approvalRequired
                       ? 'Dieser Snapshot wird erst nach Freigabe automatisch auf die App angewendet.'
                       : 'Der zuletzt angewendete Snapshot aus dem verknüpften Repository.'}
                   </p>
                 </div>
                 {gitLabSnapshot.syncedAt && (
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     Snapshot vom {new Date(gitLabSnapshot.syncedAt).toLocaleString('de-DE')}
                   </span>
                 )}
@@ -394,7 +394,7 @@ export function GitLabTab({
                 <div className="space-y-4 rounded-2xl border border-warning/20 bg-warning/5 p-4">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">Freigabe-Vergleich</p>
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       Links steht der aktuelle App-Stand, rechts der Stand nach dieser Freigabe.
                     </p>
                   </div>
@@ -403,10 +403,10 @@ export function GitLabTab({
                     <div className="space-y-4">
                       {approvalDiffItems.map((item) => (
                         <div key={item.id} className="rounded-2xl border border-border bg-surface p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{item.label}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                           <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
                             <div className="space-y-2">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Aktuell</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Aktuell</p>
                               {renderDiffValue(item, item.current)}
                             </div>
                             <div className="space-y-2">
@@ -418,7 +418,7 @@ export function GitLabTab({
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted">
+                    <div className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
                       Keine inhaltlichen Unterschiede erkannt. Die Freigabe übernimmt den vorgemerkten Snapshot ohne sichtbare Feldänderung im Editor.
                     </div>
                   )}
@@ -427,7 +427,7 @@ export function GitLabTab({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex flex-col rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">README</p>
                   <p className="mt-2 flex-1 text-sm text-foreground">
                     {gitLabSnapshot.readmeContent?.trim() ? 'README gefunden und bereit zum Übernehmen.' : 'Keine README im Snapshot.'}
                   </p>
@@ -444,7 +444,7 @@ export function GitLabTab({
                   )}
                 </div>
                 <div className="flex flex-col rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Repository-Metadaten</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repository-Metadaten</p>
                   <p className="mt-2 flex-1 text-sm text-foreground">
                     Beschreibung, Lizenz, Topics und Repository-Link können in das Formular übernommen werden.
                   </p>
@@ -461,7 +461,7 @@ export function GitLabTab({
                   )}
                 </div>
                 <div className="flex flex-col rounded-2xl border border-border bg-surface-secondary/60 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Deployment-Dateien</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Deployment-Dateien</p>
                   <p className="mt-2 flex-1 text-sm text-foreground">
                     Helm Values und Compose-Datei werden in die Deployment-Felder des Editors übernommen.
                   </p>
@@ -492,7 +492,7 @@ export function GitLabTab({
 
               {gitLabSnapshot.readmeContent?.trim() && (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">README Vorschau</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">README Vorschau</p>
                   <textarea
                     readOnly
                     value={gitLabSnapshot.readmeContent}

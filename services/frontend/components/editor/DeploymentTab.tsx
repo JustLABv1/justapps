@@ -12,7 +12,7 @@ interface DeploymentTabProps {
 export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Hier können technische Installationsanleitungen hinterlegt werden.
         Dieser Bereich kann unabhängig von Nachnutzung aktiviert werden.
       </p>
@@ -21,7 +21,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
           <span className="text-sm font-bold text-foreground">
             Deployment Assistant aktivieren
           </span>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Zeigt Docker/Compose/Helm-Kommandos in der App-Detailseite an.
           </p>
         </div>
@@ -75,8 +75,8 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   }
                   className={`p-3 rounded-xl border-2 text-center flex flex-col items-center gap-2 transition-all ${
                     active
-                      ? "border-accent bg-accent/5 text-accent"
-                      : "border-border bg-surface text-muted"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border bg-surface text-muted-foreground"
                   }`}
                 >
                   {icon}
@@ -92,7 +92,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
           {formData.showHelm !== false && (
             <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
               <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Server className="w-4 h-4 text-muted" />
+                <Server className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-bold">Helm Chart</span>
               </div>
               <TextField
@@ -100,7 +100,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, helmRepo: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Helm Chart Repo
                 </Label>
                 <Input
@@ -114,7 +114,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customHelmCommand: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Benutzerdefiniertes Helm-Kommando
                 </Label>
                 <TextArea
@@ -128,7 +128,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customHelmValues: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Values.yaml Inhalt
                 </Label>
                 <TextArea
@@ -142,7 +142,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customHelmNote: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Hinweis
                 </Label>
                 <Input
@@ -157,7 +157,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
           {formData.showCompose !== false && (
             <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
               <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Terminal className="w-4 h-4 text-muted" />
+                <Terminal className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-bold">Docker Compose</span>
               </div>
               <TextField
@@ -165,7 +165,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customComposeCommand: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Compose-Setup
                 </Label>
                 <TextArea
@@ -179,7 +179,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customComposeNote: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Hinweis
                 </Label>
                 <Input
@@ -193,7 +193,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
           {formData.showDocker !== false && (
             <div className="space-y-3 bg-surface/50 p-5 rounded-2xl border border-border">
               <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Terminal className="w-4 h-4 text-muted" />
+                <Terminal className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-bold">Docker</span>
               </div>
               <TextField
@@ -201,7 +201,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, dockerRepo: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Docker Image
                 </Label>
                 <Input
@@ -215,7 +215,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customDockerCommand: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Docker-Kommando
                 </Label>
                 <TextArea
@@ -229,7 +229,7 @@ export function DeploymentTab({ formData, setFormData }: DeploymentTabProps) {
                   setFormData((p) => ({ ...p, customDockerNote: val }))
                 }
               >
-                <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Hinweis
                 </Label>
                 <Input

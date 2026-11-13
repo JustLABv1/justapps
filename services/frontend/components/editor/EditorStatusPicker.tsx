@@ -34,14 +34,14 @@ export function EditorStatusPicker({
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted/70">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
             Arbeitsstand
           </p>
           <h2 className="mt-1 text-sm font-semibold text-foreground">
             Status der App
           </h2>
         </div>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Für einen Status außerhalb von Entwurf sind Kategorie und
           Kurzbeschreibung erforderlich.
         </p>
@@ -68,10 +68,10 @@ export function EditorStatusPicker({
             <Radio
               key={status}
               value={status}
-              className="group w-full min-w-0 cursor-pointer rounded-xl border border-border bg-surface px-3 py-2 text-sm transition-[border-color,background-color,transform] duration-150 ease-out hover:border-accent/50 data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:text-foreground data-[disabled=true]:cursor-not-allowed"
+              className="group w-full min-w-0 cursor-pointer rounded-xl border border-border bg-surface px-3 py-2 text-sm transition-[border-color,background-color,transform] duration-150 ease-out hover:border-primary/50 data-[selected=true]:border-primary data-[selected=true]:bg-primary/10 data-[selected=true]:text-foreground data-[disabled=true]:cursor-not-allowed"
             >
               <Radio.Content className="flex w-full min-w-0 flex-1 items-center gap-2">
-                <Radio.Control className="border-border group-data-[selected=true]:border-accent group-data-[selected=true]:bg-accent">
+                <Radio.Control className="border-border group-data-[selected=true]:border-primary group-data-[selected=true]:bg-primary">
                   <Radio.Indicator />
                 </Radio.Control>
                 <span className="min-w-0 flex-1 truncate text-xs font-semibold">

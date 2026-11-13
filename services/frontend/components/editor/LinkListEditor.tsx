@@ -26,14 +26,14 @@ export function LinkListEditor({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-xs font-bold text-muted uppercase tracking-wider">{title}</span>
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{title}</span>
         </div>
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onPress={() => onChange([...items, { label: placeholderLabel, url: '' }])}
-          className="h-auto min-w-0 gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-accent"
+          className="h-auto min-w-0 gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary"
         >
           <Plus className="w-3 h-3" />{addLabel}
         </Button>
@@ -42,13 +42,13 @@ export function LinkListEditor({
         <div key={idx} className="grid grid-cols-12 gap-2 items-end">
           <div className="col-span-4">
             <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], label: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Bezeichnung</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Bezeichnung</Label>
               <Input value={item.label} placeholder={placeholderLabel} className="bg-field-background h-8 text-sm" />
             </TextField>
           </div>
           <div className="col-span-7">
             <TextField onChange={(val) => { const f = [...items]; f[idx] = { ...f[idx], url: val }; onChange(f); }}>
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Adresse</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Adresse</Label>
               <Input value={item.url} placeholder={placeholderUrl} className="bg-field-background h-8 font-mono text-sm" />
             </TextField>
           </div>

@@ -102,7 +102,7 @@ function FilterSelect({
             <ListBox.Item key={option.value || ALL_FILTER_VALUE} id={option.value || ALL_FILTER_VALUE} textValue={option.label}>
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm">{option.label}</span>
-                {option.description ? <span className="text-xs text-muted">{option.description}</span> : null}
+                {option.description ? <span className="text-xs text-muted-foreground">{option.description}</span> : null}
               </div>
               <ListBox.ItemIndicator />
             </ListBox.Item>
@@ -144,7 +144,7 @@ function UserAvatarTooltip({
       <Tooltip.Content placement="top">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-xs font-semibold text-foreground">{user.username}</span>
-          <span className="text-[11px] text-muted">{user.email}</span>
+          <span className="text-[11px] text-muted-foreground">{user.email}</span>
         </div>
       </Tooltip.Content>
     </Tooltip>
@@ -153,7 +153,7 @@ function UserAvatarTooltip({
 
 function EditorsAvatarGroup({ editors }: { editors?: AppUserSummary[] }) {
   if (!editors?.length) {
-    return <span className="text-xs text-muted italic">Keine</span>;
+    return <span className="text-xs text-muted-foreground italic">Keine</span>;
   }
 
   const visibleEditors = editors.slice(0, MAX_VISIBLE_EDITORS);
@@ -174,7 +174,7 @@ function EditorsAvatarGroup({ editors }: { editors?: AppUserSummary[] }) {
             <Tooltip.Content placement="top">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-xs font-semibold text-foreground">{editor.username}</span>
-                <span className="text-[11px] text-muted">{editor.email}</span>
+                <span className="text-[11px] text-muted-foreground">{editor.email}</span>
               </div>
             </Tooltip.Content>
           </Tooltip>
@@ -183,7 +183,7 @@ function EditorsAvatarGroup({ editors }: { editors?: AppUserSummary[] }) {
           <Tooltip delay={0}>
             <Tooltip.Trigger>
               <div>
-                <Avatar size="sm" className="border-2 border-border bg-accent/10 text-accent shadow-sm">
+                <Avatar size="sm" className="border-2 border-border bg-primary/10 text-primary shadow-sm">
                   <Avatar.Fallback className="text-[10px] font-semibold">+{overflowEditors.length}</Avatar.Fallback>
                 </Avatar>
               </div>
@@ -193,7 +193,7 @@ function EditorsAvatarGroup({ editors }: { editors?: AppUserSummary[] }) {
                 {overflowEditors.map((editor) => (
                   <div key={editor.id} className="flex flex-col gap-0.5">
                     <span className="text-xs font-semibold text-foreground">{editor.username}</span>
-                    <span className="text-[11px] text-muted">{editor.email}</span>
+                    <span className="text-[11px] text-muted-foreground">{editor.email}</span>
                   </div>
                 ))}
               </div>
@@ -256,8 +256,8 @@ const getGitLabStatusMeta = (status?: string) => {
     case 'warning':          return { label: 'Mit Hinweisen',             className: 'bg-warning/10 text-warning border border-warning/20' };
     case 'pending_approval': return { label: 'Wartet auf Freigabe',       className: 'bg-warning/10 text-warning border border-warning/20' };
     case 'error':            return { label: 'Fehler',                    className: 'bg-danger/10 text-danger border border-danger/20' };
-    case 'never':            return { label: 'Noch nicht synchronisiert', className: 'bg-surface-secondary text-muted border border-border' };
-    default:                 return { label: 'Unbekannt',                 className: 'bg-surface-secondary text-muted border border-border' };
+    case 'never':            return { label: 'Noch nicht synchronisiert', className: 'bg-surface-secondary text-muted-foreground border border-border' };
+    default:                 return { label: 'Unbekannt',                 className: 'bg-surface-secondary text-muted-foreground border border-border' };
   }
 };
 
@@ -366,7 +366,7 @@ export function AppTable({
     <div className="mb-5 flex flex-col gap-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative w-full xl:max-w-[24rem]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none z-10" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
           <Input
             className="w-full pl-9"
             placeholder="Nach App suchen..."
@@ -412,14 +412,14 @@ export function AppTable({
               <SlidersHorizontal className="h-4 w-4" /> Weitere Filter
             </Button>
             {hasActiveFilters ? (
-              <Button variant="ghost" className="gap-2 text-muted" onPress={onResetFilters}>
+              <Button variant="ghost" className="gap-2 text-muted-foreground" onPress={onResetFilters}>
                 <RotateCcw className="h-4 w-4" /> Filter zurücksetzen
               </Button>
             ) : null}
           </div>
           {showAdvancedFilters ? (
             <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-secondary/30 p-3 sm:flex-row sm:flex-wrap xl:justify-end">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Filter className="h-3.5 w-3.5" /> Weitere Filter
               </div>
               <FilterSelect
@@ -480,8 +480,8 @@ export function AppTable({
 
       {/* Bulk action bar */}
       {selectedIdList.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-accent/10 border border-accent/20">
-          <span className="text-sm font-semibold text-accent">
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20">
+          <span className="text-sm font-semibold text-primary">
             {selectedIdList.length} ausgewählt
           </span>
           <div className="flex items-center gap-2 ml-auto flex-wrap">
@@ -514,7 +514,7 @@ export function AppTable({
             )}
             <Button
               size="sm" variant="ghost"
-              className="gap-1.5 text-xs text-muted"
+              className="gap-1.5 text-xs text-muted-foreground"
               onPress={() => setSelectedIds(new Set())}
             >
               <X className="w-3.5 h-3.5" /> Auswahl aufheben
@@ -596,8 +596,8 @@ export function AppTable({
               items={items}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Info className="w-8 h-8 text-muted opacity-50" />
-                  <span className="text-muted">Keine Apps gefunden</span>
+                  <Info className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <span className="text-muted-foreground">Keine Apps gefunden</span>
                 </EmptyState>
               )}
             >
@@ -628,7 +628,7 @@ export function AppTable({
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-foreground">{app.name}</span>
-                        <span className="text-[10px] font-mono text-muted">{app.id}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">{app.id}</span>
                       </div>
                     </div>
                   </Table.Cell>
@@ -683,7 +683,7 @@ export function AppTable({
                             </Chip>
                           )}
                         </div>
-                        <div className="flex flex-col text-[10px] text-muted">
+                        <div className="flex flex-col text-[10px] text-muted-foreground">
                           <span>{app.gitLabSync.providerKey} · {app.gitLabSync.projectPath}</span>
                           <span>
                             {app.gitLabSync.lastSyncedAt
@@ -693,7 +693,7 @@ export function AppTable({
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-muted italic">Nicht verknüpft</span>
+                      <span className="text-xs text-muted-foreground italic">Nicht verknüpft</span>
                     )}
                   </Table.Cell>
 
@@ -711,7 +711,7 @@ export function AppTable({
                     {app.owner ? (
                       <UserAvatarTooltip user={app.owner} showName />
                     ) : (
-                      <span className="text-xs text-muted italic">System</span>
+                      <span className="text-xs text-muted-foreground italic">System</span>
                     )}
                   </Table.Cell>
 
@@ -724,14 +724,14 @@ export function AppTable({
                   <Table.Cell>
                     <div className="flex items-center justify-end gap-1">
                       <Button isIconOnly size="sm" variant="tertiary" onPress={() => router.push(`/apps/${app.id}`)} aria-label="Ansehen">
-                        <ExternalLink className="w-4 h-4 text-muted" />
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Button isIconOnly size="sm" variant="tertiary" onPress={() => handleEditApp(app)} aria-label="Bearbeiten">
-                        <Pencil className="w-4 h-4 text-muted" />
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Dropdown>
                         <Button isIconOnly size="sm" variant="tertiary" aria-label="Aktionen">
-                          <MoreVertical className="w-4 h-4 text-muted" />
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
                         </Button>
                         <Dropdown.Popover>
                           <Dropdown.Menu onAction={(key) => {

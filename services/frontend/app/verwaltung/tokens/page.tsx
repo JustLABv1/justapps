@@ -90,7 +90,7 @@ export default function TokensPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-foreground">API-Tokens & Sitzungen</h2>
-          <p className="text-xs text-muted mt-0.5">Alle aktiven Tokens der Plattform — abgelaufene und aktive</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Alle aktiven Tokens der Plattform — abgelaufene und aktive</p>
         </div>
         <Button size="sm" variant="secondary" onPress={loadTokens} isDisabled={loading}>
           Aktualisieren
@@ -114,8 +114,8 @@ export default function TokensPage() {
               items={loading ? [] : tokens}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Info className="w-8 h-8 text-muted opacity-50" />
-                  <span className="text-muted">
+                  <Info className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <span className="text-muted-foreground">
                     {loading ? 'Wird geladen...' : 'Keine Tokens gefunden'}
                   </span>
                 </EmptyState>
@@ -125,20 +125,20 @@ export default function TokensPage() {
                 <Table.Row key={token.id} className={isExpired(token.expires_at) ? 'opacity-50' : ''}>
                   <Table.Cell>
                     <div className="flex items-center gap-2">
-                      <KeyRound className="w-3.5 h-3.5 text-muted shrink-0" />
+                      <KeyRound className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       <div className="flex flex-col">
                         <span className="text-xs font-semibold text-foreground">
                           {token.type || 'session'}
                         </span>
                         {token.description && (
-                          <span className="text-[10px] text-muted">{token.description}</span>
+                          <span className="text-[10px] text-muted-foreground">{token.description}</span>
                         )}
-                        <span className="text-[10px] font-mono text-muted/60">{token.key.slice(0, 12)}…</span>
+                        <span className="text-[10px] font-mono text-muted-foreground/60">{token.key.slice(0, 12)}…</span>
                       </div>
                     </div>
                   </Table.Cell>
                   <Table.Cell>
-                    <span className="text-xs font-mono text-muted">{token.user_id.slice(0, 8)}…</span>
+                    <span className="text-xs font-mono text-muted-foreground">{token.user_id.slice(0, 8)}…</span>
                   </Table.Cell>
                   <Table.Cell>
                     <span className="text-xs text-default-500">{formatDate(token.created_at)}</span>

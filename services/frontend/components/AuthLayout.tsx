@@ -53,7 +53,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
       <div className="flex min-h-[calc(100vh-9rem)] rounded-3xl overflow-hidden border border-border shadow-2xl shadow-black/5">
 
         {/* ── Left decorative panel ── */}
-        <div className="hidden lg:flex relative flex-1 bg-gradient-to-br from-accent/10 via-surface to-accent/5 flex-col items-center justify-center overflow-hidden">
+        <div className="hidden lg:flex relative flex-1 bg-gradient-to-br from-primary/10 via-surface to-primary/5 flex-col items-center justify-center overflow-hidden">
 
           {/* Subtle dot grid */}
           <div
@@ -82,7 +82,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
               <span className="text-xl leading-none">{app.icon}</span>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-foreground truncate">{app.name}</span>
-                <span className="text-[10px] text-muted truncate">{app.category}</span>
+                <span className="text-[10px] text-muted-foreground truncate">{app.category}</span>
               </div>
             </div>
           ))}
@@ -93,13 +93,13 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={resolvedLogoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
             ) : (
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-accent/10">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/10">
                 <JustAppsLogo className="w-16 h-16" />
               </div>
             )}
             <div>
               <h2 className="text-3xl font-bold text-foreground tracking-tight">{storeName}</h2>
-              <p className="text-sm text-muted mt-2 max-w-[260px] leading-relaxed">
+              <p className="text-sm text-muted-foreground mt-2 max-w-[260px] leading-relaxed">
                 {storeDescription}
               </p>
             </div>
@@ -108,12 +108,12 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
                 <span className="text-lg font-bold text-foreground">
                   {appCount !== null ? appCount : '—'}
                 </span>
-                <span className="text-[10px] text-muted uppercase tracking-wider">Apps</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Apps</span>
               </div>
               <div className="w-px h-8 bg-border" />
               <div className="flex flex-col items-center gap-1">
                 <span className="text-lg font-bold text-foreground">Offen</span>
-                <span className="text-[10px] text-muted uppercase tracking-wider">Open Source</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Open Source</span>
               </div>
               <div className="w-px h-8 bg-border" />
               <div className="flex flex-col items-center gap-1">
@@ -121,13 +121,13 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
                   <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                   <span className="text-lg font-bold text-foreground">Aktiv</span>
                 </div>
-                <span className="text-[10px] text-muted uppercase tracking-wider">Plattform</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Plattform</span>
               </div>
             </div>
           </div>
 
           {/* Bottom attribution */}
-          <div className="absolute bottom-5 flex items-center gap-1.5 text-muted/50">
+          <div className="absolute bottom-5 flex items-center gap-1.5 text-muted-foreground/50">
             <Shield className="w-3 h-3" />
             <span className="text-[10px]">Sicher. Transparent. Nachnutzbar.</span>
           </div>
@@ -138,7 +138,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
-            <p className="text-sm text-muted mt-1.5">{subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>
           </div>
 
           {children}

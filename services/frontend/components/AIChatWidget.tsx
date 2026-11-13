@@ -177,7 +177,7 @@ export function AIChatWidget() {
             <Button
               isIconOnly
               aria-label="AI Chat öffnen"
-              className="h-12 w-12 rounded-2xl bg-accent text-white shadow-lg shadow-accent/25"
+              className="h-12 w-12 rounded-2xl bg-primary text-white shadow-lg shadow-primary/25"
               onPress={() => setIsOpen(true)}
             >
               <Bot className="h-5 w-5" />
@@ -193,12 +193,12 @@ export function AIChatWidget() {
             <Modal.Dialog className="h-[min(720px,calc(100vh-3rem))] w-full max-w-xl overflow-hidden p-0 sm:rounded-2xl">
               <Modal.CloseTrigger />
               <Modal.Header className="border-b border-border px-5 py-4">
-                <Modal.Icon className="bg-accent/10 text-accent">
+                <Modal.Icon className="bg-primary/10 text-primary">
                   <Sparkles className="h-5 w-5" />
                 </Modal.Icon>
                 <div className="min-w-0">
                   <Modal.Heading>{storeName} AI</Modal.Heading>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     {scopedAppId ? 'App-Kontext aktiv' : guestMode ? 'Gastmodus mit lokalem Verlauf' : 'Persönlicher Verlauf'}
                   </p>
                 </div>
@@ -222,7 +222,7 @@ export function AIChatWidget() {
                           <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>
                             <div className="flex flex-col gap-0.5">
                               <span>{provider.label}</span>
-                              <span className="text-xs text-muted">{provider.chatModel}</span>
+                              <span className="text-xs text-muted-foreground">{provider.chatModel}</span>
                             </div>
                             <ListBox.ItemIndicator />
                           </ListBox.Item>
@@ -239,17 +239,17 @@ export function AIChatWidget() {
                 <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
                   {messages.length === 0 ? (
                     <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                         <MessageCircle className="h-6 w-6" />
                       </div>
                       <p className="text-lg font-semibold text-foreground">Wobei kann ich helfen?</p>
-                      {guestMode && <p className="text-xs text-muted">Verlauf bleibt nur in diesem Browser gespeichert.</p>}
+                      {guestMode && <p className="text-xs text-muted-foreground">Verlauf bleibt nur in diesem Browser gespeichert.</p>}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4">
                       {messages.map((message) => (
                         <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === 'user' ? 'bg-accent text-white' : 'border border-border bg-surface-secondary text-foreground'}`}>
+                          <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === 'user' ? 'bg-primary text-white' : 'border border-border bg-surface-secondary text-foreground'}`}>
                             {message.role === 'assistant'
                               ? <ChatMarkdown content={message.content} />
                               : <p className="whitespace-pre-wrap">{message.content}</p>}
@@ -266,7 +266,7 @@ export function AIChatWidget() {
                       ))}
                       {loading && (
                         <div className="flex justify-start">
-                          <div className="rounded-2xl border border-border bg-surface-secondary px-4 py-3 text-sm text-muted">
+                          <div className="rounded-2xl border border-border bg-surface-secondary px-4 py-3 text-sm text-muted-foreground">
                             <Loader2 className="inline h-4 w-4 animate-spin" />
                           </div>
                         </div>
@@ -293,11 +293,11 @@ export function AIChatWidget() {
                       fullWidth
                       variant="secondary"
                     />
-                    <Button isIconOnly aria-label="Senden" className="h-10 w-10 bg-accent text-white" isDisabled={loading || !draft.trim() || providers.length === 0} onPress={handleSend}>
+                    <Button isIconOnly aria-label="Senden" className="h-10 w-10 bg-primary text-white" isDisabled={loading || !draft.trim() || providers.length === 0} onPress={handleSend}>
                       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                   </div>
-                  {providers.length === 0 && <p className="mt-2 text-xs text-muted">Kein aktiver AI-Provider konfiguriert.</p>}
+                  {providers.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Kein aktiver AI-Provider konfiguriert.</p>}
                 </Surface>
               </Modal.Body>
             </Modal.Dialog>

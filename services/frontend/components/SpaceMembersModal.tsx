@@ -153,7 +153,7 @@ export function SpaceMembersModal({
         <Modal.Dialog className="max-w-2xl">
           <Modal.CloseTrigger />
           <Modal.Header>
-            <Modal.Icon className="bg-accent-soft text-accent">
+            <Modal.Icon className="bg-primary/10 text-primary">
               <UsersRound className="h-5 w-5" />
             </Modal.Icon>
             <Modal.Heading>
@@ -163,12 +163,12 @@ export function SpaceMembersModal({
           <Modal.Body>
             <div className="space-y-5">
               <div>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">{space.name}</strong> ist
                   nur für ausgewählte Mitglieder sichtbar. Neue Mitglieder
                   erhalten eine Einladung und müssen diese annehmen.
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Besitzer:{" "}
                   <span className="font-medium text-foreground">
                     {users.find((user) => user.id === space.ownerId)
@@ -188,7 +188,7 @@ export function SpaceMembersModal({
                 </div>
               )}
               {members.some((member) => member.groupManaged) && (
-                <p className="text-xs leading-relaxed text-muted">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   Gruppenverwaltete Mitglieder werden über OIDC berechtigt.
                   Ändern Sie deren Zugriff über die Gruppe oder die
                   Gruppenzuordnung des Spaces.
@@ -264,7 +264,7 @@ export function SpaceMembersModal({
             </Button>
             {canManage && (
               <Button
-                className="bg-accent text-white"
+                className="bg-primary text-white"
                 isPending={saving}
                 isDisabled={loading || (!!error && users.length === 0)}
                 onPress={save}

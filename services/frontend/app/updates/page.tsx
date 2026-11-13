@@ -293,7 +293,7 @@ export default function UpdatesPage() {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3">
         <Spinner />
-        <p className="text-sm text-muted">Updates werden geladen...</p>
+        <p className="text-sm text-muted-foreground">Updates werden geladen...</p>
       </div>
     );
   }
@@ -349,22 +349,22 @@ export default function UpdatesPage() {
               className="h-auto w-full justify-between rounded-none px-4 py-3.5 text-left sm:px-5"
             >
               <span className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted-foreground">
                   <Settings2 className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
                   <span className="block font-semibold text-foreground">Benachrichtigungseinstellungen</span>
-                  <span className="block truncate text-xs font-normal text-muted">
+                  <span className="block truncate text-xs font-normal text-muted-foreground">
                     {preferences ? `${activePreferenceCount} von 3 Release-Regeln aktiv` : "Einstellungen werden geladen"}
                   </span>
                 </span>
               </span>
-              <Disclosure.Indicator className="ml-2 shrink-0 text-muted" />
+              <Disclosure.Indicator className="ml-2 shrink-0 text-muted-foreground" />
             </Button>
           </Disclosure.Heading>
           <Disclosure.Content>
             <Disclosure.Body className="border-t border-border px-4 py-4 sm:px-5">
-              <p className="mb-4 text-sm text-muted">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Steuern Sie, für welche App-Beziehungen neue Releases in Ihrem Posteingang auftauchen.
               </p>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -435,19 +435,19 @@ export default function UpdatesPage() {
         {pageLoading ? (
           <div className="flex min-h-[20vh] flex-col items-center justify-center gap-3">
             <Spinner />
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Updates und FAQ-Benachrichtigungen werden geladen...
             </p>
           </div>
         ) : !hasVisibleNotifications ? (
           <Card variant="default">
             <Card.Content className="flex flex-col items-center gap-3 py-12 text-center">
-              <Bell className="h-8 w-8 text-muted" />
+              <Bell className="h-8 w-8 text-muted-foreground" />
               <div>
                 <p className="font-semibold text-foreground">
                   Keine Updates vorhanden
                 </p>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   Sobald verfolgte Apps neue Releases veröffentlichen oder
                   neue FAQ-Aktivitäten entstehen, erscheinen sie hier.
                 </p>
@@ -459,7 +459,7 @@ export default function UpdatesPage() {
             {showsAnswers && safeFAQAnswerNotifications.length > 0 && (
               <section className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
-                  <MessageCircleReply className="h-5 w-5 text-accent" />
+                  <MessageCircleReply className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
                     Antworten auf Ihre Fragen
                   </h2>
@@ -476,7 +476,7 @@ export default function UpdatesPage() {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex min-w-0 items-start gap-4">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-secondary">
-                            <MessageCircleReply className="h-6 w-6 text-accent" />
+                            <MessageCircleReply className="h-6 w-6 text-primary" />
                           </div>
                           <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -495,9 +495,9 @@ export default function UpdatesPage() {
                             <p className="text-sm font-medium text-foreground">
                               {notification.answerer || "Ein Nutzer"} hat auf Ihre Frage geantwortet
                             </p>
-                            <p className="line-clamp-2 text-sm text-muted">„{notification.question}“</p>
+                            <p className="line-clamp-2 text-sm text-muted-foreground">„{notification.question}“</p>
                             <p className="whitespace-pre-wrap text-sm text-foreground">{notification.answer}</p>
-                            <span className="text-xs text-muted">
+                            <span className="text-xs text-muted-foreground">
                               {new Date(notification.createdAt).toLocaleString("de-DE")}
                             </span>
                           </div>
@@ -535,7 +535,7 @@ export default function UpdatesPage() {
             {showsQuestions && safeFAQNotifications.length > 0 && (
               <section className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
-                  <MessageCircleQuestion className="h-5 w-5 text-accent" />
+                  <MessageCircleQuestion className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
                     Offene FAQ-Fragen
                   </h2>
@@ -552,7 +552,7 @@ export default function UpdatesPage() {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-start gap-4">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-secondary">
-                            <MessageCircleQuestion className="h-6 w-6 text-accent" />
+                            <MessageCircleQuestion className="h-6 w-6 text-primary" />
                           </div>
                           <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -571,10 +571,10 @@ export default function UpdatesPage() {
                             <p className="text-sm font-medium text-foreground">
                               Neue Frage von {notification.questioner || "einem Nutzer"}
                             </p>
-                            <p className="whitespace-pre-wrap text-sm text-muted">
+                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                               {notification.question}
                             </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <span>{new Date(notification.createdAt).toLocaleString("de-DE")}</span>
                               <span>•</span>
                               <span>
@@ -637,7 +637,7 @@ export default function UpdatesPage() {
                             unoptimized
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center text-lg font-semibold text-muted">
+                          <div className="flex h-full items-center justify-center text-lg font-semibold text-muted-foreground">
                             {item.appName.slice(0, 1)}
                           </div>
                         )}
@@ -680,13 +680,13 @@ export default function UpdatesPage() {
                         <p className="text-sm font-medium text-foreground">
                           {item.title}
                         </p>
-                        <p className="text-sm text-muted">{item.summary}</p>
+                        <p className="text-sm text-muted-foreground">{item.summary}</p>
                         {item.diffPreview && (
                           <p className="text-sm font-medium text-foreground/85">
                             {item.diffPreview}
                           </p>
                         )}
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>
                             {new Date(item.publishedAt).toLocaleString("de-DE")}
                           </span>

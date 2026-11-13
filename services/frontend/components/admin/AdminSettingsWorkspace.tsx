@@ -610,7 +610,7 @@ export function AdminSettingsWorkspace({
   if (loading)
     return (
       <div className="py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
 
@@ -642,7 +642,7 @@ export function AdminSettingsWorkspace({
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="text-sm text-muted max-w-3xl">{description}</p>
+          <p className="text-sm text-muted-foreground max-w-3xl">{description}</p>
         </div>
       )}
 
@@ -650,15 +650,15 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("access") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-accent" /> Zugriffsschutz
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Zugriffsschutz
               </h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-semibold">
                     App Store nur für angemeldete Nutzer
                   </span>
-                  <p className="text-xs text-muted max-w-xl">
+                  <p className="text-xs text-muted-foreground max-w-xl">
                     Blockiert den öffentlichen Zugriff auf Katalog, App-Details
                     und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
                   </p>
@@ -686,15 +686,15 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("governance") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-accent" /> Einreichungen
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Einreichungen
               </h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-semibold">
                     App-Einreichungen erlauben
                   </span>
-                  <p className="text-xs text-muted max-w-xs">
+                  <p className="text-xs text-muted-foreground max-w-xs">
                     Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen.
                   </p>
                 </div>
@@ -716,13 +716,13 @@ export function AdminSettingsWorkspace({
             <SpaceCreationPolicyPanel />
 
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-accent" /> FAQ & Community
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" /> FAQ & Community
               </h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-semibold">FAQ aktivieren</span>
-                  <p className="text-xs text-muted max-w-xl">
+                  <p className="text-xs text-muted-foreground max-w-xl">
                     Erlaubt Benutzern, Fragen zu Apps zu stellen, Antworten zu
                     geben und hilfreiche Antworten hochzuwerten.
                   </p>
@@ -739,7 +739,7 @@ export function AdminSettingsWorkspace({
                   </Switch.Content>
                 </Switch>
               </div>
-              <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
+              <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
                 Wenn deaktiviert, wird die FAQ-Registerkarte ausgeblendet und
                 bestehende Fragen und Antworten bleiben erhalten.
               </p>
@@ -750,8 +750,8 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("startseite") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-accent" /> Top Banner
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-primary" /> Top Banner
               </h3>
               <div className="flex flex-col gap-4">
                 <div className="flex gap-2 items-end">
@@ -762,7 +762,7 @@ export function AdminSettingsWorkspace({
                       setSettings({ ...settings, topBannerText: val })
                     }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                       Banner Text
                     </Label>
                     <Input
@@ -772,7 +772,7 @@ export function AdminSettingsWorkspace({
                   </TextField>
                   <Button
                     size="sm"
-                    className="bg-accent text-white"
+                    className="bg-primary text-white"
                     isDisabled={saving}
                     onPress={() =>
                       save(
@@ -788,7 +788,7 @@ export function AdminSettingsWorkspace({
                   </Button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Typ
                   </span>
                   <Select
@@ -812,7 +812,7 @@ export function AdminSettingsWorkspace({
                   </Select>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Status
                   </span>
                   <Switch
@@ -832,8 +832,8 @@ export function AdminSettingsWorkspace({
             </Surface>
 
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-accent" /> Hero & Footer
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-primary" /> Hero & Footer
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
@@ -842,7 +842,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, heroBadge: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Hero Badge
                   </Label>
                   <Input
@@ -856,7 +856,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, heroTitle: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Hero Titel
                   </Label>
                   <Input
@@ -871,7 +871,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, heroSubtitle: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Hero Untertitel
                   </Label>
                   <Input
@@ -886,7 +886,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, footerText: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Footer Text
                   </Label>
                   <Input
@@ -899,7 +899,7 @@ export function AdminSettingsWorkspace({
                     <span className="text-sm font-semibold">
                       Farbbalken oben anzeigen
                     </span>
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       Zeigt einen schmalen Farbbalken am oberen Seitenrand.
                     </p>
                   </div>
@@ -924,7 +924,7 @@ export function AdminSettingsWorkspace({
                         handleTopBarPresetChange(String(key))
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                         Preset fuer den oberen Balken
                       </Label>
                       <Select.Trigger>
@@ -941,7 +941,7 @@ export function AdminSettingsWorkspace({
                             >
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span>{option.label}</span>
-                                <span className="text-xs text-muted">
+                                <span className="text-xs text-muted-foreground">
                                   {option.description}
                                 </span>
                               </div>
@@ -952,7 +952,7 @@ export function AdminSettingsWorkspace({
                       </Select.Popover>
                     </Select>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         Vorschau
                       </span>
                       <PalettePreview colors={topBarPreviewColors} />
@@ -976,7 +976,7 @@ export function AdminSettingsWorkspace({
                               updateBrandColors("topBarColors", index, val)
                             }
                           >
-                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                               Balkenfarbe {index + 1}
                             </Label>
                             <Input
@@ -997,7 +997,7 @@ export function AdminSettingsWorkspace({
                         handleHeroTitlePresetChange(String(key))
                       }
                     >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                         Preset fuer die Hero-Titel-Farben
                       </Label>
                       <Select.Trigger>
@@ -1014,7 +1014,7 @@ export function AdminSettingsWorkspace({
                             >
                               <div className="flex flex-col gap-0.5 py-0.5">
                                 <span>{option.label}</span>
-                                <span className="text-xs text-muted">
+                                <span className="text-xs text-muted-foreground">
                                   {option.description}
                                 </span>
                               </div>
@@ -1025,7 +1025,7 @@ export function AdminSettingsWorkspace({
                       </Select.Popover>
                     </Select>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         Vorschau
                       </span>
                       <div className="rounded-xl border border-border/70 bg-surface px-4 py-3">
@@ -1058,7 +1058,7 @@ export function AdminSettingsWorkspace({
                               updateBrandColors("heroTitleColors", index, val)
                             }
                           >
-                            <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                               Titelfarbe {index + 1}
                             </Label>
                             <Input
@@ -1074,7 +1074,7 @@ export function AdminSettingsWorkspace({
               </div>
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving}
                   onPress={() =>
                     save(
@@ -1105,8 +1105,8 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("branding") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Paintbrush className="w-4 h-4 text-accent" /> Erscheinungsbild
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Paintbrush className="w-4 h-4 text-primary" /> Erscheinungsbild
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TextField
@@ -1115,7 +1115,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, storeName: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Store Name
                   </Label>
                   <Input
@@ -1129,7 +1129,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, accentColor: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Akzentfarbe (CSS-Wert)
                   </Label>
                   <Input
@@ -1138,7 +1138,7 @@ export function AdminSettingsWorkspace({
                   />
                 </TextField>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                     Logo (Hell-Modus)
                   </Label>
                   <div className="flex gap-2 items-center">
@@ -1186,7 +1186,7 @@ export function AdminSettingsWorkspace({
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                     Logo (Dunkel-Modus)
                   </Label>
                   <div className="flex gap-2 items-center">
@@ -1234,7 +1234,7 @@ export function AdminSettingsWorkspace({
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                     Favicon
                   </Label>
                   <div className="flex gap-2 items-center">
@@ -1288,7 +1288,7 @@ export function AdminSettingsWorkspace({
                     setSettings({ ...settings, storeDescription: val })
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Store Beschreibung (SEO / Metadata)
                   </Label>
                   <Input
@@ -1304,7 +1304,7 @@ export function AdminSettingsWorkspace({
               )}
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving || uploading !== null}
                   onPress={() =>
                     save(
@@ -1332,11 +1332,11 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("inhalte") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-accent" /> Fachliche Details —
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" /> Fachliche Details —
                 Felder
               </h3>
-              <p className="text-xs text-muted mb-5">
+              <p className="text-xs text-muted-foreground mb-5">
                 Definieren Sie, welche Felder im Tab &quot;Fachliche
                 Details&quot; einer App angezeigt und bearbeitet werden koennen.
                 Reihenfolge, Label und Schluessel sind frei konfigurierbar.
@@ -1350,7 +1350,7 @@ export function AdminSettingsWorkspace({
                   >
                     <div className="flex flex-col gap-1 flex-1 md:flex-row md:gap-3">
                       <div className="flex flex-col gap-1 shrink-0">
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
                           Icon
                         </Label>
                         <div className="flex flex-wrap gap-1 p-1.5 bg-field-background border border-border rounded-lg w-full md:w-56 max-h-24 overflow-y-auto">
@@ -1370,7 +1370,7 @@ export function AdminSettingsWorkspace({
                                       detailFields: fields,
                                     });
                                   }}
-                                  className={`p-1 rounded transition-colors ${field.icon === name ? "bg-accent text-white" : "text-muted hover:bg-surface-secondary hover:text-foreground"}`}
+                                  className={`p-1 rounded transition-colors ${field.icon === name ? "bg-primary text-white" : "text-muted-foreground hover:bg-surface-secondary hover:text-foreground"}`}
                                 >
                                   {component}
                                 </button>
@@ -1389,7 +1389,7 @@ export function AdminSettingsWorkspace({
                             setSettings({ ...settings, detailFields: fields });
                           }}
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
                             Bezeichnung
                           </Label>
                           <Input
@@ -1408,7 +1408,7 @@ export function AdminSettingsWorkspace({
                             setSettings({ ...settings, detailFields: fields });
                           }}
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
                             Schluessel (intern)
                           </Label>
                           <Input
@@ -1485,7 +1485,7 @@ export function AdminSettingsWorkspace({
                   <Plus className="w-3.5 h-3.5" /> Feld hinzufuegen
                 </Button>
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving}
                   onPress={() =>
                     save(
@@ -1505,10 +1505,10 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("footer") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-accent" /> Footer — Links
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-primary" /> Footer — Links
               </h3>
-              <p className="text-xs text-muted mb-5">
+              <p className="text-xs text-muted-foreground mb-5">
                 Konfigurieren Sie die Links im Footer (z.B. Impressum,
                 Datenschutz). Ohne Eintraege werden die Standardlinks angezeigt.
               </p>
@@ -1529,7 +1529,7 @@ export function AdminSettingsWorkspace({
                           setSettings({ ...settings, footerLinks: links });
                         }}
                       >
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
                           Bezeichnung
                         </Label>
                         <Input
@@ -1546,7 +1546,7 @@ export function AdminSettingsWorkspace({
                           setSettings({ ...settings, footerLinks: links });
                         }}
                       >
-                        <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1 ml-0.5">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
                           URL
                         </Label>
                         <Input
@@ -1588,7 +1588,7 @@ export function AdminSettingsWorkspace({
                   <Plus className="w-3.5 h-3.5" /> Link hinzufuegen
                 </Button>
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving}
                   onPress={() =>
                     save({ footerLinks: settings.footerLinks }, "footerLinks")
@@ -1606,10 +1606,10 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("apps") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <SortAsc className="w-4 h-4 text-accent" /> App-Sortierung
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+                <SortAsc className="w-4 h-4 text-primary" /> App-Sortierung
               </h3>
-              <p className="text-xs text-muted mb-5">
+              <p className="text-xs text-muted-foreground mb-5">
                 Legen Sie fest, nach welchem Kriterium Apps standardmaessig
                 sortiert werden und welche Apps immer oben erscheinen.
               </p>
@@ -1623,7 +1623,7 @@ export function AdminSettingsWorkspace({
                       setSettings({ ...settings, appSortField: String(key) })
                     }
                   >
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                       Sortierfeld
                     </Label>
                     <Select.Trigger>
@@ -1656,7 +1656,7 @@ export function AdminSettingsWorkspace({
                   </Select>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
                       Richtung
                     </Label>
                     <div className="flex gap-2">
@@ -1667,7 +1667,7 @@ export function AdminSettingsWorkspace({
                             ? "primary"
                             : "secondary"
                         }
-                        className={`gap-1.5 ${settings.appSortDirection === "asc" ? "bg-accent text-white" : ""}`}
+                        className={`gap-1.5 ${settings.appSortDirection === "asc" ? "bg-primary text-white" : ""}`}
                         onPress={() =>
                           setSettings({ ...settings, appSortDirection: "asc" })
                         }
@@ -1681,7 +1681,7 @@ export function AdminSettingsWorkspace({
                             ? "primary"
                             : "secondary"
                         }
-                        className={`gap-1.5 ${settings.appSortDirection === "desc" ? "bg-accent text-white" : ""}`}
+                        className={`gap-1.5 ${settings.appSortDirection === "desc" ? "bg-primary text-white" : ""}`}
                         onPress={() =>
                           setSettings({ ...settings, appSortDirection: "desc" })
                         }
@@ -1694,12 +1694,12 @@ export function AdminSettingsWorkspace({
 
                 <div className="border-t border-border pt-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <Pin className="w-3.5 h-3.5 text-accent" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-muted">
+                    <Pin className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       Angepinnte Apps
                     </span>
                   </div>
-                  <p className="text-xs text-muted mb-3">
+                  <p className="text-xs text-muted-foreground mb-3">
                     Apps-IDs, die unabhaengig von der Sortierung immer an erster
                     Stelle angezeigt werden. Reihenfolge entspricht der
                     Anzeigereihenfolge.
@@ -1707,7 +1707,7 @@ export function AdminSettingsWorkspace({
 
                   <div className="flex flex-col gap-2 mb-3">
                     {settings.pinnedApps.length === 0 && (
-                      <p className="text-xs text-muted/60 italic">
+                      <p className="text-xs text-muted-foreground/60 italic">
                         Keine Apps angepinnt.
                       </p>
                     )}
@@ -1716,7 +1716,7 @@ export function AdminSettingsWorkspace({
                         key={idx}
                         className="flex items-center gap-2 bg-surface/50 border border-border rounded-lg px-3 py-2"
                       >
-                        <Pin className="w-3 h-3 text-accent shrink-0" />
+                        <Pin className="w-3 h-3 text-primary shrink-0" />
                         <span className="flex-1 text-sm font-mono truncate">
                           {appId}
                         </span>
@@ -1809,7 +1809,7 @@ export function AdminSettingsWorkspace({
 
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving}
                   onPress={() =>
                     save(
@@ -1830,11 +1830,11 @@ export function AdminSettingsWorkspace({
             </Surface>
 
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-accent" />{" "}
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-primary" />{" "}
                 Link-Status-Prüfung
               </h3>
-              <p className="text-xs text-muted mb-5">
+              <p className="text-xs text-muted-foreground mb-5">
                 Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links
                 serverseitig geprüft und ein farbiger Status-Punkt angezeigt.
                 Einzelne Apps können die Prüfung über ihre eigene Einstellung
@@ -1845,7 +1845,7 @@ export function AdminSettingsWorkspace({
                   <span className="text-sm font-semibold">
                     Status-Prüfung aktivieren
                   </span>
-                  <p className="text-xs text-muted max-w-xs">
+                  <p className="text-xs text-muted-foreground max-w-xs">
                     Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links
                     an.
                   </p>
@@ -1865,7 +1865,7 @@ export function AdminSettingsWorkspace({
               </div>
               <div className="flex justify-end mt-4 pt-4 border-t border-border">
                 <Button
-                  className="bg-accent text-white"
+                  className="bg-primary text-white"
                   isDisabled={saving}
                   onPress={() =>
                     save(
@@ -1886,11 +1886,11 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("integrationen") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-accent" />{" "}
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-primary" />{" "}
                 Repository-Provider
               </h3>
-              <p className="text-xs text-muted mb-5">
+              <p className="text-xs text-muted-foreground mb-5">
                 Verwalten Sie hier Repository-Provider vollständig in der
                 Datenbank. Tokens werden verschlüsselt gespeichert und nach dem
                 Speichern nicht mehr angezeigt.
@@ -1908,14 +1908,14 @@ export function AdminSettingsWorkspace({
                     <p className="text-sm font-semibold text-foreground">
                       Neuen Repository-Provider anlegen
                     </p>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Der Formular-Dialog hält die Integrationsseite kompakt.
                       Schlüssel, Typ und Token werden dort beim Erstellen
                       festgelegt.
                     </p>
                   </div>
                   <Button
-                    className="bg-accent text-white"
+                    className="bg-primary text-white"
                     onPress={() => setCreateProviderModalOpen(true)}
                   >
                     <Plus className="w-4 h-4" />
@@ -1945,7 +1945,7 @@ export function AdminSettingsWorkspace({
                               {provider.providerKey}
                             </p>
                             {provider.providerType && (
-                              <span className="inline-flex rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                              <span className="inline-flex rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                 {provider.providerType === "github"
                                   ? "GitHub"
                                   : provider.providerType === "gitlab"
@@ -1959,7 +1959,7 @@ export function AdminSettingsWorkspace({
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-xs text-muted">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {provider.tokenConfigured
                               ? "Token verschlüsselt in der Datenbank gespeichert"
                               : "Kein Token gespeichert"}
@@ -1970,12 +1970,12 @@ export function AdminSettingsWorkspace({
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted"}`}
+                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted-foreground"}`}
                           >
                             {provider.enabled ? "Aktiv" : "Deaktiviert"}
                           </span>
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? "border-accent/20 bg-accent/10 text-accent" : "border-border bg-surface-secondary text-muted"}`}
+                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? "border-primary/20 bg-primary/10 text-primary" : "border-border bg-surface-secondary text-muted-foreground"}`}
                           >
                             {provider.autoSyncEnabled
                               ? "Auto-Sync an"
@@ -2016,7 +2016,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Bezeichnung
                           </Label>
                           <Input
@@ -2033,7 +2033,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Base URL
                           </Label>
                           <Input
@@ -2050,7 +2050,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Standard README-Pfad
                           </Label>
                           <Input
@@ -2067,7 +2067,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Standard Helm Values
                           </Label>
                           <Input
@@ -2084,7 +2084,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Standard Compose-Datei
                           </Label>
                           <Input
@@ -2101,7 +2101,7 @@ export function AdminSettingsWorkspace({
                             updateProviderTokenDraft(provider.providerKey, val)
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Token ersetzen
                           </Label>
                           <Input
@@ -2124,7 +2124,7 @@ export function AdminSettingsWorkspace({
                             })
                           }
                         >
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Sync-Intervall (Minuten)
                           </Label>
                           <Input
@@ -2139,7 +2139,7 @@ export function AdminSettingsWorkspace({
                               <p className="text-sm font-semibold text-foreground">
                                 Token-Status
                               </p>
-                              <p className="mt-1 text-xs text-muted">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {provider.tokenConfigured
                                   ? "Ein Token ist gespeichert. Beim Ersetzen wird der alte Token überschrieben."
                                   : "Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für Sync nutzbar."}
@@ -2164,7 +2164,7 @@ export function AdminSettingsWorkspace({
                         </div>
 
                         <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                             Namespace-Allowlist
                           </Label>
                           <textarea
@@ -2179,10 +2179,10 @@ export function AdminSettingsWorkspace({
                                 [provider.providerKey]: event.target.value,
                               }))
                             }
-                            className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                            className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
                             placeholder={"gruppe\norganisation/team"}
                           />
-                          <p className="mt-2 text-xs text-muted">
+                          <p className="mt-2 text-xs text-muted-foreground">
                             Leer lassen, um alle Namespaces zuzulassen. Ein
                             Eintrag pro Zeile oder komma-getrennt.
                           </p>
@@ -2194,7 +2194,7 @@ export function AdminSettingsWorkspace({
                               <p className="text-sm font-semibold text-foreground">
                                 Provider im UI aktiv
                               </p>
-                              <p className="text-xs text-muted">
+                              <p className="text-xs text-muted-foreground">
                                 Steuert, ob Apps diesen Provider auswählen
                                 dürfen.
                               </p>
@@ -2222,7 +2222,7 @@ export function AdminSettingsWorkspace({
                               <p className="text-sm font-semibold text-foreground">
                                 Automatische Synchronisation
                               </p>
-                              <p className="text-xs text-muted">
+                              <p className="text-xs text-muted-foreground">
                                 Aktiviert den geplanten Hintergrund-Sync für
                                 verknüpfte Apps dieses Providers.
                               </p>
@@ -2247,7 +2247,7 @@ export function AdminSettingsWorkspace({
 
                       <div className="mt-5 flex justify-end border-t border-border pt-4">
                         <Button
-                          className="bg-accent text-white"
+                          className="bg-primary text-white"
                           isDisabled={saving}
                           onPress={() => saveGitLabProvider(provider)}
                         >
@@ -2267,8 +2267,8 @@ export function AdminSettingsWorkspace({
         {visibleSections.has("ai-access") && (
           <div className="flex flex-col gap-6">
             <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Bot className="w-4 h-4 text-accent" /> AI-Zugriff
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                <Bot className="w-4 h-4 text-primary" /> AI-Zugriff
               </h3>
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between gap-4">
@@ -2276,7 +2276,7 @@ export function AdminSettingsWorkspace({
                     <span className="text-sm font-semibold">
                       AI-Funktion aktivieren
                     </span>
-                    <p className="text-xs text-muted max-w-xl">
+                    <p className="text-xs text-muted-foreground max-w-xl">
                       Schaltet den AI-Chat, das Floating-Widget und die
                       zugehörigen API-Endpunkte global ein oder aus.
                     </p>
@@ -2298,7 +2298,7 @@ export function AdminSettingsWorkspace({
                     <span className="text-sm font-semibold">
                       Anonymen AI-Zugriff erlauben
                     </span>
-                    <p className="text-xs text-muted max-w-xl">
+                    <p className="text-xs text-muted-foreground max-w-xl">
                       Erlaubt nicht angemeldeten Besuchern den Zugriff auf den
                       AI-Chat und das Floating-Widget. Der Verlauf bleibt nur
                       lokal im Browser gespeichert.
@@ -2320,7 +2320,7 @@ export function AdminSettingsWorkspace({
                 </div>
 
                 {!settings.aiEnabled && (
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     Die AI-Provider-Konfiguration bleibt erhalten und wird
                     wieder verwendet, sobald die Funktion erneut aktiviert wird.
                   </p>
@@ -2346,13 +2346,13 @@ export function AdminSettingsWorkspace({
           <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <GitBranch className="w-5 h-5" />
               </Modal.Icon>
               <Modal.Heading>Neuen Repository-Provider anlegen</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-foreground">
                 Schlüssel und Typ werden beim Erstellen festgelegt und
                 anschließend nicht mehr geändert. Tokens werden verschlüsselt
                 gespeichert.
@@ -2371,7 +2371,7 @@ export function AdminSettingsWorkspace({
                     setNewProvider((prev) => ({ ...prev, providerKey: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Provider-Schlüssel
                   </Label>
                   <Input
@@ -2398,7 +2398,7 @@ export function AdminSettingsWorkspace({
                     }));
                   }}
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Provider-Typ
                   </Label>
                   <Select.Trigger className="bg-field-background">
@@ -2425,7 +2425,7 @@ export function AdminSettingsWorkspace({
                     setNewProvider((prev) => ({ ...prev, label: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Bezeichnung
                   </Label>
                   <Input
@@ -2440,7 +2440,7 @@ export function AdminSettingsWorkspace({
                     setNewProvider((prev) => ({ ...prev, baseUrl: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Base URL
                   </Label>
                   <Input
@@ -2455,7 +2455,7 @@ export function AdminSettingsWorkspace({
                     setNewProvider((prev) => ({ ...prev, token: val }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Token
                   </Label>
                   <Input
@@ -2475,7 +2475,7 @@ export function AdminSettingsWorkspace({
                     }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Sync-Intervall (Minuten)
                   </Label>
                   <Input
@@ -2493,7 +2493,7 @@ export function AdminSettingsWorkspace({
                     }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Standard README-Pfad
                   </Label>
                   <Input
@@ -2511,7 +2511,7 @@ export function AdminSettingsWorkspace({
                     }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Standard Helm Values
                   </Label>
                   <Input
@@ -2529,7 +2529,7 @@ export function AdminSettingsWorkspace({
                     }))
                   }
                 >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Standard Compose-Datei
                   </Label>
                   <Input
@@ -2544,7 +2544,7 @@ export function AdminSettingsWorkspace({
                       <p className="text-sm font-semibold text-foreground">
                         Provider aktiv
                       </p>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-muted-foreground">
                         Steuert, ob Apps diesen Provider auswählen dürfen.
                       </p>
                     </div>
@@ -2569,7 +2569,7 @@ export function AdminSettingsWorkspace({
                       <p className="text-sm font-semibold text-foreground">
                         Automatische Synchronisation
                       </p>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-muted-foreground">
                         Aktiviert den geplanten Hintergrund-Sync für verknüpfte
                         Apps dieses Providers.
                       </p>
@@ -2593,7 +2593,7 @@ export function AdminSettingsWorkspace({
                 </div>
 
                 <div className="lg:col-span-2 rounded-xl border border-border bg-surface p-4">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
                     Namespace-Allowlist
                   </Label>
                   <textarea
@@ -2604,10 +2604,10 @@ export function AdminSettingsWorkspace({
                         namespaceAllowlist: event.target.value,
                       }))
                     }
-                    className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
+                    className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
                     placeholder={"gruppe\norganisation/team"}
                   />
-                  <p className="mt-2 text-xs text-muted">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro
                     Zeile oder komma-getrennt.
                   </p>
@@ -2619,7 +2619,7 @@ export function AdminSettingsWorkspace({
                 Abbrechen
               </Button>
               <Button
-                className="bg-accent text-white"
+                className="bg-primary text-white"
                 isDisabled={
                   saving ||
                   !newProvider.providerKey.trim() ||

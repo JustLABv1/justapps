@@ -144,7 +144,7 @@ function GruppenPageContent() {
     return (
       <PageContainer>
         <div className="flex items-center justify-center py-32">
-          <Loader2 className="w-6 h-6 animate-spin text-muted" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       </PageContainer>
     );
@@ -172,15 +172,15 @@ function GruppenPageContent() {
         actions={
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Gruppen</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Gruppen</p>
               <p className="mt-1 text-2xl font-bold text-foreground">{enrichedGroups.length}</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Apps</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Apps</p>
               <p className="mt-1 text-2xl font-bold text-foreground">{totalGroupedApps}</p>
             </div>
             <div className="col-span-2 rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3 sm:col-span-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Neu & Akt.</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Neu & Akt.</p>
               <p className="mt-1 text-2xl font-bold text-foreground">{totalFreshApps}</p>
             </div>
           </div>
@@ -189,17 +189,17 @@ function GruppenPageContent() {
 
       <PageFilters>
         <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Gruppen, Apps oder Kategorien durchsuchen" aria-label="Gruppen durchsuchen" variant="secondary" className="w-full pl-10" />
         </div>
-        <p className="text-sm text-muted" role="status">{visibleGroups.length} {visibleGroups.length === 1 ? 'Gruppe' : 'Gruppen'}</p>
+        <p className="text-sm text-muted-foreground" role="status">{visibleGroups.length} {visibleGroups.length === 1 ? 'Gruppe' : 'Gruppen'}</p>
       </PageFilters>
 
       {visibleGroups.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <Layers2 className="w-10 h-10 text-muted/40" />
+          <Layers2 className="w-10 h-10 text-muted-foreground/40" />
           <p className="text-lg font-semibold text-foreground">{enrichedGroups.length === 0 ? 'Noch keine Gruppen vorhanden' : 'Keine passenden Gruppen'}</p>
-          <p className="text-sm text-muted">{enrichedGroups.length === 0 ? 'Administratoren können Gruppen unter Verwaltung anlegen.' : 'Versuchen Sie einen anderen Suchbegriff.'}</p>
+          <p className="text-sm text-muted-foreground">{enrichedGroups.length === 0 ? 'Administratoren können Gruppen unter Verwaltung anlegen.' : 'Versuchen Sie einen anderen Suchbegriff.'}</p>
         </div>
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
@@ -207,34 +207,34 @@ function GruppenPageContent() {
             <Link
               key={group.id}
               href={`/gruppen/${group.id}`}
-              className="group relative isolate flex min-h-[23.5rem] flex-col overflow-hidden rounded-[2rem] border border-border/80 bg-gradient-to-b from-surface to-surface-secondary p-5 pt-12 shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_24px_54px_rgba(0,75,118,0.16)] focus-visible:-translate-y-1 focus-visible:border-accent/35 focus-visible:shadow-[0_24px_54px_rgba(0,75,118,0.16)] sm:p-6 sm:pt-14"
+              className="group relative isolate flex min-h-[23.5rem] flex-col overflow-hidden rounded-[2rem] border border-border/80 bg-gradient-to-b from-surface to-surface-secondary p-5 pt-12 shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_24px_54px_rgba(0,75,118,0.16)] focus-visible:-translate-y-1 focus-visible:border-primary/35 focus-visible:shadow-[0_24px_54px_rgba(0,75,118,0.16)] sm:p-6 sm:pt-14"
             >
               <div className="absolute left-5 top-0 h-8 w-28 rounded-b-[1.2rem] border-x border-b border-border/70 bg-[linear-gradient(180deg,rgba(0,75,118,0.16),rgba(0,75,118,0.05))] sm:left-6 sm:h-9 sm:w-32" />
 
               <div className="relative flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-4">
-                  <GroupIcon icon={group.icon} name={group.name} className="h-12 w-12 rounded-[1.15rem] border border-accent/10 bg-accent/10 text-accent shrink-0 shadow-sm" />
+                  <GroupIcon icon={group.icon} name={group.name} className="h-12 w-12 rounded-[1.15rem] border border-primary/10 bg-primary/10 text-primary shrink-0 shadow-sm" />
                   <div className="min-w-0">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface-secondary/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted backdrop-blur-sm">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface-secondary/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
                       Ordner
                     </div>
-                    <p className="mt-2.5 text-lg font-semibold text-foreground transition-colors group-hover:text-accent group-focus-visible:text-accent sm:text-xl">{group.name}</p>
-                    <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted line-clamp-2">
+                    <p className="mt-2.5 text-lg font-semibold text-foreground transition-colors group-hover:text-primary group-focus-visible:text-primary sm:text-xl">{group.name}</p>
+                    <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground line-clamp-2">
                       {group.description || 'Kuratiertes Themenfeld mit passenden Apps, Statussignalen und schnellen Einstiegen.'}
                     </p>
                   </div>
                 </div>
 
-                <span className="shrink-0 rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted shadow-sm backdrop-blur-sm">
+                <span className="shrink-0 rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-sm backdrop-blur-sm">
                   {group.appCount} {group.appCount === 1 ? 'App' : 'Apps'}
                 </span>
               </div>
 
               <div className="relative mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-accent/15 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold text-accent">
+                <span className="rounded-full border border-primary/15 bg-primary/8 px-3 py-1.5 text-[11px] font-semibold text-primary">
                   {group.featuredCount} Highlights
                 </span>
-                <span className="rounded-full border border-border bg-surface-secondary/85 px-3 py-1.5 text-[11px] font-semibold text-muted">
+                <span className="rounded-full border border-border bg-surface-secondary/85 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
                   {group.reuseCount} Nachnutzung
                 </span>
                 <span className="rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-[11px] font-semibold text-success">
@@ -246,10 +246,10 @@ function GruppenPageContent() {
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-[linear-gradient(180deg,rgba(0,75,118,0.09),transparent)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent)]" />
                 <div className="relative flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Karten im Ordner</p>
-                    <p className="mt-1 text-xs text-muted sm:text-sm">Beim Hover kommen die wichtigsten Apps nach vorn.</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Karten im Ordner</p>
+                    <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Beim Hover kommen die wichtigsten Apps nach vorn.</p>
                   </div>
-                  <div className="text-right text-xs text-muted">
+                  <div className="text-right text-xs text-muted-foreground">
                     {group.lastUpdatedLabel ? `Aktiv ${group.lastUpdatedLabel}` : 'Noch keine Aktivität'}
                   </div>
                 </div>
@@ -277,8 +277,8 @@ function GruppenPageContent() {
                                 <p className="truncate text-sm font-semibold text-foreground">{app.name}</p>
                                 {app.isFeatured && <Star className="h-3.5 w-3.5 shrink-0 text-gov-gold" />}
                               </div>
-                              <p className="mt-1 truncate text-xs text-muted">{app.categories?.slice(0, 2).join(' · ') || 'Ohne Kategorie'}</p>
-                              <p className="mt-1.5 line-clamp-1 text-xs leading-relaxed text-muted sm:line-clamp-2">{app.description}</p>
+                              <p className="mt-1 truncate text-xs text-muted-foreground">{app.categories?.slice(0, 2).join(' · ') || 'Ohne Kategorie'}</p>
+                              <p className="mt-1.5 line-clamp-1 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2">{app.description}</p>
                             </div>
                           </div>
 
@@ -288,13 +288,13 @@ function GruppenPageContent() {
                                 freshness.badgeColor === 'warning'
                                   ? 'bg-warning/10 text-warning'
                                   : freshness.badgeColor === 'accent'
-                                    ? 'bg-accent/10 text-accent'
+                                    ? 'bg-primary/10 text-primary'
                                     : 'bg-success/10 text-success'
                               }`}>
                                 {freshness.badgeLabel}
                               </span>
                             )}
-                            <span className="rounded-full border border-border bg-surface-secondary px-2 py-1 text-muted">
+                            <span className="rounded-full border border-border bg-surface-secondary px-2 py-1 text-muted-foreground">
                               {app.status || 'Verfügbar'}
                             </span>
                           </div>
@@ -303,7 +303,7 @@ function GruppenPageContent() {
                     })}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[1.2rem] border border-dashed border-border bg-surface/70 px-4 py-4 text-sm text-muted">
+                  <div className="mt-4 rounded-[1.2rem] border border-dashed border-border bg-surface/70 px-4 py-4 text-sm text-muted-foreground">
                     Diese Gruppe wartet noch auf erste Apps im Ordner.
                   </div>
                 )}
@@ -311,17 +311,17 @@ function GruppenPageContent() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {group.topCategories.length > 0 ? group.topCategories.map((category) => (
-                  <span key={category} className="rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold text-muted">
+                  <span key={category} className="rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
                     {category}
                   </span>
                 )) : (
-                  <span className="text-sm text-muted">Diese Gruppe wartet noch auf erste Apps.</span>
+                  <span className="text-sm text-muted-foreground">Diese Gruppe wartet noch auf erste Apps.</span>
                 )}
               </div>
 
               <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
-                <span className="text-muted">Zum Öffnen klicken</span>
-                <span className="inline-flex items-center gap-2 font-semibold text-accent">
+                <span className="text-muted-foreground">Zum Öffnen klicken</span>
+                <span className="inline-flex items-center gap-2 font-semibold text-primary">
                   Gruppe entdecken
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </span>

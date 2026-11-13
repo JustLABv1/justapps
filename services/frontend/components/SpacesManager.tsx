@@ -255,9 +255,9 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           {invitations.map((space) => (
             <div
               key={space.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/20 bg-accent/5 p-4"
+              className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4"
             >
-              <UserPlus className="h-5 w-5 text-accent" />
+              <UserPlus className="h-5 w-5 text-primary" />
               <p className="flex-1 text-sm">
                 Einladung zu <strong>{space.name}</strong>
               </p>
@@ -299,7 +299,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
             {adminMode ? "Alle Spaces" : "Ihre Spaces"}
           </h2>
           {!loading && (
-            <span className="text-sm text-muted">
+            <span className="text-sm text-muted-foreground">
               {adminMode ? total : accepted.length}
             </span>
           )}
@@ -317,7 +317,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           />
         )}
         {!adminMode && !canCreate && (
-          <p className="mb-4 text-sm text-muted">
+          <p className="mb-4 text-sm text-muted-foreground">
             {creationAccess?.mode === "admins"
               ? "Nur Administratoren dürfen neue Spaces erstellen."
               : creationAccess?.mode === "oidc_group"
@@ -326,7 +326,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           </p>
         )}
         {loading ? (
-          <p role="status" className="py-12 text-center text-sm text-muted">
+          <p role="status" className="py-12 text-center text-sm text-muted-foreground">
             Spaces werden geladen …
           </p>
         ) : accepted.length ? (
@@ -336,12 +336,12 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                 key={space.id}
                 className="flex flex-wrap items-center gap-4 p-5 sm:p-6"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-                  <LockKeyhole className="h-5 w-5 text-accent" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <LockKeyhole className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate font-semibold">{space.name}</h3>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {adminMode
                       ? `Eigentümer: ${space.ownerUsername || space.ownerId}`
                       : `Privat · ${space.ownerId === user.id ? "Eigentümer" : "Mitglied"}`}
@@ -350,7 +350,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                     )}
                   </p>
                   {adminMode && (
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {space.appCount || 0} Apps · {space.memberCount || 1}{" "}
                       Mitglieder · {space.invitationCount || 0} Einladungen ·{" "}
                       {space.groupCount || 0} Gruppenzuordnungen
@@ -413,14 +413,14 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                               id="owner"
                               textValue="Eigentümer ändern"
                             >
-                              <Users className="h-4 w-4 text-muted" />
+                              <Users className="h-4 w-4 text-muted-foreground" />
                               <Label>Eigentümer ändern</Label>
                             </Dropdown.Item>
                           )}
                           {(space.ownerId === user.id ||
                             permitted(Permission.ManageSpaces)) && (
                             <Dropdown.Item id="rename" textValue="Umbenennen">
-                              <Pencil className="h-4 w-4 text-muted" />
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
                               <Label>Umbenennen</Label>
                             </Dropdown.Item>
                           )}
@@ -430,7 +430,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
                               id="groups"
                               textValue="Gruppenzugriff"
                             >
-                              <Users className="h-4 w-4 text-muted" />
+                              <Users className="h-4 w-4 text-muted-foreground" />
                               <Label>Gruppenzugriff</Label>
                             </Dropdown.Item>
                           )}
@@ -459,9 +459,9 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           </div>
         ) : (
           <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-            <LockKeyhole className="mb-4 h-7 w-7 text-muted" />
+            <LockKeyhole className="mb-4 h-7 w-7 text-muted-foreground" />
             <h3 className="font-semibold">Noch kein privater Space</h3>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
               Ein Space hält Ihre Apps privat. Laden Sie bei Bedarf weitere
               Mitglieder ein.
             </p>
@@ -486,7 +486,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           >
             Zurück
           </Button>
-          <span className="text-sm text-muted">
+          <span className="text-sm text-muted-foreground">
             Seite {page} von {Math.ceil(total / 50)}
           </span>
           <Button
@@ -650,7 +650,7 @@ function SpaceFormDialog({
                 <Modal.Heading>{title}</Modal.Heading>
               </Modal.Header>
               <Modal.Body className="space-y-5">
-                <p className="text-sm leading-relaxed text-muted">
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   {description}
                 </p>
                 <TextField isRequired value={value} onChange={onChange}>

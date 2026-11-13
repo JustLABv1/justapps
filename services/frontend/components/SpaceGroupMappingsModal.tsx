@@ -103,20 +103,20 @@ export function SpaceGroupMappingsModal({
         <Modal.Dialog className="max-w-2xl">
           <Modal.CloseTrigger />
           <Modal.Header>
-            <Modal.Icon className="bg-accent-soft text-accent">
+            <Modal.Icon className="bg-primary/10 text-primary">
               <ShieldCheck className="h-5 w-5" />
             </Modal.Icon>
             <Modal.Heading>Gruppenzugriff</Modal.Heading>
           </Modal.Header>
           <Modal.Body className="space-y-5">
-            <p className="text-sm leading-relaxed text-muted">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Mitglieder der zugeordneten OIDC-Gruppen erhalten beim Anmelden
               automatisch Zugriff auf{" "}
               <strong className="text-foreground">{space.name}</strong>. Eine
               Einladung ist dafür nicht erforderlich.
             </p>
             {loading ? (
-              <p role="status" className="py-6 text-sm text-muted">
+              <p role="status" className="py-6 text-sm text-muted-foreground">
                 Gruppenzuordnungen werden geladen …
               </p>
             ) : (
@@ -128,12 +128,12 @@ export function SpaceGroupMappingsModal({
                         key={mapping.id}
                         className="flex items-center gap-3 p-4"
                       >
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-muted" />
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0 flex-1">
                           <p className="break-all text-sm font-medium">
                             {mapping.groupName}
                           </p>
-                          <p className="mt-1 truncate text-xs text-muted">
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
                             {providers.find(
                               (provider) =>
                                 provider.key === mapping.providerKey,
@@ -161,7 +161,7 @@ export function SpaceGroupMappingsModal({
                       </div>
                     ))
                   ) : (
-                    <p className="p-5 text-sm text-muted">
+                    <p className="p-5 text-sm text-muted-foreground">
                       Noch keine Gruppen zugeordnet. Manuelle Einladungen
                       funktionieren weiterhin.
                     </p>
@@ -236,7 +236,7 @@ export function SpaceGroupMappingsModal({
                         Zuordnen
                       </Button>
                     </div>
-                    <p className="text-xs leading-relaxed text-muted">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
                       Verwendeter Claim-Pfad im ID-Token:{" "}
                       <code>
                         {providers.find(
@@ -249,12 +249,12 @@ export function SpaceGroupMappingsModal({
                     </p>
                   </form>
                 ) : (
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     Zuerst muss in der Verwaltung ein aktiver OIDC-Provider
                     eingerichtet werden.
                   </p>
                 )}
-                <p className="rounded-xl bg-surface-secondary p-4 text-xs leading-relaxed text-muted">
+                <p className="rounded-xl bg-surface-secondary p-4 text-xs leading-relaxed text-muted-foreground">
                   Gruppenänderungen werden bei der nächsten OIDC-Anmeldung des
                   Nutzers synchronisiert. Das Entfernen einer Zuordnung entzieht
                   den darüber erteilten Zugriff sofort. Andere Gruppenzugriffe

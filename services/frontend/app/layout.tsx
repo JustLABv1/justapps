@@ -3,6 +3,8 @@ import { Providers } from "@/components/providers";
 import { getApiUrl } from "@/lib/apiUrl";
 import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/geist-mono";
 import "./globals.css";
 
 /*

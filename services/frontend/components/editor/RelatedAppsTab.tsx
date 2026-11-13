@@ -58,7 +58,7 @@ export function RelatedAppsTab({
   return (
     <div className="flex flex-col gap-8">
       {showDraftHint && (
-        <div className="rounded-2xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm text-muted">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
           Beim ersten Verknüpfen wird automatisch ein Entwurf angelegt, damit
           die Beziehung direkt gespeichert werden kann.
         </div>
@@ -92,7 +92,7 @@ export function RelatedAppsTab({
             return (
               <div
                 key={related.id}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-primary/40 hover:bg-surface transition-all shadow-sm group"
               >
                 <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
                   {iconSrc ? (
@@ -109,10 +109,10 @@ export function RelatedAppsTab({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">
+                  <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">
                     {related.name}
                   </p>
-                  <p className="text-xs text-muted flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Link2 className="w-3 h-3" /> {related.id}
                   </p>
                 </div>
@@ -134,7 +134,7 @@ export function RelatedAppsTab({
 
       {/* Search and add related apps */}
       <div className="space-y-3">
-        <span className="text-xs font-bold text-muted uppercase tracking-wider">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           App suchen und verknüpfen
         </span>
         <Input
@@ -175,20 +175,20 @@ export function RelatedAppsTab({
                     <p className="text-sm font-semibold text-foreground">
                       {a.name}
                     </p>
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       {a.categories?.join(", ")}
                     </p>
                   </div>
                   {addingRelated ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
                   ) : (
-                    <Plus className="w-4 h-4 text-accent shrink-0" />
+                    <Plus className="w-4 h-4 text-primary shrink-0" />
                   )}
                 </Button>
               );
             })}
             {filteredRelatable.length === 0 && (
-              <p className="p-4 text-sm text-muted text-center">
+              <p className="p-4 text-sm text-muted-foreground text-center">
                 Keine weiteren Apps gefunden
               </p>
             )}
@@ -200,10 +200,10 @@ export function RelatedAppsTab({
       {canManageGroups && (
         <div className="space-y-4 pt-6 border-t border-border">
           <div className="flex items-center gap-2">
-            <Grip className="w-4 h-4 text-accent" />
+            <Grip className="w-4 h-4 text-primary" />
             <span className="text-sm font-bold text-foreground">Gruppen</span>
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             Ordnen Sie diese App einer oder mehreren Gruppen zu.
           </p>
           <div className="space-y-2">
@@ -214,7 +214,7 @@ export function RelatedAppsTab({
                   key={group.id}
                   className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                     inGroup
-                      ? "bg-accent/5 border-accent/30"
+                      ? "bg-primary/5 border-primary/30"
                       : "bg-surface border-border"
                   }`}
                 >
@@ -223,7 +223,7 @@ export function RelatedAppsTab({
                       {group.name}
                     </p>
                     {group.description && (
-                      <p className="text-xs text-muted">{group.description}</p>
+                      <p className="text-xs text-muted-foreground">{group.description}</p>
                     )}
                   </div>
                   <Switch
@@ -240,7 +240,7 @@ export function RelatedAppsTab({
               );
             })}
             {groups.length === 0 && (
-              <p className="text-sm text-muted text-center py-4 bg-surface rounded-xl border border-dashed border-border/60">
+              <p className="text-sm text-muted-foreground text-center py-4 bg-surface rounded-xl border border-dashed border-border/60">
                 Noch keine Gruppen erstellt.
               </p>
             )}

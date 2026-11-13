@@ -31,7 +31,7 @@ function tokenizeLine(line: string, language: string) {
     if (match) {
       return (
         <>
-          <span className="text-accent">{match[1]}</span>
+          <span className="text-primary">{match[1]}</span>
           <span className="text-warning-foreground dark:text-warning">{match[2]}</span>
         </>
       );
@@ -41,7 +41,7 @@ function tokenizeLine(line: string, language: string) {
       const rest = line.slice(line.indexOf('- ') + 2);
       return (
         <>
-          <span className="text-accent">{prefix}</span>
+          <span className="text-primary">{prefix}</span>
           <span className="text-warning-foreground dark:text-warning">{rest}</span>
         </>
       );
@@ -50,10 +50,10 @@ function tokenizeLine(line: string, language: string) {
 
   if (language === 'markdown') {
     if (line.startsWith('#')) {
-      return <span className="font-semibold text-accent">{line}</span>;
+      return <span className="font-semibold text-primary">{line}</span>;
     }
     if (line.trimStart().startsWith('- ') || line.trimStart().startsWith('* ')) {
-      return <span className="text-accent">{line}</span>;
+      return <span className="text-primary">{line}</span>;
     }
     if (line.startsWith('```')) {
       return <span className="text-success-foreground dark:text-success">{line}</span>;
@@ -72,8 +72,8 @@ function renderDiffLine(line: DiffLine, language: string) {
       : line.kind === 'remove'
         ? 'font-bold text-danger'
         : line.kind === 'meta'
-          ? 'text-accent'
-          : 'text-muted';
+          ? 'text-primary'
+          : 'text-muted-foreground';
 
   return (
     <>
@@ -118,7 +118,7 @@ function getDiffClasses(kind: DiffLine['kind']) {
     case 'remove':
       return 'border-s-2 border-danger/60 bg-danger/10 text-danger';
     case 'meta':
-      return 'border-s-2 border-accent/60 bg-accent/10 text-accent';
+      return 'border-s-2 border-primary/60 bg-primary/10 text-primary';
     default:
       return 'text-foreground';
   }
@@ -146,7 +146,7 @@ function SideBySideView({ detail }: { detail: ReleaseChangeDetail }) {
   return (
     <ScrollShadow orientation="horizontal" className="max-w-full">
       <div className="min-w-[760px] overflow-hidden rounded-lg border border-border">
-        <div className="grid grid-cols-2 bg-surface-secondary text-xs font-semibold uppercase tracking-wide text-muted">
+        <div className="grid grid-cols-2 bg-surface-secondary text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <div className="border-r border-border px-3 py-2">Vorher</div>
           <div className="px-3 py-2">Nachher</div>
         </div>
@@ -222,7 +222,7 @@ export function ReleaseDiffViewer({ detail }: { detail: ReleaseChangeDetail }) {
               {parsedLines.map((line, index) => {
                 if ('hiddenCount' in line) {
                   return (
-                    <div key={`collapsed-${index}`} className="border-y border-border/60 bg-surface px-3 py-1 text-center text-[11px] text-muted">
+                    <div key={`collapsed-${index}`} className="border-y border-border/60 bg-surface px-3 py-1 text-center text-[11px] text-muted-foreground">
                       … {line.hiddenCount} unveränderte Zeilen ausgeblendet …
                     </div>
                   );

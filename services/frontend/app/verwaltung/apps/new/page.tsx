@@ -70,7 +70,7 @@ function NewAppContent() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -85,7 +85,7 @@ function NewAppContent() {
             </div>
             <div className="flex-1">
               <p className="text-base font-semibold text-foreground mb-2">Kopie konnte nicht vorbereitet werden</p>
-              <p className="text-sm text-muted mb-4">{copyError}</p>
+              <p className="text-sm text-muted-foreground mb-4">{copyError}</p>
               <Button variant="secondary" onPress={() => router.push('/verwaltung/katalog/apps')}>Zurück zur App-Verwaltung</Button>
             </div>
           </div>
@@ -99,7 +99,7 @@ function NewAppContent() {
 
 export default function NewAppPage() {
   return (
-    <Suspense fallback={<div className="max-w-5xl mx-auto py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
+    <Suspense fallback={<div className="max-w-5xl mx-auto py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
       <NewAppContent />
     </Suspense>
   );

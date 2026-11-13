@@ -331,7 +331,7 @@ export default function VerwaltungGruppenPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground">App-Gruppen</h2>
-          <p className="text-sm text-muted mt-0.5">Thematische Sammlungen von Apps verwalten</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Thematische Sammlungen von Apps verwalten</p>
         </div>
         <Button onPress={openCreate} size="sm" className="gap-1.5">
           <Plus className="w-4 h-4" />
@@ -341,7 +341,7 @@ export default function VerwaltungGruppenPage() {
 
       {/* Inline create / edit form */}
       {showForm && (
-        <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 space-y-4">
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">
               {editingId ? 'Gruppe bearbeiten' : 'Neue Gruppe'}
@@ -352,26 +352,26 @@ export default function VerwaltungGruppenPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField isRequired onChange={(v) => setForm((p) => ({ ...p, name: v }))}>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Name</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Name</Label>
               <Input value={form.name} placeholder="z.B. KI-Tools" className="bg-field-background" />
             </TextField>
             <TextField onChange={(v) => setForm((p) => ({ ...p, description: v }))}>
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Beschreibung (optional)</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Beschreibung (optional)</Label>
               <TextArea value={form.description} placeholder="Kurze Beschreibung der Gruppe..." className="bg-field-background resize-none" rows={1} />
             </TextField>
           </div>
           <div className="space-y-2">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Logo / Icon</p>
-              <p className="mt-1 text-xs text-muted">Emoji oder Bild-URL, optional.</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Logo / Icon</p>
+              <p className="mt-1 text-xs text-muted-foreground">Emoji oder Bild-URL, optional.</p>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)_auto] lg:items-center">
               <div className="flex min-h-[78px] items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3">
-                <GroupIcon icon={form.icon} name={form.name || 'Gruppe'} className="h-12 w-12 rounded-2xl bg-accent/10 text-accent" />
+                <GroupIcon icon={form.icon} name={form.name || 'Gruppe'} className="h-12 w-12 rounded-2xl bg-primary/10 text-primary" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Vorschau</p>
-                  <p className="text-xs text-muted">So erscheint die Gruppe in Listen und Details.</p>
+                  <p className="text-xs text-muted-foreground">So erscheint die Gruppe in Listen und Details.</p>
                 </div>
               </div>
 
@@ -401,13 +401,13 @@ export default function VerwaltungGruppenPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-3 rounded-2xl border border-dashed border-border bg-surface-secondary/30">
-          <Layers2 className="w-10 h-10 text-muted/40" />
+          <Layers2 className="w-10 h-10 text-muted-foreground/40" />
           <p className="text-base font-semibold text-foreground">Noch keine Gruppen vorhanden</p>
-          <p className="text-sm text-muted">Legen Sie die erste Gruppe an, um Apps thematisch zu bündeln.</p>
+          <p className="text-sm text-muted-foreground">Legen Sie die erste Gruppe an, um Apps thematisch zu bündeln.</p>
           <Button size="sm" onPress={openCreate} className="mt-1 gap-1.5">
             <Plus className="w-4 h-4" />
             Erste Gruppe anlegen
@@ -424,7 +424,7 @@ export default function VerwaltungGruppenPage() {
                   className="flex items-center gap-3 px-4 py-3 hover:bg-surface-secondary/30 transition-colors cursor-pointer"
                   onClick={() => toggleExpand(group.id)}
                 >
-                  <GroupIcon icon={group.icon} name={group.name} className="h-7 w-7 rounded-lg bg-accent/10 text-accent shrink-0" />
+                  <GroupIcon icon={group.icon} name={group.name} className="h-7 w-7 rounded-lg bg-primary/10 text-primary shrink-0" />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -436,7 +436,7 @@ export default function VerwaltungGruppenPage() {
                       )}
                     </div>
                     {group.description && (
-                      <p className="text-xs text-muted mt-0.5 truncate max-w-md">{group.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-md">{group.description}</p>
                     )}
                   </div>
 
@@ -461,7 +461,7 @@ export default function VerwaltungGruppenPage() {
                     </Button>
                   </div>
 
-                  <div className="text-muted shrink-0">
+                  <div className="text-muted-foreground shrink-0">
                     {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
@@ -471,8 +471,8 @@ export default function VerwaltungGruppenPage() {
                   <div className="px-4 pb-4 pt-1 bg-surface-secondary/20 border-t border-border/50">
                     <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Mitglieder</p>
-                        <p className="mt-0.5 text-xs text-muted">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mitglieder</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           Bestehende Gruppenzuordnungen ansehen oder mehrere Apps gesammelt hinzufügen.
                         </p>
                       </div>
@@ -484,8 +484,8 @@ export default function VerwaltungGruppenPage() {
 
                     {group.membersLoading ? (
                       <div className="flex items-center gap-2 py-3">
-                        <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                        <span className="text-sm text-muted">Apps werden geladen…</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Apps werden geladen…</span>
                       </div>
                     ) : group.members && group.members.length > 0 ? (
                       <div className="flex flex-wrap gap-2 pt-2">
@@ -510,7 +510,7 @@ export default function VerwaltungGruppenPage() {
                         })}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted italic py-3">Keine Apps in dieser Gruppe.</p>
+                      <p className="text-xs text-muted-foreground italic py-3">Keine Apps in dieser Gruppe.</p>
                     )}
                   </div>
                 )}
@@ -533,14 +533,14 @@ export default function VerwaltungGruppenPage() {
             <Modal.Dialog className="sm:max-w-3xl">
               <Modal.CloseTrigger />
               <Modal.Header>
-                <Modal.Icon className="bg-accent/10 text-accent">
+                <Modal.Icon className="bg-primary/10 text-primary">
                   <Plus className="w-5 h-5" />
                 </Modal.Icon>
                 <Modal.Heading>Apps gesammelt hinzufügen</Modal.Heading>
               </Modal.Header>
               <Modal.Body className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     Wählen Sie Apps aus, die der Gruppe <strong className="text-foreground">{bulkTargetGroup?.name}</strong> hinzugefügt werden sollen.
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -557,7 +557,7 @@ export default function VerwaltungGruppenPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="relative flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted z-10" />
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
                     <Input
                       className="pl-9"
                       placeholder="Apps nach Name, ID oder Kategorie filtern..."
@@ -598,8 +598,8 @@ export default function VerwaltungGruppenPage() {
                 <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border bg-surface">
                   {isBulkListLoading ? (
                     <div className="flex items-center gap-2 px-4 py-6">
-                      <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                      <span className="text-sm text-muted">Verfügbare Apps werden geladen…</span>
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground">Verfügbare Apps werden geladen…</span>
                     </div>
                   ) : bulkCandidates.length > 0 ? (
                     <div className="divide-y divide-border/60">
@@ -612,7 +612,7 @@ export default function VerwaltungGruppenPage() {
                             key={app.id}
                             type="button"
                             className={`w-full px-4 py-3 text-left transition-colors ${
-                              isSelected ? 'bg-accent/10' : 'hover:bg-surface-secondary/50'
+                              isSelected ? 'bg-primary/10' : 'hover:bg-surface-secondary/50'
                             }`}
                             onClick={() => toggleSelectedApp(app.id)}
                           >
@@ -620,7 +620,7 @@ export default function VerwaltungGruppenPage() {
                               <div
                                 className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-md border ${
                                   isSelected
-                                    ? 'border-accent bg-accent text-white'
+                                    ? 'border-primary bg-primary text-white'
                                     : 'border-border bg-surface-secondary text-transparent'
                                 }`}
                               >
@@ -646,7 +646,7 @@ export default function VerwaltungGruppenPage() {
 
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-semibold text-foreground">{app.name}</p>
-                                <p className="mt-0.5 text-xs text-muted">{app.id}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">{app.id}</p>
 
                                 {app.categories && app.categories.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -682,7 +682,7 @@ export default function VerwaltungGruppenPage() {
                             ? 'Keine passenden Apps gefunden'
                             : 'Alle Apps sind bereits in dieser Gruppe'}
                       </p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {appsError
                           ? 'Laden Sie die App-Liste erneut, um fortzufahren.'
                           : bulkSearch.trim()
@@ -695,7 +695,7 @@ export default function VerwaltungGruppenPage() {
               </Modal.Body>
               <Modal.Footer>
                 <div className="flex w-full items-center justify-between gap-3">
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     {selectedAppIds.size > 0
                       ? `${selectedAppIds.size} App${selectedAppIds.size !== 1 ? 's' : ''} zur Gruppe markieren.`
                       : 'Wählen Sie mindestens eine App aus.'}
@@ -705,7 +705,7 @@ export default function VerwaltungGruppenPage() {
                       Abbrechen
                     </Button>
                     <Button
-                      className="bg-accent text-white"
+                      className="bg-primary text-white"
                       isDisabled={selectedAppIds.size === 0 || bulkSaving || isBulkListLoading}
                       onPress={handleBulkAssign}
                     >

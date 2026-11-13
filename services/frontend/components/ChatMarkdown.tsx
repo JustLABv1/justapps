@@ -10,7 +10,7 @@ export function ChatMarkdown({ content }: { content: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: (props) => (
-            <a {...props} target="_blank" rel="noreferrer noopener" className="text-accent underline underline-offset-2" />
+            <a {...props} target="_blank" rel="noreferrer noopener" className="text-primary underline underline-offset-2" />
           ),
           code: ({ className, children, ...props }) => {
             const isBlock = /\blanguage-/.test(className || '');
@@ -34,7 +34,7 @@ export function ChatMarkdown({ content }: { content: string }) {
           h3: (props) => <h3 className="mt-2 mb-1 text-sm font-semibold" {...props} />,
           p: (props) => <p className="my-1 leading-6" {...props} />,
           blockquote: (props) => (
-            <blockquote className="my-2 border-l-2 border-border pl-3 text-muted" {...props} />
+            <blockquote className="my-2 border-l-2 border-border pl-3 text-muted-foreground" {...props} />
           ),
           table: (props) => (
             <div className="my-2 overflow-x-auto">

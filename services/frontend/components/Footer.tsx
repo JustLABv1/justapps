@@ -35,7 +35,7 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
               )}
               <span className="text-[9px] font-bold tracking-[0.2em]">{storeName}</span>
             </div>
-            <p className="text-sm text-muted max-w-sm leading-relaxed">
+            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
               {footerText}
             </p>
           </div>
@@ -44,7 +44,7 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
             <ul className="space-y-2 text-sm">
               {links.map((link, i) => (
                 <li key={i}>
-                  <a href={link.url || '#'} className="text-muted hover:text-accent transition-colors">
+                  <a href={link.url || '#'} className="text-muted-foreground hover:text-primary transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -53,20 +53,20 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
           </div>
         </div>
         <div className="border-t border-border/50 pt-6 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted/50">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground/50">
             <span>© {new Date().getFullYear()} JustLAB</span>
             <span aria-hidden="true">·</span>
             <a
               href="https://github.com/JustLABv1/justapps/blob/main/LICENSE"
               target="_blank"
               rel="noreferrer"
-              className="underline decoration-transparent underline-offset-2 transition-colors hover:text-accent hover:decoration-current"
+              className="underline decoration-transparent underline-offset-2 transition-colors hover:text-primary hover:decoration-current"
             >
               Lizenziert unter GNU AGPL v3.0
             </a>
           </div>
           {process.env.NEXT_PUBLIC_APP_VERSION && (
-            <span className="text-[11px] text-muted/40 font-mono">
+            <span className="text-[11px] text-muted-foreground/40 font-mono">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
             </span>
           )}

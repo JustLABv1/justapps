@@ -281,7 +281,7 @@ export function AIProviderSettingsPanel() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="h-7 w-7 animate-spin text-accent" />
+        <Loader2 className="h-7 w-7 animate-spin text-primary" />
       </div>
     );
   }
@@ -291,10 +291,10 @@ export function AIProviderSettingsPanel() {
       <Surface className="border border-border/50 p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted">
-              <Bot className="h-4 w-4 text-accent" /> AI-Provider
+            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              <Bot className="h-4 w-4 text-primary" /> AI-Provider
             </h3>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               Tokens werden verschlüsselt gespeichert und nach dem Speichern
               nicht mehr angezeigt.
             </p>
@@ -313,7 +313,7 @@ export function AIProviderSettingsPanel() {
               Index neu aufbauen
             </Button>
             <Button
-              className="bg-accent text-white"
+              className="bg-primary text-white"
               onPress={() => setCreateOpen(true)}
             >
               <Plus className="h-4 w-4" />
@@ -350,16 +350,16 @@ export function AIProviderSettingsPanel() {
                       <p className="text-sm font-semibold text-foreground">
                         {provider.providerKey}
                       </p>
-                      <span className="rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <span className="rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         {aiProviderTypeLabel(provider.providerType)}
                       </span>
                       {provider.isDefault && (
-                        <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                           Standard
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {provider.tokenConfigured
                         ? "Token gespeichert"
                         : provider.requiresToken
@@ -408,7 +408,7 @@ export function AIProviderSettingsPanel() {
                       updateProvider(provider.providerKey, { label: value })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       Bezeichnung
                     </Label>
                     <Input
@@ -422,7 +422,7 @@ export function AIProviderSettingsPanel() {
                       updateProvider(provider.providerKey, { baseUrl: value })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       Base URL
                     </Label>
                     <Input
@@ -436,7 +436,7 @@ export function AIProviderSettingsPanel() {
                       updateProvider(provider.providerKey, { apiPath: value })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       API-Pfad
                     </Label>
                     <Input
@@ -450,7 +450,7 @@ export function AIProviderSettingsPanel() {
                       updateProvider(provider.providerKey, { chatModel: value })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       Chat-Modell
                     </Label>
                     <Input
@@ -466,7 +466,7 @@ export function AIProviderSettingsPanel() {
                       })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       API-Version
                     </Label>
                     <Input
@@ -482,7 +482,7 @@ export function AIProviderSettingsPanel() {
                       })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       Organisation
                     </Label>
                     <Input
@@ -499,7 +499,7 @@ export function AIProviderSettingsPanel() {
                       }))
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       API-Key ersetzen
                     </Label>
                     <Input
@@ -522,14 +522,14 @@ export function AIProviderSettingsPanel() {
                       })
                     }
                   >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       Temperatur
                     </Label>
                     <Input
                       className="bg-field-background font-mono text-sm"
                       placeholder="0.2"
                     />
-                    <p className="mt-1 ml-1 text-[11px] text-muted">
+                    <p className="mt-1 ml-1 text-[11px] text-muted-foreground">
                       Bestimmt die Kreativität der Antworten. 0 = sehr
                       deterministisch und faktentreu, 1 = ausgewogen, &gt;1 =
                       experimentell und variabler. Empfohlen: 0.1–0.3 für
@@ -543,7 +543,7 @@ export function AIProviderSettingsPanel() {
                         <p className="text-sm font-semibold text-foreground">
                           Aktiv
                         </p>
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-muted-foreground">
                           Im AI Chat auswählbar
                         </p>
                       </div>
@@ -569,7 +569,7 @@ export function AIProviderSettingsPanel() {
                         <p className="text-sm font-semibold text-foreground">
                           Standard
                         </p>
-                        <p className="text-xs text-muted">
+                        <p className="text-xs text-muted-foreground">
                           Vorauswahl für neue Chats
                         </p>
                       </div>
@@ -607,7 +607,7 @@ export function AIProviderSettingsPanel() {
                     Token löschen
                   </Button>
                   <Button
-                    className="bg-accent text-white"
+                    className="bg-primary text-white"
                     isDisabled={saving}
                     onPress={() => void saveProvider(provider)}
                   >
@@ -633,7 +633,7 @@ export function AIProviderSettingsPanel() {
           <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <Bot className="h-5 w-5" />
               </Modal.Icon>
               <Modal.Heading>AI-Provider anlegen</Modal.Heading>
@@ -649,7 +649,7 @@ export function AIProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Provider-Schlüssel
                   </Label>
                   <Input
@@ -669,7 +669,7 @@ export function AIProviderSettingsPanel() {
                     }));
                   }}
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Provider-Typ
                   </Label>
                   <Select.Trigger className="bg-field-background">
@@ -697,7 +697,7 @@ export function AIProviderSettingsPanel() {
                     setNewProvider((current) => ({ ...current, label: value }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Bezeichnung
                   </Label>
                   <Input
@@ -714,7 +714,7 @@ export function AIProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Base URL
                   </Label>
                   <Input
@@ -731,7 +731,7 @@ export function AIProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Chat-Modell
                   </Label>
                   <Input
@@ -745,7 +745,7 @@ export function AIProviderSettingsPanel() {
                     setNewProvider((current) => ({ ...current, token: value }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     API-Key
                   </Label>
                   <Input
@@ -763,7 +763,7 @@ export function AIProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     API-Version
                   </Label>
                   <Input
@@ -780,7 +780,7 @@ export function AIProviderSettingsPanel() {
                     }))
                   }
                 >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted">
+                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Organisation
                   </Label>
                   <Input
@@ -795,7 +795,7 @@ export function AIProviderSettingsPanel() {
                 Abbrechen
               </Button>
               <Button
-                className="bg-accent text-white"
+                className="bg-primary text-white"
                 isDisabled={
                   saving ||
                   !newProvider.providerKey.trim() ||
@@ -831,7 +831,7 @@ export function AIProviderSettingsPanel() {
               <Modal.Heading>AI-Provider löschen</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-foreground">
                 {providerToDelete?.providerKey}
               </p>
             </Modal.Body>

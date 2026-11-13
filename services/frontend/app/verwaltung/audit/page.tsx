@@ -123,7 +123,7 @@ export default function AuditPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-foreground">Audit-Protokoll</h2>
-          <p className="text-xs text-muted mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Alle administrativen Aktionen der Plattform
             {!loading && (
               <span className="ml-2 text-foreground font-semibold">
@@ -142,14 +142,14 @@ export default function AuditPage() {
                 className="bg-field-background h-9 rounded-xl pl-9 text-sm w-48"
               />
             </TextField>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           </div>
 
           {/* Operation filter */}
           <select
             value={operationFilter}
             onChange={(e) => handleFilterChange(e.target.value)}
-            className="text-sm bg-surface border border-border rounded-xl px-3 py-2 text-foreground outline-none focus:border-accent transition-colors h-9"
+            className="text-sm bg-surface border border-border rounded-xl px-3 py-2 text-foreground outline-none focus:border-primary transition-colors h-9"
           >
             {FILTER_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -173,8 +173,8 @@ export default function AuditPage() {
               items={displayItems}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-10 gap-2">
-                  <Info className="w-8 h-8 text-muted opacity-50" />
-                  <span className="text-muted">Keine Einträge gefunden</span>
+                  <Info className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <span className="text-muted-foreground">Keine Einträge gefunden</span>
                 </EmptyState>
               )}
             >
@@ -208,7 +208,7 @@ export default function AuditPage() {
                             {entry.username || '—'}
                           </span>
                           {entry.email && (
-                            <span className="text-[10px] text-muted">{entry.email}</span>
+                            <span className="text-[10px] text-muted-foreground">{entry.email}</span>
                           )}
                         </div>
                       )}
@@ -234,7 +234,7 @@ export default function AuditPage() {
                       {isSkeleton ? (
                         <div className="h-3 w-48 bg-surface-secondary rounded animate-pulse" />
                       ) : (
-                        <span className="text-xs text-muted max-w-xs truncate block">
+                        <span className="text-xs text-muted-foreground max-w-xs truncate block">
                           {entry.details || '—'}
                         </span>
                       )}

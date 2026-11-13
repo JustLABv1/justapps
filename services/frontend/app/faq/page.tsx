@@ -18,7 +18,7 @@ export default function GlobalFAQPage() {
     return (
       <PageContainer>
         <Card variant="secondary">
-          <Card.Content className="p-8 text-center text-muted">Das FAQ ist derzeit deaktiviert.</Card.Content>
+          <Card.Content className="p-8 text-center text-muted-foreground">Das FAQ ist derzeit deaktiviert.</Card.Content>
         </Card>
       </PageContainer>
     );

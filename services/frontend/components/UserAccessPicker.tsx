@@ -139,7 +139,7 @@ export function UserAccessPicker({
         </div>
       )}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           aria-label="Benutzer suchen"
           className="w-full pl-9"
@@ -153,9 +153,9 @@ export function UserAccessPicker({
         {loading || searching ? (
           <div
             role="status"
-            className="flex items-center justify-center gap-3 p-8 text-sm text-muted"
+            className="flex items-center justify-center gap-3 p-8 text-sm text-muted-foreground"
           >
-            <Loader2 className="h-4 w-4 animate-spin text-accent" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
             {searching ? "Benutzer werden gesucht…" : loadingLabel}
           </div>
         ) : filtered.length ? (
@@ -168,10 +168,10 @@ export function UserAccessPicker({
                 aria-pressed={selected}
                 disabled={disabled || readOnly || lockedIds?.has(user.id)}
                 onClick={() => toggle(user.id)}
-                className={`flex w-full items-center gap-3 p-3 text-left transition-colors ${selected ? "bg-accent/10 text-accent" : "hover:bg-surface-secondary"}`}
+                className={`flex w-full items-center gap-3 p-3 text-left transition-colors ${selected ? "bg-primary/10 text-primary" : "hover:bg-surface-secondary"}`}
               >
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${selected ? "bg-accent text-white" : "bg-surface-secondary text-muted"}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${selected ? "bg-primary text-white" : "bg-surface-secondary text-muted-foreground"}`}
                 >
                   {user.username[0]?.toUpperCase() || "?"}
                 </div>
@@ -179,23 +179,23 @@ export function UserAccessPicker({
                   <p className="truncate text-sm font-semibold text-foreground">
                     {user.username}
                   </p>
-                  <p className="truncate text-xs text-muted">{user.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {statusById?.[user.id] || user.authType || user.role}
                 </span>
                 {selected ? (
-                  <Check className="h-4 w-4 shrink-0 text-accent" />
+                  <Check className="h-4 w-4 shrink-0 text-primary" />
                 ) : (
-                  <UserRoundCog className="h-4 w-4 shrink-0 text-muted" />
+                  <UserRoundCog className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
               </button>
             );
           })
         ) : (
           <EmptyState className="flex flex-col items-center justify-center gap-2 p-8 text-center">
-            <UsersRound className="h-8 w-8 text-muted opacity-50" />
-            <span className="text-sm text-muted">
+            <UsersRound className="h-8 w-8 text-muted-foreground opacity-50" />
+            <span className="text-sm text-muted-foreground">
               {currentResult?.error ||
                 (!readOnly && query.length < 2
                   ? "Zum Einladen mindestens 2 Zeichen eines Namens oder einer E-Mail-Adresse eingeben."
@@ -205,7 +205,7 @@ export function UserAccessPicker({
         )}
       </div>
       {currentResult?.hasMore && (
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Die ersten 20 Treffer werden angezeigt. Verfeinern Sie Ihre Suche.
         </p>
       )}

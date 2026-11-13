@@ -171,9 +171,9 @@ export default function LoginPage() {
         </Form>
         {!settings.disableRegistration && (
           <div className="mt-6 text-center text-sm">
-            <p className="text-muted">
+            <p className="text-muted-foreground">
               Noch keinen Account?{' '}
-              <Link href="/register" className="text-accent font-medium">Registrieren</Link>
+              <Link href="/register" className="text-primary font-medium">Registrieren</Link>
             </p>
           </div>
         )}
@@ -203,7 +203,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={() => setShowEmailForm((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mx-auto"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto"
         >
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showEmailForm ? 'rotate-180' : ''}`} />
           {showEmailForm ? 'E-Mail-Anmeldung ausblenden' : 'Stattdessen mit E-Mail anmelden'}
@@ -214,7 +214,7 @@ export default function LoginPage() {
         <>
           <div className="my-5 flex items-center gap-3">
             <Separator className="flex-1" />
-            <span className="text-xs text-muted font-medium uppercase">E-Mail & Passwort</span>
+            <span className="text-xs text-muted-foreground font-medium uppercase">E-Mail & Passwort</span>
             <Separator className="flex-1" />
           </div>
 
@@ -235,9 +235,9 @@ export default function LoginPage() {
 
           {!settings.disableRegistration && (
             <div className="mt-5 text-center text-sm">
-              <p className="text-muted">
+              <p className="text-muted-foreground">
                 Noch keinen Account?{' '}
-                <Link href="/register" className="text-accent font-medium">Registrieren</Link>
+                <Link href="/register" className="text-primary font-medium">Registrieren</Link>
               </p>
             </div>
           )}

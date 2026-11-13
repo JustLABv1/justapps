@@ -530,7 +530,7 @@ export default function BackupsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Backups
         </h1>
-        <p className="max-w-3xl text-sm text-muted">
+        <p className="max-w-3xl text-sm text-muted-foreground">
           Der Backup-Bereich exportiert jetzt verschlüsselte Sicherungsdateien
           mit klar markierten Datenabschnitten. Exporte und Importe laufen über
           dieselbe Oberfläche, damit vollständige Sicherungen und selektive
@@ -544,7 +544,7 @@ export default function BackupsPage() {
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning/10 text-warning">
             <ShieldAlert className="h-5 w-5" />
           </div>
-          <div className="space-y-2 text-sm text-muted">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p className="font-semibold text-foreground">
               Stand dieser Implementierung
             </p>
@@ -574,21 +574,21 @@ export default function BackupsPage() {
               className="flex h-full flex-col gap-4 border border-border/60 p-6 shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Archive className="h-5 w-5" />
                 </div>
                 <div>
                   <h2 className="text-base font-semibold text-foreground">
                     {preset.title}
                   </h2>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     {preset.mode === "safe" ? "Empfohlen" : "Sensitiv"}
                   </p>
                 </div>
               </div>
-              <p className="flex-1 text-sm text-muted">{preset.description}</p>
+              <p className="flex-1 text-sm text-muted-foreground">{preset.description}</p>
               <Button
-                className="gap-2 bg-accent text-white"
+                className="gap-2 bg-primary text-white"
                 onPress={() =>
                   openExportModal(preset.mode, preset.id, preset.sections)
                 }
@@ -612,7 +612,7 @@ export default function BackupsPage() {
             <h2 className="text-lg font-semibold text-foreground">
               Selektiver Export und Import
             </h2>
-            <p className="max-w-3xl text-sm text-muted">
+            <p className="max-w-3xl text-sm text-muted-foreground">
               Wählen Sie gezielt Abschnitte aus, exportieren Sie nur den
               benötigten Scope oder spielen Sie eine bestehende Sicherung im
               Merge- oder Replace-Modus zurück.
@@ -632,7 +632,7 @@ export default function BackupsPage() {
                 <Button size="sm" variant="secondary" onPress={clearSections}>
                   Auswahl leeren
                 </Button>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   {selectedSections.length} von {sectionOptions.length}{" "}
                   Abschnitten ausgewählt
                 </p>
@@ -646,7 +646,7 @@ export default function BackupsPage() {
                       key={section.id}
                       className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${
                         isSelected
-                          ? "border-accent bg-accent/5"
+                          ? "border-primary bg-primary/5"
                           : "border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary"
                       }`}
                     >
@@ -654,7 +654,7 @@ export default function BackupsPage() {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSection(section.id)}
-                        className="mt-1 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                        className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
                       />
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -667,7 +667,7 @@ export default function BackupsPage() {
                             </span>
                           ) : null}
                         </div>
-                        <p className="text-sm text-muted">
+                        <p className="text-sm text-muted-foreground">
                           {section.description}
                         </p>
                       </div>
@@ -679,7 +679,7 @@ export default function BackupsPage() {
 
             <div className="space-y-4 rounded-3xl border border-border/60 bg-surface-secondary/30 p-5">
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   Exportmodus
                 </p>
                 <Switch isSelected={isFullMode} onChange={setIsFullMode}>
@@ -689,7 +689,7 @@ export default function BackupsPage() {
                     </Switch.Control>
                   </Switch.Content>
                 </Switch>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   {isFullMode
                     ? "Vollständiger Modus mit sensiblen Secrets."
                     : "Sicherer Modus ohne Passwort-Hashes und Token-Secrets."}
@@ -697,7 +697,7 @@ export default function BackupsPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   Restoremodus
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -714,7 +714,7 @@ export default function BackupsPage() {
                     Replace
                   </Button>
                 </div>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   {restoreMode === "merge"
                     ? "Merge aktualisiert vorhandene Datensätze und ergänzt fehlende Einträge."
                     : "Replace löscht die aktuelle Instanz und stellt den Backup-Stand vollständig wieder her."}
@@ -729,7 +729,7 @@ export default function BackupsPage() {
 
               <div className="flex flex-col gap-3">
                 <Button
-                  className="gap-2 bg-accent text-white"
+                  className="gap-2 bg-primary text-white"
                   onPress={handleAdvancedExport}
                   isDisabled={
                     Boolean(downloadingId) || selectedSections.length === 0
@@ -764,7 +764,7 @@ export default function BackupsPage() {
                   )}
                   Backup importieren
                 </Button>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   {selectedFileName
                     ? `Letzte Datei: ${selectedFileName}`
                     : "Die Passphrase wird nach dem Klick und der Dateiauswahl in einem Modal abgefragt."}
@@ -782,7 +782,7 @@ export default function BackupsPage() {
               <h2 className="text-lg font-semibold text-foreground">
                 Letztes Import-Ergebnis
               </h2>
-              <p className="text-sm text-muted">
+              <p className="text-sm text-muted-foreground">
                 {importResult.message} · Modus: {importResult.restoreMode}
               </p>
             </div>
@@ -792,7 +792,7 @@ export default function BackupsPage() {
                   key={section}
                   className="rounded-2xl border border-border/60 bg-surface-secondary/40 p-4"
                 >
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                     {section}
                   </p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
@@ -800,26 +800,26 @@ export default function BackupsPage() {
                       <p className="font-semibold text-foreground">
                         {stats.created}
                       </p>
-                      <p className="text-muted">neu</p>
+                      <p className="text-muted-foreground">neu</p>
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">
                         {stats.updated}
                       </p>
-                      <p className="text-muted">aktualisiert</p>
+                      <p className="text-muted-foreground">aktualisiert</p>
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">
                         {stats.skipped}
                       </p>
-                      <p className="text-muted">übersprungen</p>
+                      <p className="text-muted-foreground">übersprungen</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
             {importResult.warnings && importResult.warnings.length > 0 ? (
-              <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4 text-sm text-muted">
+              <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">Warnungen</p>
                 <ul className="mt-3 space-y-2">
                   {importResult.warnings.map((warning) => (
@@ -843,20 +843,20 @@ export default function BackupsPage() {
             <Modal.Dialog className="sm:max-w-md">
               <Modal.CloseTrigger />
               <Modal.Header>
-                <Modal.Icon className="bg-accent/10 text-accent">
+                <Modal.Icon className="bg-primary/10 text-primary">
                   <Download className="h-5 w-5" />
                 </Modal.Icon>
                 <Modal.Heading>Backup verschlüsseln</Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <div className="space-y-5">
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     Die ausgewählte Sicherung wird erst nach Eingabe einer
                     Passphrase exportiert. Ohne diese Passphrase kann das Backup
                     später nicht wiederhergestellt werden.
                   </p>
                   {pendingExport ? (
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                       {pendingExport.sections.length} Abschnitt
                       {pendingExport.sections.length !== 1 ? "e" : ""} ·{" "}
                       {pendingExport.mode === "safe"
@@ -866,7 +866,7 @@ export default function BackupsPage() {
                   ) : null}
                   <div className="flex flex-col gap-4">
                     <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                         Passphrase
                       </p>
                       <Input
@@ -883,7 +883,7 @@ export default function BackupsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                         Passphrase bestätigen
                       </p>
                       <Input
@@ -901,7 +901,7 @@ export default function BackupsPage() {
                     </div>
                   </div>
                   <p
-                    className={`text-sm ${exportReady ? "text-success" : "text-muted"}`}
+                    className={`text-sm ${exportReady ? "text-success" : "text-muted-foreground"}`}
                   >
                     {!exportPassphrase
                       ? "Geben Sie eine Passphrase ein, um den Export zu starten."
@@ -923,7 +923,7 @@ export default function BackupsPage() {
                     Abbrechen
                   </Button>
                   <Button
-                    className="bg-accent text-white"
+                    className="bg-primary text-white"
                     onPress={() => void submitExport()}
                     isDisabled={!exportReady || Boolean(downloadingId)}
                   >
@@ -959,13 +959,13 @@ export default function BackupsPage() {
               </Modal.Header>
               <Modal.Body>
                 <div className="space-y-5">
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     {pendingImportFile
                       ? `Datei: ${pendingImportFile.name}`
                       : "Nach der Dateiauswahl kann der Import hier gestartet werden."}
                   </p>
                   <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                       Passphrase
                     </p>
                     <Input
@@ -981,14 +981,14 @@ export default function BackupsPage() {
                       variant="secondary"
                     />
                   </div>
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-muted-foreground">
                     Für `.jabackup`-Dateien ist die Passphrase erforderlich.
                     Legacy-JSON-Backups können ohne Passphrase importiert werden
                     und erzeugen einen Warnhinweis.
                   </p>
                   {importing ? (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-muted">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
                           {importPhase === "uploading"
                             ? "Backup wird in kleinen Teilen übertragen"
@@ -998,7 +998,7 @@ export default function BackupsPage() {
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-default">
                         <div
-                          className="h-full rounded-full bg-accent transition-[width] duration-200"
+                          className="h-full rounded-full bg-primary transition-[width] duration-200"
                           style={{ width: `${importProgress}%` }}
                         />
                       </div>

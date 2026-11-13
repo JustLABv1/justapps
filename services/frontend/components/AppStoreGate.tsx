@@ -23,7 +23,7 @@ export function AppStoreGate({ children }: { children: ReactNode }) {
   if (!settingsLoaded || authLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-6 h-6 animate-spin text-muted" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }

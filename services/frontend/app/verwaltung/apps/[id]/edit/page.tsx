@@ -29,7 +29,7 @@ export default function EditAppPage() {
   if (app === undefined) {
     return (
       <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }

@@ -167,8 +167,8 @@ export default function BenutzerPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div><p className="text-sm text-muted">{users.length} Benutzer registriert</p><p className="mt-1 text-xs text-muted">Individuelle Freigaben pro Konto. <Link href="/verwaltung/sicherheit/zugriff" className="font-medium text-accent hover:underline">Globale Regeln und Rollen verwalten</Link></p></div>
-        <Button size="sm" onPress={handleCreateUser} className="bg-accent text-white gap-2">
+        <div><p className="text-sm text-muted-foreground">{users.length} Benutzer registriert</p><p className="mt-1 text-xs text-muted-foreground">Individuelle Freigaben pro Konto. <Link href="/verwaltung/sicherheit/zugriff" className="font-medium text-primary hover:underline">Globale Regeln und Rollen verwalten</Link></p></div>
+        <Button size="sm" onPress={handleCreateUser} className="bg-primary text-white gap-2">
           <UserPlus className="w-4 h-4" /> Benutzer einladen
         </Button>
       </div>
@@ -185,7 +185,7 @@ export default function BenutzerPage() {
 
       {loading ? (
         <div className="py-20 flex justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : (
         <UserTable
@@ -212,16 +212,16 @@ export default function BenutzerPage() {
                 </Modal.Header>
                 <Modal.Body className="px-8 py-6 space-y-4">
                   <TextField isRequired onChange={(val) => setFormData({ ...formData, username: val })}>
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Benutzername</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Benutzername</Label>
                     <Input value={formData.username || ''} placeholder="max.mustermann" className="bg-field-background" />
                   </TextField>
                   <TextField isRequired type="email" onChange={(val) => setFormData({ ...formData, email: val })}>
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">E-Mail</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">E-Mail</Label>
                     <Input value={formData.email || ''} placeholder="max@beispiel.de" className="bg-field-background" />
                   </TextField>
                   {!selectedUser && (
                     <TextField isRequired type="password" onChange={(val) => setFormData({ ...formData, password: val })}>
-                      <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Passwort</Label>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Passwort</Label>
                       <Input value={formData.password || ''} placeholder="******" className="bg-field-background" />
                     </TextField>
                   )}
@@ -230,7 +230,7 @@ export default function BenutzerPage() {
                     onChange={(key) => setFormData({ ...formData, role: key as string })}
                     className="w-full"
                   >
-                    <Label className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Rolle</Label>
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Rolle</Label>
                     <Select.Trigger className="bg-field-background border-border">
                       <Select.Value />
                       <Select.Indicator />
@@ -245,12 +245,12 @@ export default function BenutzerPage() {
                       </ListBox>
                     </Select.Popover>
                   </Select>
-                  <div className="rounded-xl border border-border p-3"><Switch isSelected={formData.role === 'admin' || !!formData.canCreateSpaces} isDisabled={formData.role === 'admin'} onChange={(value) => setFormData({...formData,canCreateSpaces:value})}><Switch.Control><Switch.Thumb /></Switch.Control><Switch.Content><Label>Spaces erstellen erlauben</Label><p className="text-xs text-muted">Gilt bei der globalen Regel „Nur für erlaubte Nutzer“. Bestehende Mitgliedschaften bleiben beim Entzug erhalten.</p></Switch.Content></Switch></div>
+                  <div className="rounded-xl border border-border p-3"><Switch isSelected={formData.role === 'admin' || !!formData.canCreateSpaces} isDisabled={formData.role === 'admin'} onChange={(value) => setFormData({...formData,canCreateSpaces:value})}><Switch.Control><Switch.Thumb /></Switch.Control><Switch.Content><Label>Spaces erstellen erlauben</Label><p className="text-xs text-muted-foreground">Gilt bei der globalen Regel „Nur für erlaubte Nutzer“. Bestehende Mitgliedschaften bleiben beim Entzug erhalten.</p></Switch.Content></Switch></div>
                 </Modal.Body>
                 <Modal.Footer className="px-8 py-6 border-t border-border">
                   <div className="flex justify-end gap-3 w-full">
                     <Button variant="ghost" slot="close" className="px-6 font-bold">Abbrechen</Button>
-                    <Button type="submit" className="bg-accent text-white px-8 font-medium">Speichern</Button>
+                    <Button type="submit" className="bg-primary text-white px-8 font-medium">Speichern</Button>
                   </div>
                 </Modal.Footer>
               </form>

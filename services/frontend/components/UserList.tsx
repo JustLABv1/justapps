@@ -46,15 +46,15 @@ export function UserList({
   return (
     <div className="grid grid-cols-1 gap-4">
       {users.map((u) => (
-        <Card key={u.id} variant="default" className={`hover:border-accent/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group ${u.disabled ? 'opacity-75' : ''}`}>
+        <Card key={u.id} variant="default" className={`hover:border-primary/30 transition-all duration-200 border-border shadow-sm hover:shadow-md group ${u.disabled ? 'opacity-75' : ''}`}>
           <div className="flex flex-col md:flex-row items-center p-5 gap-6">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-secondary border-border text-muted'}`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-sm flex-shrink-0 border ${u.role === 'admin' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-surface-secondary border-border text-muted-foreground'}`}>
               {u.role === 'admin' ? <ShieldCheck className="w-6 h-6" /> : <User className="w-6 h-6" />}
             </div>
             <div className="flex-grow text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-1.5 flex-wrap">
                 <h3 className="text-lg font-bold text-foreground">{u.username}</h3>
-                <Chip size="sm" variant="soft" className={`font-bold text-[10px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-accent/10 text-accent' : ''}`}>{u.role === 'admin' ? 'Administrator' : 'Benutzer'}</Chip>
+                <Chip size="sm" variant="soft" className={`font-bold text-[10px] uppercase tracking-wider ${u.role === 'admin' ? 'bg-primary/10 text-primary' : ''}`}>{u.role === 'admin' ? 'Administrator' : 'Benutzer'}</Chip>
                 {u.authType && (
                   <Chip size="sm" variant="primary" className="font-bold text-[10px] uppercase tracking-wider opacity-70 border-border/50">
                     {u.authType === 'oidc' ? 'OIDC' : 'Lokal'}
@@ -65,7 +65,7 @@ export function UserList({
                 )}
                 {u.disabled && <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider bg-danger/10 text-danger">Deaktiviert</Chip>}
               </div>
-              <div className="text-sm text-muted flex items-center justify-center md:justify-start gap-2">
+              <div className="text-sm text-muted-foreground flex items-center justify-center md:justify-start gap-2">
                 <div className="bg-surface-secondary px-2 py-1 rounded-md border border-border/50 font-mono text-[11px]">
                   {u.email}
                 </div>
@@ -78,7 +78,7 @@ export function UserList({
                 onPress={() => handleEditUser(u)}
                 className="font-bold gap-2 hidden md:flex"
               >
-                <Pencil className="w-4 h-4 text-muted" />
+                <Pencil className="w-4 h-4 text-muted-foreground" />
                 Bearbeiten
               </Button>
               

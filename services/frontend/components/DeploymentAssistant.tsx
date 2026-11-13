@@ -60,7 +60,7 @@ services:
   return (
     <div className="bg-surface-secondary rounded-2xl p-6 border border-border shadow-sm">
       <div className="flex items-center gap-3 text-foreground font-bold mb-6 text-xl">
-        <Terminal className="w-7 h-7 text-accent" />
+        <Terminal className="w-7 h-7 text-primary" />
         Deployment Assistant
       </div>
 
@@ -68,7 +68,7 @@ services:
       {hasVariants && (
         <div className="mb-6 p-4 bg-surface rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground shrink-0">
-            <Layers className="w-4 h-4 text-accent" />
+            <Layers className="w-4 h-4 text-primary" />
             Deployment-Variante:
           </div>
           <Select
@@ -93,7 +93,7 @@ services:
             </Select.Popover>
           </Select>
           {activeVariant?.description && (
-            <p className="text-xs text-muted">{activeVariant.description}</p>
+            <p className="text-xs text-muted-foreground">{activeVariant.description}</p>
           )}
         </div>
       )}
@@ -173,7 +173,7 @@ services:
               <div className="mt-8 space-y-4">
                 <div className="flex items-center justify-between border-b border-border pb-2 px-1">
                   <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <FileCode className="w-4 h-4 text-accent" />
+                    <FileCode className="w-4 h-4 text-primary" />
                     values.yaml Konfiguration
                   </div>
                   <Button 
@@ -192,15 +192,15 @@ services:
                   </pre>
                 </div>
                 <div className="p-3 bg-surface rounded-lg border border-border">
-                  <p className="text-xs text-muted leading-relaxed">
-                    Hinweis: Speichern Sie diesen Inhalt als <code className="text-accent font-mono">values.yaml</code> ab und führen Sie den obigen Helm-Befehl aus.
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Hinweis: Speichern Sie diesen Inhalt als <code className="text-primary font-mono">values.yaml</code> ab und führen Sie den obigen Helm-Befehl aus.
                   </p>
                 </div>
               </div>
             )}
 
-            <p className="text-sm text-muted mt-8 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border font-medium">
-              <span className="text-accent font-bold">Zusatzinfo:</span> {helmNote || 'Standard Helm Installation für Kubernetes Umgebungen.'}
+            <p className="text-sm text-muted-foreground mt-8 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border font-medium">
+              <span className="text-primary font-bold">Zusatzinfo:</span> {helmNote || 'Standard Helm Installation für Kubernetes Umgebungen.'}
             </p>
           </Tabs.Panel>
         )}
@@ -229,8 +229,8 @@ services:
                 </Tooltip.Content>
               </Tooltip>
             </div>
-            <p className="text-sm text-muted mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-accent font-bold">Hinweis:</span> {composeNote || 'Standard Docker Compose Setup für lokale Erprobung.'}
+            <p className="text-sm text-muted-foreground mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
+              <span className="text-primary font-bold">Hinweis:</span> {composeNote || 'Standard Docker Compose Setup für lokale Erprobung.'}
             </p>
           </Tabs.Panel>
         )}
@@ -259,8 +259,8 @@ services:
                 </Tooltip.Content>
               </Tooltip>
             </div>
-            <p className="text-sm text-muted mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-accent font-bold">Hinweis:</span> {dockerNote || 'Direkter Docker-Start für Testzwecke.'}
+            <p className="text-sm text-muted-foreground mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
+              <span className="text-primary font-bold">Hinweis:</span> {dockerNote || 'Direkter Docker-Start für Testzwecke.'}
             </p>
           </Tabs.Panel>
         )}

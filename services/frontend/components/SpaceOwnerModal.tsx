@@ -56,7 +56,7 @@ export function SpaceOwnerModal({
             <Modal.Heading>Eigentümer ändern</Modal.Heading>
           </Modal.Header>
           <Modal.Body className="space-y-5">
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Wählen Sie einen neuen Eigentümer für{" "}
               <strong className="text-foreground">{space.name}</strong>. Er
               erhält sofort die Kontrolle über den Space. Die enthaltenen Apps

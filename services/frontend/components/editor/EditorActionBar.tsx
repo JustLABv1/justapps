@@ -30,7 +30,7 @@ export function EditorActionBar({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {progressLabel && (
-              <span className="text-xs font-semibold text-muted">
+              <span className="text-xs font-semibold text-muted-foreground">
                 {progressLabel}
               </span>
             )}

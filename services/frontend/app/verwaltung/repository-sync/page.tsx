@@ -145,7 +145,7 @@ export default function RepositorySyncPage() {
     {
       label: 'Verknüpft gesamt',
       value: stats.total,
-      icon: <Link2 className="w-4 h-4 text-muted" />,
+      icon: <Link2 className="w-4 h-4 text-muted-foreground" />,
       bg: 'bg-surface-secondary',
       text: 'text-foreground',
       filter: '',
@@ -191,7 +191,7 @@ export default function RepositorySyncPage() {
           ))}
         </div>
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -212,12 +212,12 @@ export default function RepositorySyncPage() {
             onClick={() => setStatusFilter(statusFilter === filter ? '' : filter)}
             className={`rounded-2xl border bg-surface p-5 flex flex-col gap-3 shadow-sm text-left transition-all hover:shadow-md ${
               statusFilter === filter && filter !== ''
-                ? 'border-accent ring-1 ring-accent/30'
-                : 'border-border hover:border-accent/40'
+                ? 'border-primary ring-1 ring-primary/30'
+                : 'border-border hover:border-primary/40'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">{label}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
               <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
                 {icon}
               </div>
@@ -250,7 +250,7 @@ export default function RepositorySyncPage() {
               className="bg-field-background h-9 rounded-xl pl-9 text-sm w-56"
             />
           </TextField>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
         </div>
       </div>
 
@@ -270,8 +270,8 @@ export default function RepositorySyncPage() {
               items={filteredApps}
               renderEmptyState={() => (
                 <EmptyState className="flex flex-col items-center justify-center py-12 gap-2">
-                  <GitBranch className="w-8 h-8 text-muted opacity-40" />
-                  <span className="text-muted">
+                  <GitBranch className="w-8 h-8 text-muted-foreground opacity-40" />
+                  <span className="text-muted-foreground">
                     {linkedApps.length === 0
                       ? 'Keine Apps mit Repository-Verknüpfung gefunden'
                       : 'Keine Apps für diesen Filter gefunden'}
@@ -297,7 +297,7 @@ export default function RepositorySyncPage() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-semibold text-foreground">{app.name}</span>
-                          <span className="text-[10px] font-mono text-muted">{app.id}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{app.id}</span>
                         </div>
                       </div>
                     </Table.Cell>
@@ -308,12 +308,12 @@ export default function RepositorySyncPage() {
                         <span className="text-xs font-semibold text-foreground">
                           {sync.providerKey || '—'}
                           {sync.providerType && (
-                            <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-muted">
+                            <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                               ({providerTypeLabel(sync.providerType)})
                             </span>
                           )}
                         </span>
-                        <span className="text-[10px] font-mono text-muted truncate max-w-[200px]">
+                        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]">
                           {sync.projectPath || '—'}
                         </span>
                       </div>
@@ -346,7 +346,7 @@ export default function RepositorySyncPage() {
                           {relativeTime(sync.lastSyncedAt)}
                         </span>
                         {sync.lastSyncedAt && (
-                          <span className="text-[10px] text-muted font-mono">
+                          <span className="text-[10px] text-muted-foreground font-mono">
                             {new Date(sync.lastSyncedAt).toLocaleString('de-DE', {
                               day: '2-digit', month: '2-digit', year: 'numeric',
                               hour: '2-digit', minute: '2-digit',
@@ -363,7 +363,7 @@ export default function RepositorySyncPage() {
                           {sync.lastSyncError}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted italic">—</span>
+                        <span className="text-xs text-muted-foreground italic">—</span>
                       )}
                     </Table.Cell>
 
@@ -379,8 +379,8 @@ export default function RepositorySyncPage() {
                           aria-label="Jetzt synchronisieren"
                         >
                           {syncingIds.has(app.id)
-                            ? <Loader2 className="w-4 h-4 animate-spin text-muted" />
-                            : <RefreshCw className="w-4 h-4 text-muted" />}
+                            ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            : <RefreshCw className="w-4 h-4 text-muted-foreground" />}
                         </Button>
                         <Button
                           isIconOnly
@@ -389,7 +389,7 @@ export default function RepositorySyncPage() {
                           onPress={() => router.push(`/apps/${app.id}`)}
                           aria-label="App ansehen"
                         >
-                          <ExternalLink className="w-4 h-4 text-muted" />
+                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
                         </Button>
                         <Button
                           isIconOnly
@@ -398,7 +398,7 @@ export default function RepositorySyncPage() {
                           onPress={() => router.push(`/verwaltung/katalog/apps/${app.id}/edit`)}
                           aria-label="App bearbeiten"
                         >
-                          <Pencil className="w-4 h-4 text-muted" />
+                          <Pencil className="w-4 h-4 text-muted-foreground" />
                         </Button>
                       </div>
                     </Table.Cell>
@@ -411,7 +411,7 @@ export default function RepositorySyncPage() {
       </Table>
 
       {filteredApps.length > 0 && (
-        <p className="text-xs text-muted text-right">
+        <p className="text-xs text-muted-foreground text-right">
           {filteredApps.length} von {linkedApps.length} verknüpften Apps
         </p>
       )}

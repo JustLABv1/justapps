@@ -115,16 +115,16 @@ export function RatingSection({ appId }: { appId: string }) {
   return (
     <div className="mt-2 space-y-6">
       <div className="flex items-center gap-2 text-lg font-bold text-foreground">
-        <MessageSquare className="w-5 h-5 text-accent" />
+        <MessageSquare className="w-5 h-5 text-primary" />
         Feedback & Bewertungen
       </div>
 
       {user ? (
         <div ref={formRef}>
-          <Card className={`border-border shadow-sm transition-all ${isEditing ? 'ring-2 ring-accent/50 bg-accent/5' : 'bg-surface-secondary'}`} variant="default">
+          <Card className={`border-border shadow-sm transition-all ${isEditing ? 'ring-2 ring-primary/50 bg-primary/5' : 'bg-surface-secondary'}`} variant="default">
             <Card.Content className="p-5 space-y-4">
             <div className="flex justify-between items-center">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">
                 {isEditing ? "Meine Bewertung bearbeiten" : "Ihre Bewertung abgeben"}
               </Label>
               {isEditing && (
@@ -132,7 +132,7 @@ export function RatingSection({ appId }: { appId: string }) {
                   variant="ghost"
                   size="sm"
                   onPress={() => setIsEditing(false)}
-                  className="h-auto min-w-0 px-0 py-0 text-[10px] font-medium text-muted underline underline-offset-2"
+                  className="h-auto min-w-0 px-0 py-0 text-[10px] font-medium text-muted-foreground underline underline-offset-2"
                 >
                   Abbrechen
                 </Button>
@@ -155,12 +155,12 @@ export function RatingSection({ appId }: { appId: string }) {
                     className={`w-6 h-6 ${
                       (hoverRating || userRating) >= star
                         ? "fill-gov-gold text-gov-gold drop-shadow-sm"
-                        : "text-muted/20"
+                        : "text-muted-foreground/20"
                     }`}
                   />
                 </Button>
               ))}
-              <span className="ml-3 text-xs font-bold text-muted">
+              <span className="ml-3 text-xs font-bold text-muted-foreground">
                 {userRating > 0 ? `${userRating} / 5` : "Wählen..."}
               </span>
             </div>
@@ -169,7 +169,7 @@ export function RatingSection({ appId }: { appId: string }) {
               onChange={setComment}
               className="flex flex-col gap-1.5"
             >
-              <Label className="text-[10px] font-bold text-muted uppercase tracking-wider">Ihr Kommentar</Label>
+              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ihr Kommentar</Label>
               <TextArea
                 placeholder="Teilen Sie Ihre Erfahrungen mit dieser App..."
                 value={comment}
@@ -181,7 +181,7 @@ export function RatingSection({ appId }: { appId: string }) {
               <Button
                 onPress={handleSubmit}
                 isDisabled={userRating === 0 || submitting}
-                className="font-bold px-5 py-2 text-xs rounded-lg bg-accent text-white hover:bg-accent/90 shadow-sm"
+                className="font-bold px-5 py-2 text-xs rounded-lg bg-primary text-white hover:bg-primary/90 shadow-sm"
               >
                 {submitting ? "Wird gesendet..." : (isEditing ? "Änderungen speichern" : "Bewertung abschicken")}
               </Button>
@@ -192,7 +192,7 @@ export function RatingSection({ appId }: { appId: string }) {
       ) : (
         <Card variant="secondary" className="border border-border bg-surface-secondary/50 shadow-sm rounded-xl">
           <Card.Content className="p-6 text-center text-sm">
-            <p className="text-muted font-medium">Bitte melden Sie sich an, um eine Bewertung abzugeben.</p>
+            <p className="text-muted-foreground font-medium">Bitte melden Sie sich an, um eine Bewertung abzugeben.</p>
           </Card.Content>
         </Card>
       )}
@@ -200,15 +200,15 @@ export function RatingSection({ appId }: { appId: string }) {
       <div className="space-y-3">
         {ratings.length > 0 ? (
           ratings.map((r) => (
-            <div key={r.id} className="bg-surface border border-border p-5 rounded-xl space-y-4 hover:border-accent/30 transition-colors shadow-sm">
+            <div key={r.id} className="bg-surface border border-border p-5 rounded-xl space-y-4 hover:border-primary/30 transition-colors shadow-sm">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center border border-border shadow-sm shrink-0">
-                    <User className="w-5 h-5 text-muted" />
+                    <User className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
                     <div className="text-sm font-bold text-foreground">{r.username || "Anonymer Nutzer"}</div>
-                    <div className="text-[10px] text-muted font-bold uppercase tracking-wider mt-0.5">
+                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
                       {new Date(r.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </div>
                   </div>
@@ -219,7 +219,7 @@ export function RatingSection({ appId }: { appId: string }) {
                       <Star
                         key={s}
                         className={`w-3.5 h-3.5 ${
-                          r.rating >= s ? "fill-gov-gold text-gov-gold drop-shadow-sm" : "text-muted/20"
+                          r.rating >= s ? "fill-gov-gold text-gov-gold drop-shadow-sm" : "text-muted-foreground/20"
                         }`}
                       />
                     ))}
@@ -232,7 +232,7 @@ export function RatingSection({ appId }: { appId: string }) {
                         variant="ghost"
                         size="sm"
                         onPress={() => handleEdit(r)}
-                        className="h-auto min-w-0 px-0 py-0 text-[10px] font-bold text-accent underline underline-offset-2"
+                        className="h-auto min-w-0 px-0 py-0 text-[10px] font-bold text-primary underline underline-offset-2"
                       >
                         Bearbeiten
                       </Button>
@@ -278,7 +278,7 @@ export function RatingSection({ appId }: { appId: string }) {
               </div>
               {r.comment && (
                 <div className="pl-1 relative mt-1">
-                  <p className="text-sm text-muted leading-relaxed bg-surface-secondary/30 p-3 rounded-lg border border-border/40">
+                  <p className="text-sm text-muted-foreground leading-relaxed bg-surface-secondary/30 p-3 rounded-lg border border-border/40">
                     {r.comment}
                   </p>
                 </div>
@@ -286,7 +286,7 @@ export function RatingSection({ appId }: { appId: string }) {
             </div>
           ))
         ) : (
-          <div className="text-center text-muted py-12 border border-dashed border-border bg-surface-secondary/10 rounded-2xl">
+          <div className="text-center text-muted-foreground py-12 border border-dashed border-border bg-surface-secondary/10 rounded-2xl">
             <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
             <p className="font-medium text-sm">Noch keine Bewertungen vorhanden. Seien Sie der Erste!</p>
           </div>

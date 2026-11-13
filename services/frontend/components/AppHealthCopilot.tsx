@@ -93,12 +93,12 @@ export function AppHealthCopilot(props: AppHealthCopilotProps) {
           <Modal.Dialog className="max-h-[min(760px,calc(100vh-2rem))] w-full overflow-hidden">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <Sparkles className="h-5 w-5" />
               </Modal.Icon>
               <div className="min-w-0">
                 <Modal.Heading>Health Copilot</Modal.Heading>
-                <p className="mt-1 truncate text-xs text-muted">{props.appName}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{props.appName}</p>
               </div>
             </Modal.Header>
             <Modal.Body className="max-h-[65vh] space-y-5 overflow-y-auto">
@@ -111,17 +111,17 @@ export function AppHealthCopilot(props: AppHealthCopilotProps) {
                       {props.issues.length > 0 ? props.issues.map((issue) => (
                         <div key={issue} className="rounded-xl border border-border bg-surface p-3">
                           <p className="text-sm font-semibold text-foreground">{getAppHealthIssueLabel(issue)}</p>
-                          <p className="mt-1 text-sm leading-relaxed text-muted">{getAppHealthIssueDescription(issue)}</p>
-                          {localEvidence(issue, props) && <p className="mt-2 text-xs text-muted"><span className="font-semibold text-foreground">Beleg:</span> {localEvidence(issue, props)}</p>}
+                          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{getAppHealthIssueDescription(issue)}</p>
+                          {localEvidence(issue, props) && <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Beleg:</span> {localEvidence(issue, props)}</p>}
                         </div>
-                      )) : <p className="text-sm leading-relaxed text-muted">Der aktuelle Katalogzustand ist unauffällig.</p>}
+                      )) : <p className="text-sm leading-relaxed text-muted-foreground">Der aktuelle Katalogzustand ist unauffällig.</p>}
                     </div>
                   </div>
                 </div>
               </section>
 
               {loading && (
-                <div className="flex items-center gap-2 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" />AI formuliert eine verständliche Einordnung …</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />AI formuliert eine verständliche Einordnung …</div>
               )}
               {error && <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">{error}</p>}
               {suggestion && (
@@ -136,14 +136,14 @@ export function AppHealthCopilot(props: AppHealthCopilotProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold text-foreground">{issue.title}</p>
-                          <p className="mt-1 text-xs text-muted">{getAppHealthIssueLabel(issue.code)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{getAppHealthIssueLabel(issue.code)}</p>
                         </div>
                         <Chip color="warning" variant="soft" size="sm">Hinweis</Chip>
                       </div>
-                      <p className="mt-3 text-sm leading-relaxed text-muted">{issue.explanation}</p>
-                      {issue.evidence && <p className="mt-3 text-xs text-muted"><span className="font-semibold text-foreground">Beleg:</span> {issue.evidence}</p>}
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{issue.explanation}</p>
+                      {issue.evidence && <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Beleg:</span> {issue.evidence}</p>}
                       <div className="mt-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-muted">Nächste Schritte</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nächste Schritte</p>
                         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">
                           {issue.actions.map((action) => <li key={action}>{action}</li>)}
                         </ul>

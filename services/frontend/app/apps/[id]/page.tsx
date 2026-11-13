@@ -48,9 +48,9 @@ import remarkGfm from 'remark-gfm';
 function MetaCard({ label, value, icon }: { label: string; value?: string; icon?: React.ReactNode }) {
   if (!value) return null;
   return (
-    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/30 transition-colors">
-      <dt className="text-xs text-muted uppercase tracking-wider font-semibold flex items-center gap-2">
-        {icon && <span className="text-accent">{icon}</span>}
+    <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-primary/30 transition-colors">
+      <dt className="text-xs text-muted-foreground uppercase tracking-wider font-semibold flex items-center gap-2">
+        {icon && <span className="text-primary">{icon}</span>}
         {label}
       </dt>
       <dd className="text-sm font-medium text-foreground">{value}</dd>
@@ -162,8 +162,8 @@ function AppPageContent() {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      <p className="text-muted font-medium">App-Details werden geladen...</p>
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-muted-foreground font-medium">App-Details werden geladen...</p>
     </div>
   );
 
@@ -247,7 +247,7 @@ function AppPageContent() {
   if (app.authority) {
     metaFields.push({ label: "Herausgeber", value: app.authority, icon: resolveIcon('Building2') });
   }
-  const headerActionClassName = "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0";
+  const headerActionClassName = "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-all shadow-sm shrink-0";
 
   return (
     <div className="max-w-6xl mx-auto pb-20">
@@ -307,7 +307,7 @@ function AppPageContent() {
       <header className="relative overflow-hidden rounded-3xl bg-surface-secondary border border-border p-6 md:p-8 mb-4">
         {/* Decorative background elements */}
         <div className="absolute top-0 right-0 w-full h-full max-w-2xl pointer-events-none opacity-30 dark:opacity-20">
-          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] rounded-full bg-accent/20 blur-3xl" />
+          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] rounded-full bg-primary/20 blur-3xl" />
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-8">
@@ -330,9 +330,9 @@ function AppPageContent() {
             {/* Title row */}
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <h1 className="text-2xl md:text-3xl font-extrabold text-foreground leading-tight">{app.name}</h1>
-              {app.spaceId && <Link href="/spaces" className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">Privater Space</Link>}
+              {app.spaceId && <Link href="/spaces" className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Privater Space</Link>}
               {app.version && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-border bg-surface text-xs font-mono text-muted shadow-sm">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-border bg-surface text-xs font-mono text-muted-foreground shadow-sm">
                   v{app.version}
                 </span>
               )}
@@ -363,7 +363,7 @@ function AppPageContent() {
                 </Chip>
               )}
               {hasRating && (
-                <span className="inline-flex items-center gap-1.5 text-sm text-muted bg-surface px-2.5 py-1 rounded-lg border border-border shadow-sm">
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground bg-surface px-2.5 py-1 rounded-lg border border-border shadow-sm">
                   <Star className="w-4 h-4 fill-gov-gold text-gov-gold" />
                   <span className="font-bold text-foreground">{(app.ratingAvg || 0).toFixed(1)}</span>
                   <span>({app.ratingCount})</span>
@@ -372,7 +372,7 @@ function AppPageContent() {
             </div>
 
             {/* Description */}
-            <p className="text-base md:text-md text-muted leading-relaxed max-w-3xl mb-5">{app.description}</p>
+            <p className="text-base md:text-md text-muted-foreground leading-relaxed max-w-3xl mb-5">{app.description}</p>
 
             {/* Tags */}
             {app.tags && app.tags.length > 0 && (
@@ -395,7 +395,7 @@ function AppPageContent() {
                     <Link
                       href={allDemos[0].url}
                       target="_blank"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
                     >
                       <ExternalLink className="w-4 h-4" />
                       {allDemos[0].label}
@@ -482,7 +482,7 @@ function AppPageContent() {
               {app.license && (
                 <Tooltip delay={0}>
                   <Tooltip.Trigger>
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-muted cursor-default shadow-sm">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-border text-sm font-medium text-muted-foreground cursor-default shadow-sm">
                       <Scale className="w-4 h-4" />
                       {app.license}
                     </span>
@@ -493,7 +493,7 @@ function AppPageContent() {
             </div>
 
             {gitLabIntegration?.linked && (
-              <p className="mt-3 text-xs text-muted">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Quelle: {gitLabIntegration.providerLabel || gitLabIntegration.providerKey} · {gitLabIntegration.projectPath}
                 {gitLabIntegration.lastSyncedAt ? ` · zuletzt synchronisiert am ${new Date(gitLabIntegration.lastSyncedAt).toLocaleString('de-DE')}` : ''}
               </p>
@@ -539,8 +539,8 @@ function AppPageContent() {
       {/* ── Technik-Streifen (if available) ── */}
       {app.techStack && app.techStack.length > 0 && (
         <div className="flex items-center gap-4 mb-8 overflow-x-auto bg-surface-secondary/50 p-4 rounded-2xl border border-border">
-          <span className="text-xs text-muted uppercase tracking-wider font-bold shrink-0 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-accent" />
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold shrink-0 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
             Technik
           </span>
           <div className="flex gap-2 flex-wrap">
@@ -560,12 +560,12 @@ function AppPageContent() {
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-bold text-foreground mb-1">Nachnutzung</h3>
-              <p className="text-sm text-muted mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 Diese App kann als bestehende Installation mitgenutzt werden. Falls vorhanden, finden Sie zusätzlich unten technische Installationsanleitungen für einen Eigenbetrieb.
               </p>
               {app.reuseRequirements && (
                 <div className="mt-3 p-4 rounded-xl bg-surface border border-border">
-                  <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Voraussetzungen zur Nachnutzung</h4>
                   <p className="text-sm text-foreground whitespace-pre-wrap">{app.reuseRequirements}</p>
                 </div>
               )}
@@ -691,10 +691,10 @@ function AppPageContent() {
                     <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase">
                       v{release.version}
                     </Chip>
-                    <span className="text-xs text-muted">{new Date(release.publishedAt).toLocaleDateString('de-DE')}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(release.publishedAt).toLocaleDateString('de-DE')}</span>
                   </div>
                   <h3 className="text-base font-semibold text-foreground">{release.title}</h3>
-                  <p className="text-sm text-muted mt-1">{release.summary}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{release.summary}</p>
                   {release.diffPreview && (
                     <p className="mt-2 text-sm font-medium text-foreground/85">{release.diffPreview}</p>
                   )}
@@ -758,7 +758,7 @@ function AppPageContent() {
                     <NextLink
                       key={related.id}
                       href={`/apps/${related.id}`}
-                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-accent/40 hover:bg-surface transition-all shadow-sm group"
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-surface-secondary border border-border hover:border-primary/40 hover:bg-surface transition-all shadow-sm group"
                     >
                       <div className="w-10 h-10 rounded-xl bg-surface border border-border shadow-sm flex items-center justify-center text-xl shrink-0 overflow-hidden">
                         {relatedIconSrc ? (
@@ -775,8 +775,8 @@ function AppPageContent() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate group-hover:text-accent transition-colors">{related.name}</p>
-                        <p className="text-xs text-muted flex items-center gap-1">
+                        <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{related.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Link2 className="w-3 h-3" /> {related.id}
                         </p>
                       </div>
@@ -790,7 +790,7 @@ function AppPageContent() {
       </Tabs>
 
       {/* ── Footer meta ── */}
-      <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted">
+      <div className="mt-12 pt-4 border-t border-separator flex items-center justify-between text-[11px] text-muted-foreground">
         <span>ID: <code className="font-mono">{app.id}</code></span>
         <span>
           Aktualisiert: {app.updatedAt ? new Date(app.updatedAt).toLocaleDateString('de-DE', {

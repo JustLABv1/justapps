@@ -199,13 +199,13 @@ export function RoleSettingsPanel() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             Zugriffssteuerung
           </p>
           <h2 className="mt-1 text-2xl font-bold text-foreground">
             Rollen & Rechte
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Erstellen Sie Rollen, kombinieren Sie einzelne Rechte und weisen Sie
             die Rollen anschließend Benutzern zu.
           </p>
@@ -217,7 +217,7 @@ export function RoleSettingsPanel() {
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted">
+        <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">
           Rollen werden geladen …
         </div>
       ) : (
@@ -228,7 +228,7 @@ export function RoleSettingsPanel() {
               <Card key={role.key} className="border border-border bg-surface">
                 <Card.Header className="flex-row items-start justify-between gap-4">
                   <div className="flex gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
@@ -272,7 +272,7 @@ export function RoleSettingsPanel() {
                   </div>
                 </Card.Header>
                 <Card.Content className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
                     {role.userCount}{" "}
                     {role.userCount === 1 ? "Benutzer" : "Benutzer"}
@@ -294,7 +294,7 @@ export function RoleSettingsPanel() {
                         );
                       })
                     ) : (
-                      <span className="text-sm text-muted">
+                      <span className="text-sm text-muted-foreground">
                         Keine zusätzlichen Rechte
                       </span>
                     )}
@@ -374,7 +374,7 @@ export function RoleSettingsPanel() {
                             key={group}
                             className="rounded-xl border border-border bg-surface-secondary/40 p-4"
                           >
-                            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
+                            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               {group}
                             </h3>
                             <div className="space-y-3">
@@ -396,7 +396,7 @@ export function RoleSettingsPanel() {
                                       <span className="block text-sm font-medium">
                                         {permission.name}
                                       </span>
-                                      <span className="block text-xs text-muted">
+                                      <span className="block text-xs text-muted-foreground">
                                         {permission.description}
                                       </span>
                                     </span>

@@ -129,7 +129,7 @@ export default function RegisterPage() {
         <>
           <div className="my-5 flex items-center gap-3">
             <Separator className="flex-1" />
-            <span className="text-xs text-muted font-medium uppercase">Oder</span>
+            <span className="text-xs text-muted-foreground font-medium uppercase">Oder</span>
             <Separator className="flex-1" />
           </div>
 
@@ -144,9 +144,9 @@ export default function RegisterPage() {
       )}
 
       <div className="mt-6 text-center text-sm">
-        <p className="text-muted">
+        <p className="text-muted-foreground">
           Haben Sie bereits ein Konto?{' '}
-          <Link href="/login" className="text-accent font-medium">
+          <Link href="/login" className="text-primary font-medium">
             Anmelden
           </Link>
         </p>

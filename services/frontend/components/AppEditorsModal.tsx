@@ -104,7 +104,7 @@ export function AppEditorsModal({
         <Modal.Dialog className="max-w-2xl">
           <Modal.CloseTrigger />
           <Modal.Header>
-            <Modal.Icon className="bg-accent-soft text-accent">
+            <Modal.Icon className="bg-primary/10 text-primary">
               <UsersRound className="w-5 h-5" />
             </Modal.Icon>
             <Modal.Heading>Bearbeiter verwalten</Modal.Heading>
@@ -112,13 +112,13 @@ export function AppEditorsModal({
           <Modal.Body>
             <div className="space-y-5">
               <div>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">{app?.name}</strong> kann
                   von ausgewählten Benutzern bearbeitet werden, ohne die
                   Eigentümerschaft zu übertragen.
                 </p>
                 {app?.owner && (
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Besitzer:{" "}
                     <span className="font-medium text-foreground">
                       {app.owner.username}
@@ -155,7 +155,7 @@ export function AppEditorsModal({
               Abbrechen
             </Button>
             <Button
-              className="bg-accent text-white"
+              className="bg-primary text-white"
               onPress={saveEditors}
               isDisabled={saving || loading}
             >

@@ -294,13 +294,13 @@ function AppsContent() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           {apps.length} App{apps.length !== 1 ? 's' : ''} im Store
           {draftCount > 0 ? `, davon ${draftCount} Entwurf${draftCount !== 1 ? 'e' : ''}` : ''}
         </p>
         <div className="flex gap-2">
           <Button
-            className="bg-accent text-white gap-2 shadow-sm font-medium"
+            className="bg-primary text-white gap-2 shadow-sm font-medium"
             size="sm"
             onPress={handleCreateApp}
           >
@@ -354,16 +354,16 @@ function AppsContent() {
           <Modal.Dialog>
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Icon className="bg-accent-soft text-accent">
+              <Modal.Icon className="bg-primary/10 text-primary">
                 <UserRoundCog className="w-5 h-5" />
               </Modal.Icon>
               <Modal.Heading>Besitzer übertragen</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <p className="text-sm text-muted mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Übertragen Sie die Eigentümerschaft von <strong className="text-foreground">{transferApp?.name}</strong> auf einen anderen Benutzer.
               </p>
-              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Neuer Besitzer</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Neuer Besitzer</p>
               <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-surface divide-y divide-border/60">
                 {users.filter(u => u.id !== transferApp?.ownerId).map(u => (
                   <button
@@ -372,24 +372,24 @@ function AppsContent() {
                     onClick={() => setTransferUserId(u.id)}
                     className={`w-full flex items-center gap-3 p-3 transition-colors text-left ${
                       transferUserId === u.id
-                        ? 'bg-accent/10 text-accent'
+                        ? 'bg-primary/10 text-primary'
                         : 'hover:bg-surface-secondary'
                     }`}
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                      transferUserId === u.id ? 'bg-accent text-white' : 'bg-surface-secondary text-muted'
+                      transferUserId === u.id ? 'bg-primary text-white' : 'bg-surface-secondary text-muted-foreground'
                     }`}>
                       {u.username[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{u.username}</p>
-                      <p className="text-xs text-muted truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                     </div>
-                    {transferUserId === u.id && <Check className="w-4 h-4 ml-auto text-accent shrink-0" />}
+                    {transferUserId === u.id && <Check className="w-4 h-4 ml-auto text-primary shrink-0" />}
                   </button>
                 ))}
                 {users.filter(u => u.id !== transferApp?.ownerId).length === 0 && (
-                  <p className="p-4 text-sm text-muted text-center">Keine weiteren Benutzer vorhanden</p>
+                  <p className="p-4 text-sm text-muted-foreground text-center">Keine weiteren Benutzer vorhanden</p>
                 )}
               </div>
             </Modal.Body>
@@ -398,7 +398,7 @@ function AppsContent() {
                 Abbrechen
               </Button>
               <Button
-                className="bg-accent text-white"
+                className="bg-primary text-white"
                 isDisabled={!transferUserId || transferring}
                 onPress={handleSubmitTransfer}
               >
@@ -439,7 +439,7 @@ function AppsContent() {
 
 export default function AppsPage() {
   return (
-    <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
+    <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
       <AppsContent />
     </Suspense>
   );

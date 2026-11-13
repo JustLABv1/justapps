@@ -86,7 +86,7 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
   if (backendState === 'unavailable') {
     return (
       <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12">
-        <div aria-hidden="true" className="maintenance-glow absolute -top-48 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl" />
+        <div aria-hidden="true" className="maintenance-glow absolute -top-48 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div
           aria-hidden="true"
           className="absolute inset-0 opacity-30"
@@ -99,10 +99,10 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
           <div
             key={label}
             aria-hidden="true"
-            className={`maintenance-float absolute hidden items-center gap-2 rounded-xl border border-border/60 bg-surface/80 px-3 py-2 text-xs font-medium text-muted shadow-md shadow-black/5 backdrop-blur-md sm:flex ${position}`}
+            className={`maintenance-float absolute hidden items-center gap-2 rounded-xl border border-border/60 bg-surface/80 px-3 py-2 text-xs font-medium text-muted-foreground shadow-md shadow-black/5 backdrop-blur-md sm:flex ${position}`}
             style={{ animation }}
           >
-            <Icon className="size-4 text-accent" />
+            <Icon className="size-4 text-primary" />
             {label}
             <span className="size-1.5 rounded-full bg-warning" />
           </div>
@@ -121,8 +121,8 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
             </div>
           </Card.Header>
           <Card.Content className="maintenance-notice">
-            <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-surface-secondary p-4 text-sm text-muted">
-              <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent" />
+            <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-surface-secondary p-4 text-sm text-muted-foreground">
+              <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
               <p>Ihre Daten sind sicher. Die Verbindung wird automatisch alle zehn Sekunden erneut geprüft.</p>
             </div>
           </Card.Content>

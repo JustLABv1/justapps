@@ -41,7 +41,7 @@ export default function EditMyAppPage() {
   if (authLoading || app === undefined) {
     return (
       <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -53,13 +53,13 @@ export default function EditMyAppPage() {
       <div className="max-w-5xl mx-auto py-20 px-4">
         <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
           <p className="text-base font-semibold text-foreground mb-2">Profil wird noch synchronisiert</p>
-          <p className="text-sm text-muted mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {profileError || 'Das Backend bestätigt Ihr Benutzerprofil noch. Bitte laden Sie die Daten erneut, bevor Sie die App bearbeiten.'}
           </p>
           <button
             type="button"
             onClick={() => void refreshUser()}
-            className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
           >
             Erneut laden
           </button>
