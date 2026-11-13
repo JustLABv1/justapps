@@ -30,7 +30,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # Stage 3: Build the backend
-FROM golang:1.27.3-bookworm AS backend-builder
+FROM golang:1.27.4-bookworm AS backend-builder
 WORKDIR /app/backend
 COPY services/backend/go.mod services/backend/go.sum ./
 RUN go mod download
