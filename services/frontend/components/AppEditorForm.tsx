@@ -36,8 +36,8 @@ import {
   Tabs,
   TextArea,
   TextField,
-  toast,
 } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import {
   BookOpen,
   Check,

@@ -3,7 +3,8 @@
 import { AppConfig, AppEditorUser, SystemUser } from "@/config/apps";
 import { UserAccessPicker } from "./UserAccessPicker";
 import { fetchApi } from "@/lib/api";
-import { Button, Modal, toast } from "@heroui/react";
+import { Button, Modal } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Loader2, UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 

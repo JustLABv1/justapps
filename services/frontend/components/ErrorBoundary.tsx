@@ -1,6 +1,7 @@
 'use client';
 
-import { Button } from '@heroui/react';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
 import React from 'react';
 
 interface Props {
@@ -32,25 +33,25 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-danger/10 flex items-center justify-center text-2xl">
-            ⚠️
-          </div>
-          <div>
-            <p className="text-lg font-bold text-foreground">Ein Fehler ist aufgetreten</p>
-            <p className="text-sm text-default-500 mt-1 max-w-sm">
+        <div className="mx-auto flex min-h-[40vh] w-full max-w-lg items-center p-8">
+          <Alert tone="destructive" className="w-full">
+            <Alert.Icon />
+            <Alert.Title>Ein Fehler ist aufgetreten</Alert.Title>
+            <Alert.Description>
               Diese Seite konnte nicht geladen werden. Bitte laden Sie die Seite neu oder versuchen Sie es später erneut.
-            </p>
-          </div>
-          <Button
-            onPress={() => {
-              this.setState({ hasError: false, error: null });
-              window.location.reload();
-            }}
-            className="px-4 text-sm font-semibold"
-          >
-            Seite neu laden
-          </Button>
+            </Alert.Description>
+            <Alert.Actions>
+              <Button
+                size="sm"
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  window.location.reload();
+                }}
+              >
+                Seite neu laden
+              </Button>
+            </Alert.Actions>
+          </Alert>
         </div>
       );
     }

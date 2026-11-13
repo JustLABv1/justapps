@@ -1,15 +1,13 @@
 "use client";
 
 import { resolveAssetUrl } from "@/lib/assets";
-import {
-  Avatar,
-  Button,
-  Chip,
-  Dropdown,
-  Label,
-  Link,
-  Separator,
-} from "@heroui/react";
+import { Avatar } from "@/components/panelui/avatar";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Input } from "@/components/panelui/input";
+import { Menu } from "@/components/panelui/menu";
+import { Sheet } from "@/components/panelui/sheet";
+import { Tooltip } from "@/components/panelui/tooltip";
 import {
   Bell,
   Bot,
@@ -19,8 +17,9 @@ import {
   Layers2,
   LayoutDashboard,
   KeyRound,
+  LogOut,
+  Menu as MenuIcon,
   MessageCircleQuestion,
-  Menu,
   Package,
   PlugZap,
   Search,
@@ -30,6 +29,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -200,111 +200,84 @@ export function Navigation() {
     ? regularNavLinks.filter((link) => link.href !== documentationLink.href)
     : regularNavLinks;
 
+  const countBadge = (href: string) => {
+    if (href === "/updates" && totalUnread > 0) {
+      return (
+        <Badge size="sm" variant="info" aria-label={`${totalUnread} ungelesene Updates`}>
+          {totalUnread > 99 ? "99+" : totalUnread}
+        </Badge>
+      );
+    }
+    if (href === "/faq" && openFAQCount > 0) {
+      return (
+        <Badge size="sm" variant="info" aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}>
+          {openFAQCount > 99 ? "99+" : openFAQCount}
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-surface/95 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link
+        <NextLink
           href="/"
-          className="flex items-center gap-2.5 no-underline text-foreground hover:opacity-80 transition-opacity shrink-0"
+          className="flex shrink-0 items-center gap-2 rounded-md text-foreground outline-none transition-opacity hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/40"
         >
-          <div className="flex flex-cols items-center gap-2 leading-tight">
-            {resolvedLogoSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={resolvedLogoSrc}
-                alt={`${storeName} Logo`}
-                width={24}
-                height={24}
-                className="rounded-sm object-contain"
-                style={{ maxHeight: 24 }}
-              />
-            ) : (
-              <JustAppsLogo className="w-6 h-6" />
-            )}
-            <span className="text-[9px] font-bold tracking-[0.2em]">
-              {storeName}
-            </span>
-          </div>
-        </Link>
+          {resolvedLogoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolvedLogoSrc}
+              alt=""
+              width={24}
+              height={24}
+              className="rounded-sm object-contain"
+              style={{ maxHeight: 24 }}
+            />
+          ) : (
+            <JustAppsLogo className="size-6" />
+          )}
+          <span className="text-sm font-semibold tracking-tight">{storeName}</span>
+        </NextLink>
 
         {/* Desktop nav */}
-        <nav
-          className="hidden min-w-0 flex-1 items-center justify-center gap-1 ml-4 xl:flex"
-          aria-label="Hauptnavigation"
-        >
+        <nav className="ml-4 hidden min-w-0 flex-1 items-center gap-0.5 xl:flex" aria-label="Hauptnavigation">
           {desktopNavLinks.map((link) => {
             const Icon = link.icon;
-
             return (
-              <Link
+              <Button
                 key={link.href}
-                href={link.href}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors no-underline xl:px-3 ${
-                  link.active
-                    ? "text-primary bg-primary/8"
-                    : "text-muted-foreground hover:text-foreground hover:bg-default"
-                }`}
+                size="sm"
+                variant={link.active ? "secondary" : "ghost"}
+                aria-current={link.active ? "page" : undefined}
+                render={<NextLink href={link.href} />}
               >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span>{link.label}</span>
-                {link.href === "/updates" && totalUnread > 0 && (
-                  <Chip
-                    size="sm"
-                    color="accent"
-                    variant="soft"
-                    className="text-[10px] font-bold"
-                  >
-                    {totalUnread > 99 ? "99+" : totalUnread}
-                  </Chip>
-                )}
-                {link.href === "/faq" && openFAQCount > 0 && (
-                  <Chip
-                    size="sm"
-                    color="accent"
-                    variant="soft"
-                    className="text-[10px] font-bold"
-                    aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}
-                  >
-                    {openFAQCount > 99 ? "99+" : openFAQCount}
-                  </Chip>
-                )}
-              </Link>
+                <Icon />
+                {link.label}
+                {countBadge(link.href)}
+              </Button>
             );
           })}
 
-          {/* Verwaltung dropdown (admin only) */}
+          {/* Verwaltung (admins only) */}
           {user?.role === "admin" && (
-            <Dropdown>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors h-auto ${
-                  isInVerwaltung
-                    ? "text-primary bg-primary/8"
-                    : "text-muted-foreground hover:text-foreground hover:bg-default"
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5" />
+            <Menu>
+              <Menu.Trigger render={<Button size="sm" variant={isInVerwaltung ? "secondary" : "ghost"} />}>
+                <LayoutDashboard />
                 Verwaltung
-                <ChevronDown className="w-3.5 h-3.5" />
-              </Button>
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  onAction={(key) => router.push(key as string)}
-                  className="min-w-[180px]"
-                >
-                  {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
-                    <Dropdown.Item key={href} id={href} textValue={label}>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
-                        <span>{label}</span>
-                      </div>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown>
+                <ChevronDown />
+              </Menu.Trigger>
+              <Menu.Content className="min-w-52">
+                {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
+                  <Menu.Item key={href} onClick={() => router.push(href)}>
+                    <Icon />
+                    {label}
+                  </Menu.Item>
+                ))}
+              </Menu.Content>
+            </Menu>
           )}
         </nav>
 
@@ -312,351 +285,256 @@ export function Navigation() {
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           {/* Guests keep direct access because they do not have a profile menu. */}
           {(!user || loading) && (
-            <Link
-              href={documentationLink.href}
-              target={documentationLinkAttributes.target}
-              rel={documentationLinkAttributes.rel}
-              aria-current={documentationLink.active ? "page" : undefined}
-              className={`hidden items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors no-underline xl:inline-flex ${
-                documentationLink.active
-                  ? "text-primary bg-primary/8"
-                  : "text-muted-foreground hover:text-foreground hover:bg-default"
-              }`}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="hidden xl:inline-flex"
+              render={<a href={documentationLink.href} {...documentationLinkAttributes} />}
             >
-              <BookOpen className="h-3.5 w-3.5 shrink-0" />
-              <span>{documentationLink.label}</span>
-            </Link>
+              <BookOpen />
+              {documentationLink.label}
+            </Button>
           )}
 
           {/* Global search */}
-          <div className="hidden sm:flex items-center">
+          <div className="hidden items-center sm:flex">
             {searchOpen ? (
-              <form onSubmit={handleSearchSubmit} className="flex items-center">
-                <input
-                  ref={searchInputRef}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => {
-                    if (!searchQuery) setSearchOpen(false);
-                  }}
-                  placeholder="Apps suchen..."
-                  className="w-52 h-8 rounded-lg border border-border bg-surface-secondary px-3 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/60"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
-                      searchInputRef.current?.focus();
+              <form onSubmit={handleSearchSubmit} role="search">
+                <Input.Group size="sm" className="w-60">
+                  <Input.Addon>
+                    <Search />
+                  </Input.Addon>
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={() => {
+                      if (!searchQuery) setSearchOpen(false);
                     }}
-                    className="ml-1 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                    placeholder="Apps suchen..."
+                    aria-label="Apps suchen"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <Input.Addon align="end">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Suche leeren"
+                        className="size-6"
+                        onClick={() => {
+                          setSearchQuery("");
+                          searchInputRef.current?.focus();
+                        }}
+                      >
+                        <X />
+                      </Button>
+                    </Input.Addon>
+                  )}
+                </Input.Group>
               </form>
             ) : (
-              <button
-                onClick={() => {
-                  setSearchOpen(true);
-                  setTimeout(() => searchInputRef.current?.focus(), 50);
-                }}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-default transition-colors"
-                aria-label="Suche öffnen (Cmd+K)"
-              >
-                <Search className="w-4 h-4" />
-                <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-default border border-border text-[10px] font-mono text-muted-foreground/70">
-                  ⌘K
-                </kbd>
-              </button>
+              <Tooltip>
+                <Tooltip.Trigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Suche öffnen"
+                      aria-keyshortcuts="Meta+K Control+K"
+                      onClick={() => {
+                        setSearchOpen(true);
+                        setTimeout(() => searchInputRef.current?.focus(), 50);
+                      }}
+                    />
+                  }
+                >
+                  <Search />
+                </Tooltip.Trigger>
+                <Tooltip.Content variant="shortcut">
+                  Apps suchen
+                  <Tooltip.Shortcut keys={["⌘", "K"]} />
+                </Tooltip.Content>
+              </Tooltip>
             )}
           </div>
 
           {(!user || loading) && <ThemeSwitcher />}
 
           {loading ? (
-            <div className="h-8 w-8 rounded-full bg-default/50 animate-pulse" />
+            <Avatar size="sm" aria-hidden="true" className="animate-pulse" />
           ) : user ? (
-            <Dropdown>
-              <Button
-                variant="secondary"
-                className="p-0 min-w-0 bg-transparent hover:bg-transparent shadow-none"
-                aria-label="Benutzermenü"
+            <Menu>
+              <Menu.Trigger
+                render={<Button variant="ghost" size="icon" shape="pill" aria-label="Benutzermenü" />}
               >
-                <Avatar size="sm">
-                  <Avatar.Fallback>
-                    {user.username.slice(0, 2).toUpperCase()}
-                  </Avatar.Fallback>
-                </Avatar>
-              </Button>
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  onAction={(key) => {
-                    if (key === "documentation") {
-                      window.open(documentationLink.href, "_blank", "noopener,noreferrer");
-                    } else if (key === "theme-toggle") {
-                      setTheme(isDark ? "light" : "dark");
-                    } else if (key === "profile-tokens") {
-                      router.push("/profil/tokens");
-                    } else if (key === "profile-mcp") {
-                      router.push("/profil/mcp");
-                    } else if (key === "logout") {
-                      handleLogout();
-                    }
-                  }}
-                >
-                  <Dropdown.Item
-                    id="profile"
-                    textValue={`Angemeldet als ${user.email}`}
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <Label className="font-semibold text-sm">
-                        Angemeldet als
-                      </Label>
-                      <div className="text-xs text-muted-foreground text-balance break-all max-w-[180px]">
-                        {user.email}
-                      </div>
-                      {user.authType === "oidc" && (
-                        <div className="mt-1">
-                          <span className="text-[10px] bg-sky-500/10 text-sky-500 px-1.5 py-0.5 rounded border border-sky-500/20 whitespace-nowrap">
-                            Managed by SSO
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </Dropdown.Item>
-                  <Separator />
-                  <Dropdown.Item id="documentation" textValue="Dokumentation öffnen">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-muted-foreground" />
-                      <Label>Dokumentation</Label>
-                    </div>
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    id="theme-toggle"
-                    textValue={isDark ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isDark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
-                      <Label>{isDark ? "Heller Modus" : "Dunkler Modus"}</Label>
-                    </div>
-                  </Dropdown.Item>
-                  <Separator />
-                  <Dropdown.Item
-                    id="profile-tokens"
-                    textValue="API-Tokens verwalten"
-                  >
-                    <div className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4 text-muted-foreground" />
-                      <Label>API-Tokens</Label>
-                    </div>
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    id="profile-mcp"
-                    textValue="MCP für Agenten einrichten"
-                  >
-                    <div className="flex items-center gap-2">
-                      <PlugZap className="w-4 h-4 text-muted-foreground" />
-                      <Label>MCP einrichten</Label>
-                    </div>
-                  </Dropdown.Item>
-                  <Separator />
-                  <Dropdown.Item
-                    id="logout"
-                    variant="danger"
-                    textValue="Abmelden"
-                  >
-                    <Label>Abmelden</Label>
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown>
+                <Avatar size="sm" name={user.username} />
+              </Menu.Trigger>
+              <Menu.Content align="end" className="w-64">
+                <Menu.Group>
+                  <Menu.GroupLabel>
+                    <span className="block text-foreground">Angemeldet als</span>
+                    <span className="block truncate font-normal">{user.email}</span>
+                    {user.authType === "oidc" && (
+                      <Badge size="sm" variant="info" className="mt-1.5">
+                        Managed by SSO
+                      </Badge>
+                    )}
+                  </Menu.GroupLabel>
+                </Menu.Group>
+                <Menu.Separator />
+                <Menu.Item onClick={() => window.open(documentationLink.href, "_blank", "noopener,noreferrer")}>
+                  <BookOpen />
+                  Dokumentation
+                </Menu.Item>
+                <Menu.Item onClick={() => setTheme(isDark ? "light" : "dark")}>
+                  {isDark ? <Sun /> : <Moon />}
+                  {isDark ? "Heller Modus" : "Dunkler Modus"}
+                </Menu.Item>
+                <Menu.Separator />
+                <Menu.Item onClick={() => router.push("/profil/tokens")}>
+                  <KeyRound />
+                  API-Tokens
+                </Menu.Item>
+                <Menu.Item onClick={() => router.push("/profil/mcp")}>
+                  <PlugZap />
+                  MCP einrichten
+                </Menu.Item>
+                <Menu.Separator />
+                <Menu.Item variant="destructive" onClick={handleLogout}>
+                  <LogOut />
+                  Abmelden
+                </Menu.Item>
+              </Menu.Content>
+            </Menu>
           ) : (
-            <div className="hidden sm:flex items-center gap-2">
-              <Button
-                onPress={() => router.push("/login")}
-                variant="secondary"
-                size="sm"
-              >
+            <div className="hidden items-center gap-2 sm:flex">
+              <Button size="sm" variant="ghost" render={<NextLink href="/login" />}>
                 Anmelden
               </Button>
-              <Button onPress={() => router.push("/register")} size="sm">
+              <Button size="sm" render={<NextLink href="/register" />}>
                 Registrieren
               </Button>
             </div>
           )}
 
-          {/* Mobile menu toggle */}
-          <Button
-            isIconOnly
-            variant="secondary"
-            size="sm"
-            className="xl:hidden"
-            onPress={() => setMobileOpen(!mobileOpen)}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-navigation"
-            aria-label={mobileOpen ? "Menü schließen" : "Menü öffnen"}
-          >
-            {mobileOpen ? (
-              <X className="w-4 h-4" />
-            ) : (
-              <Menu className="w-4 h-4" />
-            )}
-          </Button>
+          {/* Mobile menu */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen} side="right">
+            <Sheet.Trigger render={<Button variant="ghost" size="icon-sm" className="xl:hidden" aria-label="Menü öffnen" />}>
+              <MenuIcon />
+            </Sheet.Trigger>
+            <Sheet.Content>
+              <Sheet.Header title={storeName} />
+              <Sheet.Body>
+                <nav aria-label="Mobile Navigation" className="flex flex-col gap-1 px-4 pb-6">
+                  <form
+                    role="search"
+                    className="mb-3"
+                    onSubmit={(e) => {
+                      handleSearchSubmit(e);
+                      setMobileOpen(false);
+                    }}
+                  >
+                    <Input.Group>
+                      <Input.Addon>
+                        <Search />
+                      </Input.Addon>
+                      <Input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Apps suchen..."
+                        aria-label="Apps suchen"
+                      />
+                    </Input.Group>
+                  </form>
+
+                  {mobileNavLinks.map((link) => {
+                    const Icon = link.icon;
+                    const external = link.href === documentationLink.href;
+                    return (
+                      <Button
+                        key={link.href}
+                        variant={link.active ? "secondary" : "ghost"}
+                        className="justify-start"
+                        aria-current={link.active ? "page" : undefined}
+                        onClick={() => setMobileOpen(false)}
+                        render={
+                          external
+                            ? <a href={link.href} {...documentationLinkAttributes} />
+                            : <NextLink href={link.href} />
+                        }
+                      >
+                        <Icon />
+                        {link.label}
+                        <span className="ms-auto">{countBadge(link.href)}</span>
+                      </Button>
+                    );
+                  })}
+
+                  {user?.role === "admin" && (
+                    <MobileSection title="Verwaltung">
+                      {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
+                        <Button
+                          key={href}
+                          variant="ghost"
+                          className="justify-start"
+                          onClick={() => setMobileOpen(false)}
+                          render={<NextLink href={href} />}
+                        >
+                          <Icon />
+                          {label}
+                        </Button>
+                      ))}
+                    </MobileSection>
+                  )}
+
+                  {user && (
+                    <MobileSection title="Mein Konto">
+                      <Button
+                        variant={pathname.startsWith("/profil/tokens") ? "secondary" : "ghost"}
+                        className="justify-start"
+                        onClick={() => setMobileOpen(false)}
+                        render={<NextLink href="/profil/tokens" />}
+                      >
+                        <KeyRound />
+                        API-Tokens
+                      </Button>
+                      <Button
+                        variant={pathname.startsWith("/profil/mcp") ? "secondary" : "ghost"}
+                        className="justify-start"
+                        onClick={() => setMobileOpen(false)}
+                        render={<NextLink href="/profil/mcp" />}
+                      >
+                        <PlugZap />
+                        MCP einrichten
+                      </Button>
+                    </MobileSection>
+                  )}
+                </nav>
+              </Sheet.Body>
+              {!user && (
+                <Sheet.Footer>
+                  <Button render={<NextLink href="/register" />} onClick={() => setMobileOpen(false)}>
+                    Registrieren
+                  </Button>
+                  <Button variant="outline" render={<NextLink href="/login" />} onClick={() => setMobileOpen(false)}>
+                    Anmelden
+                  </Button>
+                </Sheet.Footer>
+              )}
+            </Sheet.Content>
+          </Sheet>
         </div>
       </div>
-
-      {/* Mobile nav */}
-      {mobileOpen && (
-        <nav
-          id="mobile-navigation"
-          aria-label="Mobile Navigation"
-          className="xl:hidden border-t border-border bg-surface p-4 space-y-2"
-        >
-          {/* Mobile search */}
-          <form
-            onSubmit={(e) => {
-              handleSearchSubmit(e);
-              setMobileOpen(false);
-            }}
-            className="relative mb-2"
-          >
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Apps suchen..."
-              className="w-full h-9 rounded-lg border border-border bg-surface-secondary pl-9 pr-3 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/60"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          </form>
-
-          {mobileNavLinks.map((link) => {
-            const Icon = link.icon;
-
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                target={
-                  link.href === documentationLink.href
-                    ? documentationLinkAttributes.target
-                    : undefined
-                }
-                rel={
-                  link.href === documentationLink.href
-                    ? documentationLinkAttributes.rel
-                    : undefined
-                }
-                aria-current={link.active ? "page" : undefined}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline ${
-                  link.active
-                    ? "bg-primary/8 text-primary"
-                    : "text-foreground hover:bg-default"
-                }`}
-                onPress={() => setMobileOpen(false)}
-              >
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span>{link.label}</span>
-                {link.href === "/faq" && openFAQCount > 0 && (
-                  <Chip
-                    size="sm"
-                    color="accent"
-                    variant="soft"
-                    className="ml-auto text-[10px] font-bold"
-                    aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}
-                  >
-                    {openFAQCount > 99 ? "99+" : openFAQCount}
-                  </Chip>
-                )}
-                {link.href === "/updates" && totalUnread > 0 && (
-                  <Chip size="sm" color="accent" variant="soft" className="ml-auto text-[10px] font-bold">
-                    {totalUnread > 99 ? "99+" : totalUnread}
-                  </Chip>
-                )}
-              </Link>
-            );
-          })}
-
-          {/* Admin links inline in mobile menu */}
-          {user?.role === "admin" && (
-            <div className="pt-2 border-t border-separator">
-              <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                Verwaltung
-              </p>
-              {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-default no-underline"
-                  onPress={() => setMobileOpen(false)}
-                >
-                  <Icon className="w-4 h-4 text-muted-foreground" />
-                  {label}
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {user && (
-            <div className="pt-2 border-t border-separator">
-              <p className="px-3 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                Mein Konto
-              </p>
-              <Link
-                href="/profil/tokens"
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
-                  pathname.startsWith("/profil/tokens")
-                    ? "bg-primary/8 text-primary"
-                    : "text-foreground hover:bg-default"
-                }`}
-                onPress={() => setMobileOpen(false)}
-              >
-                <KeyRound className="w-4 h-4 text-muted-foreground" />
-                API-Tokens
-              </Link>
-              <Link
-                href="/profil/mcp"
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium no-underline ${
-                  pathname.startsWith("/profil/mcp")
-                    ? "bg-primary/8 text-primary"
-                    : "text-foreground hover:bg-default"
-                }`}
-                onPress={() => setMobileOpen(false)}
-              >
-                <PlugZap className="w-4 h-4 text-muted-foreground" />
-                MCP einrichten
-              </Link>
-            </div>
-          )}
-
-          {!user && (
-            <div className="flex gap-2 pt-2 border-t border-separator mt-2">
-              <Button
-                onPress={() => {
-                  router.push("/login");
-                  setMobileOpen(false);
-                }}
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-              >
-                Anmelden
-              </Button>
-              <Button
-                onPress={() => {
-                  router.push("/register");
-                  setMobileOpen(false);
-                }}
-                size="sm"
-                className="flex-1"
-              >
-                Registrieren
-              </Button>
-            </div>
-          )}
-        </nav>
-      )}
     </header>
+  );
+}
+
+function MobileSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div role="group" aria-label={title} className="mt-3 flex flex-col gap-1 border-t pt-3">
+      <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">{title}</p>
+      {children}
+    </div>
   );
 }

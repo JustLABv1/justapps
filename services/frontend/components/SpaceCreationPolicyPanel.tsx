@@ -6,9 +6,9 @@ import {
   ListBox,
   Select,
   TextField,
-  toast,
   Surface,
 } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";

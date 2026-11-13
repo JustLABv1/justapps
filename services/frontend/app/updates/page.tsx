@@ -6,15 +6,15 @@ import type { FAQAnswerNotification, FAQNotification, ReleaseInboxItem } from "@
 import { useAuth } from "@/context/AuthContext";
 import { useUpdates } from "@/context/UpdatesContext";
 import {
-    Accordion,
-    Button,
-    Card,
-    Chip,
-    Disclosure,
-    Spinner,
-    Switch,
-    toast,
+  Accordion,
+  Button,
+  Card,
+  Chip,
+  Disclosure,
+  Spinner,
+  Switch,
 } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import {
   Bell,
   CheckCheck,

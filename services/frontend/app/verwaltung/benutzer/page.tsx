@@ -5,16 +5,16 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { UserTable } from '@/components/UserTable';
 import { fetchApi } from '@/lib/api';
 import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    TextField,
-    Switch,
-    toast
+  Button,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+  TextField,
+  Switch,
 } from '@heroui/react';
+import { toast } from '@/lib/toast';
 import { Loader2, ShieldCheck, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

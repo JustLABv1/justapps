@@ -15,8 +15,8 @@ import {
   Select,
   Table,
   TextField,
-  toast,
 } from '@heroui/react';
+import { toast } from '@/lib/toast';
 import { Check, Clipboard, Info, KeyRound, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

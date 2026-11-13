@@ -2,7 +2,8 @@
 
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { fetchApi } from '@/lib/api';
-import { Button, Chip, EmptyState, Table, toast } from '@heroui/react';
+import { Button, Chip, EmptyState, Table } from '@heroui/react';
+import { toast } from '@/lib/toast';
 import { Info, KeyRound, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

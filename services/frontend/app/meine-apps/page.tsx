@@ -9,13 +9,13 @@ import { getAppStatusMeta } from '@/lib/appStatus';
 import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
 import { getImageAssetUrl } from '@/lib/assets';
 import {
-    Button,
-    Card,
-    Chip,
-    Dropdown,
-    Input,
-    toast
+  Button,
+  Card,
+  Chip,
+  Dropdown,
+  Input,
 } from '@heroui/react';
+import { toast } from '@/lib/toast';
 import {
     CheckCircle2,
     ChevronLeft,

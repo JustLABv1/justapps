@@ -22,8 +22,13 @@ import {
   toPublicAIHistory,
   upsertGuestAIConversation,
 } from '@/lib/guest-ai';
-import { Button, ListBox, Modal, Select, Surface, TextArea, Tooltip } from '@heroui/react';
-import { Bot, ExternalLink, Loader2, MessageCircle, Send, Sparkles } from 'lucide-react';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Message } from '@/components/panelui/message';
+import { Prompt } from '@/components/panelui/prompt';
+import { Sheet } from '@/components/panelui/sheet';
+import { Tooltip } from '@/components/panelui/tooltip';
+import { Bot, ExternalLink, Layers, MessageCircle, UserRound } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChatMarkdown } from './ChatMarkdown';
@@ -47,7 +52,7 @@ export function AIChatWidget() {
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
   const scopedAppId = useMemo(() => appIdFromPath(pathname), [pathname]);
   const guestMode = !user && allowsAnonymousAI(settings);
   const aiAccessible = canAccessAI(settings, !!user);
@@ -80,7 +85,7 @@ export function AIChatWidget() {
   }, [aiAccessible, conversationId, guestMode, isOpen, pathname, scopedAppId]);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
   }, [messages, loading]);
 
   if (!aiAccessible || pathname === '/chat') return null;
@@ -93,8 +98,8 @@ export function AIChatWidget() {
 	router.push(params.size > 0 ? `/chat?${params.toString()}` : '/chat');
   };
 
-  const handleSend = async () => {
-    const message = draft.trim();
+  const handleSend = async (text: string) => {
+    const message = text.trim();
     if (!message || loading) return;
     setDraft('');
     setError(null);
@@ -163,147 +168,139 @@ export function AIChatWidget() {
     }
   };
 
+  const contextLabel = scopedAppId ? 'App-Kontext aktiv' : guestMode ? 'Gastmodus, Verlauf nur in diesem Browser' : 'Persönlicher Verlauf';
+  const lastAssistantId = [...messages].reverse().find((message) => message.role === 'assistant')?.id;
+
   return (
     <>
       <div
-        className={`fixed right-5 z-50 flex flex-col items-end gap-2 ${
+        className={`fixed right-5 z-50 ${
           isAppEditorRoute
             ? "bottom-[calc(8rem+env(safe-area-inset-bottom))] sm:bottom-24"
             : "bottom-5"
         }`}
       >
-        <Tooltip delay={0}>
-          <Tooltip.Trigger>
-            <Button
-              isIconOnly
-              aria-label="AI Chat öffnen"
-              className="h-12 w-12 rounded-2xl bg-primary text-white shadow-lg shadow-primary/25"
-              onPress={() => setIsOpen(true)}
-            >
-              <Bot className="h-5 w-5" />
-            </Button>
+        <Tooltip>
+          <Tooltip.Trigger
+            render={
+              <Button
+                size="icon-lg"
+                shape="pill"
+                aria-label="AI Chat öffnen"
+                className="shadow-lg"
+                onClick={() => setIsOpen(true)}
+              />
+            }
+          >
+            <Bot />
           </Tooltip.Trigger>
-          <Tooltip.Content>AI Chat</Tooltip.Content>
+          <Tooltip.Content side="left">AI Chat</Tooltip.Content>
         </Tooltip>
       </div>
 
-      <Modal>
-        <Modal.Backdrop isOpen={isOpen} onOpenChange={setIsOpen}>
-          <Modal.Container className="items-end justify-end p-4 sm:p-6">
-            <Modal.Dialog className="h-[min(720px,calc(100vh-3rem))] w-full max-w-xl overflow-hidden p-0 sm:rounded-2xl">
-              <Modal.CloseTrigger />
-              <Modal.Header className="border-b border-border px-5 py-4">
-                <Modal.Icon className="bg-primary/10 text-primary">
-                  <Sparkles className="h-5 w-5" />
-                </Modal.Icon>
-                <div className="min-w-0">
-                  <Modal.Heading>{storeName} AI</Modal.Heading>
-                  <p className="text-xs text-muted-foreground">
-                    {scopedAppId ? 'App-Kontext aktiv' : guestMode ? 'Gastmodus mit lokalem Verlauf' : 'Persönlicher Verlauf'}
-                  </p>
-                </div>
-              </Modal.Header>
+      <Sheet open={isOpen} onOpenChange={setIsOpen} side="right">
+        <Sheet.Content>
+          <Sheet.Header title={`${storeName} AI`} description={contextLabel} />
 
-              <Modal.Body className="flex min-h-0 flex-1 flex-col gap-0 p-0">
-                <div className="flex items-center justify-between gap-3 border-b border-border bg-surface-secondary/40 px-4 py-3">
-                  <Select
-                    aria-label="AI-Provider"
-                    className="max-w-[260px]"
-                    selectedKey={providerKey || providers[0]?.key || ''}
-                    onSelectionChange={(key) => setProviderKey(String(key))}
-                  >
-                    <Select.Trigger className="bg-field-background">
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {providers.map((provider) => (
-                          <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>
-                            <div className="flex flex-col gap-0.5">
-                              <span>{provider.label}</span>
-                              <span className="text-xs text-muted-foreground">{provider.chatModel}</span>
-                            </div>
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  <Button size="sm" variant="secondary" onPress={openFullChat}>
-                    <ExternalLink className="h-4 w-4" />
-                    Öffnen
-                  </Button>
+          <Sheet.Body>
+            <div className="flex min-h-full flex-col px-6 pb-4">
+              {messages.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12 text-center">
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                    <MessageCircle className="size-5" />
+                  </div>
+                  <p className="font-medium text-foreground">Wobei kann ich helfen?</p>
+                  {guestMode && <p className="text-sm text-muted-foreground">Der Verlauf bleibt nur in diesem Browser gespeichert.</p>}
                 </div>
-
-                <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
-                  {messages.length === 0 ? (
-                    <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                        <MessageCircle className="h-6 w-6" />
-                      </div>
-                      <p className="text-lg font-semibold text-foreground">Wobei kann ich helfen?</p>
-                      {guestMode && <p className="text-xs text-muted-foreground">Verlauf bleibt nur in diesem Browser gespeichert.</p>}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      {messages.map((message) => (
-                        <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.role === 'user' ? 'bg-primary text-white' : 'border border-border bg-surface-secondary text-foreground'}`}>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {messages.map((message) => (
+                    <Message key={message.id} from={message.role === 'user' ? 'user' : 'assistant'}>
+                      <Message.Content>
+                        <Message.Bubble>
+                          <Message.BubbleContent>
                             {message.role === 'assistant'
                               ? <ChatMarkdown content={message.content} />
                               : <p className="whitespace-pre-wrap">{message.content}</p>}
-                            {message.sources && message.sources.length > 0 && <AISourceList sources={message.sources} compact />}
-                            {!guestMode && message.role === 'assistant' && !message.id.startsWith('local-') && (
-                              <AIMessageActions
-                                content={message.content}
-                                feedback={message.feedback}
-                                onFeedback={(feedback) => void handleMessageFeedback(message.id, feedback)}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {loading && (
-                        <div className="flex justify-start">
-                          <div className="rounded-2xl border border-border bg-surface-secondary px-4 py-3 text-sm text-muted-foreground">
-                            <Loader2 className="inline h-4 w-4 animate-spin" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                          </Message.BubbleContent>
+                        </Message.Bubble>
+                        {message.sources && message.sources.length > 0 && <AISourceList sources={message.sources} compact />}
+                        {!guestMode && message.role === 'assistant' && !message.id.startsWith('local-') && (
+                          <AIMessageActions
+                            content={message.content}
+                            feedback={message.feedback}
+                            onFeedback={(feedback) => void handleMessageFeedback(message.id, feedback)}
+                            reveal={message.id === lastAssistantId ? 'always' : 'hover'}
+                          />
+                        )}
+                      </Message.Content>
+                    </Message>
+                  ))}
+                  {loading && (
+                    <Message from="assistant">
+                      <Message.Content>
+                        <Message.Status>Antwort wird geschrieben</Message.Status>
+                      </Message.Content>
+                    </Message>
                   )}
                 </div>
+              )}
 
-                {error && <div className="mx-4 mb-3 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</div>}
+              {error && (
+                <Alert variant="plain" tone="destructive" className="mt-4">
+                  <Alert.Icon />
+                  <Alert.Title>{error}</Alert.Title>
+                </Alert>
+              )}
+              <div ref={endRef} />
+            </div>
+          </Sheet.Body>
 
-                <Surface className="rounded-none border-x-0 border-b-0 border-border/60 p-3">
-                  <div className="flex items-end gap-2">
-                    <TextArea
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          void handleSend();
-                        }
-                      }}
-                      placeholder="Frage zu Apps, Konfiguration oder Deployment"
-                      rows={2}
-                      fullWidth
-                      variant="secondary"
-                    />
-                    <Button isIconOnly aria-label="Senden" className="h-10 w-10 bg-primary text-white" isDisabled={loading || !draft.trim() || providers.length === 0} onPress={handleSend}>
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  {providers.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Kein aktiver AI-Provider konfiguriert.</p>}
-                </Surface>
-              </Modal.Body>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+          <Sheet.Footer>
+            <Prompt
+              value={draft}
+              onValueChange={setDraft}
+              onSubmit={({ text }) => void handleSend(text)}
+              status={loading ? 'submitted' : 'idle'}
+              disabled={providers.length === 0}
+            >
+              <Prompt.Field>
+                <Prompt.Textarea placeholder="Frage zu Apps, Konfiguration oder Deployment" />
+                <Prompt.Footer>
+                  <Prompt.Tools>
+                    {providers.length > 0 && (
+                      <Prompt.Model
+                        label="AI-Provider"
+                        items={providers.map((provider) => ({
+                          value: provider.key,
+                          label: provider.label,
+                          description: provider.chatModel,
+                        }))}
+                        value={providerKey || providers[0].key}
+                        onValueChange={setProviderKey}
+                      />
+                    )}
+                  </Prompt.Tools>
+                  <Prompt.Submit sendLabel="Senden" stopLabel="Stoppen" />
+                </Prompt.Footer>
+              </Prompt.Field>
+              <Prompt.Context>
+                <Prompt.ContextItem>
+                  {scopedAppId ? <Layers /> : <UserRound />}
+                  {contextLabel}
+                </Prompt.ContextItem>
+                <Prompt.ContextItem onSelect={openFullChat}>
+                  <ExternalLink />
+                  Im Chat öffnen
+                </Prompt.ContextItem>
+              </Prompt.Context>
+            </Prompt>
+            {providers.length === 0 && (
+              <p className="text-sm text-muted-foreground">Kein aktiver AI-Provider konfiguriert.</p>
+            )}
+          </Sheet.Footer>
+        </Sheet.Content>
+      </Sheet>
     </>
   );
 }

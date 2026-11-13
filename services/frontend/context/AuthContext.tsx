@@ -2,7 +2,7 @@
 
 import { getApiUrl } from '@/lib/apiUrl';
 import { fetchApi } from '@/lib/api';
-import { toast } from '@heroui/react';
+import { toast } from '@/lib/toast';
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 

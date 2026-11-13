@@ -1,7 +1,8 @@
 "use client";
 
 import { fetchApi } from "@/lib/api";
-import { Button, Input, Modal, Surface, Switch, toast } from "@heroui/react";
+import { Button, Input, Modal, Surface, Switch } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Archive, Download, Loader2, ShieldAlert, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 

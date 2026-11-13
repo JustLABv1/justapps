@@ -1,6 +1,9 @@
 'use client';
 
-import { Button, Card, Spinner } from '@heroui/react';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Card } from '@/components/panelui/card';
+import { Spinner } from '@/components/panelui/spinner';
 import { CloudOff, Database, Network, RefreshCw, Server, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/apiUrl';
@@ -77,8 +80,8 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
 
   if (backendState === 'checking') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Verbindung wird geprüft">
-        <Spinner size="lg" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Spinner size="lg" label="Verbindung wird geprüft" />
       </div>
     );
   }
@@ -91,7 +94,7 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
           aria-hidden="true"
           className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: 'radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)',
             backgroundSize: '28px 28px',
           }}
         />
@@ -99,7 +102,7 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
           <div
             key={label}
             aria-hidden="true"
-            className={`maintenance-float absolute hidden items-center gap-2 rounded-xl border border-border/60 bg-surface/80 px-3 py-2 text-xs font-medium text-muted-foreground shadow-md shadow-black/5 backdrop-blur-md sm:flex ${position}`}
+            className={`maintenance-float absolute hidden items-center gap-2 rounded-xl border bg-card/80 px-3 py-2 text-xs font-medium text-muted-foreground shadow-md shadow-black/5 backdrop-blur-md sm:flex ${position}`}
             style={{ animation }}
           >
             <Icon className="size-4 text-primary" />
@@ -108,31 +111,30 @@ export function BackendHealthGate({ children }: { children: React.ReactNode }) {
           </div>
         ))}
 
-        <Card className="maintenance-card relative w-full max-w-xl border border-border/70 bg-surface/95 shadow-xl">
-          <Card.Header className="items-center gap-5 text-center">
-            <div className="maintenance-icon flex size-16 items-center justify-center rounded-2xl bg-warning/10 text-warning">
-              <CloudOff aria-hidden="true" className="size-8" />
+        <Card as="section" className="maintenance-card relative w-full max-w-xl shadow-xl">
+          <Card.Header className="justify-items-center gap-y-4 text-center">
+            <div className="maintenance-icon flex size-14 items-center justify-center rounded-2xl bg-muted text-warning">
+              <CloudOff aria-hidden="true" className="size-7" />
             </div>
-            <div className="maintenance-copy space-y-2">
-              <Card.Title className="text-2xl sm:text-3xl">Wir sind gleich wieder da</Card.Title>
-              <Card.Description className="mx-auto max-w-md text-base leading-6">
+            <div className="maintenance-copy flex flex-col gap-2">
+              <Card.Title as="h2" className="text-2xl">Wir sind gleich wieder da</Card.Title>
+              <Card.Description className="mx-auto max-w-md text-base">
                 Die Plattform kann den Server momentan nicht erreichen. Möglicherweise werden gerade Wartungsarbeiten durchgeführt.
               </Card.Description>
             </div>
           </Card.Header>
           <Card.Content className="maintenance-notice">
-            <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-surface-secondary p-4 text-sm text-muted-foreground">
-              <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
-              <p>Ihre Daten sind sicher. Die Verbindung wird automatisch alle zehn Sekunden erneut geprüft.</p>
-            </div>
+            <Alert variant="plain" tone="info">
+              <Alert.Icon>
+                <ShieldCheck />
+              </Alert.Icon>
+              <Alert.Title>Ihre Daten sind sicher.</Alert.Title>
+              <Alert.Description>Die Verbindung wird automatisch alle zehn Sekunden erneut geprüft.</Alert.Description>
+            </Alert>
           </Card.Content>
-          <Card.Footer className="maintenance-action justify-center">
-            <Button
-              variant="primary"
-              isPending={isRetrying}
-              onPress={() => void checkBackend(true)}
-            >
-              <RefreshCw aria-hidden="true" className="size-4" />
+          <Card.Footer variant="panel" className="maintenance-action justify-center">
+            <Button loading={isRetrying} onClick={() => void checkBackend(true)}>
+              <RefreshCw aria-hidden="true" />
               Erneut versuchen
             </Button>
           </Card.Footer>

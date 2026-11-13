@@ -1,30 +1,14 @@
 'use client';
 
 import { useSettings } from "@/context/SettingsContext";
-import { Button } from "@heroui/react";
-import { AlertTriangle, Sparkles, X } from "lucide-react";
+import { Alert, type AlertTone } from "@/components/panelui/alert";
 import { startTransition, useEffect, useState } from "react";
 
-const BANNER_STYLES = {
-  info: {
-    bg: 'bg-primary/10',
-    border: 'border-primary/20',
-    text: 'text-primary',
-    Icon: Sparkles,
-  },
-  warning: {
-    bg: 'bg-warning/10',
-    border: 'border-warning/20',
-    text: 'text-warning',
-    Icon: AlertTriangle,
-  },
-  critical: {
-    bg: 'bg-danger/10',
-    border: 'border-danger/20',
-    text: 'text-danger',
-    Icon: AlertTriangle,
-  },
-} as const;
+const BANNER_TONE: Record<string, AlertTone> = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'destructive',
+};
 
 export function TopBanner() {
   const { settings, loaded } = useSettings();
@@ -45,28 +29,19 @@ export function TopBanner() {
 
   if (!loaded || !settings.showTopBanner || !settings.topBannerText || dismissed) return null;
 
-  const type = (settings.topBannerType || 'info') as keyof typeof BANNER_STYLES;
-  const style = BANNER_STYLES[type] ?? BANNER_STYLES.info;
-  const { Icon } = style;
+  const tone = BANNER_TONE[settings.topBannerType || 'info'] ?? 'info';
 
   return (
-    <div className={`${style.bg} border-b ${style.border} px-4 py-3 animate-in fade-in slide-in-from-top-4 duration-500`}>
-      <div className="relative flex items-center justify-center max-w-7xl mx-auto">
-        <p className={`text-sm font-bold ${style.text} flex items-center gap-2`}>
-          <Icon className="w-4 h-4 shrink-0" />
-          {settings.topBannerText}
-        </p>
-        <Button
-          isIconOnly
-          size="sm"
-          variant="ghost"
-          onPress={handleDismiss}
-          className={`absolute right-0 min-w-0 ${style.text} opacity-60 hover:opacity-100`}
-          aria-label="Banner schließen"
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
+    <Alert
+      variant="banner"
+      tone={tone}
+      onOpenChange={(open) => {
+        if (!open) handleDismiss();
+      }}
+    >
+      <Alert.Icon />
+      <Alert.Title>{settings.topBannerText}</Alert.Title>
+      <Alert.Close aria-label="Hinweis schließen" />
+    </Alert>
   );
 }

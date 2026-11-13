@@ -1,7 +1,7 @@
 'use client';
 
 import type { AIMessageSource } from '@/lib/ai';
-import { Chip } from '@heroui/react';
+import { Badge } from '@/components/panelui/badge';
 import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
@@ -24,34 +24,29 @@ export function AISourceList({ sources, compact = false }: { sources: AIMessageS
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quellen</p>
+      <p className="text-xs font-medium text-muted-foreground">Quellen</p>
       <div className="flex flex-wrap gap-1.5">
         {visibleSources.slice(0, compact ? 3 : 8).map((source, index) => {
           const label = source.title || source.appName || 'App-Kontext';
-          const content = (
-            <Chip size="sm" variant="soft" className="max-w-full gap-1 text-[10px] font-medium">
-              <span className="max-w-[15rem] truncate">{source.appName && source.title && source.appName !== source.title ? `${source.appName}: ${source.title}` : label}</span>
-              {sourceHref(source) && <ExternalLink className="h-3 w-3 shrink-0" />}
-            </Chip>
-          );
-
-          if (!sourceHref(source)) {
-            return <span key={`${source.chunkId}-${source.sourceId}-${index}`} title={source.snippet || label}>{content}</span>;
-          }
+          const text = source.appName && source.title && source.appName !== source.title ? `${source.appName}: ${source.title}` : label;
+          const href = sourceHref(source);
+          const key = `${source.chunkId}-${source.sourceId}-${index}`;
 
           return (
-            <Link
-              key={`${source.chunkId}-${source.sourceId}-${index}`}
-              href={sourceHref(source) as string}
+            <Badge
+              key={key}
+              variant="outline"
               title={source.snippet || label}
-              className="max-w-full rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="max-w-full"
+              render={href ? <Link href={href} className="hover:bg-accent" /> : undefined}
             >
-              {content}
-            </Link>
+              <span className="max-w-[15rem] truncate">{text}</span>
+              {href && <ExternalLink />}
+            </Badge>
           );
         })}
         {visibleSources.length > (compact ? 3 : 8) && (
-          <Chip size="sm" variant="soft" className="text-[10px] text-muted-foreground">+{visibleSources.length - (compact ? 3 : 8)} weitere</Chip>
+          <Badge variant="secondary">+{visibleSources.length - (compact ? 3 : 8)} weitere</Badge>
         )}
       </div>
       {!compact && visibleSources[0]?.snippet && (

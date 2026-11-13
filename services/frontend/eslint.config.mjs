@@ -10,6 +10,13 @@ const eslintConfig = defineConfig([
     files: ["components/panelui/**"],
     rules: {
       "@typescript-eslint/no-empty-object-type": "off",
+      // React Compiler rules: the compiler is not enabled in this app, and these
+      // components drive animation imperatively through refs by design.
+      "react-hooks/refs": "off",
+      "react-hooks/immutability": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_", ignoreRestSiblings: true }],
     },
   },

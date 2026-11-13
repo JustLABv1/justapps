@@ -1,6 +1,8 @@
 'use client';
 
-import { RouterProvider, Toast } from '@heroui/react';
+import { Toast } from '@/components/panelui/toast';
+import { toaster } from '@/lib/toast';
+import { RouterProvider } from '@heroui/react';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useRouter } from 'next/navigation';
@@ -22,13 +24,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem={false}
         disableTransitionOnChange
       >
+        <Toast.Provider toastManager={toaster} position="bottom-right">
         <RouterProvider navigate={router.push}>
           <BackendHealthGate>
             <AuthProvider>
               <FavoritesProvider>
                 <UpdatesProvider>
                   <SettingsProvider>
-                    <Toast.Provider placement="bottom end" />
                     {children}
                     <AIChatWidget />
                   </SettingsProvider>
@@ -37,6 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </AuthProvider>
           </BackendHealthGate>
         </RouterProvider>
+        </Toast.Provider>
       </NextThemesProvider>
     </SessionProvider>
   );

@@ -11,8 +11,8 @@ import {
   Label,
   Modal,
   TextField,
-  toast,
 } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import {
   LockKeyhole,
   Pencil,

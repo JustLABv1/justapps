@@ -9,11 +9,10 @@ import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } fro
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
 import { Card } from "@/components/panelui/card";
-import { Chip } from "@/components/panelui/chip";
 import { Input } from "@/components/panelui/input";
 import { Select } from "@/components/panelui/select";
 import { Tooltip } from "@/components/panelui/tooltip";
-import { Check, ChevronDown, ChevronUp, Clock, Heart, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Activity, ArrowUpDown, Check, Clock, Heart, Layers2, Package, Search, Sparkles, Tag, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -62,7 +61,6 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     showFavoritesOnly ? 'favorites' : '',
   ].join('|');
 
-  const [showFilters, setShowFilters] = useState(false);
   const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[]; page: number; total: number; hasMore: boolean } | null>(null);
   const [serverPageLoading, setServerPageLoading] = useState(false);
   const [visibleAppsState, setVisibleAppsState] = useState({ key: paginationKey, count: PAGE_SIZE });
@@ -293,101 +291,11 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     router.replace(spaceId ? `/?spaceId=${encodeURIComponent(spaceId)}` : '/', { scroll: false });
   };
 
-  const activeFilters = useMemo(() => {
-    const filters: Array<{ key: string; label: string; clear: () => void }> = [];
-
-    if (searchQuery) {
-      filters.push({
-        key: 'search',
-        label: `Suche: ${searchQuery}`,
-        clear: () => commitSearch(''),
-      });
-    }
-
-    if (selectedCategory) {
-      filters.push({
-        key: 'category',
-        label: `Kategorie: ${selectedCategory}`,
-        clear: () => setSelectedCategory(null),
-      });
-    }
-
-    if (selectedStatus) {
-      filters.push({
-        key: 'status',
-        label: `Status: ${getAppStatusLabel(selectedStatus) || selectedStatus}`,
-        clear: () => setSelectedStatus(null),
-      });
-    }
-
-    if (selectedType) {
-      filters.push({
-        key: 'type',
-        label: selectedType === 'install' ? 'Art: Selbst installieren' : 'Art: Nachnutzung',
-        clear: () => setSelectedType(null),
-      });
-    }
-
-    if (selectedGroup) {
-      const groupName = groups.find(group => group.id === selectedGroup)?.name ?? selectedGroup;
-      filters.push({
-        key: 'group',
-        label: `Gruppe: ${groupName}`,
-        clear: () => setSelectedGroup(null),
-      });
-    }
-
-    if (selectedSort) {
-      filters.push({
-        key: 'sort',
-        label: `Sortierung: ${selectedSort === 'rating' ? 'Beste Bewertung' : selectedSort === 'updated' ? 'Zuletzt aktualisiert' : selectedSort === 'status' ? 'Status' : 'Name'}`,
-        clear: () => setSelectedSort(null),
-      });
-    }
-
-    if (showFavoritesOnly) {
-      filters.push({
-        key: 'favorites',
-        label: 'Meine Favoriten',
-        clear: () => setShowFavoritesOnly(false),
-      });
-    }
-
-    if (semanticSearch) {
-      filters.push({
-        key: 'semantic',
-        label: 'Semantische Suche',
-        clear: () => setSemanticSearch(false),
-      });
-    }
-
-    return filters;
-  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedSort, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedSort, setSelectedStatus, setSelectedType, semanticSearch, setSemanticSearch, showFavoritesOnly]);
-
-  const filterSummary = useMemo(() => {
-    const summary = [];
-
-    if (categories.length > 0) {
-      summary.push(`${categories.length} Kategorien`);
-    }
-    if (statuses.length > 0) {
-      summary.push(`${statuses.length} Status`);
-    }
-    if (hasReuseApps) {
-      summary.push('Art');
-    }
-    if (groups.length > 0) {
-      summary.push(`${groups.length} Gruppen`);
-    }
-
-    return summary.join(' · ');
-  }, [categories.length, groups.length, hasReuseApps, statuses.length]);
-
   return (
     <div className="flex flex-col gap-8">
       <Card as="section" aria-label="Apps suchen und filtern">
-        <Card.Content className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <Card.Content className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input.Group size="lg" className="min-w-0 flex-1">
               <Input.Addon>
                 <Search />
@@ -418,150 +326,91 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
               </Input.Addon>
             </Input.Group>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {favoritesLoaded && (
-                <Button
-                  size="lg"
-                  variant={showFavoritesOnly ? "default" : "outline"}
-                  disabled={favorites.size === 0}
-                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                  aria-pressed={showFavoritesOnly}
-                  aria-label={`Meine Favoriten filtern (${favorites.size})`}
-                >
-                  <Heart />
-                  Meine Favoriten
-                  <Badge size="sm" variant="secondary">{favorites.size}</Badge>
-                </Button>
-              )}
+            {favoritesLoaded && (
               <Button
                 size="lg"
-                variant={showFilters ? "default" : "outline"}
-                onClick={() => setShowFilters(!showFilters)}
-                aria-expanded={showFilters}
+                variant={showFavoritesOnly ? "default" : "outline"}
+                disabled={favorites.size === 0}
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                aria-pressed={showFavoritesOnly}
+                aria-label={`Nur Favoriten zeigen (${favorites.size})`}
               >
-                <SlidersHorizontal />
-                Filter
-                {activeFilters.length > 0 && (
-                  <Badge size="sm" variant="secondary">{activeFilters.length}</Badge>
-                )}
-                {showFilters ? <ChevronUp /> : <ChevronDown />}
+                <Heart />
+                Favoriten
+                <Badge size="sm" variant="secondary">{favorites.size}</Badge>
               </Button>
-              {hasActiveFilters && (
-                <Button size="lg" variant="ghost" onClick={clearAllFilters}>
-                  <X />
-                  Zurücksetzen
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
-          {activeFilters.length > 0 ? (
-            <div className="flex flex-wrap gap-2" aria-label="Aktive Filter">
-              {activeFilters.map((filter) => (
-                <Chip key={filter.key} size="sm" onRemove={filter.clear} removeLabel={`${filter.label} entfernen`}>
-                  {filter.label}
-                </Chip>
-              ))}
-            </div>
-          ) : (
-            !showFilters && filterSummary && (
-              <p className="text-sm text-muted-foreground">
-                Filtern nach {filterSummary}.
-              </p>
-            )
-          )}
+          <div role="group" aria-label="Filter" className="flex flex-wrap items-center gap-2">
+            {categories.length > 0 && (
+              <FilterSelect
+                label="Kategorie"
+                allLabel="Alle Kategorien"
+                icon={<Tag />}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categories.map((cat) => ({ value: cat, label: cat }))}
+              />
+            )}
+            {statuses.length > 0 && (
+              <FilterSelect
+                label="Status"
+                allLabel="Alle Status"
+                icon={<Activity />}
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={statuses.map((st) => ({ value: st, label: getAppStatusLabel(st) || st }))}
+              />
+            )}
+            {hasReuseApps && (
+              <FilterSelect
+                label="Art"
+                allLabel="Alle Arten"
+                icon={<Package />}
+                value={selectedType}
+                onChange={setSelectedType}
+                options={[
+                  { value: 'install', label: 'Selbst installieren' },
+                  { value: 'reuse', label: 'Nachnutzung' },
+                ]}
+              />
+            )}
+            {groups.length > 0 && (
+              <FilterSelect
+                label="Gruppe"
+                allLabel="Alle Gruppen"
+                icon={<Layers2 />}
+                value={selectedGroup}
+                onChange={setSelectedGroup}
+                options={groups.map((g) => ({ value: g.id, label: g.name }))}
+              />
+            )}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                <X />
+                Zurücksetzen
+              </Button>
+            )}
 
-          {showFilters && (
-            <div className="grid gap-x-8 gap-y-6 border-t pt-5 lg:grid-cols-2">
-              <FilterGroup label="Sortierung">
-                <Select
-                  items={SORT_OPTIONS}
-                  value={selectedSort || 'default'}
-                  onValueChange={(value) => setSelectedSort(value)}
-                >
-                  <Select.Trigger aria-label="Apps sortieren" className="w-full sm:w-64">
-                    <Select.Value />
-                  </Select.Trigger>
-                  <Select.Content>
-                    {SORT_OPTIONS.map((option) => (
-                      <Select.Item key={option.value} value={option.value}>
-                        {option.label}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
-                </Select>
-              </FilterGroup>
-
-              <FilterGroup label="Kategorien">
-                <Chip pressed={!selectedCategory} onPressedChange={() => setSelectedCategory(null)}>
-                  Alle
-                </Chip>
-                {categories.map((cat) => (
-                  <Chip
-                    key={cat}
-                    pressed={selectedCategory === cat}
-                    onPressedChange={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                  >
-                    {cat}
-                  </Chip>
+            <Select
+              items={SORT_OPTIONS}
+              value={selectedSort || 'default'}
+              onValueChange={(value) => setSelectedSort(value)}
+            >
+              <Select.Trigger variant="ghost" size="sm" aria-label="Apps sortieren" className="ms-auto">
+                <ArrowUpDown />
+                <Select.Value />
+              </Select.Trigger>
+              <Select.Content align="end">
+                {SORT_OPTIONS.map((option) => (
+                  <Select.Item key={option.value} value={option.value}>
+                    {option.label}
+                  </Select.Item>
                 ))}
-              </FilterGroup>
-
-              {hasReuseApps && (
-                <FilterGroup label="Art">
-                  <Chip pressed={!selectedType} onPressedChange={() => setSelectedType(null)}>
-                    Alle
-                  </Chip>
-                  <Chip
-                    pressed={selectedType === 'install'}
-                    onPressedChange={() => setSelectedType(selectedType === 'install' ? null : 'install')}
-                  >
-                    Selbst installieren
-                  </Chip>
-                  <Chip
-                    pressed={selectedType === 'reuse'}
-                    onPressedChange={() => setSelectedType(selectedType === 'reuse' ? null : 'reuse')}
-                  >
-                    Nachnutzung
-                  </Chip>
-                </FilterGroup>
-              )}
-
-              {statuses.length > 0 && (
-                <FilterGroup label="Status">
-                  <Chip pressed={!selectedStatus} onPressedChange={() => setSelectedStatus(null)}>
-                    Alle
-                  </Chip>
-                  {statuses.map((st) => (
-                    <Chip
-                      key={st}
-                      pressed={selectedStatus === st}
-                      onPressedChange={() => setSelectedStatus(selectedStatus === st ? null : st)}
-                    >
-                      {getAppStatusLabel(st) || st}
-                    </Chip>
-                  ))}
-                </FilterGroup>
-              )}
-
-              {groups.length > 0 && (
-                <FilterGroup label="Gruppe" className="lg:col-span-2">
-                  <Chip pressed={!selectedGroup} onPressedChange={() => setSelectedGroup(null)}>
-                    Alle
-                  </Chip>
-                  {groups.map((g) => (
-                    <Chip
-                      key={g.id}
-                      pressed={selectedGroup === g.id}
-                      onPressedChange={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
-                    >
-                      {g.name}
-                    </Chip>
-                  ))}
-                </FilterGroup>
-              )}
-            </div>
-          )}
+              </Select.Content>
+            </Select>
+          </div>
         </Card.Content>
       </Card>
 
@@ -673,11 +522,57 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
   );
 }
 
-function FilterGroup({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * One filter in the bar: a pill that names the filter while nothing is
+ * chosen and shows "Filter: choice" once something is.
+ */
+function FilterSelect({
+  label,
+  allLabel,
+  icon,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  allLabel: string;
+  icon: ReactNode;
+  value: string | null;
+  options: FilterOption[];
+  onChange: (value: string | null) => void;
+}) {
+  const items: Array<{ value: string | null; label: string }> = [{ value: null, label: allLabel }, ...options];
   return (
-    <div role="group" aria-label={label} className={`flex flex-col gap-2.5 ${className ?? ''}`}>
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <div className="flex min-w-0 flex-wrap gap-2">{children}</div>
-    </div>
+    <Select items={items} value={value} onValueChange={(next) => onChange(next)}>
+      <Select.Trigger variant="pill" size="sm" aria-label={`${label} filtern`}>
+        {icon}
+        <Select.Value>
+          {(current: string | null) =>
+            current === null ? (
+              label
+            ) : (
+              <>
+                <span className="text-muted-foreground">{label}:</span>
+                {options.find((option) => option.value === current)?.label ?? current}
+              </>
+            )
+          }
+        </Select.Value>
+      </Select.Trigger>
+      <Select.Content alignItemWithTrigger={false}>
+        <Select.Item value={null}>{allLabel}</Select.Item>
+        <Select.Separator />
+        {options.map((option) => (
+          <Select.Item key={option.value} value={option.value}>
+            {option.label}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select>
   );
 }
