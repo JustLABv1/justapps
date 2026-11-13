@@ -23,6 +23,9 @@ importers:
       '@heroui/styles':
         specifier: 3.2.7
         version: 3.2.7(tailwind-merge@3.7.0)(tailwindcss@4.3.5)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       js-yaml:
         specifier: ^5.5.0
         version: 5.5.0

@@ -1,49 +1,45 @@
 "use client";
 
-import { EditorStatusPicker } from "@/components/editor/EditorStatusPicker";
-import { LinkListEditor } from "@/components/editor/LinkListEditor";
-import { AppConfig, GitLabIntegrationState, GitLabProviderSummary, SystemUser } from "@/config/apps";
+import { AppCard } from "@/components/AppCard";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { ChoiceCards } from "@/components/panelui/choice-cards";
+import { Combobox } from "@/components/panelui/combobox";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Label } from "@/components/panelui/label";
+import { Menu } from "@/components/panelui/menu";
+import { Select } from "@/components/panelui/select";
+import { Steps } from "@/components/panelui/steps";
+import { Textarea } from "@/components/panelui/textarea";
+import { AppConfig, GitLabIntegrationState, GitLabProviderSummary } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
-import { fetchApi, uploadFile } from "@/lib/api";
 import { suggestAppCreation, type AppCreationSuggestionResponse } from "@/lib/ai";
-import { DRAFT_STATUS, isDraftStatus } from "@/lib/appStatus";
-import { getImageAssetUrl, isImageAssetSource } from "@/lib/assets";
-import {
-  Alert,
-  Button,
-  Chip,
-  FieldError,
-  Input as HeroInput,
-  Label,
-  ListBox,
-  ProgressBar,
-  Modal,
-  Select,
-  Spinner,
-  Switch,
-  TextArea as HeroTextArea,
-  TextField,
-  ToggleButton,
-} from "@heroui/react";
+import { fetchApi, uploadFile } from "@/lib/api";
+import { DRAFT_STATUS } from "@/lib/appStatus";
+import { getImageAssetUrl } from "@/lib/assets";
 import { toast } from "@/lib/toast";
 import {
-  ArrowLeft, ArrowRight, BookOpen, Boxes, Check, CircleHelp, FileText,
-  FolderGit2, ImagePlus, Layers, Link2, PackageOpen, Pencil, Rocket,
-  Sparkles, Tag, Upload, X,
-  UserPlus, UsersRound,
+  ArrowLeft, ArrowRight, Check, ChevronDown, FolderGit2, Globe2, LockKeyhole, PencilLine, Smile, Sparkles, Upload,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 const CATEGORIES = ["Verwaltung", "Kommunikation", "Infrastruktur", "Sicherheit", "Datenanalyse", "Dokumentenmanagement", "Projektmanagement", "Bürgerdienste", "Geodaten", "Finanzen", "Personal", "Bildung", "Gesundheit", "Umwelt", "Verkehr", "KI & Automatisierung"];
-const EMOJIS = ["🏛️", "📊", "💬", "🔐", "📅", "🚀", "🛠️", "📱", "🛡️", "⚙️", "📦", "📈", "🔑", "🏙️", "👥", "🗺️", "💰", "📝", "🌐", "🤖", "📧", "🗂️"];
+const EMOJIS = ["🏛️", "📊", "💬", "🔐", "📅", "🚀", "🛠️", "📱", "🛡️", "⚙️", "📦", "📈", "🔑", "🏙️", "👥", "🗺️", "💰", "📝", "🌐", "🤖", "📧", "🗂️", "🧭", "🧩"];
 
-type SectionId = "repository" | "deployment" | "resources" | "banner" | "documentation" | "related" | "editors";
-type StepId = string;
-type Branches = Record<SectionId, boolean>;
-type Step = { id: StepId; title: string; description: string; section?: SectionId; optional?: boolean; icon: React.ReactNode };
+/** How the person starts: the first step's choice. */
+type StartMethod = "repository" | "ai" | "manual";
+type RepositoryInput = { providerKey: string; projectPath: string; branch: string; readmePath: string; helmValuesPath: string; composeFilePath: string };
+
+const STEP_START = 0;
+const STEP_BASICS = 1;
+const STEP_REVIEW = 2;
+const PUBLIC_SCOPE = "public";
 
 export type AppCreationSpace = { id: string; name: string };
 
@@ -52,16 +48,18 @@ export interface AppCreationFlowProps {
   existingApps: AppConfig[];
   initialFormData?: Partial<AppConfig> | null;
   copySource?: { id: string; name: string } | null;
+  /** Where the new draft is opened for the rest of its details. */
+  editHref: (id: string) => string;
 }
 
 const emptyApp = (): Partial<AppConfig> => ({
   categories: [], techStack: [], tags: [], liveDemos: [], repositories: [], customLinks: [], customFields: [],
-  icon: "🏛️", license: "MIT", status: DRAFT_STATUS, hasDeploymentAssistant: true,
-  showDocker: true, showCompose: true, showHelm: true,
+  icon: "🏛️", license: "MIT",
 });
 
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const links = (items?: { label?: string; url?: string }[]) => (items || []).filter((item) => item.url?.trim()).map((item) => ({ label: item.label?.trim() || "Link", url: item.url!.trim() }));
+
 const formatAIAssistantError = (error: unknown) => {
   const message = error instanceof Error ? error.message.trim() : "";
   const normalized = message.toLowerCase();
@@ -77,584 +75,744 @@ const formatAIAssistantError = (error: unknown) => {
   return message;
 };
 
-function Input({ className, ...props }: ComponentProps<typeof HeroInput>) {
-  return <HeroInput {...props} className={`h-12 text-base ${className || ""}`} />;
+/** Fields a repository import fills in, merged over what is already there. */
+function mergeRepositorySnapshot(app: Partial<AppConfig>, snapshot: GitLabIntegrationState["snapshot"]): Partial<AppConfig> {
+  if (!snapshot) return app;
+  return {
+    ...app,
+    markdownContent: snapshot.readmeContent?.trim() || app.markdownContent,
+    description: app.description?.trim() || snapshot.description?.trim() || app.description,
+    license: snapshot.license?.trim() || app.license,
+    tags: Array.from(new Set([...(app.tags || []), ...(snapshot.topics || []).filter(Boolean)])),
+    repositories: snapshot.projectWebUrl
+      ? [...(app.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
+      : app.repositories,
+    customHelmValues: snapshot.helmValuesContent?.trim() || app.customHelmValues,
+    customComposeCommand: snapshot.composeFileContent?.trim() || app.customComposeCommand,
+  };
 }
 
-function TextArea({ className, ...props }: ComponentProps<typeof HeroTextArea>) {
-  return <HeroTextArea {...props} className={`min-h-32 text-base ${className || ""}`} />;
+/** What a create request sends: always a draft, with the install paths the data supports. */
+function toPayload(app: Partial<AppConfig>) {
+  const docker = !!(app.dockerRepo?.trim() || app.customDockerCommand?.trim());
+  const compose = !!app.customComposeCommand?.trim();
+  const helm = !!(app.helmRepo?.trim() || app.customHelmCommand?.trim());
+  return {
+    ...app,
+    name: app.name?.trim(),
+    description: app.description?.trim() || "",
+    status: DRAFT_STATUS,
+    categories: app.categories || [],
+    techStack: app.techStack || [],
+    tags: app.tags || [],
+    customFields: app.customFields || [],
+    liveDemos: links(app.liveDemos),
+    repositories: links(app.repositories),
+    customLinks: links(app.customLinks),
+    hasDeploymentAssistant: docker || compose || helm,
+    showDocker: docker,
+    showCompose: compose,
+    showHelm: helm,
+  };
 }
 
-function SectionGate({ title, description, enabled, onChange, icon }: { title: string; description: string; enabled: boolean; onChange: (value: boolean) => void; icon: React.ReactNode }) {
-  return <div className="grid gap-3 sm:grid-cols-2">
-    <span className="sr-only">{title}</span>
-    {[true, false].map((value) => <button key={String(value)} type="button" onClick={() => onChange(value)} className={`rounded-3xl border p-5 text-left transition-[border-color,background-color,transform] duration-180 ease-out active:scale-[0.98] ${enabled === value ? "border-primary bg-primary/10" : "border-border bg-surface hover:border-primary/40"}`}>
-      <div className="flex items-center justify-between gap-3"><span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${enabled === value ? "bg-primary text-primary-foreground" : "bg-surface-secondary text-muted-foreground"}`}>{value ? icon : <X className="h-5 w-5" />}</span>{enabled === value && <Check className="h-5 w-5 text-primary" />}</div>
-      <p className="mt-5 text-lg font-semibold text-foreground">{value ? "Ja, einrichten" : "Jetzt überspringen"}</p>
-      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{value ? description : "Sie können dies später im erweiterten Editor ergänzen."}</p>
-    </button>)}
-  </div>;
-}
-
-function StepVisual({ step, formData }: { step: Step; formData: Partial<AppConfig> }) {
-  const image = getImageAssetUrl(formData.icon);
-  return <div className="flex flex-col items-center gap-3">
-    <div aria-hidden="true" className="mx-auto flex h-28 w-28 items-center justify-center rounded-[2rem] border border-primary/20 bg-primary/10 text-primary shadow-sm transition-[transform,opacity] duration-200 ease-out sm:h-32 sm:w-32">
-      {step.id === "logo" && image ? <Image src={image} alt="" width={112} height={112} className="h-full w-full object-contain p-3" unoptimized /> : step.id === "name" ? <span className="max-w-[7rem] truncate text-center text-lg font-bold">{formData.name || "App"}</span> : <span className="text-4xl">{step.id === "logo" ? (formData.icon || "🏛️") : step.icon}</span>}
-    </div>
-  </div>;
-}
-
-export function AppCreationFlow({ existingApps, initialFormData = null, copySource = null, availableSpaces = [] }: AppCreationFlowProps) {
+export function AppCreationFlow({ existingApps, initialFormData = null, copySource = null, availableSpaces = [], editHref }: AppCreationFlowProps) {
   const router = useRouter();
   const { user, profileReady, refreshUser } = useAuth();
   const { settings } = useSettings();
   const isAdmin = user?.role === "admin";
-  const canManageGroups = isAdmin || !!user?.canSubmitApps;
+  const aiAvailable = settings.aiEnabled;
   const backUrl = initialFormData?.spaceId ? "/spaces" : isAdmin ? "/verwaltung/katalog/apps" : "/meine-apps";
+
+  const [step, setStep] = useState(copySource ? STEP_BASICS : STEP_START);
+  const [method, setMethod] = useState<StartMethod>(aiAvailable ? "repository" : "manual");
   const [formData, setFormData] = useState<Partial<AppConfig>>(() => {
     const initial = { ...emptyApp(), ...(initialFormData || {}) };
     return { ...initial, id: initial.id || (initial.name ? slugify(initial.name) : "") };
   });
-  const [branches, setBranches] = useState<Branches>(() => ({
-    repository: !!initialFormData?.repositories?.length, deployment: !!initialFormData?.hasDeploymentAssistant,
-    resources: !!(initialFormData?.liveDemos?.length || initialFormData?.repositories?.length || initialFormData?.customLinks?.length || initialFormData?.docsUrl),
-    banner: !!initialFormData?.bannerText, documentation: !!initialFormData?.markdownContent, related: false, editors: false,
-  }));
-  const [currentId, setCurrentId] = useState<StepId>(availableSpaces.length ? "visibility" : "name");
-  const [attemptedNext, setAttemptedNext] = useState(false);
-  const [returnToReview, setReturnToReview] = useState(false);
   const [idEditing, setIdEditing] = useState(false);
-  const [categoryInput, setCategoryInput] = useState("");
-  const [tagInput, setTagInput] = useState("");
   const [providers, setProviders] = useState<GitLabProviderSummary[]>([]);
-  const [repo, setRepo] = useState({ providerKey: "", projectPath: "", branch: "", readmePath: "", helmValuesPath: "", composeFilePath: "" });
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [iconUrl, setIconUrl] = useState(isImageAssetSource(initialFormData?.icon) ? initialFormData?.icon || "" : "");
-  const [showEmojis, setShowEmojis] = useState(false);
-  const [relatedApps, setRelatedApps] = useState<{ id: string; name: string; icon?: string }[]>([]);
-  const [relatedSearch, setRelatedSearch] = useState("");
-  const [groups, setGroups] = useState<{ id: string; name: string; description?: string }[]>([]);
-  const [groupIds, setGroupIds] = useState<Set<string>>(new Set());
-  const [newGroupName, setNewGroupName] = useState("");
-  const [creatingGroup, setCreatingGroup] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<SystemUser[]>([]);
-  const [editorIds, setEditorIds] = useState<Set<string>>(new Set(initialFormData?.editors?.map((editor) => editor.id) || []));
-  const [editorSearch, setEditorSearch] = useState("");
-  const [editorsWereSaved, setEditorsWereSaved] = useState(false);
-  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [repo, setRepo] = useState<RepositoryInput>({ providerKey: "", projectPath: "", branch: "", readmePath: "", helmValuesPath: "", composeFilePath: "" });
+  const [repoOptionsOpen, setRepoOptionsOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState("");
-  const [aiSuggestion, setAiSuggestion] = useState<AppCreationSuggestionResponse | null>(null);
-  const [aiScanRepository, setAiScanRepository] = useState(false);
-  const [repositoryScannedByAI, setRepositoryScannedByAI] = useState(false);
-  const [repositoryError, setRepositoryError] = useState<string | null>(null);
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<AppCreationSuggestionResponse | null>(null);
+  const [attempted, setAttempted] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const iconInput = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  const idTaken = !!formData.id?.trim() && existingApps.some((app) => app.id === formData.id && app.id !== draftId);
-  const canCreateDraft = !!formData.name?.trim() && !!formData.id?.trim() && !idTaken;
-  const nonDraft = !isDraftStatus(formData.status);
-  const fieldPairs = useMemo(() => {
-    const fields = settings.detailFields || [];
-    return Array.from({ length: Math.ceil(fields.length / 2) }, (_, index) => fields.slice(index * 2, index * 2 + 2));
-  }, [settings.detailFields]);
-  const selectedMethods = [formData.showDocker !== false && "docker", formData.showCompose !== false && "compose", formData.showHelm !== false && "helm"].filter(Boolean) as string[];
+  const name = formData.name?.trim() || "";
+  const idTaken = !!formData.id?.trim() && existingApps.some((app) => app.id === formData.id);
+  const basicsValid = !!name && !!formData.id?.trim() && !idTaken;
+  const repositoryReady = !!repo.providerKey && !!repo.projectPath.trim();
+  const connectRepository = method === "repository" && repositoryReady;
+  const space = availableSpaces.find((item) => item.id === formData.spaceId);
 
-  const steps: Step[] = (() => {
-    const next: Step[] = [
-      ...(availableSpaces.length ? [{ id: "visibility", title: "Wer soll die App sehen?", description: "Wähle den öffentlichen Katalog oder einen privaten Space, bevor der erste Entwurf gespeichert wird.", icon: <UsersRound /> }] : []),
-      { id: "name", title: "Wie heißt deine App?", description: "Wir erzeugen daraus eine technische ID, die du bei Bedarf anpassen kannst.", icon: <Pencil /> },
-      { id: "logo", title: "Logo auswählen", description: "Lade ein Logo hoch oder wähle ein passendes Symbol für deine App.", icon: <ImagePlus /> },
-      { id: "categories", title: "Wo gehört sie hin?", description: "Wähle mindestens eine Kategorie für die spätere Auffindbarkeit.", icon: <Tag /> },
-      { id: "status", title: "Wie weit ist die App?", description: "Der Status steuert, welche Angaben für die Veröffentlichung benötigt werden.", icon: <Sparkles /> },
-      { id: "description", title: "Was macht die App?", description: "Beschreibe ihren Nutzen in wenigen klaren Sätzen.", icon: <FileText /> },
-      { id: "metadata", title: "Lizenz und Schlagwörter", description: "Zwei kleine Angaben, damit andere die App besser einordnen können.", icon: <Tag /> },
-      { id: "repository", title: "Ein Repository verbinden?", description: "README, Metadaten und Deployment-Dateien können direkt übernommen werden.", section: "repository", optional: true, icon: <FolderGit2 /> },
-    ];
-    if (branches.repository) next.push(
-      { id: "repo-project", title: "Wo liegt der Quellcode?", description: "Wähle den Provider und trage den Projektpfad ein.", icon: <FolderGit2 /> },
-      { id: "repo-paths", title: "Import-Einstellungen", description: "Branch und optionale Datei-Pfade für den Import.", icon: <FolderGit2 /> },
-    );
-    next.push({ id: "reuse", title: "Ist die Lösung nachnutzbar?", description: "Beschreibe bei Bedarf Voraussetzungen oder Grenzen.", icon: <Layers /> }, { id: "deployment", title: "Installationshilfe anbieten?", description: "Lege fest, ob und wie die App bereitgestellt werden kann.", section: "deployment", optional: true, icon: <Rocket /> });
-    if (branches.deployment) {
-      next.push({ id: "deployment-methods", title: "Welche Wege sind verfügbar?", description: "Wähle die Installationswege aus, die in der App angezeigt werden sollen.", icon: <PackageOpen /> });
-      selectedMethods.forEach((method) => next.push({ id: `deployment-${method}`, title: `${method === "helm" ? "Helm" : method === "compose" ? "Docker Compose" : "Docker"} konfigurieren`, description: "Ergänze die Informationen für diesen Installationsweg.", icon: <Rocket /> }));
-    }
-    next.push({ id: "resources", title: "Wichtige Links ergänzen?", description: "Live-Zugänge, Quellcode und Dokumentation können separat gepflegt werden.", section: "resources", optional: true, icon: <Link2 /> });
-    if (branches.resources) next.push({ id: "live-links", title: "Live-Zugänge", description: "Füge produktive oder Demo-Einstiege hinzu.", icon: <Link2 /> }, { id: "source-links", title: "Code und weitere Ressourcen", description: "Verlinke Quellcode, Ressourcen und externe Dokumentation.", icon: <Link2 /> });
-    next.push({ id: "presentation", title: "Herausgeber und Technologien", description: "Hilf anderen, den Kontext und die technische Basis einzuordnen.", icon: <Boxes /> }, { id: "banner", title: "Soll ein Hinweis erscheinen?", description: "Optionaler Status- oder Warnhinweis auf der App-Seite.", section: "banner", optional: true, icon: <CircleHelp /> });
-    if (branches.banner) next.push({ id: "banner-content", title: "Hinweis gestalten", description: "Wähle die Art und formuliere den Hinweis.", icon: <CircleHelp /> });
-    fieldPairs.forEach((_, index) => next.push({ id: `details-${index}`, title: "Fachliche Details", description: "Ergänze nur die Angaben, die für diese App wichtig sind.", icon: <Layers /> }));
-    next.push({ id: "editors", title: "Weitere Bearbeiter hinzufügen?", description: "Du kannst anderen Personen die Bearbeitung dieser App erlauben.", section: "editors", optional: true, icon: <UsersRound /> });
-    if (branches.editors) next.push({ id: "editors-select", title: "Wer darf mitarbeiten?", description: "Wähle Personen aus, die diese App bearbeiten dürfen.", icon: <UserPlus /> });
-    next.push({ id: "related", title: "Andere Apps verknüpfen?", description: "Optional kannst du passende Lösungen miteinander verbinden.", section: "related", optional: true, icon: <Link2 /> });
-    if (branches.related) next.push({ id: "related-apps", title: "Verwandte Apps", description: "Wähle bestehende Apps aus dem Katalog aus.", icon: <Link2 /> });
-    if (canManageGroups) next.push({ id: "groups", title: "Gruppen zuordnen", description: "Erstelle bei Bedarf eine Gruppe und ordne deine App zu.", icon: <Layers /> });
-    if (isAdmin) next.push({ id: "admin", title: "Sichtbarkeit verwalten", description: "Hebe die App auf der Startseite hervor.", icon: <Sparkles /> });
-    next.push({ id: "documentation", title: "Dokumentation ergänzen?", description: "Eine ausführliche Markdown-Beschreibung ist optional.", section: "documentation", optional: true, icon: <BookOpen /> });
-    if (branches.documentation) next.push({ id: "markdown", title: "Dokumentation schreiben", description: "Diese Inhalte erscheinen in der Detailansicht der App.", icon: <BookOpen /> });
-    next.push({ id: "review", title: "Alles bereit?", description: "Prüfe deine Angaben und erstelle die App.", icon: <Check /> });
-    return next;
-  })();
-
-  const currentIndex = Math.max(0, steps.findIndex((step) => step.id === currentId));
-  const current = steps[currentIndex] || steps[0];
-  const currentFields = fieldPairs[Number(current.id.replace("details-", ""))] || [];
-  const previewIcon = getImageAssetUrl(formData.icon);
-
-  useEffect(() => { headingRef.current?.focus(); }, [currentId]);
-  useEffect(() => { if (branches.repository || aiAssistantOpen) fetchApi("/settings/repository-providers/available").then((response) => response.ok ? response.json() : []).then((value) => setProviders(Array.isArray(value) ? value : [])).catch(() => {}); }, [branches.repository, aiAssistantOpen]);
-  useEffect(() => { if (canManageGroups) fetchApi("/app-groups").then((response) => response.ok ? response.json() : []).then((value) => setGroups(Array.isArray(value) ? value : [])).catch(() => {}); }, [canManageGroups]);
-  useEffect(() => { if (branches.editors) fetchApi("/users").then((response) => response.ok ? response.json() : []).then((value) => { const users = Array.isArray(value) ? value : value.users || []; setAvailableUsers(users.filter((candidate: SystemUser) => !candidate.disabled && candidate.id !== user?.id)); }).catch(() => {}); }, [branches.editors, user?.id]);
-
-  const payload = () => ({ ...formData, categories: formData.categories || [], techStack: formData.techStack || [], tags: formData.tags || [], customFields: formData.customFields || [], liveDemos: branches.resources ? links(formData.liveDemos) : [], repositories: (branches.resources || branches.repository) ? links(formData.repositories) : [], customLinks: branches.resources ? links(formData.customLinks) : [], markdownContent: branches.documentation ? formData.markdownContent || "" : "", bannerText: branches.banner ? formData.bannerText || "" : "", bannerType: branches.banner ? formData.bannerType : undefined, bannerTitle: branches.banner ? formData.bannerTitle || "" : "", bannerColor: branches.banner ? formData.bannerColor || "" : "", hasDeploymentAssistant: branches.deployment, showDocker: branches.deployment && formData.showDocker !== false, showCompose: branches.deployment && formData.showCompose !== false, showHelm: branches.deployment && formData.showHelm !== false, status: formData.status || DRAFT_STATUS });
-
-  const save = async (final = false) => {
-    if (!isAdmin && !user?.canSubmitApps) throw new Error("Sie dürfen keine Apps erstellen.");
-    if (availableSpaces.length > 0 && formData.spaceId && !availableSpaces.some((space) => space.id === formData.spaceId)) throw new Error("Keine Berechtigung für den ausgewählten Space.");
-    if (!canCreateDraft) throw new Error("Bitte gib einen verfügbaren Namen und eine technische ID an.");
-    if (final && nonDraft && (!(formData.categories?.length) || !formData.description?.trim())) throw new Error("Für diesen Status sind Kategorie und Kurzbeschreibung erforderlich.");
-    if (!profileReady && !(await refreshUser())) throw new Error("Das Benutzerprofil ist noch nicht bereit.");
-    setSaveState("saving"); setSaveError(null);
-    const response = await fetchApi(draftId ? `/apps/${draftId}` : "/apps", { method: draftId ? "PUT" : "POST", body: JSON.stringify(payload()) });
-    if (!response.ok) { const error = await response.json().catch(() => ({})); const message = (error as { message?: string }).message || "Speichern fehlgeschlagen."; setSaveState("error"); setSaveError(message); throw new Error(message); }
-    const created = draftId ? null : await response.json() as AppConfig;
-    const id = draftId || created?.id || formData.id!;
-    if (!draftId) setDraftId(id);
-    setSaveState("saved");
-    if (final) { toast.success("Die App wurde erstellt."); router.push(`/apps/${id}`); }
-    return id;
-  };
+  const categoryOptions = useMemo(() => {
+    const known = new Set(CATEGORIES);
+    existingApps.forEach((app) => app.categories?.forEach((category) => category && known.add(category)));
+    formData.categories?.forEach((category) => known.add(category));
+    return Array.from(known).sort((a, b) => a.localeCompare(b, "de"));
+  }, [existingApps, formData.categories]);
 
   useEffect(() => {
-    if (!draftId || !canCreateDraft || saveState === "saving") return;
-    const timeout = window.setTimeout(() => { void save().catch(() => {}); }, 1000);
-    return () => window.clearTimeout(timeout);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, branches]);
+    if (method !== "repository" || providers.length) return;
+    fetchApi("/settings/repository-providers/available")
+      .then((response) => (response.ok ? response.json() : []))
+      .then((value) => {
+        const list: GitLabProviderSummary[] = Array.isArray(value) ? value : [];
+        setProviders(list);
+        if (list.length === 1) setRepo((previous) => ({ ...previous, providerKey: previous.providerKey || list[0].key }));
+      })
+      .catch(() => {});
+  }, [method, providers.length]);
 
-  const applyRepositorySnapshot = (snapshot: GitLabIntegrationState["snapshot"]) => {
-    if (!snapshot) return;
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [step]);
+
+  const update = (patch: Partial<AppConfig>) => setFormData((previous) => ({ ...previous, ...patch }));
+
+  /** Applies an AI suggestion to the form; nothing is saved yet. */
+  const applySuggestion = (result: AppCreationSuggestionResponse) => {
+    const snapshot = result.repositorySnapshot;
+    const readme = snapshot?.readmeContent?.trim();
     setFormData((previous) => ({
       ...previous,
-      markdownContent: snapshot.readmeContent?.trim() || previous.markdownContent,
-      description: snapshot.description?.trim() || previous.description,
-      license: snapshot.license?.trim() || previous.license,
-      tags: Array.from(new Set([...(previous.tags || []), ...(snapshot.topics || []).filter(Boolean)])),
-      repositories: snapshot.projectWebUrl
-        ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
-        : previous.repositories,
-      customHelmValues: snapshot.helmValuesContent?.trim() || previous.customHelmValues,
-      customComposeCommand: snapshot.composeFileContent?.trim() || previous.customComposeCommand,
-    }));
-  };
-
-  const syncRepositoryForApp = async (id: string, applySnapshot = true) => {
-    const response = await fetchApi(`/apps/${id}/repository/sync`, { method: "POST" });
-    if (!response.ok) throw new Error("Repository-Synchronisation fehlgeschlagen.");
-    const integration = await response.json() as GitLabIntegrationState;
-    if (applySnapshot) applyRepositorySnapshot(integration.snapshot);
-    return integration;
-  };
-
-  const syncRepository = async () => {
-    if (!repo.providerKey || !repo.projectPath) return;
-    setSyncing(true);
-    setRepositoryError(null);
-    try {
-      const id = await save();
-      await saveRepositoryConnection(id);
-      await syncRepositoryForApp(id);
-      toast.success("Repositorydaten wurden übernommen.");
-    } catch (error) { const message = error instanceof Error ? error.message : "Repository-Synchronisation fehlgeschlagen."; setRepositoryError(message); setSaveError(message); toast.danger(message); } finally { setSyncing(false); }
-  };
-
-  const saveRepositoryConnection = async (id: string) => {
-    const linked = await fetchApi(`/apps/${id}/repository`, { method: "PUT", body: JSON.stringify(repo) });
-    if (!linked.ok) {
-      const error = await linked.json().catch(() => ({})) as { message?: string };
-      throw new Error(error.message || "Repository-Verknüpfung konnte nicht gespeichert werden.");
-    }
-  };
-  const saveEditors = async (id: string, userIds = Array.from(editorIds)) => {
-    const response = await fetchApi(`/apps/${id}/editors`, { method: "PUT", body: JSON.stringify({ userIds }) });
-    if (!response.ok) throw new Error("Bearbeiter konnten nicht gespeichert werden.");
-  };
-  const generateAIDraft = async () => {
-    const brief = aiBrief.trim();
-    const hasRepositoryInput = aiScanRepository && !!repo.providerKey && !!repo.projectPath.trim();
-    if ((!brief && !hasRepositoryInput) || aiGenerating) return;
-    setAiGenerating(true);
-    setAiError(null);
-    setRepositoryError(null);
-    try {
-      const suggestion = await suggestAppCreation({
-        brief,
-        name: formData.name || "",
-        description: formData.description || "",
-        markdownContent: formData.markdownContent || "",
-        scanRepository: aiScanRepository,
-        repository: {
-          providerKey: repo.providerKey,
-          projectPath: repo.projectPath,
-          branch: repo.branch,
-          readmePath: repo.readmePath,
-          helmValuesPath: repo.helmValuesPath,
-          composeFilePath: repo.composeFilePath,
-          readmeContent: aiScanRepository ? "" : formData.markdownContent || "",
-          topics: aiScanRepository ? [] : formData.tags || [],
-          helmValuesContent: aiScanRepository ? "" : formData.customHelmValues || "",
-          composeFileContent: aiScanRepository ? "" : formData.customComposeCommand || "",
-        },
-      });
-      setAiSuggestion(suggestion);
-    } catch (error) {
-      const message = formatAIAssistantError(error);
-      setAiError(message);
-      if (aiScanRepository) setRepositoryError(message);
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-  const openAIAssistant = () => {
-    setAiSuggestion(null);
-    setAiError(null);
-    setAiScanRepository(Boolean(repo.projectPath));
-    setAiAssistantOpen(true);
-  };
-  const applyAIDraft = () => {
-    if (!aiSuggestion) return;
-    const snapshot = aiSuggestion.repositorySnapshot;
-    const repositoryReadme = snapshot?.readmeContent?.trim();
-    const hasDockerSetup = Boolean(aiSuggestion.dockerRepo || aiSuggestion.customDockerCommand);
-    const hasComposeSetup = Boolean(aiSuggestion.customComposeCommand || snapshot?.composeFileContent);
-    const hasHelmSetup = Boolean(aiSuggestion.helmRepo || aiSuggestion.customHelmCommand);
-    setFormData((previous) => ({
-      ...previous,
-      name: aiSuggestion.name || previous.name,
-      id: aiSuggestion.id || slugify(aiSuggestion.name) || previous.id,
-      description: aiSuggestion.description || snapshot?.description || previous.description,
-      categories: aiSuggestion.categories.length ? aiSuggestion.categories : previous.categories,
-      tags: Array.from(new Set([...(aiSuggestion.tags.length ? aiSuggestion.tags : previous.tags || []), ...(snapshot?.topics || [])])),
-      techStack: aiSuggestion.techStack.length ? aiSuggestion.techStack : previous.techStack,
-      license: aiSuggestion.license || snapshot?.license || previous.license,
-      isReuse: previous.isReuse || aiSuggestion.isReuse,
-      reuseRequirements: aiSuggestion.reuseRequirements || previous.reuseRequirements,
-      // A repository README is the canonical documentation for a scanned
-      // project. Keep it verbatim instead of replacing it with the AI's
-      // generated summary.
-      markdownContent: repositoryReadme || aiSuggestion.markdownContent || previous.markdownContent,
+      name: result.name || previous.name,
+      id: result.id || slugify(result.name) || previous.id,
+      description: result.description || snapshot?.description || previous.description,
+      categories: result.categories.length ? result.categories : previous.categories,
+      tags: Array.from(new Set([...(result.tags.length ? result.tags : previous.tags || []), ...(snapshot?.topics || [])])),
+      techStack: result.techStack.length ? result.techStack : previous.techStack,
+      license: result.license || snapshot?.license || previous.license,
+      isReuse: previous.isReuse || result.isReuse,
+      reuseRequirements: result.reuseRequirements || previous.reuseRequirements,
+      // A repository README is the canonical documentation; keep it verbatim.
+      markdownContent: readme || result.markdownContent || previous.markdownContent,
       repositories: snapshot?.projectWebUrl
         ? [...(previous.repositories || []).filter((item) => item.url !== snapshot.projectWebUrl), { label: "Repository", url: snapshot.projectWebUrl }]
         : previous.repositories,
-      dockerRepo: aiSuggestion.dockerRepo || previous.dockerRepo,
-      customDockerCommand: aiSuggestion.customDockerCommand || previous.customDockerCommand,
-      customComposeCommand: aiSuggestion.customComposeCommand || snapshot?.composeFileContent || previous.customComposeCommand,
-      helmRepo: aiSuggestion.helmRepo || previous.helmRepo,
-      customHelmCommand: aiSuggestion.customHelmCommand || previous.customHelmCommand,
-      customHelmValues: aiSuggestion.customHelmValues || snapshot?.helmValuesContent || previous.customHelmValues,
-      showDocker: hasDockerSetup ? previous.showDocker !== false : false,
-      showCompose: hasComposeSetup ? previous.showCompose !== false : false,
-      showHelm: hasHelmSetup ? previous.showHelm !== false : false,
+      dockerRepo: result.dockerRepo || previous.dockerRepo,
+      customDockerCommand: result.customDockerCommand || previous.customDockerCommand,
+      customComposeCommand: result.customComposeCommand || snapshot?.composeFileContent || previous.customComposeCommand,
+      helmRepo: result.helmRepo || previous.helmRepo,
+      customHelmCommand: result.customHelmCommand || previous.customHelmCommand,
+      customHelmValues: result.customHelmValues || snapshot?.helmValuesContent || previous.customHelmValues,
     }));
-    setBranches((previous) => ({
-      ...previous,
-      repository: previous.repository || Boolean(aiSuggestion.repositoryScan),
-      deployment: previous.deployment || hasDockerSetup || hasComposeSetup || hasHelmSetup,
-      resources: previous.resources || Boolean(snapshot?.projectWebUrl),
-      documentation: previous.documentation || Boolean(repositoryReadme || aiSuggestion.markdownContent),
-    }));
-    if (aiSuggestion.repositoryScan) {
+    if (result.repositoryScan) {
+      const scan = result.repositoryScan;
       setRepo((previous) => ({
         ...previous,
-        providerKey: aiSuggestion.repositoryScan?.providerKey || previous.providerKey,
-        projectPath: aiSuggestion.repositoryScan?.projectPath || previous.projectPath,
-        branch: aiSuggestion.repositoryScan?.branch || previous.branch,
-        readmePath: aiSuggestion.repositoryScan?.readmePath || previous.readmePath,
-        helmValuesPath: aiSuggestion.repositoryScan?.helmValuesPath || previous.helmValuesPath,
-        composeFilePath: aiSuggestion.repositoryScan?.composeFilePath || previous.composeFilePath,
+        providerKey: scan.providerKey || previous.providerKey,
+        projectPath: scan.projectPath || previous.projectPath,
+        branch: scan.branch || previous.branch,
+        readmePath: scan.readmePath || previous.readmePath,
+        helmValuesPath: scan.helmValuesPath || previous.helmValuesPath,
+        composeFilePath: scan.composeFilePath || previous.composeFilePath,
       }));
-      setRepositoryScannedByAI(true);
     }
-    setAiAssistantOpen(false);
-    // The suggestion pre-fills the wizard; it must not make reviewable fields
-    // disappear. Start at the name so name/ID, logo, categories, and status are
-    // explicitly confirmed before continuing with the description.
-    setCurrentId("name");
-    setAttemptedNext(false);
-    toast.success("AI-Vorschlag übernommen. Bitte prüfe die Angaben.");
+    setSuggestion(result);
   };
-  const hasResource = !!(formData.liveDemos?.some((item) => item.url?.trim()) || formData.repositories?.some((item) => item.url?.trim()) || formData.customLinks?.some((item) => item.url?.trim()) || formData.docsUrl?.trim());
-  const hasDockerSetup = !!(formData.dockerRepo?.trim() || formData.customDockerCommand?.trim());
-  const hasHelmSetup = !!(formData.helmRepo?.trim() || formData.customHelmCommand?.trim());
-  const validCurrent = () => {
-    if (current.id === "name") return canCreateDraft;
-    if (current.id === "categories") return !nonDraft || !!formData.categories?.length;
-    if (current.id === "description") return !nonDraft || !!formData.description?.trim();
-    if (current.id === "repo-project") return !!repo.providerKey && !!repo.projectPath.trim();
-    if (current.id === "reuse") return !formData.isReuse || !!formData.reuseRequirements?.trim();
-    if (current.id === "deployment-methods") return selectedMethods.length > 0;
-    if (current.id === "deployment-docker") return hasDockerSetup;
-    if (current.id === "deployment-compose") return !!formData.customComposeCommand?.trim();
-    if (current.id === "deployment-helm") return hasHelmSetup;
-    if (current.id === "source-links") return hasResource;
-    if (current.id === "banner-content") return !!formData.bannerText?.trim();
-    if (current.id === "markdown") return !!formData.markdownContent?.trim();
-    return true;
-  };
-  const validationMessage = () => {
-    if (current.id === "name") return idTaken ? "Die technische ID ist bereits vergeben." : "Gib einen App-Namen ein.";
-    if (current.id === "categories") return "Wähle mindestens eine Kategorie, um die App zu veröffentlichen.";
-    if (current.id === "description") return "Für den gewählten Status ist eine Kurzbeschreibung erforderlich.";
-    if (current.id === "repo-project") return !repo.providerKey ? "Wähle einen Provider aus." : "Gib den Projektpfad an.";
-    if (current.id === "reuse") return "Beschreibe die Voraussetzungen oder Grenzen für die Nachnutzung.";
-    if (current.id === "deployment-methods") return "Wähle mindestens einen Installationsweg aus.";
-    if (current.id === "deployment-docker") return "Gib ein Docker Image oder ein Docker-Kommando an.";
-    if (current.id === "deployment-compose") return "Gib das Compose-Setup an.";
-    if (current.id === "deployment-helm") return "Gib ein Helm Repository oder ein Helm-Kommando an.";
-    if (current.id === "source-links") return "Füge mindestens einen Link oder eine Dokumentations-URL hinzu.";
-    if (current.id === "banner-content") return "Gib einen Hinweistext ein.";
-    if (current.id === "markdown") return "Schreibe eine kurze Dokumentation.";
-    return null;
-  };
-  const validationIssues = () => {
-    const issues: { id: StepId; label: string; message: string }[] = [];
-    if (!canCreateDraft) issues.push({ id: "name", label: "Name und technische ID", message: idTaken ? "Die technische ID ist bereits vergeben." : "Name und technische ID fehlen." });
-    if (nonDraft && !formData.categories?.length) issues.push({ id: "categories", label: "Kategorien", message: "Mindestens eine Kategorie fehlt." });
-    if (nonDraft && !formData.description?.trim()) issues.push({ id: "description", label: "Kurzbeschreibung", message: "Für diesen Status erforderlich." });
-    if (branches.repository && (!repo.providerKey || !repo.projectPath.trim())) issues.push({ id: "repo-project", label: "Repository", message: "Provider und Projektpfad sind erforderlich." });
-    if (formData.isReuse && !formData.reuseRequirements?.trim()) issues.push({ id: "reuse", label: "Nachnutzung", message: "Voraussetzungen oder Grenzen fehlen." });
-    if (branches.deployment && !selectedMethods.length) issues.push({ id: "deployment-methods", label: "Installationswege", message: "Wähle mindestens einen Weg." });
-    if (branches.deployment && formData.showDocker !== false && !hasDockerSetup) issues.push({ id: "deployment-docker", label: "Docker", message: "Image oder Kommando fehlt." });
-    if (branches.deployment && formData.showCompose !== false && !formData.customComposeCommand?.trim()) issues.push({ id: "deployment-compose", label: "Docker Compose", message: "Compose-Setup fehlt." });
-    if (branches.deployment && formData.showHelm !== false && !hasHelmSetup) issues.push({ id: "deployment-helm", label: "Helm", message: "Repository oder Kommando fehlt." });
-    if (branches.resources && !hasResource) issues.push({ id: "source-links", label: "Links", message: "Mindestens ein Link fehlt." });
-    if (branches.banner && !formData.bannerText?.trim()) issues.push({ id: "banner-content", label: "Hinweis", message: "Hinweistext fehlt." });
-    if (branches.documentation && !formData.markdownContent?.trim()) issues.push({ id: "markdown", label: "Dokumentation", message: "Dokumentation fehlt." });
-    return issues;
-  };
-  const move = async (direction: 1 | -1) => {
-    if (direction === 1 && !validCurrent()) { setAttemptedNext(true); return; }
-    if (direction === 1 && current.id === "status" && nonDraft && !formData.categories?.length) { setCurrentId("categories"); setAttemptedNext(true); return; }
-    if (direction === 1 && current.id === "name") { try { await save(); } catch { return; } }
-    if (direction === 1 && current.id === "editors-select") { try { await saveEditors(await save()); setEditorsWereSaved(true); } catch (error) { setSaveError(error instanceof Error ? error.message : "Bearbeiter konnten nicht gespeichert werden."); return; } }
-    const target = steps[currentIndex + direction];
-    if (target) { setCurrentId(target.id); setAttemptedNext(false); if (direction === 1 && returnToReview) { setReturnToReview(false); } }
-  };
-  const edit = (id: StepId) => { setReturnToReview(true); setCurrentId(id); };
-  const toggleList = (key: "tags" | "techStack", value: string) => { if (!value.trim()) return; setFormData((previous) => ({ ...previous, [key]: Array.from(new Set([...(previous[key] || []), value.trim()])) })); };
-  const addRelated = async (app: AppConfig) => { try { const id = await save(); const response = await fetchApi(`/apps/${id}/related`, { method: "POST", body: JSON.stringify({ relatedAppId: app.id }) }); if (!response.ok) throw new Error(); setRelatedApps((value) => [...value, { id: app.id, name: app.name, icon: app.icon }]); setRelatedSearch(""); } catch { toast.danger("Verknüpfung konnte nicht gespeichert werden."); } };
-  const removeRelated = async (relatedId: string) => { if (!draftId) return; try { const response = await fetchApi(`/apps/${draftId}/related/${relatedId}`, { method: "DELETE" }); if (!response.ok) throw new Error(); setRelatedApps((value) => value.filter((app) => app.id !== relatedId)); } catch { toast.danger("Verknüpfung konnte nicht entfernt werden."); } };
-  const updateField = (key: string, value: string) => setFormData((previous) => { const next = [...(previous.customFields || [])].filter((field) => field.key !== key); if (value.trim()) next.push({ key, value }); return { ...previous, customFields: next }; });
-  const fieldValue = (key: string) => formData.customFields?.find((field) => field.key === key)?.value || "";
-  const reviewValue = (step: Step) => {
-    if (step.id.startsWith("details-")) { const fields = fieldPairs[Number(step.id.replace("details-", ""))] || []; return fields.map((field) => fieldValue(field.key)).filter(Boolean).join(" · ") || "Nicht ergänzt"; }
-    switch (step.id) {
-      case "visibility": return formData.spaceId ? `Privater Space: ${availableSpaces.find((space) => space.id === formData.spaceId)?.name || "Space"}` : "Öffentlicher Katalog";
-      case "name": return formData.name || "Nicht ergänzt";
-      case "logo": return formData.icon ? "Gewählt" : "Nicht ergänzt";
-      case "categories": return formData.categories?.join(", ") || "Nicht ergänzt";
-      case "status": return formData.status || DRAFT_STATUS;
-      case "description": return formData.description || "Nicht ergänzt";
-      case "metadata": return [formData.license, formData.tags?.join(", ")].filter(Boolean).join(" · ") || "Nicht ergänzt";
-      case "repository": return branches.repository ? "Wird verbunden" : "Übersprungen";
-      case "repo-project": return [providers.find((provider) => provider.key === repo.providerKey)?.label, repo.projectPath].filter(Boolean).join(" · ") || "Nicht ergänzt";
-      case "repo-paths": return [repo.branch, repo.readmePath, repo.helmValuesPath, repo.composeFilePath].filter(Boolean).join(" · ") || "Standardwerte";
-      case "reuse": return formData.isReuse ? "Ja" : "Nein";
-      case "deployment": return branches.deployment ? "Ja" : "Nein";
-      case "deployment-methods": return selectedMethods.join(", ") || "Nicht ergänzt";
-      case "deployment-docker": return [formData.dockerRepo, formData.customDockerCommand].filter(Boolean).join(" · ") || "Nicht ergänzt";
-      case "deployment-compose": return formData.customComposeCommand || "Nicht ergänzt";
-      case "deployment-helm": return [formData.helmRepo, formData.customHelmCommand].filter(Boolean).join(" · ") || "Nicht ergänzt";
-      case "resources": return branches.resources ? "Ja" : "Nein";
-      case "live-links": return formData.liveDemos?.filter((item) => item.url?.trim()).length ? "Ergänzt" : "Nicht ergänzt";
-      case "source-links": return hasResource ? "Ergänzt" : "Nicht ergänzt";
-      case "presentation": return [formData.authority, formData.techStack?.join(", ")].filter(Boolean).join(" · ") || "Nicht ergänzt";
-      case "banner": return branches.banner ? "Ja" : "Nein";
-      case "banner-content": return formData.bannerText || "Nicht ergänzt";
-      case "editors": return branches.editors ? "Ja" : "Nein";
-      case "editors-select": return availableUsers.filter((candidate) => editorIds.has(candidate.id)).map((candidate) => candidate.username).join(", ") || "Keine ausgewählt";
-      case "related": return branches.related ? "Ja" : "Nein";
-      case "related-apps": return relatedApps.map((app) => app.name).join(", ") || "Nicht ergänzt";
-      case "groups": return groupIds.size ? `${groupIds.size} Gruppen` : "Nicht ergänzt";
-      case "admin": return formData.isFeatured ? "Ausgezeichnet" : "Nicht ergänzt";
-      case "documentation": return branches.documentation ? "Ja" : "Nein";
-      case "markdown": return formData.markdownContent ? "Ergänzt" : "Nicht ergänzt";
-      default: return "Prüfen";
+
+  /** Step 1: import or generate, then move on to the basics. */
+  const submitStart = async (event?: FormEvent) => {
+    event?.preventDefault();
+    setStartError(null);
+    if (method === "manual") {
+      setStep(STEP_BASICS);
+      return;
+    }
+    if (method === "ai" && !aiBrief.trim()) {
+      setStartError("Beschreibe kurz, was die App leisten soll.");
+      return;
+    }
+    if (method === "repository" && !repositoryReady) {
+      setStartError(repo.providerKey ? "Gib den Projektpfad oder die Repository-URL an." : "Wähle einen Repository-Provider.");
+      return;
+    }
+    // Without AI, a repository is connected and imported when the draft is created.
+    if (method === "repository" && !aiAvailable) {
+      setStep(STEP_BASICS);
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const scanRepository = method === "repository";
+      const result = await suggestAppCreation({
+        brief: aiBrief.trim(),
+        name: formData.name || "",
+        description: formData.description || "",
+        markdownContent: formData.markdownContent || "",
+        scanRepository,
+        repository: scanRepository ? { ...repo, readmeContent: "", topics: [], helmValuesContent: "", composeFileContent: "" } : undefined,
+      });
+      applySuggestion(result);
+      setAttempted(false);
+      setStep(STEP_BASICS);
+    } catch (error) {
+      setStartError(formatAIAssistantError(error));
+    } finally {
+      setAnalyzing(false);
     }
   };
 
-  const stage = () => {
-    switch (current.id) {
-      case "visibility": return <div className="space-y-5"><Select value={formData.spaceId || "public"} isDisabled={!!draftId} onChange={(value) => { if (draftId) return; const spaceId = value === "public" ? null : String(value); if (spaceId && !availableSpaces.some((space) => space.id === spaceId)) return; setFormData((previous) => ({ ...previous, spaceId })); }}><Label>Sichtbarkeit</Label><Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger><Select.Popover><ListBox><ListBox.Item id="public" textValue="Öffentlicher Katalog">Öffentlicher Katalog<ListBox.ItemIndicator /></ListBox.Item>{availableSpaces.map((space) => <ListBox.Item key={space.id} id={space.id} textValue={`Privater Space: ${space.name}`}>Privater Space: {space.name}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover></Select><p className="text-sm leading-relaxed text-muted-foreground">{formData.spaceId ? "Diese App bleibt nur für Sie und die Mitglieder dieses Spaces sichtbar. Sie können sie später unter Meine Apps für alle veröffentlichen." : "Die App wird im öffentlichen Katalog angelegt. Entwürfe bleiben zunächst für Sie und berechtigte Bearbeiter sichtbar."}</p>{draftId && <p className="text-sm text-muted-foreground">Der Bereich ist für diesen gespeicherten Entwurf festgelegt. Eine private App können Sie später unter Meine Apps veröffentlichen.</p>}</div>;
-      case "name": return <div className="space-y-5"><Alert status="accent" className="border-primary/30 bg-primary/5"><Alert.Indicator><Sparkles className="size-4" /></Alert.Indicator><Alert.Content><Alert.Title>Mit AI schneller starten</Alert.Title><Alert.Description>Beschreibe deine App oder analysiere ein Repository. Der Assistent erstellt daraus einen prüfbaren Entwurf für die nächsten Schritte.</Alert.Description><Button className="mt-3 w-full sm:w-auto" size="md" onPress={openAIAssistant}><Sparkles className="size-4" />Mit AI ausfüllen</Button></Alert.Content></Alert><TextField isRequired isInvalid={idTaken || (attemptedNext && !formData.name?.trim())} onChange={(name) => setFormData((previous) => ({ ...previous, name, id: idEditing ? previous.id : slugify(name) }))}><Label>App-Name</Label><Input autoFocus value={formData.name || ""} placeholder="z. B. Digi-Sign Pro" /><FieldError>{idTaken ? "Diese technische ID wird bereits verwendet." : attemptedNext && !formData.name?.trim() ? "Gib einen App-Namen ein." : undefined}</FieldError></TextField><button type="button" onClick={() => setIdEditing((value) => !value)} className="flex items-center gap-2 text-sm font-semibold text-primary"><Pencil className="h-4 w-4" />Technische ID {idEditing ? "ausblenden" : "bearbeiten"}</button>{idEditing && <TextField isRequired onChange={(id) => setFormData((previous) => ({ ...previous, id: slugify(id) }))}><Label>Technische ID</Label><Input value={formData.id || ""} className="font-mono" /></TextField>}<p className="text-sm text-muted-foreground">{formData.id ? `Wird gespeichert als ${formData.id}` : "Die ID wird aus dem Namen erzeugt."}</p></div>;
-      case "logo": return <div className="space-y-5"><button type="button" onClick={() => iconInput.current?.click()} className="group mx-auto flex h-44 w-44 items-center justify-center overflow-hidden rounded-[2rem] border-2 border-dashed border-primary/40 bg-surface-secondary text-6xl transition-[border-color,transform] duration-180 ease-out hover:border-primary active:scale-[0.98]">{previewIcon ? <Image src={previewIcon} alt="Logo-Vorschau" width={176} height={176} className="h-full w-full object-contain p-5" unoptimized /> : formData.icon || "🏛️"}</button><input ref={iconInput} type="file" accept="image/*" className="hidden" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setUploading(true); try { const url = await uploadFile("/upload/logo", file); setFormData((previous) => ({ ...previous, icon: url })); setIconUrl(url); } catch { toast.danger("Logo konnte nicht hochgeladen werden."); } finally { setUploading(false); event.target.value = ""; } }} /><div className="flex flex-wrap justify-center gap-2"><Button onPress={() => iconInput.current?.click()} isPending={uploading}><Upload className="h-4 w-4" />Logo hochladen</Button><Button variant="secondary" onPress={() => setShowEmojis((value) => !value)}>Symbol wählen</Button></div>{showEmojis && <div className="grid grid-cols-6 gap-2 rounded-2xl border border-border bg-surface-secondary p-3">{EMOJIS.map((emoji) => <Button key={emoji} isIconOnly variant={formData.icon === emoji ? "primary" : "ghost"} onPress={() => { setFormData((previous) => ({ ...previous, icon: emoji })); setShowEmojis(false); }} aria-label={`Symbol ${emoji}`}>{emoji}</Button>)}</div>}<TextField onChange={(value) => { setIconUrl(value); if (isImageAssetSource(value)) setFormData((previous) => ({ ...previous, icon: value })); }}><Label>Oder Bild-URL</Label><Input value={iconUrl} placeholder="https://…" /></TextField></div>;
-      case "categories": return <div className="space-y-4"><p id="category-requirement" className="text-sm font-semibold text-foreground">Kategorien {nonDraft && <span className="text-danger">*</span>}</p><p className="text-sm text-muted-foreground">{nonDraft ? "Für diesen Status erforderlich." : "Für Entwürfe optional; vor der Veröffentlichung erforderlich."}</p><div role="group" aria-labelledby="category-requirement" className="flex flex-wrap gap-2">{CATEGORIES.map((category) => { const selected = formData.categories?.includes(category); return <Button key={category} variant={selected ? "primary" : "secondary"} size="sm" onPress={() => setFormData((previous) => ({ ...previous, categories: selected ? previous.categories?.filter((item) => item !== category) : [...(previous.categories || []), category] }))}>{category}</Button>; })}</div><div className="flex gap-2"><Input value={categoryInput} onChange={(event) => setCategoryInput(event.target.value)} placeholder="Eigene Kategorie" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); setFormData((previous) => ({ ...previous, categories: Array.from(new Set([...(previous.categories || []), categoryInput.trim()])).filter(Boolean) })); setCategoryInput(""); } }} /><Button variant="secondary" onPress={() => { setFormData((previous) => ({ ...previous, categories: Array.from(new Set([...(previous.categories || []), categoryInput.trim()])).filter(Boolean) })); setCategoryInput(""); }}>Hinzufügen</Button></div></div>;
-      case "status": return <EditorStatusPicker value={formData.status} onChange={(status) => setFormData((previous) => ({ ...previous, status }))} />;
-      case "description": return <TextField isRequired={nonDraft} isInvalid={attemptedNext && nonDraft && !formData.description?.trim()} onChange={(description) => setFormData((previous) => ({ ...previous, description }))}><Label>Kurzbeschreibung</Label><TextArea autoFocus value={formData.description || ""} placeholder="Wofür steht die App? Welche Wirkung hat sie im Alltag?" className="min-h-52" /><FieldError>{attemptedNext && nonDraft && !formData.description?.trim() ? "Für diesen Status ist eine Kurzbeschreibung erforderlich." : undefined}</FieldError></TextField>;
-      case "metadata": return <div className="space-y-5"><TextField onChange={(license) => setFormData((previous) => ({ ...previous, license }))}><Label>Lizenz</Label><Input value={formData.license || ""} placeholder="z. B. MIT oder EUPL" /></TextField><Label>Schlagwörter</Label><div className="flex flex-wrap gap-2">{(formData.tags || []).map((tag) => <Chip key={tag} variant="soft">{tag}<button type="button" onClick={() => setFormData((previous) => ({ ...previous, tags: previous.tags?.filter((value) => value !== tag) }))}><X className="ml-1 h-3 w-3" /></button></Chip>)}</div><div className="flex gap-2"><Input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="Schlagwort" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); toggleList("tags", tagInput); setTagInput(""); } }} /><Button variant="secondary" onPress={() => { toggleList("tags", tagInput); setTagInput(""); }}>Hinzufügen</Button></div></div>;
-      case "repository": return <SectionGate title="Repository" description="Wir übernehmen auf Wunsch Beschreibung, Tags, Dokumentation und verfügbare Deployment-Dateien." enabled={branches.repository} onChange={(value) => setBranches((previous) => ({ ...previous, repository: value }))} icon={<FolderGit2 className="h-5 w-5" />} />;
-      case "repo-project": return <div className="grid gap-5 sm:grid-cols-2"><div className="space-y-2"><Label>Provider <span className="text-danger">*</span></Label><Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, providerKey: String(key) })); }} isDisabled={!providers.length} isInvalid={attemptedNext && !repo.providerKey}><Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger><Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover></Select></div><TextField isRequired isInvalid={(attemptedNext && !repo.projectPath.trim()) || !!repositoryError} onChange={(projectPath) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, projectPath })); }}><Label>Projektpfad oder Repository-URL</Label><Input value={repo.projectPath} placeholder="gruppe/projekt oder https://…" /><FieldError>{repositoryError || (attemptedNext && !repo.projectPath.trim() ? "Gib einen Projektpfad oder eine Repository-URL an." : undefined)}</FieldError></TextField></div>;
-      case "repo-paths": return <div className="space-y-5"><div className="grid gap-5 sm:grid-cols-2"><TextField onChange={(branch) => setRepo((previous) => ({ ...previous, branch }))}><Label>Branch oder Ref</Label><Input value={repo.branch} placeholder="Standard-Branch" /></TextField><TextField onChange={(readmePath) => setRepo((previous) => ({ ...previous, readmePath }))}><Label>README-Pfad</Label><Input value={repo.readmePath} placeholder="README.md" /></TextField><TextField onChange={(helmValuesPath) => setRepo((previous) => ({ ...previous, helmValuesPath }))}><Label>Helm Values</Label><Input value={repo.helmValuesPath} placeholder="chart/values.yaml" /></TextField><TextField onChange={(composeFilePath) => setRepo((previous) => ({ ...previous, composeFilePath }))}><Label>Compose-Datei</Label><Input value={repo.composeFilePath} placeholder="docker-compose.yml" /></TextField></div><Button variant="secondary" isDisabled={!repo.providerKey || !repo.projectPath} isPending={syncing} onPress={syncRepository}><FolderGit2 className="h-4 w-4" />Jetzt importieren</Button></div>;
-      case "reuse": return <div className="space-y-5"><SectionGate title="Nachnutzung" description="Andere Stellen können die App als bestehende Lösung verwenden." enabled={!!formData.isReuse} onChange={(value) => setFormData((previous) => ({ ...previous, isReuse: value }))} icon={<Layers className="h-5 w-5" />} />{formData.isReuse && <TextField isRequired isInvalid={attemptedNext && !formData.reuseRequirements?.trim()} onChange={(reuseRequirements) => setFormData((previous) => ({ ...previous, reuseRequirements }))}><Label>Voraussetzungen und Grenzen</Label><TextArea value={formData.reuseRequirements || ""} placeholder="Welche Stellen können die App nachnutzen?" /><FieldError>{attemptedNext && !formData.reuseRequirements?.trim() ? "Bitte beschreibe die Voraussetzungen oder Grenzen." : undefined}</FieldError></TextField>}</div>;
-      case "deployment": return <SectionGate title="Installationshilfe" description="Lege Installationswege und die dazugehörigen Informationen fest." enabled={branches.deployment} onChange={(value) => setBranches((previous) => ({ ...previous, deployment: value }))} icon={<Rocket className="h-5 w-5" />} />;
-      case "deployment-methods": return <div className="space-y-4"><p className="text-sm text-muted-foreground">Wähle mindestens einen Installationsweg. <span className="text-danger">*</span></p><div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{(["Docker", "Docker Compose", "Helm"] as const).map((label, index) => { const key = index === 0 ? "showDocker" : index === 1 ? "showCompose" : "showHelm"; const selected = formData[key] !== false; return <ToggleButton key={key} isSelected={selected} onChange={(isSelected) => setFormData((previous) => ({ ...previous, [key]: isSelected }))} className="h-12 justify-center">{selected && <Check className="h-4 w-4" />}{label}</ToggleButton>; })}</div></div>;
-      case "deployment-docker": return <div className="space-y-5"><p className="text-sm text-muted-foreground">Gib ein Docker Image oder ein Docker-Kommando an. <span className="text-danger">*</span></p><TextField isInvalid={attemptedNext && !hasDockerSetup} onChange={(dockerRepo) => setFormData((previous) => ({ ...previous, dockerRepo }))}><Label>Docker Image</Label><Input value={formData.dockerRepo || ""} placeholder="image:latest" /></TextField><TextField isInvalid={attemptedNext && !hasDockerSetup} onChange={(customDockerCommand) => setFormData((previous) => ({ ...previous, customDockerCommand }))}><Label>Docker-Kommando</Label><TextArea value={formData.customDockerCommand || ""} placeholder="docker run …" /></TextField><TextField onChange={(customDockerNote) => setFormData((previous) => ({ ...previous, customDockerNote }))}><Label>Hinweis</Label><Input value={formData.customDockerNote || ""} placeholder="Ports, Secrets oder Startparameter" /></TextField></div>;
-      case "deployment-compose": return <div className="space-y-5"><TextField isRequired isInvalid={attemptedNext && !formData.customComposeCommand?.trim()} onChange={(customComposeCommand) => setFormData((previous) => ({ ...previous, customComposeCommand }))}><Label>Compose-Setup</Label><TextArea value={formData.customComposeCommand || ""} placeholder="services:\n  app: …" /><FieldError>{attemptedNext && !formData.customComposeCommand?.trim() ? "Das Compose-Setup ist erforderlich." : undefined}</FieldError></TextField><TextField onChange={(customComposeNote) => setFormData((previous) => ({ ...previous, customComposeNote }))}><Label>Hinweis</Label><Input value={formData.customComposeNote || ""} /></TextField></div>;
-      case "deployment-helm": return <div className="space-y-5"><p className="text-sm text-muted-foreground">Gib ein Helm Repository oder ein Helm-Kommando an. <span className="text-danger">*</span></p><TextField isInvalid={attemptedNext && !hasHelmSetup} onChange={(helmRepo) => setFormData((previous) => ({ ...previous, helmRepo }))}><Label>Helm Repository</Label><Input value={formData.helmRepo || ""} placeholder="oci://…" /></TextField><TextField isInvalid={attemptedNext && !hasHelmSetup} onChange={(customHelmCommand) => setFormData((previous) => ({ ...previous, customHelmCommand }))}><Label>Helm-Kommando</Label><TextArea value={formData.customHelmCommand || ""} placeholder="helm install …" /></TextField><TextField onChange={(customHelmValues) => setFormData((previous) => ({ ...previous, customHelmValues }))}><Label>Values.yaml</Label><TextArea value={formData.customHelmValues || ""} /></TextField><TextField onChange={(customHelmNote) => setFormData((previous) => ({ ...previous, customHelmNote }))}><Label>Hinweis</Label><Input value={formData.customHelmNote || ""} placeholder="Zusatz für die Einführung" /></TextField></div>;
-      case "resources": return <SectionGate title="Links" description="Sammle die wichtigsten Einstiege, Ressourcen und Dokumentationslinks." enabled={branches.resources} onChange={(value) => setBranches((previous) => ({ ...previous, resources: value }))} icon={<Link2 className="h-5 w-5" />} />;
-      case "live-links": return <LinkListEditor title="Live-Zugänge" icon={<Link2 className="h-4 w-4" />} items={formData.liveDemos || []} onChange={(liveDemos) => setFormData((previous) => ({ ...previous, liveDemos }))} addLabel="Hinzufügen" placeholderLabel="Produktivumgebung" placeholderUrl="https://…" />;
-      case "source-links": return <div className="space-y-8"><p className="text-sm text-muted-foreground">Füge mindestens einen Quellcode-, Ressourcen- oder Dokumentationslink hinzu. <span className="text-danger">*</span></p><LinkListEditor title="Quellcode" icon={<FolderGit2 className="h-4 w-4" />} items={formData.repositories || []} onChange={(repositories) => setFormData((previous) => ({ ...previous, repositories }))} addLabel="Hinzufügen" placeholderLabel="Repository" placeholderUrl="https://…" /><LinkListEditor title="Weitere Ressourcen" icon={<Link2 className="h-4 w-4" />} items={formData.customLinks || []} onChange={(customLinks) => setFormData((previous) => ({ ...previous, customLinks }))} addLabel="Hinzufügen" placeholderLabel="Ressource" placeholderUrl="https://…" /><TextField onChange={(docsUrl) => setFormData((previous) => ({ ...previous, docsUrl }))}><Label>Dokumentations-URL</Label><Input value={formData.docsUrl || ""} placeholder="https://…" /></TextField></div>;
-      case "presentation": return <div className="space-y-5"><TextField onChange={(authority) => setFormData((previous) => ({ ...previous, authority }))}><Label>Herausgeber</Label><Input value={formData.authority || ""} placeholder="z. B. Stadtverwaltung" /></TextField><Label>Technologien</Label><div className="flex flex-wrap gap-2">{(formData.techStack || []).map((technology) => <Chip key={technology} variant="soft">{technology}<button type="button" onClick={() => setFormData((previous) => ({ ...previous, techStack: previous.techStack?.filter((value) => value !== technology) }))}><X className="ml-1 h-3 w-3" /></button></Chip>)}</div><div className="flex gap-2"><Input value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="z. B. React" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); toggleList("techStack", tagInput); setTagInput(""); } }} /><Button variant="secondary" onPress={() => { toggleList("techStack", tagInput); setTagInput(""); }}>Hinzufügen</Button></div></div>;
-      case "banner": return <SectionGate title="Hinweis" description="Zeige bei Bedarf einen Status-, Warn- oder Informationshinweis." enabled={branches.banner} onChange={(value) => setBranches((previous) => ({ ...previous, banner: value }))} icon={<CircleHelp className="h-5 w-5" />} />;
-      case "banner-content": return <div className="space-y-5"><div className="space-y-2"><Label>Art des Hinweises</Label><Select aria-label="Art des Hinweises" selectedKey={formData.bannerType || "info"} onSelectionChange={(key) => setFormData((previous) => ({ ...previous, bannerType: String(key) as AppConfig["bannerType"] }))}><Select.Trigger className="h-12"><Select.Value /><Select.Indicator /></Select.Trigger><Select.Popover><ListBox><ListBox.Item id="info" textValue="Info">Info<ListBox.ItemIndicator /></ListBox.Item><ListBox.Item id="warning" textValue="Warnung">Warnung<ListBox.ItemIndicator /></ListBox.Item><ListBox.Item id="danger" textValue="Kritisch">Kritisch<ListBox.ItemIndicator /></ListBox.Item></ListBox></Select.Popover></Select></div><TextField onChange={(bannerTitle) => setFormData((previous) => ({ ...previous, bannerTitle }))}><Label>Überschrift</Label><Input value={formData.bannerTitle || ""} placeholder="Optional" /></TextField><TextField isRequired isInvalid={attemptedNext && !formData.bannerText?.trim()} onChange={(bannerText) => setFormData((previous) => ({ ...previous, bannerText }))}><Label>Hinweistext</Label><TextArea value={formData.bannerText || ""} /><FieldError>{attemptedNext && !formData.bannerText?.trim() ? "Der Hinweistext ist erforderlich." : undefined}</FieldError></TextField></div>;
-      case "editors": return <SectionGate title="Bearbeiter" description="Ausgewählte Personen können diese App bearbeiten, ohne die Eigentümerschaft zu übernehmen." enabled={branches.editors} onChange={(value) => setBranches((previous) => ({ ...previous, editors: value }))} icon={<UsersRound className="h-5 w-5" />} />;
-      case "editors-select": { const filteredUsers = availableUsers.filter((candidate) => !editorSearch.trim() || [candidate.username, candidate.email, candidate.role].filter(Boolean).some((value) => value!.toLowerCase().includes(editorSearch.trim().toLowerCase()))); const selectedUsers = availableUsers.filter((candidate) => editorIds.has(candidate.id)); const toggleEditor = (id: string) => setEditorIds((previous) => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; }); return <div className="space-y-5">{selectedUsers.length > 0 && <div className="space-y-2"><Label>Ausgewählt</Label><div className="flex flex-wrap gap-2">{selectedUsers.map((candidate) => <Chip key={candidate.id} variant="soft" color="accent" className="gap-1">{candidate.username}<button type="button" aria-label={`${candidate.username} entfernen`} onClick={() => toggleEditor(candidate.id)}><X className="h-3 w-3" /></button></Chip>)}</div></div>}<div className="space-y-2"><Label>Personen suchen</Label><Input className="w-full" value={editorSearch} onChange={(event) => setEditorSearch(event.target.value)} placeholder="Name oder E-Mail-Adresse" /></div><div className="overflow-hidden rounded-xl border border-border">{filteredUsers.slice(0, 10).map((candidate) => { const selected = editorIds.has(candidate.id); return <button key={candidate.id} type="button" onClick={() => toggleEditor(candidate.id)} className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-left last:border-b-0 ${selected ? "bg-primary/10" : "hover:bg-surface-secondary"}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${selected ? "bg-primary text-primary-foreground" : "bg-surface-secondary text-muted-foreground"}`}>{candidate.username[0]?.toUpperCase() || "?"}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-foreground">{candidate.username}</span><span className="block truncate text-xs text-muted-foreground">{candidate.email}</span></span>{selected ? <Check className="h-4 w-4 text-primary" /> : <UserPlus className="h-4 w-4 text-muted-foreground" />}</button>; })}{filteredUsers.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Keine passenden Personen gefunden.</p>}</div></div>; }
-      case "related": return <SectionGate title="Verwandte Apps" description="Verknüpfe die App mit bestehenden Lösungen im Katalog." enabled={branches.related} onChange={(value) => setBranches((previous) => ({ ...previous, related: value }))} icon={<Link2 className="h-5 w-5" />} />;
-      case "related-apps": { const available = existingApps.filter((app) => !relatedApps.some((related) => related.id === app.id) && app.id !== draftId && (!relatedSearch || app.name.toLowerCase().includes(relatedSearch.toLowerCase()) || app.id.includes(relatedSearch))); return <div className="space-y-5">{relatedApps.length > 0 && <div className="space-y-2"><Label>Ausgewählte Apps</Label><div className="grid gap-2 sm:grid-cols-2">{relatedApps.map((app) => { const icon = getImageAssetUrl(app.icon); return <div key={app.id} className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface-secondary px-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface text-sm">{icon ? <Image src={icon} alt="" width={28} height={28} className="h-full w-full object-contain p-0.5" unoptimized /> : app.icon || "🏛️"}</span><span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span><Button isIconOnly size="sm" variant="secondary" aria-label={`${app.name} entfernen`} onPress={() => removeRelated(app.id)}><X className="h-4 w-4" /></Button></div>; })}</div></div>}<div className="space-y-2"><Label>App suchen und verknüpfen</Label><Input className="w-full" value={relatedSearch} onChange={(event) => setRelatedSearch(event.target.value)} placeholder="App-Name oder technische ID suchen" />{relatedSearch && <div className="overflow-hidden rounded-xl border border-border">{available.slice(0, 8).map((app) => <Button key={app.id} variant="ghost" fullWidth className="h-12 justify-between rounded-none border-b border-border last:border-b-0" onPress={() => addRelated(app)}>{app.name}<ArrowRight className="h-4 w-4" /></Button>)}{available.length === 0 && <p className="px-3 py-3 text-sm text-muted-foreground">Keine passende App gefunden.</p>}</div>}</div></div>; }
-      case "groups": { const createGroup = async () => { const name = newGroupName.trim(); if (!name || creatingGroup) return; setCreatingGroup(true); try { const response = await fetchApi("/app-groups", { method: "POST", body: JSON.stringify({ name }) }); if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.message || "Gruppe konnte nicht erstellt werden."); } const group = await response.json() as { id: string; name: string; description?: string }; setGroups((previous) => [...previous, group]); setGroupIds((previous) => new Set([...previous, group.id])); setNewGroupName(""); toast.success("Gruppe erstellt."); } catch (error) { toast.danger(error instanceof Error ? error.message : "Gruppe konnte nicht erstellt werden."); } finally { setCreatingGroup(false); } }; return <div className="space-y-5"><TextField onChange={setNewGroupName}><Label>Neue Gruppe</Label><Input value={newGroupName} placeholder="z. B. Digitale Verwaltung" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void createGroup(); } }} /></TextField><Button variant="secondary" isDisabled={!newGroupName.trim()} isPending={creatingGroup} onPress={() => void createGroup()}>Gruppe erstellen</Button><div className="space-y-2">{groups.length ? groups.map((group) => <div key={group.id} className="flex items-center justify-between rounded-2xl border border-border p-4"><div><p className="font-semibold">{group.name}</p><p className="text-xs text-muted-foreground">{group.description}</p></div><Switch isSelected={groupIds.has(group.id)} onChange={(value) => setGroupIds((previous) => { const next = new Set(previous); if (value) next.add(group.id); else next.delete(group.id); return next; })}><Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Content></Switch></div>) : <p className="text-sm text-muted-foreground">Noch keine Gruppen vorhanden.</p>}</div></div>; }
-      case "admin": return <div className="flex items-center justify-between rounded-2xl border border-border p-4"><div><p className="font-semibold">Ausgezeichnet</p><p className="text-sm text-muted-foreground">Auf der Startseite hervorheben.</p></div><Switch isSelected={!!formData.isFeatured} onChange={(isFeatured) => setFormData((previous) => ({ ...previous, isFeatured }))}><Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Content></Switch></div>;
-      case "documentation": return <SectionGate title="Markdown-Dokumentation" description="Beschreibe die App für die spätere Detailansicht ausführlicher." enabled={branches.documentation} onChange={(value) => setBranches((previous) => ({ ...previous, documentation: value }))} icon={<BookOpen className="h-5 w-5" />} />;
-      case "markdown": return <TextField isRequired isInvalid={attemptedNext && !formData.markdownContent?.trim()} onChange={(markdownContent) => setFormData((previous) => ({ ...previous, markdownContent }))}><Label>Dokumentation</Label><TextArea value={formData.markdownContent || ""} placeholder={`# ${formData.name || "App"}\n\nBeschreibe die App …`} className="min-h-[28rem] font-mono" /><FieldError>{attemptedNext && !formData.markdownContent?.trim() ? "Die Dokumentation ist erforderlich." : undefined}</FieldError></TextField>;
-      case "review": { const issues = validationIssues(); const reviewSteps = steps.filter((step) => step.id !== "review"); return <div className="space-y-4">{issues.length ? <Alert color="danger"><Alert.Content><Alert.Title>Noch {issues.length} {issues.length === 1 ? "Angabe" : "Angaben"} offen</Alert.Title><Alert.Description><div className="mt-2 space-y-2">{issues.map((issue) => <button key={issue.id} type="button" onClick={() => edit(issue.id)} className="block text-left underline underline-offset-2">{issue.label}: {issue.message}</button>)}</div></Alert.Description></Alert.Content></Alert> : <Alert color="accent"><Alert.Content><Alert.Title>Bereit zum Erstellen</Alert.Title><Alert.Description>Alle {reviewSteps.length} durchlaufenen Schritte sind hier aufgeführt und direkt bearbeitbar.</Alert.Description></Alert.Content></Alert>}<div className="grid gap-3 sm:grid-cols-2">{reviewSteps.map((step) => <button key={step.id} type="button" onClick={() => edit(step.id)} className="rounded-2xl border border-border bg-surface p-4 text-left hover:border-primary/40"><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{step.title}</p><p className="mt-1 truncate font-semibold text-foreground">{reviewValue(step)}</p></button>)}</div></div>; }
-      default: if (current.id.startsWith("details-")) return <div className="grid gap-5 sm:grid-cols-2">{currentFields.map((field) => <TextField key={field.key} onChange={(value) => updateField(field.key, value)}><Label>{field.label}</Label><Input value={fieldValue(field.key)} placeholder={field.label} /></TextField>)}</div>;
+  const submitBasics = (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!basicsValid) {
+      setAttempted(true);
+      return;
+    }
+    setStep(STEP_REVIEW);
+  };
+
+  const uploadLogo = async (file: File) => {
+    setUploading(true);
+    try {
+      update({ icon: await uploadFile("/upload/logo", file) });
+    } catch {
+      toast.danger("Logo konnte nicht hochgeladen werden.");
+    } finally {
+      setUploading(false);
     }
   };
 
-  const finish = async () => { if (validationIssues().length) { setAttemptedNext(true); return; } try { const id = await save(); if (branches.repository) { await saveRepositoryConnection(id); if (repositoryScannedByAI) await syncRepositoryForApp(id, false); } if (branches.editors || editorsWereSaved) await saveEditors(id, branches.editors ? Array.from(editorIds) : []); for (const groupId of groupIds) await fetchApi(`/app-groups/${groupId}/members`, { method: "POST", body: JSON.stringify({ appId: id }) }); await save(true); } catch (error) { const message = error instanceof Error ? error.message : "Die App konnte nicht erstellt werden."; setSaveError(message); toast.danger(message); } };
-  const requestExit = () => {
-    if ((saveState === "saving" || saveState === "error") && !window.confirm("Der Entwurf wird noch gespeichert. Möchtest du die Erstellung wirklich verlassen?")) return;
-    router.push(backUrl);
-  };
-  const handleStageKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement;
-    if (event.defaultPrevented || event.key !== "Enter" || target.tagName === "TEXTAREA" || target.closest("button")) return;
-    event.preventDefault();
-    if (current.id === "review") void finish();
-    else if (returnToReview) { if (!validCurrent()) setAttemptedNext(true); else setCurrentId("review"); }
-    else void move(1);
+  /** Step 3: create the draft, connect the repository, and open it in the editor. */
+  const create = async () => {
+    if (!basicsValid) {
+      setAttempted(true);
+      setStep(STEP_BASICS);
+      return;
+    }
+    if (!isAdmin && !user?.canSubmitApps) {
+      setCreateError("Sie dürfen keine Apps erstellen.");
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      if (!profileReady && !(await refreshUser())) throw new Error("Das Benutzerprofil ist noch nicht bereit.");
+      const response = await fetchApi("/apps", { method: "POST", body: JSON.stringify(toPayload(formData)) });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({})) as { message?: string };
+        throw new Error(error.message || "Die App konnte nicht angelegt werden.");
+      }
+      const created = await response.json().catch(() => null) as AppConfig | null;
+      const id = created?.id || formData.id!;
+
+      if (connectRepository) {
+        try {
+          const linked = await fetchApi(`/apps/${id}/repository`, { method: "PUT", body: JSON.stringify(repo) });
+          if (!linked.ok) throw new Error();
+          const synced = await fetchApi(`/apps/${id}/repository/sync`, { method: "POST" });
+          if (!synced.ok) throw new Error();
+          // An AI scan already put the repository's data into the form.
+          if (!suggestion?.repositoryScan) {
+            const integration = await synced.json() as GitLabIntegrationState;
+            if (integration.snapshot) {
+              await fetchApi(`/apps/${id}`, { method: "PUT", body: JSON.stringify(toPayload(mergeRepositorySnapshot({ ...formData, id }, integration.snapshot))) });
+            }
+          }
+        } catch {
+          toast.warning("Der Entwurf wurde angelegt, das Repository konnte aber nicht verbunden werden. Du kannst es im Editor erneut versuchen.");
+        }
+      }
+
+      toast.success("Entwurf angelegt. Ergänze jetzt die Details.");
+      router.push(editHref(id));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Die App konnte nicht angelegt werden.";
+      setCreateError(message);
+      setCreating(false);
+    }
   };
 
-  return <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-5xl flex-col px-4 pb-28 pt-6 sm:px-6">
-    <header className="sticky top-14 z-20 -mx-4 border-b border-border bg-background/95 px-4 py-4 backdrop-blur-sm sm:-mx-6 sm:px-6"><div className="flex items-center justify-between gap-4"><Button variant="ghost" size="sm" onPress={requestExit}><ArrowLeft className="h-4 w-4" />Verlassen</Button><div className="text-right" aria-live="polite"><p className="text-xs font-semibold text-muted-foreground">{saveState === "saving" ? "Speichert …" : saveState === "saved" ? "Entwurf gespeichert" : saveState === "error" ? "Speichern fehlgeschlagen" : copySource ? "Kopie wird erstellt" : "Neue App"}</p><p className="text-sm font-semibold text-foreground">Schritt {currentIndex + 1} von {steps.length}</p></div></div><ProgressBar aria-label="Fortschritt der App-Erstellung" value={((currentIndex + 1) / steps.length) * 100} className="mt-3"><ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track></ProgressBar></header>
-    {formData.spaceId && <p className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">Private App · Nur Mitglieder Ihres Spaces können diese App sehen. Sie können sie später unter Meine Apps für alle veröffentlichen.</p>}
-    <main onKeyDown={handleStageKeyDown} className="flex flex-1 items-center justify-center py-8"><section className="w-full max-w-2xl px-2 py-6 sm:px-8 sm:py-10"><StepVisual step={current} formData={formData} /><p className="mt-7 text-center text-xs font-bold uppercase tracking-[0.2em] text-primary">{current.optional ? "Optional" : "App erstellen"}</p><h1 ref={headingRef} tabIndex={-1} className="mt-2 text-center text-2xl font-bold tracking-tight text-foreground outline-none sm:text-3xl">{current.title}</h1><p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted-foreground">{current.description}</p><div className="mt-8">{stage()}</div>{attemptedNext && !validCurrent() && current.id !== "name" && current.id !== "description" && <p className="mt-4 text-sm font-medium text-danger" role="status">{validationMessage()}</p>}{saveError && <Alert color="danger" className="mt-5"><Alert.Content><Alert.Description>{saveError}</Alert.Description></Alert.Content></Alert>}</section></main>
-    <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur-sm"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3"><Button variant="secondary" isDisabled={currentIndex === 0} onPress={() => move(-1)}><ArrowLeft className="h-4 w-4" />Zurück</Button>{current.id === "review" ? <Button isPending={saveState === "saving"} onPress={finish}>App erstellen<Check className="h-4 w-4" /></Button> : <Button onPress={() => returnToReview ? (validCurrent() ? setCurrentId("review") : setAttemptedNext(true)) : move(1)}>{returnToReview ? "Zur Übersicht" : "Weiter"}<ArrowRight className="h-4 w-4" /></Button>}</div></footer>
-    <Modal>
-      <Modal.Backdrop isOpen={aiAssistantOpen} onOpenChange={setAiAssistantOpen}>
-        <Modal.Container size="lg" scroll="inside">
-          <Modal.Dialog className="max-h-[calc(100dvh-2rem)] !w-[calc(100vw-2rem)] !max-w-none overflow-hidden sm:!max-w-[760px] lg:!max-w-[880px]">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></Modal.Icon>
-              <div>
-                <Modal.Heading>AI-App-Erstellungsassistent</Modal.Heading>
-                <p className="mt-1 text-xs text-muted-foreground">Erstellt einen Vorschlag. Gespeichert wird erst nach deiner Prüfung.</p>
-              </div>
-            </Modal.Header>
-            <Modal.Body className="min-h-0 space-y-6 overflow-y-auto px-5 sm:px-7">
-              {aiError && <Alert status="danger" className="border-danger/30 bg-danger/10" aria-live="assertive">
-                <Alert.Indicator />
-                <Alert.Content>
-                  <Alert.Title>AI-Analyse fehlgeschlagen</Alert.Title>
-                  <Alert.Description>
-                    <p className="break-words">{aiError}</p>
-                    <p className="mt-2 text-xs">Deine Eingaben bleiben erhalten. Du kannst die Analyse nach der Korrektur erneut starten.</p>
-                  </Alert.Description>
-                </Alert.Content>
-              </Alert>}
-              {aiGenerating && <Alert status="accent" className="border-primary/30 bg-primary/10" aria-live="polite">
-                <Alert.Indicator><Spinner size="sm" color="accent" /></Alert.Indicator>
-                <Alert.Content>
-                  <Alert.Title>{aiScanRepository ? "Repository wird analysiert" : "AI-Vorschlag wird erstellt"}</Alert.Title>
-                  <Alert.Description>{aiScanRepository ? "Projektmetadaten, README und optionale Deployment-Dateien werden gelesen. Das kann einige Sekunden dauern." : "Der Assistent erstellt aus deiner Beschreibung einen prüfbaren App-Vorschlag."}</Alert.Description>
-                </Alert.Content>
-              </Alert>}
-              <TextField isRequired={!aiScanRepository}>
-                <Label>Was soll die App leisten? {aiScanRepository && <span className="font-normal text-muted-foreground">(optional bei Repository-Scan)</span>}</Label>
-                <TextArea
-                  value={aiBrief}
-                  onChange={(event) => setAiBrief(event.target.value)}
-                  placeholder="z. B. Eine interne Anwendung, mit der Kommunen Anträge digital erfassen und den Bearbeitungsstand verfolgen können."
-                  className="min-h-36"
-                />
-              </TextField>
-              <div className="rounded-2xl border border-border bg-surface-secondary/50 p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground">Repository mit analysieren</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Der Assistent liest Projektmetadaten, README und optional angegebene Deployment-Dateien. Die Inhalte werden nur als Faktenquelle verwendet.</p>
+  const previewApp = {
+    id: formData.id || "neue-app",
+    name: name || "Deine App",
+    description: formData.description?.trim() || "Hier steht die Kurzbeschreibung deiner App.",
+    icon: formData.icon,
+    categories: formData.categories || [],
+    status: DRAFT_STATUS,
+    authority: formData.authority,
+  } as AppConfig;
+
+  const heading = [
+    { title: copySource ? "Vorlage" : "Wie möchtest du starten?", description: "Importiere ein Repository, lass die AI einen Entwurf schreiben oder fülle selbst aus." },
+    { title: "Die Grunddaten", description: "So erscheint deine App im Katalog. Alles Weitere ergänzt du danach im Editor." },
+    { title: "Alles bereit?", description: "Die App wird als Entwurf angelegt und ist erst nach der Veröffentlichung für andere sichtbar." },
+  ][step];
+
+  const importedExtras = [
+    formData.markdownContent?.trim() && "Dokumentation",
+    (formData.dockerRepo || formData.customDockerCommand) && "Docker",
+    formData.customComposeCommand && "Docker Compose",
+    (formData.helmRepo || formData.customHelmCommand) && "Helm",
+    formData.license && `Lizenz ${formData.license}`,
+    formData.tags?.length && `${formData.tags.length} Schlagwörter`,
+    formData.techStack?.length && `${formData.techStack.length} Technologien`,
+    links(formData.repositories).length && "Repository-Link",
+    formData.isReuse && "Nachnutzung",
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-6 pb-16 sm:px-6">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.push(backUrl)}>
+            <ArrowLeft />
+            Abbrechen
+          </Button>
+          {copySource && <Badge variant="info">Kopie von {copySource.name}</Badge>}
+        </div>
+
+        <Steps value={step} onValueChange={(next) => !creating && !analyzing && setStep(next)} aria-label="Fortschritt der App-Erstellung">
+          <Steps.Item step={STEP_START} completed={!!copySource} disabled={!!copySource}>
+            <Steps.Trigger>
+              <Steps.Indicator />
+              <Steps.Title>Start</Steps.Title>
+              <Steps.Description>{copySource ? "Vorlage" : "Import oder manuell"}</Steps.Description>
+            </Steps.Trigger>
+          </Steps.Item>
+          <Steps.Item step={STEP_BASICS} loading={analyzing}>
+            <Steps.Trigger>
+              <Steps.Indicator />
+              <Steps.Title>Grunddaten</Steps.Title>
+              <Steps.Description>Name, Logo, Beschreibung</Steps.Description>
+            </Steps.Trigger>
+          </Steps.Item>
+          <Steps.Item step={STEP_REVIEW} loading={creating}>
+            <Steps.Trigger>
+              <Steps.Indicator />
+              <Steps.Title>Prüfen</Steps.Title>
+              <Steps.Description>Als Entwurf anlegen</Steps.Description>
+            </Steps.Trigger>
+          </Steps.Item>
+        </Steps>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none sm:text-3xl">
+          {heading.title}
+        </h1>
+        <p className="text-muted-foreground">{heading.description}</p>
+      </div>
+
+      {step === STEP_START && (
+        <form onSubmit={submitStart} className="flex flex-col gap-6">
+          <ChoiceCards
+            value={method}
+            onValueChange={(value) => { setMethod(value as StartMethod); setStartError(null); }}
+            columns={3}
+            aspect="5 / 2"
+            aria-label="Wie möchtest du starten?"
+          >
+            <ChoiceCards.Item value="repository">
+              <ChoiceCards.Media><FolderGit2 className="size-7" /></ChoiceCards.Media>
+              <ChoiceCards.Label>Aus Repository</ChoiceCards.Label>
+              <ChoiceCards.Description>
+                {aiAvailable ? "README, Metadaten und Deployment-Dateien werden übernommen." : "Daten werden beim Anlegen aus dem Repository importiert."}
+              </ChoiceCards.Description>
+            </ChoiceCards.Item>
+            <ChoiceCards.Item value="ai" disabled={!aiAvailable}>
+              <ChoiceCards.Media><Sparkles className="size-7" /></ChoiceCards.Media>
+              <ChoiceCards.Label>Beschreiben</ChoiceCards.Label>
+              <ChoiceCards.Description>
+                {aiAvailable ? "Die AI erstellt aus ein paar Sätzen einen Entwurf." : "AI ist auf dieser Plattform nicht eingerichtet."}
+              </ChoiceCards.Description>
+            </ChoiceCards.Item>
+            <ChoiceCards.Item value="manual">
+              <ChoiceCards.Media><PencilLine className="size-7" /></ChoiceCards.Media>
+              <ChoiceCards.Label>Manuell</ChoiceCards.Label>
+              <ChoiceCards.Description>Ohne Import selbst ausfüllen.</ChoiceCards.Description>
+            </ChoiceCards.Item>
+          </ChoiceCards>
+
+          {method === "repository" && (
+            <Card>
+              <Card.Content className="flex flex-col gap-5">
+                {providers.length === 0 ? (
+                  <Alert variant="plain" tone="warning">
+                    <Alert.Icon />
+                    <Alert.Title>Kein Repository-Provider verfügbar</Alert.Title>
+                    <Alert.Description>Ein Provider muss zuerst in der Verwaltung eingerichtet werden. Du kannst die App bis dahin manuell anlegen.</Alert.Description>
+                  </Alert>
+                ) : (
+                  <div className="grid gap-5 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                    <Field>
+                      <Field.Label>Provider</Field.Label>
+                      <Select
+                        items={providers.map((provider) => ({ value: provider.key, label: provider.label }))}
+                        value={repo.providerKey || null}
+                        onValueChange={(value) => setRepo((previous) => ({ ...previous, providerKey: value || "" }))}
+                      >
+                        <Select.Trigger>
+                          <Select.Value placeholder="Auswählen" />
+                        </Select.Trigger>
+                        <Select.Content>
+                          {providers.map((provider) => (
+                            <Select.Item key={provider.key} value={provider.key}>{provider.label}</Select.Item>
+                          ))}
+                        </Select.Content>
+                      </Select>
+                    </Field>
+                    <Field>
+                      <Field.Label required>Projektpfad oder Repository-URL</Field.Label>
+                      <Input
+                        autoFocus
+                        value={repo.projectPath}
+                        onChange={(event) => setRepo((previous) => ({ ...previous, projectPath: event.target.value }))}
+                        placeholder="gruppe/projekt oder https://…"
+                      />
+                    </Field>
                   </div>
-                  <Switch aria-label="Repository mit analysieren" isSelected={aiScanRepository} onChange={setAiScanRepository}>
-                    <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control></Switch.Content>
-                  </Switch>
-                </div>
-                {aiScanRepository && <div className="mt-5 grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
-                  <div className="min-w-0 space-y-2">
-                    <Label>Repository-Provider</Label>
-                    <Select aria-label="Repository-Provider auswählen" selectedKey={repo.providerKey || null} onSelectionChange={(key) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, providerKey: String(key) })); }} isDisabled={!providers.length}>
-                      <Select.Trigger className="h-12"><Select.Value>{({ selectedText }) => selectedText || (providers.length ? "Provider auswählen" : "Keine Provider verfügbar")}</Select.Value><Select.Indicator /></Select.Trigger>
-                      <Select.Popover><ListBox>{providers.map((provider) => <ListBox.Item key={provider.key} id={provider.key} textValue={provider.label}>{provider.label}<ListBox.ItemIndicator /></ListBox.Item>)}</ListBox></Select.Popover>
-                    </Select>
-                  </div>
-                  <TextField className="min-w-0" isRequired isInvalid={(aiScanRepository && !repo.projectPath.trim()) || !!repositoryError} onChange={(projectPath) => { setRepositoryError(null); setRepo((previous) => ({ ...previous, projectPath })); }}>
-                    <Label>Projektpfad oder Repository-URL</Label>
-                    <Input value={repo.projectPath} placeholder="gruppe/projekt oder https://…" />
-                    <FieldError>{repositoryError || undefined}</FieldError>
-                  </TextField>
-                  <TextField onChange={(branch) => setRepo((previous) => ({ ...previous, branch }))}>
-                    <Label>Branch oder Ref</Label>
-                    <Input value={repo.branch} placeholder="Standard-Branch" />
-                  </TextField>
-                  <TextField onChange={(readmePath) => setRepo((previous) => ({ ...previous, readmePath }))}>
-                    <Label>README-Pfad <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                    <Input value={repo.readmePath} placeholder="README.md – leer für automatische Suche" />
-                  </TextField>
-                  <TextField onChange={(helmValuesPath) => setRepo((previous) => ({ ...previous, helmValuesPath }))}>
-                    <Label>Helm Values <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                    <Input value={repo.helmValuesPath} placeholder="chart/values.yaml" />
-                  </TextField>
-                  <TextField onChange={(composeFilePath) => setRepo((previous) => ({ ...previous, composeFilePath }))}>
-                    <Label>Compose-Datei <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                    <Input value={repo.composeFilePath} placeholder="docker-compose.yml" />
-                  </TextField>
-                </div>}
-                {aiScanRepository && !providers.length && <p className="mt-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">Es ist aktuell kein Repository-Provider verfügbar. Bitte zuerst einen Provider in der Verwaltung konfigurieren.</p>}
-              </div>
-              {aiSuggestion && (
-                <div className="space-y-4 rounded-2xl border border-border bg-surface-secondary/50 p-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vorschau</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">{aiSuggestion.name}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{aiSuggestion.description}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {aiSuggestion.categories.map((category) => <Chip key={category} size="sm" variant="soft">{category}</Chip>)}
-                    {aiSuggestion.tags.map((tag) => <Chip key={tag} size="sm" color="accent" variant="soft">#{tag}</Chip>)}
-                  </div>
-                  <div className="grid gap-3 text-sm sm:grid-cols-2">
-                    <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Technologien</span><span className="text-foreground">{aiSuggestion.techStack.join(", ") || "Nicht belegt"}</span></div>
-                    <div><span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Technische ID</span><span className="font-mono text-foreground">{aiSuggestion.id}</span></div>
-                  </div>
-                  {aiSuggestion.repositoryScan && <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"><p className="font-semibold text-foreground">Repository analysiert</p><p className="mt-1 text-muted-foreground">{aiSuggestion.repositoryScan.providerLabel} · {aiSuggestion.repositoryScan.projectPath} · {aiSuggestion.repositoryScan.branch || "Standard-Branch"}</p>{aiSuggestion.repositoryScan.warnings.length > 0 && <p className="mt-2 text-warning">{aiSuggestion.repositoryScan.warnings.join(" ")}</p>}</div>}
-                  {(aiSuggestion.missingFields.length > 0 || aiSuggestion.notes.length > 0) && <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning"><p className="font-semibold">Bitte noch prüfen</p>{aiSuggestion.missingFields.length > 0 && <p>Fehlende Angaben: {aiSuggestion.missingFields.join(", ")}</p>}{aiSuggestion.notes.length > 0 && <ul className="list-disc space-y-1 pl-5">{aiSuggestion.notes.map((note) => <li key={note}>{note}</li>)}</ul>}</div>}
-                </div>
+                )}
+
+                {providers.length > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="self-start"
+                      aria-expanded={repoOptionsOpen}
+                      onClick={() => setRepoOptionsOpen((open) => !open)}
+                    >
+                      <ChevronDown className={repoOptionsOpen ? "rotate-180" : undefined} />
+                      Weitere Import-Optionen
+                    </Button>
+                    {repoOptionsOpen && (
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        {([
+                          ["branch", "Branch oder Ref", "Standard-Branch"],
+                          ["readmePath", "README-Pfad", "README.md"],
+                          ["helmValuesPath", "Helm Values", "chart/values.yaml"],
+                          ["composeFilePath", "Compose-Datei", "docker-compose.yml"],
+                        ] as const).map(([key, label, placeholder]) => (
+                          <Field key={key}>
+                            <Field.Label optional>{label}</Field.Label>
+                            <Input
+                              value={repo[key]}
+                              onChange={(event) => setRepo((previous) => ({ ...previous, [key]: event.target.value }))}
+                              placeholder={placeholder}
+                            />
+                          </Field>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {aiAvailable && providers.length > 0 && (
+                  <Field>
+                    <Field.Label optional>Zusätzlicher Kontext für die AI</Field.Label>
+                    <Textarea value={aiBrief} onChange={(event) => setAiBrief(event.target.value)} placeholder="z. B. Zielgruppe oder wofür die App in deiner Behörde genutzt wird" />
+                  </Field>
+                )}
+              </Card.Content>
+            </Card>
+          )}
+
+          {method === "ai" && (
+            <Card>
+              <Card.Content>
+                <Field>
+                  <Field.Label required>Was soll die App leisten?</Field.Label>
+                  <Textarea
+                    autoFocus
+                    minRows={4}
+                    value={aiBrief}
+                    onChange={(event) => setAiBrief(event.target.value)}
+                    placeholder="z. B. Eine Anwendung, mit der Kommunen Anträge digital erfassen und den Bearbeitungsstand verfolgen können."
+                  />
+                  <Field.Description>Die AI schlägt Name, Beschreibung, Kategorien und mehr vor. Gespeichert wird erst nach deiner Prüfung.</Field.Description>
+                </Field>
+              </Card.Content>
+            </Card>
+          )}
+
+          {availableSpaces.length > 0 && (
+            <Field className="max-w-sm">
+              <Field.Label>Sichtbarkeit</Field.Label>
+              <Select
+                items={[{ value: PUBLIC_SCOPE, label: "Öffentlicher Katalog" }, ...availableSpaces.map((item) => ({ value: item.id, label: `Space: ${item.name}` }))]}
+                value={formData.spaceId || PUBLIC_SCOPE}
+                onValueChange={(value) => update({ spaceId: !value || value === PUBLIC_SCOPE ? null : value })}
+              >
+                <Select.Trigger>
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value={PUBLIC_SCOPE} icon={<Globe2 />}>Öffentlicher Katalog</Select.Item>
+                  {availableSpaces.map((item) => (
+                    <Select.Item key={item.id} value={item.id} icon={<LockKeyhole />}>Space: {item.name}</Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              <Field.Description>
+                {formData.spaceId ? "Nur Mitglieder dieses Spaces sehen die App. Veröffentlichen kannst du sie später." : "Der Entwurf ist zunächst nur für dich und berechtigte Bearbeiter sichtbar."}
+              </Field.Description>
+            </Field>
+          )}
+
+          {startError && (
+            <Alert variant="plain" tone="destructive" aria-live="assertive">
+              <Alert.Icon />
+              <Alert.Title>{method === "manual" ? "Das hat nicht geklappt" : "Analyse fehlgeschlagen"}</Alert.Title>
+              <Alert.Description>{startError} Deine Eingaben bleiben erhalten.</Alert.Description>
+            </Alert>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-6">
+            {method !== "manual" && (
+              <Button variant="ghost" disabled={analyzing} onClick={() => { setMethod("manual"); setStep(STEP_BASICS); }}>
+                Ohne Import weiter
+              </Button>
+            )}
+            <Button type="submit" loading={analyzing} disabled={method === "repository" && providers.length === 0}>
+              {method === "manual" ? "Weiter" : aiAvailable ? (method === "repository" ? "Repository analysieren" : "Entwurf erstellen") : "Weiter"}
+              {method === "manual" || !aiAvailable ? <ArrowRight /> : <Sparkles />}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {step === STEP_BASICS && (
+        <form onSubmit={submitBasics} className="flex flex-col gap-6">
+          {suggestion && (
+            <Alert tone="info" variant="plain">
+              <Alert.Icon><Sparkles /></Alert.Icon>
+              <Alert.Title>Vorschlag übernommen</Alert.Title>
+              <Alert.Description>
+                {suggestion.repositoryScan
+                  ? `Aus ${suggestion.repositoryScan.projectPath} gelesen. Bitte prüfe die Angaben.`
+                  : "Bitte prüfe die Angaben, bevor du weitermachst."}
+              </Alert.Description>
+              {(suggestion.missingFields.length > 0 || suggestion.notes.length > 0 || (suggestion.repositoryScan?.warnings.length ?? 0) > 0) && (
+                <Alert.Details label="Hinweise der AI anzeigen">
+                  {suggestion.missingFields.length > 0 && <Alert.Item>Fehlende Angaben: {suggestion.missingFields.join(", ")}</Alert.Item>}
+                  {[...suggestion.notes, ...(suggestion.repositoryScan?.warnings || [])].map((note) => <Alert.Item key={note}>{note}</Alert.Item>)}
+                </Alert.Details>
               )}
-            </Modal.Body>
-            <Modal.Footer className="flex-col-reverse items-stretch gap-2 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-7 sm:py-5">
-              <Button variant="secondary" onPress={() => setAiAssistantOpen(false)}>Abbrechen</Button>
-              {!aiSuggestion && <Button className="sm:min-w-72" onPress={() => void generateAIDraft()} isPending={aiGenerating} isDisabled={aiGenerating || ((!aiBrief.trim() && !(aiScanRepository && repo.providerKey && repo.projectPath.trim())) || (aiScanRepository && !providers.length))}><Sparkles className="h-4 w-4" />{aiError ? "Erneut versuchen" : aiScanRepository ? "Repository analysieren & Vorschlag erstellen" : "Vorschlag erstellen"}</Button>}
-              {aiSuggestion && <Button className="sm:min-w-52" onPress={applyAIDraft}><Check className="h-4 w-4" />Vorschlag übernehmen</Button>}
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
-  </div>;
+            </Alert>
+          )}
+
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <Card>
+              <Card.Content className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <Field invalid={(attempted && !name) || idTaken}>
+                    <Field.Label required>App-Name</Field.Label>
+                    <Input
+                      autoFocus
+                      size="lg"
+                      value={formData.name || ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setFormData((previous) => ({ ...previous, name: value, id: idEditing ? previous.id : slugify(value) }));
+                      }}
+                      placeholder="z. B. Digi-Sign Pro"
+                    />
+                    <Field.Error>{idTaken ? "Diese technische ID ist bereits vergeben. Ändere den Namen oder die ID." : "Gib einen App-Namen ein."}</Field.Error>
+                  </Field>
+                  {idEditing ? (
+                    <Field>
+                      <Field.Label>Technische ID</Field.Label>
+                      <Input value={formData.id || ""} onChange={(event) => update({ id: slugify(event.target.value) })} className="font-mono" />
+                    </Field>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Technische ID: <code className="font-mono text-foreground">{formData.id || "…"}</code>{" "}
+                      <Button variant="link" size="sm" className="h-auto px-1" onClick={() => setIdEditing(true)}>Ändern</Button>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label>Logo</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <AppIcon icon={formData.icon} />
+                    <input
+                      ref={iconInput}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadLogo(file);
+                        event.target.value = "";
+                      }}
+                    />
+                    <Button variant="outline" size="sm" loading={uploading} onClick={() => iconInput.current?.click()}>
+                      <Upload />
+                      Bild hochladen
+                    </Button>
+                    <Menu>
+                      <Menu.Trigger render={<Button variant="outline" size="sm" />}>
+                        <Smile />
+                        Symbol wählen
+                      </Menu.Trigger>
+                      <Menu.Content className="grid min-w-0 grid-cols-6 gap-0.5">
+                        {EMOJIS.map((emoji) => (
+                          <Menu.Item key={emoji} aria-label={`Symbol ${emoji}`} className="justify-center text-lg" onClick={() => update({ icon: emoji })}>
+                            {emoji}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Content>
+                    </Menu>
+                  </div>
+                </div>
+
+                <Field>
+                  <Field.Label optional>Kurzbeschreibung</Field.Label>
+                  <Textarea
+                    minRows={3}
+                    value={formData.description || ""}
+                    onChange={(event) => update({ description: event.target.value })}
+                    placeholder="Wofür ist die App da, und was bringt sie im Alltag?"
+                  />
+                  <Field.Description>Erscheint auf der Karte im Katalog. Vor der Veröffentlichung erforderlich.</Field.Description>
+                </Field>
+
+                <Field>
+                  <Field.Label optional>Kategorien</Field.Label>
+                  <Combobox
+                    mode="multiple"
+                    value={formData.categories || []}
+                    onValueChange={(categories) => update({ categories })}
+                    allowCustomValue
+                    openOnFocus
+                    placeholder="Kategorie suchen oder eigene eingeben"
+                    accessibilityLabel="Kategorien"
+                  >
+                    {categoryOptions.map((category) => (
+                      <Combobox.Item key={category} value={category} label={category} />
+                    ))}
+                  </Combobox>
+                  <Field.Description>Hilft anderen, die App zu finden. Vor der Veröffentlichung erforderlich.</Field.Description>
+                </Field>
+              </Card.Content>
+            </Card>
+
+            <aside className="flex flex-col gap-3 lg:sticky lg:top-20" aria-label="Vorschau">
+              <p className="text-sm font-medium text-muted-foreground">Vorschau im Katalog</p>
+              {/* The real catalogue card, inert so it cannot be clicked from here. */}
+              <div inert className="select-none">
+                <AppCard app={previewApp} />
+              </div>
+            </aside>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t pt-6">
+            <Button variant="ghost" disabled={!!copySource} onClick={() => setStep(STEP_START)}>
+              <ArrowLeft />
+              Zurück
+            </Button>
+            <Button type="submit">
+              Weiter
+              <ArrowRight />
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {step === STEP_REVIEW && (
+        <div className="flex flex-col gap-6">
+          <Card>
+            <Card.Content className="flex flex-col gap-6">
+              <div className="flex items-start gap-4">
+                <AppIcon icon={formData.icon} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="text-lg font-semibold">{name}</p>
+                  <p className="font-mono text-sm text-muted-foreground">{formData.id}</p>
+                </div>
+                <Badge variant="secondary">{DRAFT_STATUS}</Badge>
+              </div>
+
+              <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
+                <ReviewRow label="Sichtbarkeit" onEdit={availableSpaces.length && !copySource ? () => setStep(STEP_START) : undefined}>
+                  {space ? `Space: ${space.name}` : "Öffentlicher Katalog"}
+                </ReviewRow>
+                <ReviewRow label="Kurzbeschreibung" onEdit={() => setStep(STEP_BASICS)}>
+                  {formData.description?.trim() || <span className="text-muted-foreground">Noch nicht ergänzt</span>}
+                </ReviewRow>
+                <ReviewRow label="Kategorien" onEdit={() => setStep(STEP_BASICS)}>
+                  {formData.categories?.length ? (
+                    <span className="flex flex-wrap gap-1.5">{formData.categories.map((category) => <Badge key={category} variant="outline">{category}</Badge>)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Noch nicht ergänzt</span>
+                  )}
+                </ReviewRow>
+                {connectRepository && (
+                  <ReviewRow label="Repository">
+                    {providers.find((provider) => provider.key === repo.providerKey)?.label} · <span className="font-mono">{repo.projectPath}</span>
+                  </ReviewRow>
+                )}
+                {importedExtras.length > 0 && (
+                  <ReviewRow label="Bereits übernommen">
+                    <span className="flex flex-wrap gap-1.5">{importedExtras.map((item) => <Badge key={item} variant="success">{item}</Badge>)}</span>
+                  </ReviewRow>
+                )}
+              </dl>
+            </Card.Content>
+          </Card>
+
+          <Alert tone="info" variant="plain">
+            <Alert.Icon />
+            <Alert.Title>Danach geht es im Editor weiter</Alert.Title>
+            <Alert.Description>
+              Dort ergänzt du Installation, Links, Dokumentation, Bearbeiter, verwandte Apps und Gruppen, und veröffentlichst die App, wenn sie fertig ist.
+            </Alert.Description>
+          </Alert>
+
+          {createError && (
+            <Alert variant="plain" tone="destructive" aria-live="assertive">
+              <Alert.Icon />
+              <Alert.Title>Die App konnte nicht angelegt werden</Alert.Title>
+              <Alert.Description>{createError}</Alert.Description>
+            </Alert>
+          )}
+
+          <div className="flex items-center justify-between gap-2 border-t pt-6">
+            <Button variant="ghost" disabled={creating} onClick={() => setStep(STEP_BASICS)}>
+              <ArrowLeft />
+              Zurück
+            </Button>
+            <Button loading={creating} onClick={() => void create()}>
+              <Check />
+              Entwurf anlegen
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AppIcon({ icon }: { icon?: string }) {
+  const image = getImageAssetUrl(icon);
+  return (
+    <span className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border bg-muted text-2xl">
+      {image ? <Image src={image} alt="" fill sizes="56px" className="object-contain p-2" unoptimized /> : icon || "🏛️"}
+    </span>
+  );
+}
+
+function ReviewRow({ label, onEdit, children }: { label: string; onEdit?: () => void; children: React.ReactNode }) {
+  return (
+    <>
+      <dt className="font-medium text-muted-foreground">{label}</dt>
+      <dd className="flex min-w-0 items-start justify-between gap-3">
+        <span className="min-w-0 break-words">{children}</span>
+        {onEdit && (
+          <Button variant="link" size="sm" className="h-auto shrink-0 px-0" onClick={onEdit}>
+            Ändern
+          </Button>
+        )}
+      </dd>
+    </>
+  );
 }

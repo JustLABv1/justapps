@@ -1,9 +1,9 @@
 'use client';
 
-import { AppEditorForm } from '@/components/AppEditorForm';
+import { AppEditor } from '@/components/app-editor/AppEditor';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { Spinner } from '@/components/panelui/spinner';
 import { notFound, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -28,13 +28,13 @@ export default function EditAppPage() {
 
   if (app === undefined) {
     return (
-      <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex justify-center py-20">
+        <Spinner size="lg" label="App wird geladen" />
       </div>
     );
   }
 
   if (app === null) return notFound();
 
-  return <AppEditorForm key={app.id} initialApp={app} existingApps={existingApps} />;
+  return <AppEditor key={app.id} initialApp={app} existingApps={existingApps} />;
 }

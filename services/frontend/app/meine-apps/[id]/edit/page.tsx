@@ -1,10 +1,12 @@
 'use client';
 
-import { AppEditorForm } from '@/components/AppEditorForm';
+import { AppEditor } from '@/components/app-editor/AppEditor';
 import { AppConfig } from '@/config/apps';
 import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { Spinner } from '@/components/panelui/spinner';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -40,8 +42,8 @@ export default function EditMyAppPage() {
 
   if (authLoading || app === undefined) {
     return (
-      <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex justify-center py-20">
+        <Spinner size="lg" label="App wird geladen" />
       </div>
     );
   }
@@ -50,23 +52,20 @@ export default function EditMyAppPage() {
 
   if (user && !profileReady) {
     return (
-      <div className="max-w-5xl mx-auto py-20 px-4">
-        <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
-          <p className="text-base font-semibold text-foreground mb-2">Profil wird noch synchronisiert</p>
-          <p className="text-sm text-muted-foreground mb-4">
+      <div className="mx-auto max-w-2xl px-4 py-20">
+        <Alert tone="warning">
+          <Alert.Icon />
+          <Alert.Title>Profil wird noch synchronisiert</Alert.Title>
+          <Alert.Description>
             {profileError || 'Das Backend bestätigt Ihr Benutzerprofil noch. Bitte laden Sie die Daten erneut, bevor Sie die App bearbeiten.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => void refreshUser()}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
-          >
-            Erneut laden
-          </button>
-        </div>
+          </Alert.Description>
+          <Alert.Actions>
+            <Button size="sm" onClick={() => void refreshUser()}>Erneut laden</Button>
+          </Alert.Actions>
+        </Alert>
       </div>
     );
   }
 
-  return <AppEditorForm key={app.id} initialApp={app} existingApps={existingApps} />;
+  return <AppEditor key={app.id} initialApp={app} existingApps={existingApps} />;
 }
