@@ -2,16 +2,16 @@
 
 import { AppStoreGate } from "@/components/AppStoreGate";
 import { GroupIcon } from "@/components/GroupIcon";
-import { AppIconStack } from "@/components/groups/AppIconStack";
+import { GroupCover } from "@/components/groups/GroupCover";
 import { Badge } from "@/components/panelui/badge";
 import { Input } from "@/components/panelui/input";
 import { Select } from "@/components/panelui/select";
 import { Spinner } from "@/components/panelui/spinner";
 import { getRelativeTimeMeta } from "@/lib/appFreshness";
-import { type GroupSummary, loadApps, loadGroups, summarizeGroups } from "@/lib/appGroups";
+import { groupColor, groupInitials, type GroupSummary, loadApps, loadGroups, summarizeGroups } from "@/lib/appGroups";
 import { ArrowUpDown, Layers2, Search, X } from "lucide-react";
 import NextLink from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -24,37 +24,43 @@ const SORT_ITEMS: { value: Sort; label: string }[] = [
 
 function GroupCard({ group }: { group: GroupSummary }) {
   const activity = getRelativeTimeMeta(group.lastUpdatedAt)?.label;
+  const color = groupColor(group.id);
   return (
     <NextLink
       href={`/gruppen/${group.id}`}
-      className="group flex h-full flex-col gap-5 rounded-2xl border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      style={{ "--group": color } as CSSProperties}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-[border-color,box-shadow,translate] duration-200 hover:-translate-y-0.5 hover:border-[color-mix(in_oklab,var(--group)_45%,var(--border))] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:hover:translate-y-0"
     >
-      <div className="flex items-start gap-4">
-        <GroupIcon icon={group.icon} name="" className="size-12 shrink-0 rounded-2xl border bg-muted text-foreground [&_svg]:size-5" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 className="text-base font-semibold leading-snug">{group.name}</h2>
+      <GroupCover color={color} apps={group.members} />
+      <div className="flex flex-1 flex-col gap-4 px-5 pb-5">
+        <div className="-mt-7 flex items-end justify-between gap-3">
+          <GroupIcon
+            icon={group.icon}
+            name=""
+            fallback={<span className="text-lg font-semibold tracking-tight">{groupInitials(group.name)}</span>}
+            className="size-14 shrink-0 rounded-2xl border-4 border-card bg-[color-mix(in_oklab,var(--group)_18%,var(--card))] text-[var(--group)] shadow-sm [&_svg]:size-6"
+          />
+          {group.freshCount > 0 && <Badge variant="info" size="sm" dot>{group.freshCount} neu</Badge>}
+        </div>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold leading-snug">{group.name}</h2>
           <p className="line-clamp-2 text-sm text-muted-foreground">
             {group.description || (group.members.length ? `${group.members.length} Apps rund um ${group.topCategories.slice(0, 2).join(" und ") || group.name}.` : "Noch ohne Beschreibung.")}
           </p>
         </div>
-      </div>
 
-      {group.members.length > 0 ? (
-        <AppIconStack apps={group.members} />
-      ) : (
-        <p className="text-sm text-muted-foreground">Noch keine Apps in dieser Gruppe.</p>
-      )}
+        {group.topCategories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {group.topCategories.map((category) => <Badge key={category} variant="outline" size="sm">{category}</Badge>)}
+          </div>
+        )}
 
-      {group.topCategories.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {group.topCategories.map((category) => <Badge key={category} variant="outline" size="sm">{category}</Badge>)}
+        <div className="mt-auto flex items-center gap-3 border-t pt-4 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground tabular-nums">
+            {group.members.length ? `${group.members.length} ${group.members.length === 1 ? "App" : "Apps"}` : "Noch keine Apps"}
+          </span>
+          {activity && <span className="ms-auto text-xs">aktiv {activity}</span>}
         </div>
-      )}
-
-      <div className="mt-auto flex items-center gap-2 border-t pt-4 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground tabular-nums">{group.members.length} {group.members.length === 1 ? "App" : "Apps"}</span>
-        {group.freshCount > 0 && <Badge variant="info" size="sm" dot>{group.freshCount} neu oder aktualisiert</Badge>}
-        {activity && <span className="ms-auto text-xs">aktiv {activity}</span>}
       </div>
     </NextLink>
   );

@@ -72,3 +72,21 @@ export function summarizeGroups(groups: AppGroup[], apps: AppConfig[]): GroupSum
     };
   });
 }
+
+const GROUP_COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#14b8a6", "#6366f1", "#f97316", "#ec4899", "#0ea5e9"];
+
+/** A colour of its own for each group, picked from its id so it stays the same everywhere. */
+export function groupColor(id: string): string {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return GROUP_COLORS[hash % GROUP_COLORS.length];
+}
+
+/** Up to two letters standing for a group, for when it has no icon of its own. */
+export function groupInitials(name: string): string {
+  const words = name.trim().split(/[\s\-_/&]+/).filter((word) => /[\p{L}\p{N}]/u.test(word));
+  if (words.length === 0) return "?";
+  // "Monitoring" → "Mo", "KI Werkzeuge" → "KW"
+  if (words.length === 1) return words[0].charAt(0).toUpperCase() + words[0].charAt(1).toLowerCase();
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+}

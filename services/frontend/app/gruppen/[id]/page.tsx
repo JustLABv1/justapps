@@ -3,7 +3,7 @@
 import { AppCard } from "@/components/AppCard";
 import { AppStoreGate } from "@/components/AppStoreGate";
 import { GroupIcon } from "@/components/GroupIcon";
-import { AppIconStack } from "@/components/groups/AppIconStack";
+import { GroupCover } from "@/components/groups/GroupCover";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
 import { Input } from "@/components/panelui/input";
@@ -11,12 +11,12 @@ import { Select } from "@/components/panelui/select";
 import { Spinner } from "@/components/panelui/spinner";
 import type { AppConfig } from "@/config/apps";
 import { getRelativeTimeMeta } from "@/lib/appFreshness";
-import { type AppGroup, byRelevance, isFresh, loadApps, loadGroups, summarizeGroups, topCategories, latestUpdate, type GroupSummary } from "@/lib/appGroups";
+import { type AppGroup, byRelevance, groupColor, groupInitials, isFresh, loadApps, loadGroups, summarizeGroups, topCategories, latestUpdate, type GroupSummary } from "@/lib/appGroups";
 import { toast } from "@/lib/toast";
 import { ArrowLeft, ArrowUpDown, Layers2, Search, Share2, Tag, X } from "lucide-react";
 import NextLink from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 type Sort = "relevance" | "newest" | "name";
 const SORT_ITEMS: { value: Sort; label: string }[] = [
@@ -118,11 +118,17 @@ function GruppenDetailPageContent() {
         </Button>
       </div>
 
-      {/* ── Header ── */}
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-        <GroupIcon icon={group.icon} name={group.name} className="size-16 shrink-0 rounded-2xl border bg-muted text-foreground sm:size-20 [&_svg]:size-7" />
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex flex-col gap-1">
+      {/* ── Header: the group's cover, its icon over the edge ── */}
+      <header className="flex flex-col" style={{ "--group": groupColor(group.id) } as CSSProperties}>
+        <GroupCover color={groupColor(group.id)} apps={[...members].sort(byRelevance)} className="h-36 rounded-2xl border sm:h-44" />
+        <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-end sm:gap-6 sm:px-6">
+          <GroupIcon
+            icon={group.icon}
+            name={group.name}
+            fallback={<span className="text-2xl font-semibold tracking-tight sm:text-3xl">{groupInitials(group.name)}</span>}
+            className="-mt-10 size-20 shrink-0 rounded-3xl border-4 border-background bg-[color-mix(in_oklab,var(--group)_18%,var(--card))] text-[var(--group)] shadow-sm sm:-mt-12 sm:size-24 [&_svg]:size-9"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:pb-1">
             <h1 className="text-3xl font-semibold tracking-tight">{group.name}</h1>
             <p className="text-sm text-muted-foreground">
               {members.length} {members.length === 1 ? "App" : "Apps"}
@@ -130,9 +136,8 @@ function GruppenDetailPageContent() {
               {activity && ` · zuletzt aktiv ${activity}`}
             </p>
           </div>
-          {group.description && <p className="max-w-3xl leading-relaxed text-muted-foreground">{group.description}</p>}
-          {members.length > 0 && <AppIconStack apps={[...members].sort(byRelevance)} max={8} />}
         </div>
+        {group.description && <p className="mt-4 max-w-3xl px-1 leading-relaxed text-muted-foreground sm:px-6">{group.description}</p>}
       </header>
 
       {members.length === 0 ? (
@@ -220,9 +225,10 @@ function GruppenDetailPageContent() {
               <li key={entry.id}>
                 <NextLink
                   href={`/gruppen/${entry.id}`}
-                  className="flex items-center gap-2.5 rounded-xl border bg-card py-1.5 ps-1.5 pe-3 text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  style={{ "--group": groupColor(entry.id) } as CSSProperties}
+                  className="flex items-center gap-2.5 rounded-xl border bg-card py-1.5 ps-1.5 pe-3 text-sm transition-colors hover:border-[color-mix(in_oklab,var(--group)_45%,var(--border))] hover:bg-[color-mix(in_oklab,var(--group)_6%,var(--card))] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  <GroupIcon icon={entry.icon} name="" className="size-7 rounded-lg bg-muted text-foreground [&_svg]:size-3.5" />
+                  <GroupIcon icon={entry.icon} name="" fallback={<span className="text-[11px] font-semibold">{groupInitials(entry.name)}</span>} className="size-7 rounded-lg bg-[color-mix(in_oklab,var(--group)_18%,var(--card))] text-[var(--group)] [&_svg]:size-3.5" />
                   <span className="font-medium">{entry.name}</span>
                   <span className="text-muted-foreground tabular-nums">{entry.members.length}</span>
                 </NextLink>
