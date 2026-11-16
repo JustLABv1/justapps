@@ -14,7 +14,7 @@ import { fetchApi as apiFetch } from "@/lib/api";
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from "@/lib/appStatus";
 import { toast } from "@/lib/toast";
 import {
-  ArrowLeft, BookOpen, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags,
+  ArrowLeft, BookOpen, Check, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +24,7 @@ import { BannerSection, DetailsSection } from "./DetailsSection";
 import { DeploymentSection } from "./DeploymentSection";
 import { DocumentationSection } from "./DocumentationSection";
 import { LinksSection } from "./LinksSection";
-import { OverviewSection } from "./OverviewSection";
+import { OverviewSection, PublishDialog } from "./OverviewSection";
 import { getReadiness, type SectionId } from "./readiness";
 import { type AppGroup, type RelatedApp, RelationsSection } from "./RelationsSection";
 import { emptyRepositoryForm, normalizeRepositoryForm, type RepositoryForm, RepositorySection } from "./RepositorySection";
@@ -58,6 +58,21 @@ const SECTIONS: SectionMeta[] = [
   { id: "banner", label: "Hinweis", title: "Hinweis", description: "Eine Meldung oben auf der App-Seite.", icon: <Megaphone />, group: "more" },
 ];
 
+/** Which form fields each section edits, to mark sections with unsaved changes. */
+const SECTION_FIELDS: Partial<Record<SectionId, string[]>> = {
+  overview: ["status", "isHidden", "isFeatured"],
+  basics: ["name", "description", "icon"],
+  classification: ["categories", "tags", "techStack", "authority", "license", "isReuse", "reuseRequirements"],
+  links: ["liveDemos", "skipLinkProbe", "repositories", "customLinks", "docsUrl"],
+  documentation: ["markdownContent", "version", "changelog"],
+  deployment: [
+    "hasDeploymentAssistant", "showHelm", "showCompose", "showDocker", "helmRepo", "customHelmCommand", "customHelmValues", "customHelmNote",
+    "customComposeCommand", "customComposeNote", "dockerRepo", "customDockerCommand", "customDockerNote",
+  ],
+  details: ["customFields"],
+  banner: ["bannerType", "bannerColor", "bannerTitle", "bannerText"],
+};
+
 const GROUP_LABELS: Record<SectionMeta["group"], string | undefined> = {
   start: undefined,
   content: "Inhalte",
@@ -82,12 +97,6 @@ function buildSnapshot(app: AppDraft, relatedApps: RelatedApp[], groupIds: Set<s
   });
 }
 
-function initialSection(): SectionId {
-  if (typeof window === "undefined") return "overview";
-  const hash = window.location.hash.slice(1) as SectionId;
-  return SECTIONS.some((section) => section.id === hash) ? hash : "overview";
-}
-
 export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig; existingApps: AppConfig[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -100,7 +109,8 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
   const appId = initialApp.id;
 
   const [app, setApp] = useState<AppDraft>(initialApp);
-  const [section, setSection] = useState<SectionId>(initialSection);
+  const [section, setSection] = useState<SectionId>("overview");
+  const [publishOpen, setPublishOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [nameMissing, setNameMissing] = useState(false);
@@ -144,14 +154,61 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     readiness.filter((item) => item.required && !item.done).forEach((item) => counts.set(item.section, (counts.get(item.section) || 0) + 1));
     return counts;
   }, [readiness]);
-  const visibleSections = SECTIONS.filter((item) => canManageStructure || (item.id !== "repository" && item.id !== "relations"));
-  const current = visibleSections.find((item) => item.id === section) || visibleSections[0];
+  const visibleSections = useMemo(
+    () => SECTIONS.filter((item) => canManageStructure || (item.id !== "repository" && item.id !== "relations")),
+    [canManageStructure],
+  );
+  const dirtySections = useMemo(() => {
+    const dirty = new Set<SectionId>();
+    const before = JSON.parse(initialSnapshot) as { app: Record<string, unknown>; relatedApps: string[]; groupIds: string[] };
+    const after = JSON.parse(buildSnapshot(app, relatedApps, groupIds)) as typeof before;
+    for (const [id, fields] of Object.entries(SECTION_FIELDS) as [SectionId, string[]][]) {
+      if (fields.some((field) => JSON.stringify(before.app[field] ?? null) !== JSON.stringify(after.app[field] ?? null))) dirty.add(id);
+    }
+    if (JSON.stringify(before.relatedApps) !== JSON.stringify(after.relatedApps) || JSON.stringify(before.groupIds) !== JSON.stringify(after.groupIds)) dirty.add("relations");
+    if (repoDirty || pendingUnlink) dirty.add("repository");
+    return dirty;
+  }, [app, relatedApps, groupIds, initialSnapshot, repoDirty, pendingUnlink]);
 
+  // Clicking a section pins it as current until scrolling settles there.
+  const scrollLock = useRef<number | null>(null);
   const openSection = (id: SectionId) => {
     setSection(id);
     window.history.replaceState(null, "", `#${id}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const target = document.getElementById(`section-${id}`);
+    if (!target) return;
+    if (scrollLock.current) window.clearTimeout(scrollLock.current);
+    scrollLock.current = window.setTimeout(() => { scrollLock.current = null; }, 800);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   };
+
+  // Scroll-spy: the current section is the last one whose heading has passed
+  // the sticky header, or the last one when the page is scrolled to the end.
+  useEffect(() => {
+    const onScroll = () => {
+      if (scrollLock.current) return;
+      const ids = visibleSections.map((item) => item.id);
+      let next = ids[0];
+      for (const id of ids) {
+        const element = document.getElementById(`section-${id}`);
+        if (element && element.getBoundingClientRect().top <= 180) next = id;
+      }
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) next = ids[ids.length - 1];
+      setSection((previous) => {
+        if (previous !== next) window.history.replaceState(null, "", `#${next}`);
+        return next;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [visibleSections]);
+
+  // A link to `#section` opens there; the scroll-spy then marks it.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash && hash !== "overview") document.getElementById(`section-${hash}`)?.scrollIntoView({ block: "start" });
+  }, []);
 
   useEffect(() => {
     if (!canManageGroups) return;
@@ -472,10 +529,10 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     else window.location.assign(destination.href);
   };
 
-  const renderSection = () => {
-    switch (current.id) {
+  const renderSection = (id: SectionId) => {
+    switch (id) {
       case "overview":
-        return <OverviewSection app={app} update={update} readiness={readiness} isAdmin={isAdmin} busy={busy} onNavigate={openSection} onPublish={publish} onUnpublish={unpublish} />;
+        return <OverviewSection app={app} update={update} readiness={readiness} isAdmin={isAdmin} busy={busy} onNavigate={openSection} onUnpublish={unpublish} />;
       case "basics":
         return <BasicsSection app={app} update={update} nameMissing={nameMissing && !app.name?.trim()} />;
       case "classification":
@@ -537,6 +594,8 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     }
   };
 
+  const missingRequired = readiness.filter((item) => item.required && !item.done).length;
+
   const navGroups = (["start", "content", "connections", "more"] as const).map((group) => ({
     group,
     items: visibleSections.filter((item) => item.group === group),
@@ -558,21 +617,44 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
           {draft ? <Badge variant="secondary">Entwurf</Badge> : <Badge variant="success" dot>{getAppStatusLabel(app.status) || app.status}</Badge>}
         </div>
         <div className="flex items-center gap-2">
-          {hasUnsavedChanges && !saving && <span className="hidden text-sm text-muted-foreground sm:inline" aria-live="polite">Ungespeicherte Änderungen</span>}
+          {hasUnsavedChanges && !saving && <span className="hidden text-sm text-muted-foreground md:inline" aria-live="polite">Ungespeicherte Änderungen</span>}
           <Button variant="ghost" size="sm" render={<a href={`/apps/${encodeURIComponent(appId)}`} />}>
             <ExternalLink />
             <span className="hidden sm:inline">Ansehen</span>
           </Button>
           <Tooltip>
-            <Tooltip.Trigger render={<Button size="sm" loading={saving} disabled={!hasUnsavedChanges || busy} onClick={() => void saveChanges()} />}>
-              <Save />
-              Speichern
+            <Tooltip.Trigger
+              render={
+                <Button
+                  size="sm"
+                  variant={draft ? "outline" : "default"}
+                  loading={saving}
+                  disabled={!hasUnsavedChanges || busy}
+                  onClick={() => void saveChanges()}
+                />
+              }
+            >
+              {hasUnsavedChanges || saving ? <Save /> : <Check />}
+              {hasUnsavedChanges || saving ? "Speichern" : "Gespeichert"}
             </Tooltip.Trigger>
             <Tooltip.Content variant="shortcut">
               Speichern
               <Tooltip.Shortcut keys={["⌘", "S"]} />
             </Tooltip.Content>
           </Tooltip>
+          {draft && (
+            <Tooltip>
+              <Tooltip.Trigger render={<span tabIndex={missingRequired ? 0 : -1} className="inline-flex" />}>
+                <Button size="sm" disabled={missingRequired > 0 || busy} onClick={() => setPublishOpen(true)}>
+                  <Rocket />
+                  Veröffentlichen
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                {missingRequired ? `Noch ${missingRequired} ${missingRequired === 1 ? "Pflichtangabe fehlt" : "Pflichtangaben fehlen"}` : "Status wählen und veröffentlichen"}
+              </Tooltip.Content>
+            </Tooltip>
+          )}
         </div>
       </header>
 
@@ -587,7 +669,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
       <div className="mb-6 lg:hidden">
         <Select
           items={visibleSections.map((item) => ({ value: item.id, label: item.label }))}
-          value={current.id}
+          value={section}
           onValueChange={(value) => value && openSection(value as SectionId)}
         >
           <Select.Trigger aria-label="Bereich">
@@ -611,8 +693,18 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
                     {items.map((item) => {
                       const missing = missingBySection.get(item.id) || 0;
                       return (
-                        <NavRail.Item key={item.id} icon={item.icon} active={item.id === current.id} onClick={() => openSection(item.id)}>
+                        <NavRail.Item
+                          key={item.id}
+                          href={`#${item.id}`}
+                          icon={item.icon}
+                          active={item.id === section}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            openSection(item.id);
+                          }}
+                        >
                           {item.label}
+                          {dirtySections.has(item.id) && <NavRail.Badge aria-label="Ungespeicherte Änderungen">•</NavRail.Badge>}
                           {missing > 0 && <NavRail.Badge aria-label={`${missing} Pflichtangaben fehlen`}>{missing}</NavRail.Badge>}
                         </NavRail.Item>
                       );
@@ -624,16 +716,25 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-2xl font-semibold tracking-tight">{current.title}</h2>
-            <p className="text-muted-foreground">{current.description}</p>
-          </div>
-          <fieldset disabled={busy} aria-busy={busy} className="flex min-w-0 flex-col gap-6">
-            {renderSection()}
+        <main className="min-w-0">
+          <fieldset disabled={busy} aria-busy={busy} className="flex min-w-0 flex-col gap-14">
+            {visibleSections.map((item) => (
+              <section key={item.id} id={`section-${item.id}`} aria-labelledby={`heading-${item.id}`} className="flex scroll-mt-36 flex-col gap-4">
+                <div className={item.id === "overview" ? "sr-only" : "flex flex-col gap-0.5"}>
+                  <h2 id={`heading-${item.id}`} className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                    {item.title}
+                    {dirtySections.has(item.id) && <Badge variant="secondary" size="sm">Geändert</Badge>}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+                {renderSection(item.id)}
+              </section>
+            ))}
           </fieldset>
         </main>
       </div>
+
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} onPublish={publish} />
 
       <AlertDialog open={repoAction !== null} onOpenChange={(open) => { if (!open) setRepoAction(null); }}>
         <AlertDialog.Content tone="warning">
