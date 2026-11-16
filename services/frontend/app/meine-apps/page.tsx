@@ -2,70 +2,32 @@
 
 import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppHealthCopilot } from '@/components/AppHealthCopilot';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { PageContainer, PageFilters, PageHeader } from '@/components/PageHeader';
+import { getReadiness } from '@/components/app-editor/readiness';
+import { Alert } from '@/components/panelui/alert';
+import { AlertDialog } from '@/components/panelui/alert-dialog';
+import { Badge, type BadgeVariant } from '@/components/panelui/badge';
+import { Button } from '@/components/panelui/button';
+import { Input } from '@/components/panelui/input';
+import { Menu } from '@/components/panelui/menu';
+import { Select } from '@/components/panelui/select';
+import { Spinner } from '@/components/panelui/spinner';
+import { Tabs } from '@/components/panelui/tabs';
+import { Tooltip } from '@/components/panelui/tooltip';
 import { AppConfig } from '@/config/apps';
-import { getAppStatusMeta } from '@/lib/appStatus';
+import { useAuth } from '@/context/AuthContext';
+import { fetchApi } from '@/lib/api';
+import { getRelativeTimeMeta } from '@/lib/appFreshness';
 import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
+import { getAppStatusMeta, isDraftStatus } from '@/lib/appStatus';
 import { getImageAssetUrl } from '@/lib/assets';
-import {
-  Button,
-  Card,
-  Chip,
-  Dropdown,
-  Input,
-} from '@heroui/react';
 import { toast } from '@/lib/toast';
 import {
-    CheckCircle2,
-    ChevronLeft,
-    CircleHelp,
-    Copy,
-    ExternalLink,
-    Eye,
-    EyeOff,
-    Lock,
-    MoreHorizontal,
-    Pencil,
-    Plus,
-    Search,
-    ShieldAlert,
-    ShieldCheck,
-    Trash2,
-    UsersRound
+  ArrowUpDown, CircleAlert, CircleCheck, Copy, ExternalLink, Eye, EyeOff, Globe, Lock, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Trash2, UsersRound, X,
 } from 'lucide-react';
-import Image from "next/image";
+import Image from 'next/image';
+import NextLink from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { fetchApi } from '../../lib/api';
-
-function MyAppsCardSkeleton() {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-5 animate-pulse">
-      <div className="flex flex-col md:flex-row items-center gap-6">
-        <div className="w-16 h-16 rounded-2xl bg-surface-secondary shrink-0" />
-        <div className="flex-grow space-y-3 w-full">
-          <div className="flex gap-2 justify-center md:justify-start">
-            <div className="h-5 w-40 bg-surface-secondary rounded" />
-            <div className="h-5 w-20 bg-surface-secondary rounded-full" />
-          </div>
-          <div className="h-3 w-full max-w-md bg-surface-secondary rounded" />
-          <div className="h-3 w-3/4 max-w-xs bg-surface-secondary rounded" />
-          <div className="flex gap-2 justify-center md:justify-start">
-            <div className="h-5 w-24 bg-surface-secondary rounded-md" />
-            <div className="h-5 w-20 bg-surface-secondary rounded-md" />
-          </div>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <div className="h-8 w-24 bg-surface-secondary rounded" />
-          <div className="h-8 w-24 bg-surface-secondary rounded" />
-          <div className="h-8 w-20 bg-surface-secondary rounded" />
-        </div>
-      </div>
-    </div>
-  );
-}
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 interface MyAppHealthRow {
   appId: string;
@@ -86,16 +48,36 @@ interface MyAppsHealthResponse {
   apps: MyAppHealthRow[];
 }
 
-function healthLabel(health: string) {
-  if (health === 'critical') return 'Kritisch';
-  if (health === 'attention') return 'Aufmerksamkeit nötig';
-  return 'Gesund';
+type Filter = 'all' | 'drafts' | 'published' | 'attention';
+type Sort = 'updated' | 'name' | 'status';
+
+const SORT_ITEMS: { value: Sort; label: string }[] = [
+  { value: 'updated', label: 'Zuletzt geändert' },
+  { value: 'name', label: 'Name' },
+  { value: 'status', label: 'Status' },
+];
+const STATUS_VARIANT: Record<string, BadgeVariant> = { default: 'secondary', accent: 'info', success: 'success', warning: 'warning' };
+
+function AppLogo({ app }: { app: AppConfig }) {
+  const src = getImageAssetUrl(app.icon);
+  return (
+    <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted/40 text-2xl">
+      {src ? <Image src={src} alt="" fill sizes="48px" className="object-contain p-1.5" unoptimized /> : app.icon || '🏛️'}
+    </span>
+  );
 }
 
-function healthColor(health: string): 'success' | 'warning' | 'danger' {
-  if (health === 'critical') return 'danger';
-  if (health === 'attention') return 'warning';
-  return 'success';
+function RowSkeleton() {
+  return (
+    <li className="flex animate-pulse items-center gap-4 px-4 py-4 sm:px-5">
+      <span className="size-12 shrink-0 rounded-xl bg-muted" />
+      <span className="flex flex-1 flex-col gap-2">
+        <span className="h-4 w-48 rounded bg-muted" />
+        <span className="h-3 w-full max-w-md rounded bg-muted" />
+      </span>
+      <span className="hidden h-8 w-28 rounded-lg bg-muted sm:block" />
+    </li>
+  );
 }
 
 function MyAppsContent() {
@@ -108,24 +90,25 @@ function MyAppsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [publishCandidate, setPublishCandidate] = useState<AppConfig | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [visibilityPending, setVisibilityPending] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<Sort>('updated');
 
-  // Auth check
+  // Signed out: back to the catalogue.
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        const timer = setTimeout(() => {
-          if (!user) router.push('/');
-        }, 500);
-        return () => clearTimeout(timer);
-      }
-    }
+    if (authLoading || user) return;
+    const timer = setTimeout(() => router.push('/'), 500);
+    return () => clearTimeout(timer);
   }, [user, authLoading, router]);
+
+  // ?edit=<id> deep links go straight to the editor.
+  useEffect(() => {
+    const editId = searchParams?.get('edit');
+    if (editId) router.replace(`/meine-apps/${editId}/edit`);
+  }, [searchParams, router]);
 
   const loadData = async () => {
     if (!user || !profileReady) return;
@@ -137,22 +120,10 @@ function MyAppsContent() {
         fetchApi('/apps?editable=me'),
         fetchApi('/apps/health'),
       ]);
-      if (settingsRes.ok) {
-        const settingsData = await settingsRes.json();
-        setSettings(settingsData);
-      }
-      if (appsRes.ok) {
-        const data: AppConfig[] = await appsRes.json();
-        setApps(data);
-      } else {
-        setError(`Fehler beim Laden Ihrer Apps: ${appsRes.statusText}`);
-      }
-      if (healthRes.ok) {
-        setHealth(await healthRes.json() as MyAppsHealthResponse);
-      } else {
-        setHealth(null);
-      }
-
+      if (settingsRes.ok) setSettings(await settingsRes.json());
+      if (appsRes.ok) setApps(await appsRes.json() as AppConfig[]);
+      else setError(`Deine Apps konnten nicht geladen werden (${appsRes.statusText || appsRes.status}).`);
+      setHealth(healthRes.ok ? await healthRes.json() as MyAppsHealthResponse : null);
     } catch (err) {
       setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -162,90 +133,64 @@ function MyAppsContent() {
 
   useEffect(() => {
     if (!profileReady) return;
-
-    const timeoutId = window.setTimeout(() => {
-      void loadData();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    const timeoutId = window.setTimeout(() => void loadData(), 0);
+    return () => window.clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profileReady]);
 
-  const handleCreateApp = async () => {
-    if (!profileReady) {
-      const refreshed = await refreshUser();
-      if (!refreshed) {
-        toast.danger('Ihr Benutzerprofil ist noch nicht bereit. Bitte erneut versuchen.');
-        return;
-      }
-    }
-    if (!user?.canSubmitApps && user?.role !== 'admin') {
-      toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
-      return;
-    }
-    if (!settings.allowAppSubmissions && user?.role !== 'admin') {
-      toast.info('App-Einreichungen sind derzeit systemweit deaktiviert.');
-      return;
-    }
-    router.push('/meine-apps/new');
+  const isAdmin = user?.role === 'admin';
+  const submissionsBlocked = !isAdmin && (!user?.canSubmitApps || !settings.allowAppSubmissions);
+  const submissionBlockReason = !settings.allowAppSubmissions && !isAdmin
+    ? 'App-Einreichungen sind derzeit für alle deaktiviert.'
+    : !user?.canSubmitApps && !isAdmin
+      ? 'Dein Konto ist nicht für neue Apps freigeschaltet.'
+      : null;
+
+  const permissionsOf = (app: AppConfig) => {
+    const ownerOrAdmin = isAdmin || app.ownerId === user?.id;
+    return {
+      canEdit: app.viewerPermissions?.canEdit ?? ownerOrAdmin,
+      canDelete: app.viewerPermissions?.canDelete ?? ownerOrAdmin,
+      canManageEditors: app.viewerPermissions?.canManageEditors ?? ownerOrAdmin,
+      canCopy: ownerOrAdmin,
+      accessRole: app.viewerPermissions?.accessRole ?? (ownerOrAdmin ? (isAdmin ? 'admin' : 'owner') : 'viewer'),
+    };
   };
 
-  const handleCopyApp = async (app: AppConfig) => {
-    const canCopy = user?.role === 'admin' || app.ownerId === user?.id;
-    if (!canCopy) {
-      toast.info('Sie können nur eigene Apps kopieren.');
-      return;
+  const ensureCanSubmit = async () => {
+    if (!profileReady && !(await refreshUser())) {
+      toast.danger('Dein Benutzerprofil ist noch nicht bereit. Bitte versuch es gleich noch einmal.');
+      return false;
     }
-    if (!profileReady) {
-      const refreshed = await refreshUser();
-      if (!refreshed) {
-        toast.danger('Ihr Benutzerprofil ist noch nicht bereit. Bitte erneut versuchen.');
-        return;
-      }
+    if (submissionBlockReason) {
+      toast.info(submissionBlockReason);
+      return false;
     }
-    if (!user?.canSubmitApps && user?.role !== 'admin') {
-      toast.warning('Ihr Konto ist aktuell nicht für neue App-Einreichungen freigeschaltet.');
-      return;
-    }
-    if (!settings.allowAppSubmissions && user?.role !== 'admin') {
-      toast.info('App-Einreichungen sind derzeit systemweit deaktiviert.');
-      return;
-    }
-    router.push(`/meine-apps/new?copy=${encodeURIComponent(app.id)}`);
+    return true;
   };
 
-  const handleEditApp = (app: AppConfig) => {
-    const permissions = getAppPermissions(app);
-    if (!permissions.canEdit) return;
-    router.push(`/meine-apps/${app.id}/edit`);
+  const createApp = async () => {
+    if (await ensureCanSubmit()) router.push('/meine-apps/new');
   };
 
-  const handleDeleteApp = (app: AppConfig) => {
-    const permissions = getAppPermissions(app);
-    if (!permissions.canDelete) return;
-    setDeleteCandidate(app);
+  const copyApp = async (app: AppConfig) => {
+    if (permissionsOf(app).canCopy && (await ensureCanSubmit())) router.push(`/meine-apps/new?copy=${encodeURIComponent(app.id)}`);
   };
 
-  const handleVisibilityChange = async (app: AppConfig, isHidden: boolean) => {
-    if (!getAppPermissions(app).canEdit || visibilityPending.has(app.id)) return;
-
+  const changeVisibility = async (app: AppConfig, isHidden: boolean) => {
+    if (!permissionsOf(app).canEdit || visibilityPending.has(app.id)) return;
     setVisibilityPending((current) => new Set(current).add(app.id));
-    setApps((current) => current.map((entry) => entry.id === app.id ? { ...entry, isHidden } : entry));
+    setApps((current) => current.map((entry) => (entry.id === app.id ? { ...entry, isHidden } : entry)));
     try {
-      const response = await fetchApi(`/apps/${app.id}/visibility`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isHidden }),
-      });
+      const response = await fetchApi(`/apps/${app.id}/visibility`, { method: 'PATCH', body: JSON.stringify({ isHidden }) });
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error((error as { message?: string }).message || 'Sichtbarkeit konnte nicht geändert werden.');
+        const body = await response.json().catch(() => ({})) as { message?: string };
+        throw new Error(body.message || 'Die Sichtbarkeit konnte nicht geändert werden.');
       }
       toast.success(isHidden ? `„${app.name}“ ist jetzt versteckt.` : `„${app.name}“ ist wieder sichtbar.`);
-    } catch (error) {
-      setApps((current) => current.map((entry) => entry.id === app.id ? { ...entry, isHidden: app.isHidden } : entry));
-      toast.danger(error instanceof Error ? error.message : 'Sichtbarkeit konnte nicht geändert werden.');
+    } catch (err) {
+      setApps((current) => current.map((entry) => (entry.id === app.id ? { ...entry, isHidden: app.isHidden } : entry)));
+      toast.danger(err instanceof Error ? err.message : 'Die Sichtbarkeit konnte nicht geändert werden.');
     } finally {
       setVisibilityPending((current) => {
         const next = new Set(current);
@@ -255,406 +200,326 @@ function MyAppsContent() {
     }
   };
 
-  const getAppPermissions = (app: AppConfig) => {
-    const isOwnerOrAdmin = user?.role === 'admin' || app.ownerId === user?.id;
-    return {
-      canEdit: app.viewerPermissions?.canEdit ?? isOwnerOrAdmin,
-      canDelete: app.viewerPermissions?.canDelete ?? isOwnerOrAdmin,
-      canManageEditors: app.viewerPermissions?.canManageEditors ?? isOwnerOrAdmin,
-      accessRole: app.viewerPermissions?.accessRole ?? (isOwnerOrAdmin ? (user?.role === 'admin' ? 'admin' : 'owner') : 'viewer'),
-    };
-  };
-
-  const handleManageEditors = (app: AppConfig) => {
-    const permissions = getAppPermissions(app);
-    if (!permissions.canManageEditors) return;
-    setEditorApp(app);
-  };
-
-  const confirmDeleteApp = async () => {
+  const deleteApp = async () => {
     if (!deleteCandidate) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetchApi(`/apps/${deleteCandidate.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success(`"${deleteCandidate.name}" wurde gelöscht.`);
-        setDeleteCandidate(null);
-        await loadData();
-      } else {
-        toast.danger('Die App konnte nicht gelöscht werden.');
-      }
-    } catch {
-      toast.danger('Beim Löschen der App ist ein Fehler aufgetreten.');
-    } finally {
-      setIsDeleting(false);
+    const response = await fetchApi(`/apps/${deleteCandidate.id}`, { method: 'DELETE' }).catch(() => null);
+    if (!response?.ok) {
+      toast.danger('Die App konnte nicht gelöscht werden.');
+      throw new Error('delete failed');
     }
+    toast.success(`„${deleteCandidate.name}“ wurde gelöscht.`);
+    setDeleteCandidate(null);
+    await loadData();
   };
 
-  // Deep linking: ?edit=<id> → redirect to full editor page
-  useEffect(() => {
-    const editId = searchParams?.get('edit');
-    if (editId) router.replace(`/meine-apps/${editId}/edit`);
-  }, [searchParams, router]);
+  const publishFromSpace = async () => {
+    if (!publishCandidate) return;
+    const response = await fetchApi(`/apps/${publishCandidate.id}/publish`, { method: 'POST' }).catch(() => null);
+    if (!response?.ok) {
+      const body = await response?.json().catch(() => ({})) as { message?: string } | undefined;
+      toast.danger(body?.message || 'Die Veröffentlichung ist fehlgeschlagen.');
+      throw new Error('publish failed');
+    }
+    toast.success('Die App ist jetzt für alle sichtbar.');
+    setPublishCandidate(null);
+    await loadData();
+  };
 
-  const visibleApps = apps.filter((app) => {
-    const search = query.trim().toLowerCase();
-    return !search || [app.name, app.id, app.description, ...(app.categories || [])].some((value) => value?.toLowerCase().includes(search));
-  });
-  const healthByAppId = new Map((health?.apps || []).map((app) => [app.appId, app]));
-  const healthSummaryCards = health ? [
-    {
-      label: 'Gesund',
-      value: health.healthy,
-      sub: 'Keine offenen Hinweise',
-      icon: CheckCircle2,
-      iconColor: 'text-success',
-      iconBackground: 'bg-success/10',
-    },
-    {
-      label: 'Aufmerksamkeit',
-      value: health.attention,
-      sub: 'Apps mit Hinweisen',
-      icon: CircleHelp,
-      iconColor: 'text-warning',
-      iconBackground: 'bg-warning/10',
-    },
-    {
-      label: 'Kritisch',
-      value: health.critical,
-      sub: 'Dringende Probleme',
-      icon: ShieldAlert,
-      iconColor: 'text-danger',
-      iconBackground: 'bg-danger/10',
-    },
-  ] as const : [];
+  const healthById = useMemo(() => new Map((health?.apps || []).map((row) => [row.appId, row])), [health]);
+  const needsAttention = (app: AppConfig) => (healthById.get(app.id)?.issues.length ?? 0) > 0;
+  const counts = {
+    all: apps.length,
+    drafts: apps.filter((app) => isDraftStatus(app.status)).length,
+    published: apps.filter((app) => !isDraftStatus(app.status)).length,
+    attention: apps.filter(needsAttention).length,
+  };
 
-  if (authLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      <p className="text-muted-foreground font-medium">Authentifizierung wird geprüft…</p>
-    </div>
-  );
+  const visibleApps = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return apps
+      .filter((app) => filter === 'all'
+        || (filter === 'drafts' && isDraftStatus(app.status))
+        || (filter === 'published' && !isDraftStatus(app.status))
+        || (filter === 'attention' && (healthById.get(app.id)?.issues.length ?? 0) > 0))
+      .filter((app) => !needle || [app.name, app.id, app.description, ...(app.categories || [])].some((value) => value?.toLowerCase().includes(needle)))
+      .sort((a, b) => {
+        if (sort === 'name') return a.name.localeCompare(b.name, 'de');
+        if (sort === 'status') return (getAppStatusMeta(a.status)?.sortOrder ?? 0) - (getAppStatusMeta(b.status)?.sortOrder ?? 0) || a.name.localeCompare(b.name, 'de');
+        return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+      });
+  }, [apps, filter, query, sort, healthById]);
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center gap-3 text-muted-foreground">
+        <Spinner />
+        Anmeldung wird geprüft …
+      </div>
+    );
+  }
   if (!user) return null;
 
   if (!profileReady) {
     return (
-      <div className="max-w-3xl mx-auto px-4 md:px-8 pb-8 md:pb-10">
-        <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Profil wird noch synchronisiert</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            {profileError || 'Nach der Anmeldung wird Ihr Benutzerprofil gerade mit dem Backend abgeglichen. Versuchen Sie es in wenigen Sekunden erneut.'}
-          </p>
-          <Button onPress={() => void refreshUser()}>Erneut laden</Button>
-        </div>
-      </div>
+      <Alert tone="warning" className="mx-auto max-w-2xl">
+        <Alert.Icon />
+        <Alert.Title>Dein Profil wird noch synchronisiert</Alert.Title>
+        <Alert.Description>{profileError || 'Nach der Anmeldung wird dein Benutzerprofil mit dem Server abgeglichen. Versuch es in ein paar Sekunden noch einmal.'}</Alert.Description>
+        <Alert.Actions>
+          <Button size="sm" onClick={() => void refreshUser()}>Erneut laden</Button>
+        </Alert.Actions>
+      </Alert>
     );
   }
 
+  const newAppButton = (
+    <Button disabled={submissionsBlocked} onClick={() => void createApp()}>
+      <Plus />
+      Neue App
+    </Button>
+  );
+
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow="Arbeitsbereich"
-        title="Meine Apps"
-        description="Verwalten Sie Ihre eigenen Apps und Lösungen, für die Sie freigegeben sind."
-        actions={
-          <>
-          <Button variant="secondary" onPress={() => router.push('/spaces')}>
-            <Lock className="h-4 w-4" />Private Spaces
+    <div className="flex w-full flex-col gap-6 pb-16">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Meine Apps</h1>
+          <p className="text-muted-foreground">Apps, die dir gehören oder die du bearbeiten darfst.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" render={<NextLink href="/spaces" />}>
+            <Lock />
+            Private Spaces
           </Button>
-          <Button variant="secondary" onPress={() => router.push('/')}>
-            <ChevronLeft className="h-4 w-4" />
-            Zum Store
-          </Button>
-          <Button onPress={handleCreateApp} isDisabled={user.role !== 'admin' && (!user.canSubmitApps || !settings.allowAppSubmissions)}>
-            <Plus className="h-4 w-4" />
-            Neue App
-          </Button>
-          </>
-        }
-      />
+          {submissionBlockReason ? (
+            <Tooltip>
+              <Tooltip.Trigger render={<span tabIndex={0} className="inline-flex" />}>{newAppButton}</Tooltip.Trigger>
+              <Tooltip.Content>{submissionBlockReason}</Tooltip.Content>
+            </Tooltip>
+          ) : newAppButton}
+        </div>
+      </header>
 
       {error && (
-        <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div className="flex-grow">{error}</div>
-          <Button size="sm" variant="secondary" onPress={loadData} className="h-8">Wiederholen</Button>
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+          <Alert.Actions>
+            <Button size="sm" variant="outline" onClick={() => void loadData()}>Erneut versuchen</Button>
+          </Alert.Actions>
+        </Alert>
+      )}
+
+      {/* ── Toolbar: what to show, search, order ── */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+          <Tabs.List aria-label="Apps filtern">
+            <Tabs.Trigger value="all">Alle<Tabs.Badge>{counts.all}</Tabs.Badge></Tabs.Trigger>
+            <Tabs.Trigger value="drafts">Entwürfe<Tabs.Badge>{counts.drafts}</Tabs.Badge></Tabs.Trigger>
+            <Tabs.Trigger value="published">Veröffentlicht<Tabs.Badge>{counts.published}</Tabs.Badge></Tabs.Trigger>
+            {health && (
+              <Tabs.Trigger value="attention">
+                {counts.attention > 0 ? <CircleAlert className="text-warning" /> : <CircleCheck className="text-success" />}
+                Hinweise
+                <Tabs.Badge>{counts.attention}</Tabs.Badge>
+              </Tabs.Trigger>
+            )}
+          </Tabs.List>
+        </Tabs>
+        <div className="flex flex-1 items-center gap-2">
+          <Input.Group className="min-w-0 flex-1 lg:ms-auto lg:max-w-xs">
+            <Input.Addon><Search /></Input.Addon>
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" />
+            {query && (
+              <Input.Addon align="end">
+                <button type="button" aria-label="Suche löschen" onClick={() => setQuery('')} className="cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground">
+                  <X className="size-4" />
+                </button>
+              </Input.Addon>
+            )}
+          </Input.Group>
+          <Select items={SORT_ITEMS} value={sort} onValueChange={(value) => value && setSort(value as Sort)}>
+            <Select.Trigger variant="ghost" size="sm" aria-label="Apps sortieren">
+              <ArrowUpDown />
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Content align="end">
+              {SORT_ITEMS.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}
+            </Select.Content>
+          </Select>
         </div>
-      )}
-
-      {health && (
-        <Card variant="default" className="mt-6 border-border shadow-sm">
-          <Card.Header className="gap-1 p-5 pb-0">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <Card.Title className="text-base">App-Gesundheit</Card.Title>
-                <Card.Description className="mt-1">Erreichbarkeit, Synchronisation und Pflegezustand Ihrer Apps.</Card.Description>
-              </div>
-              <Chip color={health.critical > 0 ? 'danger' : health.attention > 0 ? 'warning' : 'success'} variant="soft" size="sm">
-                {health.total} überprüft
-              </Chip>
-            </div>
-          </Card.Header>
-          <Card.Content className="grid gap-3 p-5 sm:grid-cols-3">
-            {healthSummaryCards.map(({ label, value, sub, icon: Icon, iconColor, iconBackground }) => (
-              <div key={label} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-                  <span className={['flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', iconBackground].join(' ')}>
-                    <Icon className={['h-4 w-4', iconColor].join(' ')} aria-hidden="true" />
-                  </span>
-                </div>
-                <span className="text-2xl font-bold leading-none text-foreground">{value}</span>
-                <span className="text-xs text-muted-foreground">{sub}</span>
-              </div>
-            ))}
-          </Card.Content>
-        </Card>
-      )}
-
-      <div className="pt-6">
-        {!settings.allowAppSubmissions && user.role !== 'admin' && !user.canSubmitApps && (
-          <div className="flex flex-col md:flex-row gap-4 pb-4 justify-end items-center">
-            {!settings.allowAppSubmissions && user.role !== 'admin' && (
-              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                <Lock className="w-4 h-4 mr-2" />
-                App-Einreichungen sind derzeit systemweit deaktiviert.
-              </div>
-            )}
-            {!user.canSubmitApps && (
-              <div className="flex items-center text-danger text-sm font-bold bg-danger/10 px-3 py-2 rounded-lg md:mr-auto w-full md:w-auto border border-danger/20">
-                <Lock className="w-4 h-4 mr-2" />
-                Ihr Konto ist für die Einreichung von Apps gesperrt.
-              </div>
-            )}
-          </div>
-        )}
-
-        <Card variant="default" className="overflow-hidden border-border shadow-sm">
-          <PageFilters>
-            <div><h2 className="font-semibold text-foreground">Apps</h2><p className="text-sm text-muted-foreground">{loading ? 'Wird geladen …' : `${visibleApps.length} ${visibleApps.length === 1 ? 'App' : 'Apps'}`}</p></div>
-            <div className="relative min-w-0 flex-1 lg:ml-auto lg:max-w-md"><Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input variant="secondary" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Apps durchsuchen" aria-label="Apps durchsuchen" className="w-full pl-10" /></div>
-          </PageFilters>
-          <div className="divide-y divide-border">
-          {loading ? (
-            [...Array(3)].map((_, i) => <MyAppsCardSkeleton key={i} />)
-          ) : (
-            <>
-              {visibleApps.map((app) => {
-                const statusMeta = getAppStatusMeta(app.status);
-                const iconSrc = getImageAssetUrl(app.icon);
-                const permissions = getAppPermissions(app);
-                const appHealth = healthByAppId.get(app.id);
-                const canEdit = permissions.canEdit;
-                const canDelete = permissions.canDelete;
-                const canCopy = user.role === 'admin' || app.ownerId === user.id;
-                return (
-                  <article key={app.id} className="group flex flex-col gap-4 px-4 py-5 transition-colors duration-200 ease-out hover:bg-surface-secondary/45 sm:px-5 lg:flex-row lg:items-center">
-                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface-secondary text-2xl shadow-sm">
-                        {iconSrc ? (
-                          <Image src={iconSrc} alt={app.name} fill className="object-contain w-full h-full p-2" unoptimized />
-                        ) : (
-                          app.icon || '🏛️'
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-lg font-bold text-foreground">{app.name}</h3>
-                          {app.categories?.slice(0, 2).map(cat => (
-                            <Chip key={cat} size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">{cat}</Chip>
-                          ))}
-                          {(app.categories?.length || 0) > 2 && (
-                            <Chip size="sm" variant="soft" className="font-bold text-[10px] uppercase tracking-wider">+{app.categories!.length - 2}</Chip>
-                          )}
-                        </div>
-
-                        <div className="mt-1.5 max-w-3xl text-sm text-muted-foreground line-clamp-2">
-                          {app.description || <span className="italic opacity-50">Keine Beschreibung</span>}
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-mono text-muted-foreground bg-surface-secondary px-2 py-1 rounded-md border border-border/50 flex items-center gap-1.5">
-                            <span className="opacity-50">ID:</span> {app.id}
-                          </span>
-                          {statusMeta && (
-                            <Chip
-                              size="sm"
-                              color={statusMeta.color as 'default' | 'success' | 'warning' | 'accent'}
-                              variant="soft"
-                              className="font-bold text-[10px] uppercase tracking-wider"
-                            >
-                              {statusMeta.label}
-                            </Chip>
-                          )}
-                          {appHealth && (
-                            <Chip
-                              size="sm"
-                              color={healthColor(appHealth.health)}
-                              variant="soft"
-                              className="font-bold text-[10px] uppercase tracking-wider"
-                            >
-                              {healthLabel(appHealth.health)}
-                              {appHealth.issues.length > 0 && ' · ' + appHealth.issues.length + ' Hinweis' + (appHealth.issues.length === 1 ? '' : 'e')}
-                            </Chip>
-                          )}
-                          {appHealth?.issues.map((issue) => (
-                            <Chip
-                              key={issue}
-                              color={getAppHealthIssueColor(issue)}
-                              variant="soft"
-                              size="sm"
-                              title={getAppHealthIssueDescription(issue)}
-                              className="font-medium text-[10px]"
-                            >
-                              {getAppHealthIssueLabel(issue)}
-                            </Chip>
-                          ))}
-                          {app.isLocked && (
-                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <Lock className="w-3 h-3" /> Gesperrt
-                            </Chip>
-                          )}
-                          {app.isHidden && (
-                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <EyeOff className="w-3 h-3" /> Versteckt
-                            </Chip>
-                          )}
-                          {permissions.accessRole === 'editor' && (
-                            <Chip size="sm" color="accent" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <UsersRound className="w-3 h-3" /> Bearbeiter
-                            </Chip>
-                          )}
-                          {permissions.accessRole === 'moderator' && (
-                            <Chip size="sm" color="warning" variant="soft" className="font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3" /> Moderation
-                            </Chip>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-2 lg:justify-end">
-                        {appHealth && appHealth.issues.length > 0 && (
-                          <AppHealthCopilot
-                            iconOnly
-                            appId={app.id}
-                            appName={app.name}
-                            issues={appHealth.issues}
-                            linkProbeStatus={appHealth.linkProbeStatus}
-                            syncStatus={appHealth.syncStatus}
-                            syncError={appHealth.syncError}
-                          />
-                        )}
-                        <Button size="sm" variant="secondary" onPress={() => router.push(`/apps/${app.id}`)}>
-                          <ExternalLink className="h-4 w-4" />
-                          Öffnen
-                        </Button>
-                        <Button
-                          size="sm" variant="secondary"
-                          onPress={() => handleEditApp(app)}
-                          isDisabled={!canEdit}
-                          className={!canEdit ? 'opacity-50 cursor-not-allowed' : ''}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Bearbeiten
-                        </Button>
-                        <Dropdown>
-                          <Button isIconOnly size="sm" variant="secondary" aria-label={`Weitere Aktionen für ${app.name}`}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                          <Dropdown.Popover>
-                            <Dropdown.Menu aria-label={`Aktionen für ${app.name}`} onAction={(key) => {
-                              if (key === 'publish') setPublishCandidate(app);
-                              if (key === 'copy') void handleCopyApp(app);
-                              if (key === 'editors') handleManageEditors(app);
-                              if (key === 'visibility') void handleVisibilityChange(app, !app.isHidden);
-                              if (key === 'delete') handleDeleteApp(app);
-                            }}>
-                              {app.spaceId && app.ownerId === user.id && <Dropdown.Item id="publish" textValue="Für alle veröffentlichen" isDisabled={app.isLocked}><div className="flex items-center gap-2"><Eye className="h-4 w-4" />Für alle veröffentlichen</div></Dropdown.Item>}
-                              {canCopy && <Dropdown.Item id="copy" textValue="Kopieren"><div className="flex items-center gap-2"><Copy className="h-4 w-4" />Kopieren</div></Dropdown.Item>}
-                              {permissions.canManageEditors && <Dropdown.Item id="editors" textValue="Bearbeiter verwalten"><div className="flex items-center gap-2"><UsersRound className="h-4 w-4" />Bearbeiter verwalten</div></Dropdown.Item>}
-                              <Dropdown.Item
-                                id="visibility"
-                                textValue={app.isHidden ? 'Wieder sichtbar machen' : 'App verstecken'}
-                                isDisabled={!canEdit || visibilityPending.has(app.id)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {app.isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                                  {app.isHidden ? 'Wieder sichtbar machen' : 'App verstecken'}
-                                </div>
-                              </Dropdown.Item>
-                              <Dropdown.Item id="delete" textValue="Löschen" isDisabled={!canDelete} className="text-danger"><div className="flex items-center gap-2"><Trash2 className="h-4 w-4" />Löschen</div></Dropdown.Item>
-                            </Dropdown.Menu>
-                          </Dropdown.Popover>
-                        </Dropdown>
-                      </div>
-                  </article>
-                );
-              })}
-
-              {apps.length === 0 && (
-                <div className="py-20 text-center bg-surface-secondary px-4">
-                  <p className="text-muted-foreground font-medium mb-4">Sie haben noch keine eigenen oder freigegebenen Apps.</p>
-                  {(user.canSubmitApps || user.role === 'admin') ? (
-                    <Button variant="ghost" onPress={handleCreateApp}>Erste App erstellen</Button>
-                  ) : (
-                    <p className="text-xs text-warning">Erstellung neuer Apps ist derzeit deaktiviert.</p>
-                  )}
-                </div>
-              )}
-              {apps.length > 0 && visibleApps.length === 0 && (
-                <div className="py-16 text-center"><p className="font-medium text-foreground">Keine Apps gefunden</p><p className="mt-1 text-sm text-muted-foreground">Passen Sie den Suchbegriff an.</p></div>
-              )}
-            </>
-          )}
-          </div>
-        </Card>
       </div>
 
-      <ConfirmDialog
-        confirmLabel="App löschen"
-        description={deleteCandidate ? `Die App "${deleteCandidate.name}" wird dauerhaft entfernt. Dieser Schritt kann nicht rückgängig gemacht werden.` : ''}
-        isDanger
-        isLoading={isDeleting}
-        isOpen={!!deleteCandidate}
-        onConfirm={confirmDeleteApp}
-        onOpenChange={(open) => { if (!open && !isDeleting) setDeleteCandidate(null); }}
-        title="App wirklich löschen?"
-      />
+      {filter === 'attention' && health && counts.attention > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {health.critical > 0 && <span className="font-medium text-destructive">{health.critical} kritisch · </span>}
+          Erreichbarkeit, Repository-Abgleich und Pflegezustand werden regelmäßig geprüft. Die AI-Schaltfläche erklärt, was zu tun ist.
+        </p>
+      )}
 
-      <ConfirmDialog
-        title="App für alle veröffentlichen?"
-        description={`„${publishCandidate?.name || ''}“ verlässt den privaten Space. Beschreibung, Dokumentation und Diskussionen sind anschließend im öffentlichen Katalog für alle zugänglich.`}
-        confirmLabel="Jetzt veröffentlichen"
-        isOpen={!!publishCandidate}
-        isLoading={isPublishing}
-        onOpenChange={(open) => { if (!open && !isPublishing) setPublishCandidate(null); }}
-        onConfirm={async () => {
-          if (!publishCandidate) return;
-          setIsPublishing(true);
-          try {
-            const response = await fetchApi(`/apps/${publishCandidate.id}/publish`, {method:'POST'});
-            if (!response.ok) {const data = await response.json().catch(() => ({})); throw new Error(data.message || 'Veröffentlichung fehlgeschlagen.');}
-            setPublishCandidate(null);toast.success('Die App ist jetzt für alle veröffentlicht.');await loadData();
-          } catch (err) {toast.danger(err instanceof Error ? err.message : 'Veröffentlichung fehlgeschlagen.');}
-          finally {setIsPublishing(false);}
-        }}
-      />
+      {/* ── List ── */}
+      {loading ? (
+        <ul className="divide-y rounded-2xl border bg-card">
+          {[0, 1, 2].map((index) => <RowSkeleton key={index} />)}
+        </ul>
+      ) : apps.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><Plus className="size-5" /></span>
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">Noch keine Apps</p>
+            <p className="text-sm text-muted-foreground">
+              {submissionBlockReason ?? 'Leg deine erste App an. Das dauert drei kurze Schritte, alles Weitere kannst du später ergänzen.'}
+            </p>
+          </div>
+          {!submissionsBlocked && <Button onClick={() => void createApp()}><Plus />Erste App anlegen</Button>}
+        </div>
+      ) : visibleApps.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center">
+          <p className="font-medium">{filter === 'attention' && !query ? 'Keine offenen Hinweise' : 'Keine passende App'}</p>
+          <p className="text-sm text-muted-foreground">
+            {filter === 'attention' && !query ? 'Alle deine Apps sind erreichbar und gepflegt.' : 'Passe die Suche oder den Filter an.'}
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+          {visibleApps.map((app) => {
+            const permissions = permissionsOf(app);
+            const status = getAppStatusMeta(app.status);
+            const draft = isDraftStatus(app.status);
+            const appHealth = healthById.get(app.id);
+            const missing = draft ? getReadiness(app).filter((item) => item.required && !item.done).length : 0;
+            const updated = getRelativeTimeMeta(app.updatedAt)?.label;
+            const editHref = `/meine-apps/${app.id}/edit`;
+
+            return (
+              <li key={app.id} className="group flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+                <div className="flex min-w-0 flex-1 items-start gap-4">
+                  <AppLogo app={app} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {permissions.canEdit ? (
+                        <NextLink href={editHref} className="font-medium hover:underline hover:underline-offset-4">{app.name}</NextLink>
+                      ) : (
+                        <span className="font-medium">{app.name}</span>
+                      )}
+                      {status && <Badge variant={draft ? 'secondary' : STATUS_VARIANT[status.color] ?? 'secondary'} size="sm" dot={!draft}>{status.label}</Badge>}
+                      {app.spaceId && <Badge variant="outline" size="sm"><Lock />Privater Space</Badge>}
+                      {app.isHidden && <Badge variant="warning" size="sm"><EyeOff />Versteckt</Badge>}
+                      {app.isLocked && <Badge variant="warning" size="sm"><Lock />Gesperrt</Badge>}
+                      {permissions.accessRole === 'editor' && <Badge variant="outline" size="sm"><UsersRound />Bearbeiter</Badge>}
+                      {permissions.accessRole === 'moderator' && <Badge variant="outline" size="sm"><ShieldCheck />Moderation</Badge>}
+                    </div>
+                    <p className="line-clamp-1 text-sm text-muted-foreground">{app.description || 'Noch keine Kurzbeschreibung.'}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5 text-xs text-muted-foreground">
+                      {draft && missing > 0 && permissions.canEdit && (
+                        <NextLink href={editHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+                          Noch {missing} {missing === 1 ? 'Pflichtangabe' : 'Pflichtangaben'} bis zur Veröffentlichung
+                        </NextLink>
+                      )}
+                      {draft && missing === 0 && <span className="text-success">Bereit zur Veröffentlichung</span>}
+                      {appHealth && appHealth.issues.length === 0 && !draft && (
+                        <span className="flex items-center gap-1"><CircleCheck className="size-3.5 text-success" />Alles in Ordnung</span>
+                      )}
+                      {appHealth?.issues.map((issue) => (
+                        <Tooltip key={issue}>
+                          <Tooltip.Trigger render={<span tabIndex={0} className="outline-none" />}>
+                            <Badge variant={getAppHealthIssueColor(issue) === 'danger' ? 'destructive' : 'warning'} size="sm">
+                              {getAppHealthIssueLabel(issue)}
+                            </Badge>
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>{getAppHealthIssueDescription(issue)}</Tooltip.Content>
+                        </Tooltip>
+                      ))}
+                      {updated && <span>geändert {updated}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2 ps-16 sm:ps-0">
+                  {appHealth && appHealth.issues.length > 0 && (
+                    <AppHealthCopilot
+                      iconOnly
+                      appId={app.id}
+                      appName={app.name}
+                      issues={appHealth.issues}
+                      linkProbeStatus={appHealth.linkProbeStatus}
+                      syncStatus={appHealth.syncStatus}
+                      syncError={appHealth.syncError}
+                    />
+                  )}
+                  {permissions.canEdit && (
+                    <Button size="sm" variant={draft ? 'default' : 'outline'} render={<NextLink href={editHref} />}>
+                      <Pencil />
+                      {draft ? 'Weiter bearbeiten' : 'Bearbeiten'}
+                    </Button>
+                  )}
+                  <Menu>
+                    <Menu.Trigger render={<Button size="icon-sm" variant="ghost" aria-label={`Weitere Aktionen für ${app.name}`} />}>
+                      <MoreHorizontal />
+                    </Menu.Trigger>
+                    <Menu.Content align="end">
+                      <Menu.Item onClick={() => router.push(`/apps/${app.id}`)}><ExternalLink />Ansehen</Menu.Item>
+                      {permissions.canCopy && <Menu.Item onClick={() => void copyApp(app)}><Copy />Als Vorlage kopieren</Menu.Item>}
+                      {permissions.canManageEditors && <Menu.Item onClick={() => setEditorApp(app)}><UsersRound />Bearbeiter verwalten</Menu.Item>}
+                      {permissions.canEdit && (
+                        <Menu.Item disabled={visibilityPending.has(app.id)} onClick={() => void changeVisibility(app, !app.isHidden)}>
+                          {app.isHidden ? <Eye /> : <EyeOff />}
+                          {app.isHidden ? 'Wieder sichtbar machen' : 'Vorübergehend verstecken'}
+                        </Menu.Item>
+                      )}
+                      {app.spaceId && app.ownerId === user.id && (
+                        <Menu.Item disabled={app.isLocked} onClick={() => setPublishCandidate(app)}><Globe />Für alle veröffentlichen</Menu.Item>
+                      )}
+                      {permissions.canDelete && (
+                        <>
+                          <Menu.Separator />
+                          <Menu.Item variant="destructive" onClick={() => setDeleteCandidate(app)}><Trash2 />Löschen</Menu.Item>
+                        </>
+                      )}
+                    </Menu.Content>
+                  </Menu>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <AlertDialog open={!!deleteCandidate} onOpenChange={(open) => { if (!open) setDeleteCandidate(null); }}>
+        <AlertDialog.Content tone="destructive">
+          <AlertDialog.Title>„{deleteCandidate?.name}“ löschen?</AlertDialog.Title>
+          <AlertDialog.Description>Die App wird mit allen Bewertungen und Fragen dauerhaft entfernt. Das lässt sich nicht rückgängig machen.</AlertDialog.Description>
+          <AlertDialog.Footer>
+            <AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+            <AlertDialog.Action onClick={deleteApp}>Endgültig löschen</AlertDialog.Action>
+          </AlertDialog.Footer>
+        </AlertDialog.Content>
+      </AlertDialog>
+
+      <AlertDialog open={!!publishCandidate} onOpenChange={(open) => { if (!open) setPublishCandidate(null); }}>
+        <AlertDialog.Content tone="warning">
+          <AlertDialog.Title>„{publishCandidate?.name}“ für alle veröffentlichen?</AlertDialog.Title>
+          <AlertDialog.Description>Die App verlässt den privaten Space. Beschreibung, Dokumentation und Diskussionen sind danach im öffentlichen Katalog für alle sichtbar.</AlertDialog.Description>
+          <AlertDialog.Footer>
+            <AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+            <AlertDialog.Action onClick={publishFromSpace}>Veröffentlichen</AlertDialog.Action>
+          </AlertDialog.Footer>
+        </AlertDialog.Content>
+      </AlertDialog>
+
       <AppEditorsModal
         key={editorApp?.id ?? 'no-editor-app'}
         app={editorApp}
         onOpenChange={(open) => { if (!open) setEditorApp(null); }}
         onSaved={loadData}
       />
-    </PageContainer>
+    </div>
   );
 }
 
 export default function MyAppsPage() {
   return (
-    <Suspense fallback={<div className="p-8 flex justify-center"><div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
+    <Suspense fallback={<div className="flex justify-center p-8"><Spinner /></div>}>
       <MyAppsContent />
     </Suspense>
   );

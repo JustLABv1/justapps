@@ -3,9 +3,10 @@
 import { AppConfig, AppEditorUser, SystemUser } from "@/config/apps";
 import { UserAccessPicker } from "./UserAccessPicker";
 import { fetchApi } from "@/lib/api";
-import { Button, Modal } from "@heroui/react";
+import { Alert } from "@/components/panelui/alert";
+import { Button } from "@/components/panelui/button";
+import { Dialog } from "@/components/panelui/dialog";
 import { toast } from "@/lib/toast";
-import { Loader2, UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface AppEditorsModalProps {
@@ -100,72 +101,41 @@ export function AppEditorsModal({
   };
 
   return (
-    <Modal.Backdrop isOpen={!!app} onOpenChange={onOpenChange}>
-      <Modal.Container>
-        <Modal.Dialog className="max-w-2xl">
-          <Modal.CloseTrigger />
-          <Modal.Header>
-            <Modal.Icon className="bg-primary/10 text-primary">
-              <UsersRound className="w-5 h-5" />
-            </Modal.Icon>
-            <Modal.Heading>Bearbeiter verwalten</Modal.Heading>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="space-y-5">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">{app?.name}</strong> kann
-                  von ausgewählten Benutzern bearbeitet werden, ohne die
-                  Eigentümerschaft zu übertragen.
-                </p>
-                {app?.owner && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Besitzer:{" "}
-                    <span className="font-medium text-foreground">
-                      {app.owner.username}
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger"
-                >
-                  {error}
-                </div>
-              )}
-              <UserAccessPicker
-                users={[...users, ...existingEditors]}
-                ownerId={app?.ownerId}
-                selectedIds={selectedIds}
-                onChange={setSelectedIds}
-                loading={loading}
-                disabled={saving}
-                loadingLabel="Bearbeiter werden geladen..."
-              />
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onPress={() => onOpenChange(false)}
-              isDisabled={saving}
-            >
-              Abbrechen
-            </Button>
-            <Button
-              className="bg-primary text-white"
-              onPress={saveEditors}
-              isDisabled={saving || loading}
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Speichern
-            </Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+    <Dialog open={!!app} onOpenChange={onOpenChange}>
+      <Dialog.Content size="lg">
+        <Dialog.Header
+          title="Bearbeiter verwalten"
+          description={
+            <>
+              <strong className="font-medium text-foreground">{app?.name}</strong> kann von ausgewählten Personen bearbeitet werden, ohne dass sich die Eigentümerschaft ändert.
+              {app?.owner && <> Eigentümer: <span className="font-medium text-foreground">{app.owner.username}</span>.</>}
+            </>
+          }
+        />
+        <Dialog.Body>
+          {error && (
+            <Alert variant="plain" tone="destructive">
+              <Alert.Icon />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert>
+          )}
+          <UserAccessPicker
+            users={[...users, ...existingEditors]}
+            ownerId={app?.ownerId}
+            selectedIds={selectedIds}
+            onChange={setSelectedIds}
+            loading={loading}
+            disabled={saving}
+            loadingLabel="Bearbeiter werden geladen …"
+          />
+        </Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.Close render={<Button variant="secondary" disabled={saving} />}>Abbrechen</Dialog.Close>
+          <Button loading={saving} disabled={loading} onClick={() => void saveEditors()}>
+            Speichern
+          </Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }

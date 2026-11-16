@@ -2,10 +2,12 @@
 
 import { fetchApi } from "@/lib/api";
 import { SystemUser } from "@/config/apps";
-import { Chip, EmptyState, Input } from "@heroui/react";
+import { Avatar } from "@/components/panelui/avatar";
+import { Badge } from "@/components/panelui/badge";
+import { Input } from "@/components/panelui/input";
+import { Spinner } from "@/components/panelui/spinner";
 import {
   Check,
-  Loader2,
   Search,
   UserRoundCog,
   UsersRound,
@@ -111,17 +113,11 @@ export function UserAccessPicker({
     onChange(next);
   };
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4">
       {selectedUsers.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {selectedUsers.map((user) => (
-            <Chip
-              key={user.id}
-              size="sm"
-              variant="soft"
-              color="accent"
-              className="gap-1 text-xs font-semibold"
-            >
+            <Badge key={user.id} variant="secondary" size="lg" className="gap-1.5 pe-1.5">
               {user.username}
               {!readOnly && !lockedIds?.has(user.id) && (
                 <button
@@ -129,33 +125,31 @@ export function UserAccessPicker({
                   disabled={disabled || loading}
                   aria-label={`${user.username} aus Auswahl entfernen`}
                   onClick={() => toggle(user.id)}
-                  className="opacity-70 hover:opacity-100"
+                  className="cursor-pointer rounded-full p-0.5 opacity-70 hover:bg-foreground/10 hover:opacity-100"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="size-3" />
                 </button>
               )}
-            </Chip>
+            </Badge>
           ))}
         </div>
       )}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input.Group>
+        <Input.Addon><Search /></Input.Addon>
         <Input
           aria-label="Benutzer suchen"
-          className="w-full pl-9"
-          placeholder="Benutzer suchen..."
+          placeholder="Name oder E-Mail-Adresse suchen"
           value={search}
-          variant="secondary"
           onChange={(event) => setSearch(event.target.value)}
         />
-      </div>
-      <div className="max-h-80 divide-y divide-border/60 overflow-y-auto rounded-xl border border-border bg-surface">
+      </Input.Group>
+      <div className="max-h-80 divide-y overflow-y-auto rounded-xl border">
         {loading || searching ? (
           <div
             role="status"
             className="flex items-center justify-center gap-3 p-8 text-sm text-muted-foreground"
           >
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <Spinner />
             {searching ? "Benutzer werden gesucht…" : loadingLabel}
           </div>
         ) : filtered.length ? (
@@ -168,40 +162,32 @@ export function UserAccessPicker({
                 aria-pressed={selected}
                 disabled={disabled || readOnly || lockedIds?.has(user.id)}
                 onClick={() => toggle(user.id)}
-                className={`flex w-full items-center gap-3 p-3 text-left transition-colors ${selected ? "bg-primary/10 text-primary" : "hover:bg-surface-secondary"}`}
+                className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-start transition-colors disabled:cursor-default ${selected ? "bg-muted" : "hover:bg-muted/60"}`}
               >
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${selected ? "bg-primary text-white" : "bg-surface-secondary text-muted-foreground"}`}
-                >
-                  {user.username[0]?.toUpperCase() || "?"}
-                </div>
+                <Avatar name={user.username} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {user.username}
-                  </p>
+                  <p className="truncate text-sm font-medium">{user.username}</p>
                   <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {statusById?.[user.id] || user.authType || user.role}
-                </span>
+                <Badge variant="outline" size="sm">{statusById?.[user.id] || user.authType || user.role}</Badge>
                 {selected ? (
-                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                  <Check className="size-4 shrink-0 text-success" />
                 ) : (
-                  <UserRoundCog className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <UserRoundCog className="size-4 shrink-0 text-muted-foreground" />
                 )}
               </button>
             );
           })
         ) : (
-          <EmptyState className="flex flex-col items-center justify-center gap-2 p-8 text-center">
-            <UsersRound className="h-8 w-8 text-muted-foreground opacity-50" />
+          <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <UsersRound className="size-7 text-muted-foreground opacity-50" />
             <span className="text-sm text-muted-foreground">
               {currentResult?.error ||
                 (!readOnly && query.length < 2
                   ? "Zum Einladen mindestens 2 Zeichen eines Namens oder einer E-Mail-Adresse eingeben."
                   : "Keine passenden Benutzer gefunden")}
             </span>
-          </EmptyState>
+          </div>
         )}
       </div>
       {currentResult?.hasMore && (

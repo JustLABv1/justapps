@@ -1,7 +1,12 @@
 'use client';
 
-import { Button, Chip, Modal, Tooltip } from '@heroui/react';
-import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { Alert } from '@/components/panelui/alert';
+import { Badge } from '@/components/panelui/badge';
+import { Button } from '@/components/panelui/button';
+import { Dialog } from '@/components/panelui/dialog';
+import { Spinner } from '@/components/panelui/spinner';
+import { Tooltip } from '@/components/panelui/tooltip';
+import { AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { explainAppHealth, type HealthCopilotSuggestion } from '@/lib/ai';
 import { getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
@@ -23,8 +28,8 @@ function priorityLabel(priority?: string) {
   return 'Niedrige Priorität';
 }
 
-function priorityColor(priority?: string): 'success' | 'warning' | 'danger' {
-  if (priority === 'high') return 'danger';
+function priorityColor(priority?: string): 'success' | 'warning' | 'destructive' {
+  if (priority === 'high') return 'destructive';
   if (priority === 'medium') return 'warning';
   return 'success';
 }
@@ -71,91 +76,74 @@ export function AppHealthCopilot(props: AppHealthCopilotProps) {
     };
   }, [isOpen, props.appId]);
 
-  return (
-    <Modal>
-      <Tooltip delay={0}>
-        <Tooltip.Trigger>
-          <Button
-            size="sm"
-            variant="secondary"
-            isIconOnly={props.iconOnly}
-            onPress={openCopilot}
-            aria-label={props.iconOnly ? `AI erklären: ${props.appName}` : undefined}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            {!props.iconOnly && (props.triggerLabel || 'AI erklären')}
-          </Button>
-        </Tooltip.Trigger>
-        {props.iconOnly && <Tooltip.Content placement="top">Gesundheitsprobleme mit AI erklären</Tooltip.Content>}
-      </Tooltip>
-      <Modal.Backdrop isOpen={isOpen} onOpenChange={setIsOpen}>
-        <Modal.Container size="lg">
-          <Modal.Dialog className="max-h-[min(760px,calc(100vh-2rem))] w-full overflow-hidden">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-primary/10 text-primary">
-                <Sparkles className="h-5 w-5" />
-              </Modal.Icon>
-              <div className="min-w-0">
-                <Modal.Heading>Health Copilot</Modal.Heading>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{props.appName}</p>
-              </div>
-            </Modal.Header>
-            <Modal.Body className="max-h-[65vh] space-y-5 overflow-y-auto">
-              <section className="rounded-2xl border border-border bg-surface-secondary/50 p-4">
-                <div className="flex items-start gap-3">
-                  {props.issues.length > 0 ? <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-foreground">{props.issues.length > 0 ? 'Offene Hinweise' : 'Keine offenen Hinweise'}</p>
-                    <div className="mt-3 space-y-3">
-                      {props.issues.length > 0 ? props.issues.map((issue) => (
-                        <div key={issue} className="rounded-xl border border-border bg-surface p-3">
-                          <p className="text-sm font-semibold text-foreground">{getAppHealthIssueLabel(issue)}</p>
-                          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{getAppHealthIssueDescription(issue)}</p>
-                          {localEvidence(issue, props) && <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Beleg:</span> {localEvidence(issue, props)}</p>}
-                        </div>
-                      )) : <p className="text-sm leading-relaxed text-muted-foreground">Der aktuelle Katalogzustand ist unauffällig.</p>}
-                    </div>
-                  </div>
-                </div>
-              </section>
+  const trigger = (
+    <Button size="sm" variant="outline" onClick={openCopilot} aria-label={props.iconOnly ? `Hinweise zu ${props.appName} mit AI erklären` : undefined}>
+      <Sparkles />
+      {!props.iconOnly && (props.triggerLabel || 'AI erklären')}
+    </Button>
+  );
 
-              {loading && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />AI formuliert eine verständliche Einordnung …</div>
-              )}
-              {error && <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">{error}</p>}
-              {suggestion && (
-                <section className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-foreground">Einordnung</p>
-                    <Chip color={priorityColor(suggestion.priority)} variant="soft" size="sm">{priorityLabel(suggestion.priority)}</Chip>
+  return (
+    <>
+      {props.iconOnly ? (
+        <Tooltip>
+          <Tooltip.Trigger render={<Button size="icon-sm" variant="outline" onClick={openCopilot} aria-label={`Hinweise zu ${props.appName} mit AI erklären`} />}>
+            <Sparkles />
+          </Tooltip.Trigger>
+          <Tooltip.Content>Hinweise mit AI erklären</Tooltip.Content>
+        </Tooltip>
+      ) : trigger}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog.Content size="lg">
+          <Dialog.Header title="Health Copilot" description={props.appName} />
+          <Dialog.Body>
+            <section className="flex flex-col gap-3">
+              <p className="flex items-center gap-2 font-medium">
+                {props.issues.length > 0 ? <AlertTriangle className="size-4 text-warning" /> : <CheckCircle2 className="size-4 text-success" />}
+                {props.issues.length > 0 ? 'Offene Hinweise' : 'Keine offenen Hinweise'}
+              </p>
+              {props.issues.length > 0 ? props.issues.map((issue) => (
+                <div key={issue} className="rounded-xl border p-3">
+                  <p className="text-sm font-medium">{getAppHealthIssueLabel(issue)}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{getAppHealthIssueDescription(issue)}</p>
+                  {localEvidence(issue, props) && <p className="mt-2 text-xs text-muted-foreground"><span className="font-medium text-foreground">Beleg:</span> {localEvidence(issue, props)}</p>}
+                </div>
+              )) : <p className="text-sm text-muted-foreground">Der aktuelle Katalogzustand ist unauffällig.</p>}
+            </section>
+
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />AI formuliert eine verständliche Einordnung …</div>
+            )}
+            {error && (
+              <Alert variant="plain" tone="warning">
+                <Alert.Icon />
+                <Alert.Title>{error}</Alert.Title>
+              </Alert>
+            )}
+            {suggestion && (
+              <section className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">Einordnung</p>
+                  <Badge variant={priorityColor(suggestion.priority)} size="sm">{priorityLabel(suggestion.priority)}</Badge>
+                </div>
+                <p className="rounded-xl bg-muted/50 p-4 text-sm leading-relaxed">{suggestion.summary}</p>
+                {suggestion.issues.map((issue) => (
+                  <div key={issue.code} className="rounded-xl border p-4">
+                    <p className="font-medium">{issue.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{getAppHealthIssueLabel(issue.code)}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{issue.explanation}</p>
+                    {issue.evidence && <p className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Beleg:</span> {issue.evidence}</p>}
+                    <p className="mt-3 text-xs font-medium text-muted-foreground">Nächste Schritte</p>
+                    <ul className="mt-1.5 list-disc space-y-1 ps-5 text-sm">
+                      {issue.actions.map((action) => <li key={action}>{action}</li>)}
+                    </ul>
                   </div>
-                  <p className="rounded-xl border border-border bg-surface-secondary/50 p-4 text-sm leading-relaxed text-foreground">{suggestion.summary}</p>
-                  {suggestion.issues.map((issue) => (
-                    <div key={issue.code} className="rounded-2xl border border-border p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-foreground">{issue.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{getAppHealthIssueLabel(issue.code)}</p>
-                        </div>
-                        <Chip color="warning" variant="soft" size="sm">Hinweis</Chip>
-                      </div>
-                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{issue.explanation}</p>
-                      {issue.evidence && <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Beleg:</span> {issue.evidence}</p>}
-                      <div className="mt-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nächste Schritte</p>
-                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">
-                          {issue.actions.map((action) => <li key={action}>{action}</li>)}
-                        </ul>
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              )}
-            </Modal.Body>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                ))}
+              </section>
+            )}
+          </Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    </>
   );
 }
