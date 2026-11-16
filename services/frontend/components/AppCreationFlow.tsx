@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 const CATEGORIES = ["Verwaltung", "Kommunikation", "Infrastruktur", "Sicherheit", "Datenanalyse", "Dokumentenmanagement", "Projektmanagement", "Bürgerdienste", "Geodaten", "Finanzen", "Personal", "Bildung", "Gesundheit", "Umwelt", "Verkehr", "KI & Automatisierung"];
 const EMOJIS = ["🏛️", "📊", "💬", "🔐", "📅", "🚀", "🛠️", "📱", "🛡️", "⚙️", "📦", "📈", "🔑", "🏙️", "👥", "🗺️", "💰", "📝", "🌐", "🤖", "📧", "🗂️", "🧭", "🧩"];
@@ -116,8 +116,22 @@ function toPayload(app: Partial<AppConfig>) {
   };
 }
 
+/** Whether the screen is at least `sm` wide; false during server rendering. */
+function useWideScreen() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia("(min-width: 640px)");
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia("(min-width: 640px)").matches,
+    () => false,
+  );
+}
+
 export function AppCreationFlow({ existingApps, initialFormData = null, copySource = null, availableSpaces = [], editHref }: AppCreationFlowProps) {
   const router = useRouter();
+  const wide = useWideScreen();
   const { user, profileReady, refreshUser } = useAuth();
   const { settings } = useSettings();
   const isAdmin = user?.role === "admin";
@@ -407,8 +421,8 @@ export function AppCreationFlow({ existingApps, initialFormData = null, copySour
           <ChoiceCards
             value={method}
             onValueChange={(value) => { setMethod(value as StartMethod); setStartError(null); }}
-            columns={3}
-            aspect="5 / 2"
+            columns={wide ? 3 : 1}
+            aspect={wide ? "5 / 2" : "4 / 1"}
             aria-label="Wie möchtest du starten?"
           >
             <ChoiceCards.Item value="repository">

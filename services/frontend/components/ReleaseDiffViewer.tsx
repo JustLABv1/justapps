@@ -1,7 +1,9 @@
 'use client';
 
 import type { ReleaseChangeDetail } from '@/config/apps';
-import { Button, Card, Chip, ScrollShadow } from '@heroui/react';
+import { Badge } from '@/components/panelui/badge';
+import { Button } from '@/components/panelui/button';
+import { Card } from '@/components/panelui/card';
 import { Columns2, Rows3 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -32,7 +34,7 @@ function tokenizeLine(line: string, language: string) {
       return (
         <>
           <span className="text-primary">{match[1]}</span>
-          <span className="text-warning-foreground dark:text-warning">{match[2]}</span>
+          <span className="text-warning">{match[2]}</span>
         </>
       );
     }
@@ -42,7 +44,7 @@ function tokenizeLine(line: string, language: string) {
       return (
         <>
           <span className="text-primary">{prefix}</span>
-          <span className="text-warning-foreground dark:text-warning">{rest}</span>
+          <span className="text-warning">{rest}</span>
         </>
       );
     }
@@ -56,7 +58,7 @@ function tokenizeLine(line: string, language: string) {
       return <span className="text-primary">{line}</span>;
     }
     if (line.startsWith('```')) {
-      return <span className="text-success-foreground dark:text-success">{line}</span>;
+      return <span className="text-success">{line}</span>;
     }
   }
 
@@ -68,9 +70,9 @@ function renderDiffLine(line: DiffLine, language: string) {
   const content = line.kind === 'context' ? line.text : line.text.slice(1);
   const markerClass =
     line.kind === 'add'
-      ? 'font-bold text-success-foreground dark:text-success'
+      ? 'font-bold text-success'
       : line.kind === 'remove'
-        ? 'font-bold text-danger'
+        ? 'font-bold text-destructive'
         : line.kind === 'meta'
           ? 'text-primary'
           : 'text-muted-foreground';
@@ -114,9 +116,9 @@ function collapseLines(lines: DiffLine[]) {
 function getDiffClasses(kind: DiffLine['kind']) {
   switch (kind) {
     case 'add':
-      return 'border-s-2 border-success/60 bg-success/10 text-success-foreground dark:text-success';
+      return 'border-s-2 border-success/60 bg-success/10 text-success';
     case 'remove':
-      return 'border-s-2 border-danger/60 bg-danger/10 text-danger';
+      return 'border-s-2 border-destructive/60 bg-destructive/10 text-destructive';
     case 'meta':
       return 'border-s-2 border-primary/60 bg-primary/10 text-primary';
     default:
@@ -144,16 +146,16 @@ function SideBySideView({ detail }: { detail: ReleaseChangeDetail }) {
   }));
 
   return (
-    <ScrollShadow orientation="horizontal" className="max-w-full">
+    <div className="max-w-full overflow-x-auto">
       <div className="min-w-[760px] overflow-hidden rounded-lg border border-border">
-        <div className="grid grid-cols-2 bg-surface-secondary text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="grid grid-cols-2 bg-muted text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <div className="border-r border-border px-3 py-2">Vorher</div>
           <div className="px-3 py-2">Nachher</div>
         </div>
         <div className="grid grid-cols-2">
-          <div className="border-r border-danger/20 bg-danger/5">
+          <div className="border-r border-destructive/20 bg-destructive/5">
             {rows.map((row, index) => (
-              <div key={`before-${index}`} className="border-t border-danger/15 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
+              <div key={`before-${index}`} className="border-t border-destructive/15 px-3 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {tokenizeLine(row.before, detail.language)}
               </div>
             ))}
@@ -167,7 +169,7 @@ function SideBySideView({ detail }: { detail: ReleaseChangeDetail }) {
           </div>
         </div>
       </div>
-    </ScrollShadow>
+    </div>
   );
 }
 
@@ -177,52 +179,46 @@ export function ReleaseDiffViewer({ detail }: { detail: ReleaseChangeDetail }) {
   const sideBySideAllowed = shouldShowSideBySide(detail);
 
   return (
-    <Card variant="default" className="overflow-hidden border border-border bg-surface">
-      <Card.Header className="flex items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Chip size="sm" variant="soft" className="text-[10px] font-bold uppercase">
-              {detail.area}
-            </Chip>
-            <Card.Title className="text-sm">{detail.label}</Card.Title>
-          </div>
-          {detail.preview && (
-            <Card.Description>{detail.preview}</Card.Description>
-          )}
-        </div>
+    <Card>
+      <Card.Header>
+        <Card.Title as="h4" className="flex items-center gap-2 text-sm">
+          <Badge variant="secondary" size="sm">{detail.area}</Badge>
+          {detail.label}
+        </Card.Title>
+        {detail.preview && <Card.Description>{detail.preview}</Card.Description>}
         {sideBySideAllowed && (
-          <div className="flex items-center gap-2">
+          <Card.Action className="flex items-center gap-1">
             <Button
-              size="sm"
+              size="icon-sm"
               variant={viewMode === 'unified' ? 'secondary' : 'ghost'}
-              isIconOnly
-              onPress={() => setViewMode('unified')}
+              onClick={() => setViewMode('unified')}
               aria-label="Einspaltige Diff-Ansicht"
+              aria-pressed={viewMode === 'unified'}
             >
-              <Rows3 className="h-4 w-4" />
+              <Rows3 />
             </Button>
             <Button
-              size="sm"
+              size="icon-sm"
               variant={viewMode === 'split' ? 'secondary' : 'ghost'}
-              isIconOnly
-              onPress={() => setViewMode('split')}
+              onClick={() => setViewMode('split')}
               aria-label="Zweispaltige Diff-Ansicht"
+              aria-pressed={viewMode === 'split'}
             >
-              <Columns2 className="h-4 w-4" />
+              <Columns2 />
             </Button>
-          </div>
+          </Card.Action>
         )}
       </Card.Header>
       <Card.Content>
         {viewMode === 'split' ? (
           <SideBySideView detail={detail} />
         ) : (
-          <ScrollShadow className="max-h-[28rem] rounded-lg bg-surface-secondary">
+          <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-muted/50">
             <pre className="overflow-x-auto p-3 text-xs leading-5 whitespace-pre-wrap">
               {parsedLines.map((line, index) => {
                 if ('hiddenCount' in line) {
                   return (
-                    <div key={`collapsed-${index}`} className="border-y border-border/60 bg-surface px-3 py-1 text-center text-[11px] text-muted-foreground">
+                    <div key={`collapsed-${index}`} className="border-y border-border/60 bg-background px-3 py-1 text-center text-[11px] text-muted-foreground">
                       … {line.hiddenCount} unveränderte Zeilen ausgeblendet …
                     </div>
                   );
@@ -235,7 +231,7 @@ export function ReleaseDiffViewer({ detail }: { detail: ReleaseChangeDetail }) {
                 );
               })}
             </pre>
-          </ScrollShadow>
+          </div>
         )}
       </Card.Content>
     </Card>

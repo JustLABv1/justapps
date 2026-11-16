@@ -1,273 +1,168 @@
 "use client";
 
-import { AppConfig, DeploymentVariant } from '@/config/apps';
-import { Alert, Button, ListBox, Select, Tabs, Tooltip } from '@heroui/react';
-import { Check, Code2, Copy, FileCode, Info, Layers, Ship, Terminal } from 'lucide-react';
-import React, { useState } from 'react';
+import { CodeBlock } from "@/components/CodeBlock";
+import { Select } from "@/components/panelui/select";
+import { Tabs } from "@/components/panelui/tabs";
+import { AppConfig, DeploymentVariant } from "@/config/apps";
+import { Code2, Ship, Terminal } from "lucide-react";
+import { useState } from "react";
 
-interface DeploymentAssistantProps {
-  app: AppConfig;
+interface InstallStep {
+  title: string;
+  description?: string;
+  code: string;
+  filename: string;
+  language: string;
 }
 
-export const DeploymentAssistant: React.FC<DeploymentAssistantProps> = ({ app }) => {
-  const [copied, setCopied] = useState(false);
-  const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(-1);
+const lines = (text: string) => text.split("\n").map((line) => line.trimEnd()).filter((line) => line.trim());
+const looksLikeCommands = (text: string) => lines(text).every((line) => /^(\$\s*)?(helm|docker|kubectl|oc|curl|export|cd|git|podman|sudo)\b/.test(line.trim()) || /\\$/.test(line) || /^\s+-/.test(line));
+
+/** Splits a method's commands into numbered steps where their shape allows it, and keeps them as one step where it does not. */
+function helmSteps(command: string, values?: string): InstallStep[] {
+  const all = lines(command);
+  const repo = all.filter((line) => /^\s*helm repo (add|update)\b/.test(line));
+  const rest = all.filter((line) => !repo.includes(line));
+  const steps: InstallStep[] = [];
+  if (repo.length && rest.length) steps.push({ title: "Chart-Repository hinzufügen", code: repo.join("\n"), filename: "Terminal", language: "bash" });
+  if (values) steps.push({ title: "Konfiguration anlegen", description: "Diesen Inhalt als values.yaml speichern.", code: values, filename: "values.yaml", language: "yaml" });
+  steps.push({ title: repo.length && rest.length ? "Installieren" : "Befehl ausführen", code: (repo.length && rest.length ? rest : all).join("\n"), filename: "Terminal", language: "bash" });
+  return steps;
+}
+
+function composeSteps(compose: string): InstallStep[] {
+  if (looksLikeCommands(compose)) return [{ title: "Befehl ausführen", code: compose, filename: "Terminal", language: "bash" }];
+  return [
+    { title: "Compose-Datei anlegen", description: "Diesen Inhalt als compose.yaml speichern.", code: compose, filename: "compose.yaml", language: "yaml" },
+    { title: "Starten", code: "docker compose up -d", filename: "Terminal", language: "bash" },
+  ];
+}
+
+function dockerSteps(command: string): InstallStep[] {
+  const all = lines(command);
+  const pull = all.filter((line) => /^\s*docker pull\b/.test(line));
+  const rest = all.filter((line) => !pull.includes(line));
+  if (!pull.length || !rest.length) return [{ title: "Befehl ausführen", code: command, filename: "Terminal", language: "bash" }];
+  return [
+    { title: "Image laden", code: pull.join("\n"), filename: "Terminal", language: "bash" },
+    { title: "Container starten", code: rest.join("\n"), filename: "Terminal", language: "bash" },
+  ];
+}
+
+function StepList({ steps }: { steps: InstallStep[] }) {
+  return (
+    <ol className="flex flex-col">
+      {steps.map((step, index) => (
+        <li key={step.title} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-4 pb-6 last:pb-0">
+          {index < steps.length - 1 && <span aria-hidden="true" className="absolute top-8 bottom-1 left-[0.875rem] w-px bg-border" />}
+          <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full border bg-background text-xs font-medium tabular-nums">
+            {index + 1}
+          </span>
+          <div className="flex min-w-0 flex-col gap-2 pt-0.5">
+            <div className="flex flex-col gap-0.5">
+              <h4 className="text-sm font-medium"><span className="sr-only">Schritt {index + 1}: </span>{step.title}</h4>
+              {step.description && <p className="text-sm text-muted-foreground">{step.description}</p>}
+            </div>
+            <CodeBlock code={step.code} label={step.title} filename={step.filename} language={step.language} />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function DeploymentAssistant({ app }: { app: AppConfig }) {
+  const [variantIndex, setVariantIndex] = useState<string>("base");
 
   const variants = app.deploymentVariants ?? [];
-  const hasVariants = variants.length > 0;
-
-  // Active variant overrides base commands when selected
-  const activeVariant: DeploymentVariant | null = selectedVariantIdx >= 0 ? (variants[selectedVariantIdx] ?? null) : null;
+  const activeVariant: DeploymentVariant | null = variantIndex === "base" ? null : variants[Number(variantIndex)] ?? null;
 
   const helmValues = activeVariant?.helmValues || app.customHelmValues;
-  const showValues = Boolean(helmValues);
+  const image = app.dockerRepo || `ghcr.io/bund/${app.id}:latest`;
 
-  const helmCommand = (activeVariant?.helmCommand || app.customHelmCommand) ||
-    `helm repo add bund ${app.helmRepo || 'https://charts.bund.de'}
-helm install ${app.id} bund/${app.id} ${showValues ? '-f values.yaml' : ''}`;
-
-  const dockerCommand = (activeVariant?.dockerCommand || app.customDockerCommand) ||
-    `docker pull ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
-docker run -d --name ${app.id} -p 8080:80 ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}`;
-
-  const composeCommand = (activeVariant?.composeCommand || app.customComposeCommand) ||
-    `version: '3.8'
-services:
+  const helmCommand = activeVariant?.helmCommand || app.customHelmCommand ||
+    `helm repo add bund ${app.helmRepo || "https://charts.bund.de"}
+helm install ${app.id} bund/${app.id}${helmValues ? " -f values.yaml" : ""}`;
+  const dockerCommand = activeVariant?.dockerCommand || app.customDockerCommand ||
+    `docker pull ${image}
+docker run -d --name ${app.id} -p 8080:80 ${image}`;
+  const composeCommand = activeVariant?.composeCommand || app.customComposeCommand ||
+    `services:
   ${app.id}:
-    image: ${app.dockerRepo || `ghcr.io/bund/${app.id}:latest`}
+    image: ${image}
     ports:
       - "8080:80"
     restart: always`;
 
-  const helmNote = activeVariant?.helmNote || app.customHelmNote;
-  const composeNote = activeVariant?.composeNote || app.customComposeNote;
-  const dockerNote = activeVariant?.dockerNote || app.customDockerNote;
+  const methods = [
+    app.showHelm !== false && {
+      id: "helm",
+      label: "Helm",
+      icon: <Ship />,
+      hint: "Empfohlen für Kubernetes.",
+      note: activeVariant?.helmNote || app.customHelmNote,
+    },
+    app.showCompose !== false && {
+      id: "compose",
+      label: "Docker Compose",
+      icon: <Terminal />,
+      hint: "Für lokale Erprobung und kleine Installationen.",
+      note: activeVariant?.composeNote || app.customComposeNote,
+    },
+    app.showDocker !== false && {
+      id: "docker",
+      label: "Docker",
+      icon: <Code2 />,
+      hint: "Direkter Start eines Containers, etwa zum Testen.",
+      note: activeVariant?.dockerNote || app.customDockerNote,
+    },
+  ].filter((method): method is Exclude<typeof method, false> => !!method);
 
-  const showDocker = app.showDocker !== false;
-  const showCompose = app.showCompose !== false;
-  const showHelm = app.showHelm !== false;
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  if (!showDocker && !showCompose && !showHelm) {
-    return null;
-  }
+  if (methods.length === 0) return null;
 
   return (
-    <div className="bg-surface-secondary rounded-2xl p-6 border border-border shadow-sm">
-      <div className="flex items-center gap-3 text-foreground font-bold mb-6 text-xl">
-        <Terminal className="w-7 h-7 text-primary" />
-        Deployment Assistant
-      </div>
-
-      {/* Variant selector */}
-      {hasVariants && (
-        <div className="mb-6 p-4 bg-surface rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground shrink-0">
-            <Layers className="w-4 h-4 text-primary" />
-            Deployment-Variante:
-          </div>
+    <div className="flex flex-col gap-6">
+      {variants.length > 0 && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <span className="text-sm font-medium">Variante</span>
           <Select
-            aria-label="Deployment-Variante wählen"
-            selectedKey={selectedVariantIdx === -1 ? 'base' : String(selectedVariantIdx)}
-            onSelectionChange={(key) => {
-              const k = String(key);
-              setSelectedVariantIdx(k === 'base' ? -1 : parseInt(k));
-            }}
-            className="flex-1 min-w-48"
+            items={[{ value: "base", label: "Standard" }, ...variants.map((variant, index) => ({ value: String(index), label: variant.name }))]}
+            value={variantIndex}
+            onValueChange={(value) => value && setVariantIndex(value)}
           >
-            <Select.Trigger>
+            <Select.Trigger aria-label="Deployment-Variante" className="sm:w-64">
               <Select.Value />
             </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item id="base" textValue="Standard">Standard<ListBox.ItemIndicator /></ListBox.Item>
-                {variants.map((v, i) => (
-                  <ListBox.Item key={i} id={String(i)} textValue={v.name}>{v.name}<ListBox.ItemIndicator /></ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
+            <Select.Content>
+              <Select.Item value="base">Standard</Select.Item>
+              {variants.map((variant, index) => (
+                <Select.Item key={index} value={String(index)} description={variant.description}>{variant.name}</Select.Item>
+              ))}
+            </Select.Content>
           </Select>
-          {activeVariant?.description && (
-            <p className="text-xs text-muted-foreground">{activeVariant.description}</p>
-          )}
+          {activeVariant?.description && <p className="text-sm text-muted-foreground">{activeVariant.description}</p>}
         </div>
       )}
 
-      <Alert status="accent" className="mb-6">
-        <Alert.Indicator>
-          <Info className="w-4 h-4" />
-        </Alert.Indicator>
-        <Alert.Content>
-          <Alert.Title>Wählen Sie eine Deploy-Methode</Alert.Title>
-          <Alert.Description>
-            Für Kubernetes Umgebungen wird die Nutzung von Helm Charts empfohlen.
-            Alternative Methoden wie Docker oder Compose stehen für Entwicklung und Lokale-Tests zur Verfügung.
-          </Alert.Description>
-        </Alert.Content>
-      </Alert>
-      
-      <Tabs variant="secondary" className="w-full" defaultSelectedKey={showHelm ? 'helm' : (showCompose ? 'compose' : 'docker')}>
-        <Tabs.ListContainer className="border-b border-border mb-4">
-          <Tabs.List aria-label="Deployment options" className="w-full justify-start text-xs font-bold uppercase tracking-wider gap-8">
-            {showHelm && (
-              <Tabs.Tab id="helm" className="py-3">
-                <div className="flex items-center gap-2">
-                  <Ship className="w-4 h-4" />
-                  Helm Chart
-                </div>
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            )}
-            {showCompose && (
-              <Tabs.Tab id="compose" className="py-3">
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  Compose
-                </div>
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            )}
-            {showDocker && (
-              <Tabs.Tab id="docker" className="py-3">
-                <div className="flex items-center gap-2">
-                  <Code2 className="w-4 h-4" />
-                  Docker
-                </div>
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            )}
-          </Tabs.List>
-        </Tabs.ListContainer>
+      <Tabs defaultValue={methods[0].id}>
+        <Tabs.List aria-label="Installationsmethode" className={methods.length === 1 ? "hidden" : undefined}>
+          {methods.map((method) => (
+            <Tabs.Trigger key={method.id} value={method.id}>
+              {method.icon}
+              {method.label}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
 
-        {showHelm && (
-          <Tabs.Panel id="helm" className="pt-2">
-            <div className="relative group mb-6">
-              <pre className="bg-[#1e1e2e] text-[#d4d4d4] p-5 rounded-xl text-sm overflow-x-auto leading-relaxed font-mono shadow-inner border border-white/10">
-                <code>{helmCommand}</code>
-              </pre>
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="secondary"
-                    className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 min-w-8 w-8 h-8 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                    onPress={() => copyToClipboard(helmCommand)}
-                  >
-                    {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content showArrow placement="top">
-                  <Tooltip.Arrow />
-                  <p>{copied ? 'Kopiert!' : 'Kopieren'}</p>
-                </Tooltip.Content>
-              </Tooltip>
-            </div>
-
-            {helmValues && (
-              <div className="mt-8 space-y-4">
-                <div className="flex items-center justify-between border-b border-border pb-2 px-1">
-                  <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <FileCode className="w-4 h-4 text-primary" />
-                    values.yaml Konfiguration
-                  </div>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="h-7 text-xs font-semibold"
-                    onPress={() => copyToClipboard(helmValues)}
-                  >
-                    <Copy className="w-3 h-3" />
-                    Values kopieren
-                  </Button>
-                </div>
-                <div className="relative group">
-                  <pre className="bg-[#1e1e2e] text-[#d4d4d4] p-5 rounded-xl text-sm overflow-x-auto leading-relaxed font-mono shadow-inner border border-white/5 max-h-[400px]">
-                    <code>{helmValues}</code>
-                  </pre>
-                </div>
-                <div className="p-3 bg-surface rounded-lg border border-border">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Hinweis: Speichern Sie diesen Inhalt als <code className="text-primary font-mono">values.yaml</code> ab und führen Sie den obigen Helm-Befehl aus.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <p className="text-sm text-muted-foreground mt-8 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border font-medium">
-              <span className="text-primary font-bold">Zusatzinfo:</span> {helmNote || 'Standard Helm Installation für Kubernetes Umgebungen.'}
-            </p>
-          </Tabs.Panel>
-        )}
-
-        {showCompose && (
-          <Tabs.Panel id="compose" className="pt-2">
-            <div className="relative group">
-              <pre className="bg-[#1e1e2e] text-[#d4d4d4] p-5 rounded-xl text-sm overflow-x-auto leading-relaxed font-mono shadow-inner border border-white/10">
-                <code>{composeCommand}</code>
-              </pre>
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="secondary"
-                    className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 min-w-8 w-8 h-8 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                    onPress={() => copyToClipboard(composeCommand)}
-                  >
-                    {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content showArrow placement="top">
-                  <Tooltip.Arrow />
-                  <p>{copied ? 'Kopiert!' : 'Kopieren'}</p>
-                </Tooltip.Content>
-              </Tooltip>
-            </div>
-            <p className="text-sm text-muted-foreground mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-primary font-bold">Hinweis:</span> {composeNote || 'Standard Docker Compose Setup für lokale Erprobung.'}
-            </p>
-          </Tabs.Panel>
-        )}
-
-        {showDocker && (
-          <Tabs.Panel id="docker" className="pt-2">
-            <div className="relative group">
-              <pre className="bg-[#1e1e2e] text-[#d4d4d4] p-5 rounded-xl text-sm overflow-x-auto leading-relaxed font-mono shadow-inner border border-white/10">
-                <code>{dockerCommand}</code>
-              </pre>
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="secondary"
-                    className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white border border-white/20 min-w-8 w-8 h-8 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                    onPress={() => copyToClipboard(dockerCommand)}
-                  >
-                    {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </Tooltip.Trigger>
-                <Tooltip.Content showArrow placement="top">
-                  <Tooltip.Arrow />
-                  <p>{copied ? 'Kopiert!' : 'Kopieren'}</p>
-                </Tooltip.Content>
-              </Tooltip>
-            </div>
-            <p className="text-sm text-muted-foreground mt-4 flex items-start gap-2 bg-surface p-3 rounded-lg border border-border">
-              <span className="text-primary font-bold">Hinweis:</span> {dockerNote || 'Direkter Docker-Start für Testzwecke.'}
-            </p>
-          </Tabs.Panel>
-        )}
+        {methods.map((method) => (
+          <Tabs.Content key={method.id} value={method.id} className="flex flex-col gap-5">
+            <p className="text-sm text-muted-foreground">{method.note || method.hint}</p>
+            <StepList
+              steps={method.id === "helm" ? helmSteps(helmCommand, helmValues) : method.id === "compose" ? composeSteps(composeCommand) : dockerSteps(dockerCommand)}
+            />
+          </Tabs.Content>
+        ))}
       </Tabs>
     </div>
   );
-};
-
-
-
+}

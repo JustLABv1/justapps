@@ -136,24 +136,30 @@ body {
   font-family: var(--font-sans);
 }
 
-/* ── Markdown prose styling ── */
-.prose-bund h1 { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
-.prose-bund h2 { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
-.prose-bund h3 { @apply text-xl font-semibold text-foreground mb-3 mt-6; }
-.prose-bund p { @apply text-muted-foreground leading-relaxed mb-4; }
-.prose-bund ul { @apply list-disc pl-6 mb-4 space-y-2 text-muted-foreground; }
-.prose-bund ol { @apply list-decimal pl-6 mb-4 space-y-2 text-muted-foreground; }
-.prose-bund li { @apply pl-1; }
-.prose-bund code { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-primary; }
-.prose-bund pre { @apply bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-5 rounded-lg font-mono text-sm overflow-x-auto my-6; }
-.prose-bund pre code { @apply bg-transparent p-0 text-inherit; }
-.prose-bund a { @apply text-primary hover:underline font-medium; }
-.prose-bund blockquote { @apply border-l-4 border-gov-gold pl-4 italic text-muted-foreground my-4; }
-.prose-bund hr { @apply my-8 border-separator; }
-.prose-bund strong { @apply font-semibold text-foreground; }
-.prose-bund table { @apply w-full text-sm my-4; }
-.prose-bund th { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
-.prose-bund td { @apply border-b border-separator py-2 px-3 text-muted-foreground; }
+/* ── Markdown prose styling (skips anything inside .not-prose, e.g. code blocks and notes) ── */
+.prose-bund h1:not(:where(.not-prose, .not-prose *)) { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
+.prose-bund h2:not(:where(.not-prose, .not-prose *)) { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
+.prose-bund h3:not(:where(.not-prose, .not-prose *)) { @apply text-xl font-semibold text-foreground mb-3 mt-6; }
+.prose-bund p:not(:where(.not-prose, .not-prose *)) { @apply text-muted-foreground leading-relaxed mb-4; }
+.prose-bund ul:not(:where(.not-prose, .not-prose *)) { @apply list-disc pl-6 mb-4 space-y-2 text-muted-foreground; }
+.prose-bund ol:not(:where(.not-prose, .not-prose *)) { @apply list-decimal pl-6 mb-4 space-y-2 text-muted-foreground; }
+.prose-bund li:not(:where(.not-prose, .not-prose *)) { @apply pl-1; }
+.prose-bund code:not(:where(.not-prose, .not-prose *)) { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-primary; }
+.prose-bund pre:not(:where(.not-prose, .not-prose *)) { @apply bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-5 rounded-lg font-mono text-sm overflow-x-auto my-6; }
+.prose-bund pre code:not(:where(.not-prose, .not-prose *)) { @apply bg-transparent p-0 text-inherit; }
+.prose-bund a:not(:where(.not-prose, .not-prose *)) { @apply text-primary hover:underline font-medium; }
+.prose-bund blockquote:not(:where(.not-prose, .not-prose *)) { @apply border-l-4 border-gov-gold pl-4 italic text-muted-foreground my-4; }
+.prose-bund hr:not(:where(.not-prose, .not-prose *)) { @apply my-8 border-separator; }
+.prose-bund strong:not(:where(.not-prose, .not-prose *)) { @apply font-semibold text-foreground; }
+.prose-bund table:not(:where(.not-prose, .not-prose *)) { @apply w-full text-sm my-4; }
+.prose-bund th:not(:where(.not-prose, .not-prose *)) { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
+.prose-bund td:not(:where(.not-prose, .not-prose *)) { @apply border-b border-separator py-2 px-3 text-muted-foreground; }
+
+/* ── Highlighted code (Shiki, both themes as CSS variables) ── */
+.code-highlight .shiki { background: transparent !important; }
+.code-highlight .shiki span { color: var(--shiki-light); }
+.dark .code-highlight .shiki span,
+[data-theme="dark"] .code-highlight .shiki span { color: var(--shiki-dark); }
 
 /* ── Page transition animation ── */
 @keyframes page-enter {

@@ -9,19 +9,13 @@ import { RadioGroup } from "@/components/panelui/radio-group";
 import { Select } from "@/components/panelui/select";
 import { Switch } from "@/components/panelui/switch";
 import type { AppConfig } from "@/config/apps";
-import { APP_STATUS_OPTIONS, DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from "@/lib/appStatus";
+import { APP_MATURITY_DESCRIPTIONS, APP_STATUS_OPTIONS, DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from "@/lib/appStatus";
 import { ArrowRight, Check, CircleCheck, CircleDashed, CircleAlert, Rocket, Undo2 } from "lucide-react";
 import { useState } from "react";
 import type { ReadinessItem, SectionId } from "./readiness";
 import { type AppDraft, EditorCard, SettingRow, type UpdateApp } from "./shared";
 
-const MATURITY: Record<string, string> = {
-  POC: "Machbarkeitsnachweis, noch nicht für den Einsatz gedacht.",
-  MVP: "Erste nutzbare Version mit den wichtigsten Funktionen.",
-  Sandbox: "Zum Ausprobieren in einer Testumgebung, nicht produktiv.",
-  "In Erprobung": "Im Pilotbetrieb bei ersten Stellen.",
-  Etabliert: "Im produktiven Einsatz und gepflegt.",
-};
+const MATURITY = APP_MATURITY_DESCRIPTIONS;
 const PUBLISHED_STATUSES = APP_STATUS_OPTIONS.filter((status) => status !== DRAFT_STATUS);
 
 /** A readiness item as one clickable row that jumps to where it is filled in. */

@@ -78,3 +78,12 @@ export function sortAppStatuses(statuses: string[]) {
     return (leftMeta?.label ?? left).localeCompare(rightMeta?.label ?? right, 'de');
   });
 }
+
+/** What each maturity level means, for pickers and the detail page. */
+export const APP_MATURITY_DESCRIPTIONS: Record<string, string> = {
+  POC: "Machbarkeitsnachweis, noch nicht für den Einsatz gedacht.",
+  MVP: "Erste nutzbare Version mit den wichtigsten Funktionen.",
+  Sandbox: "Zum Ausprobieren in einer Testumgebung, nicht produktiv.",
+  "In Erprobung": "Im Pilotbetrieb bei ersten Stellen.",
+  Etabliert: "Im produktiven Einsatz und gepflegt.",
+};

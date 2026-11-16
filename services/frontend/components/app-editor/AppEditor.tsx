@@ -612,11 +612,11 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
           <Tooltip.Content>Zurück zur Übersicht</Tooltip.Content>
         </Tooltip>
         <AppIcon icon={app.icon} size="sm" />
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h1 className="truncate text-lg font-semibold">{app.name || "Ohne Namen"}</h1>
-          {draft ? <Badge variant="secondary">Entwurf</Badge> : <Badge variant="success" dot>{getAppStatusLabel(app.status) || app.status}</Badge>}
+        <div className="flex min-w-[10rem] flex-1 items-center gap-2">
+          <h1 className="min-w-0 truncate text-lg font-semibold">{app.name || "Ohne Namen"}</h1>
+          {draft ? <Badge variant="secondary" className="shrink-0">Entwurf</Badge> : <Badge variant="success" dot className="shrink-0">{getAppStatusLabel(app.status) || app.status}</Badge>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
           {hasUnsavedChanges && !saving && <span className="hidden text-sm text-muted-foreground md:inline" aria-live="polite">Ungespeicherte Änderungen</span>}
           <Button variant="ghost" size="sm" render={<a href={`/apps/${encodeURIComponent(appId)}`} />}>
             <ExternalLink />
