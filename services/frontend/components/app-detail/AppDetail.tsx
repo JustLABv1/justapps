@@ -137,6 +137,10 @@ const PROBE_TEXT: Record<string, { label: string; dot: string }> = {
   unknown: { label: "Noch nicht geprüft", dot: "bg-muted-foreground/40" },
 };
 
+/** The theme colour of each maturity level, the same one its badge uses. */
+const LEVEL_BG: Record<string, string> = { default: "bg-muted-foreground/60", accent: "bg-info", warning: "bg-warning", success: "bg-success" };
+const LEVEL_TEXT: Record<string, string> = { default: "text-foreground", accent: "text-info", warning: "text-warning", success: "text-success" };
+
 /** Where the app is on the way from proof of concept to established, as a row of segments. */
 function Maturity({ label }: { label: string }) {
   const level = MATURITY_LEVELS.indexOf(label as (typeof MATURITY_LEVELS)[number]);
@@ -144,7 +148,7 @@ function Maturity({ label }: { label: string }) {
     <div className="flex flex-col gap-2 pb-2">
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <span className="text-muted-foreground">Reifegrad</span>
-        <span className="font-medium">{label}</span>
+        <span className={`font-medium ${LEVEL_TEXT[getAppStatusMeta(label)?.color ?? "default"]}`}>{label}</span>
       </div>
       {level >= 0 && (
         <div
@@ -158,7 +162,11 @@ function Maturity({ label }: { label: string }) {
           style={{ gridTemplateColumns: `repeat(${MATURITY_LEVELS.length}, minmax(0, 1fr))` }}
         >
           {MATURITY_LEVELS.map((status, index) => (
-            <span key={status} title={status} className={`h-1.5 rounded-full ${index <= level ? "bg-primary" : "bg-muted"}`} />
+            <span
+              key={status}
+              title={status}
+              className={`h-1.5 rounded-full ${index <= level ? LEVEL_BG[getAppStatusMeta(status)?.color ?? "default"] : "bg-muted"}`}
+            />
           ))}
         </div>
       )}
@@ -665,7 +673,7 @@ export function AppDetail({ id }: { id: string }) {
             )}
 
             <Tabs.Content value="ratings" className="pt-2">
-              <RatingSection appId={app.id} />
+              <RatingSection appId={app.id} appName={app.name} />
             </Tabs.Content>
 
             {settings.faqEnabled && (

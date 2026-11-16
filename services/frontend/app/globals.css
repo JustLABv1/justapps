@@ -2,6 +2,12 @@
 @import "@heroui/styles";
 @import "./heroui-compat.css";
 
+/* HeroUI's `dark` variant also styles ::before and ::after. PanelUI uses those
+   pseudo-elements as overlays (the dialog's dimming layer, for one), so with
+   HeroUI's version they took the element's dark background and covered its
+   content. This is the plain shadcn definition PanelUI is written against. */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 /* ── Government brand colours (used for accents in page content) ── */
 @theme {
   --color-gov-blue: #004B76;
