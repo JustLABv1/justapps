@@ -67,9 +67,17 @@ interface FAQSectionProps {
   canPinAnswers: boolean;
   canRecommendAnswers: boolean;
   global?: boolean;
+  /** When the page shows its own search field, it holds the query and this section hides its field. */
+  query?: string;
+  onQueryChange?: (query: string) => void;
+  /** Lets the page set the status filter, e.g. from a "show open questions" link. */
+  status?: FAQStatusFilter;
+  onStatusChange?: (status: FAQStatusFilter) => void;
+  /** Increment to open the question composer from outside and scroll to it. */
+  askRequest?: number;
 }
 
-type FAQStatusFilter = 'all' | 'open' | 'answered' | 'solved' | 'unsolved';
+export type FAQStatusFilter = 'all' | 'open' | 'answered' | 'solved' | 'unsolved';
 type FAQAnswerPreview = { id: string; username: string; answer: string; isPinned: boolean; creatorLiked: boolean; acceptedByAuthor: boolean; upvoteCount: number };
 
 /** Renderers for answers: the docs' copyable code blocks and notes, without repository links. */
@@ -183,7 +191,7 @@ function FAQAnswerComposer({ recipient, value, onChange, onSubmit, onCancel, pen
   );
 }
 
-export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPinAnswers, canRecommendAnswers, global = false }: FAQSectionProps) {
+export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPinAnswers, canRecommendAnswers, global = false, query, onQueryChange, status, onStatusChange, askRequest }: FAQSectionProps) {
   const { user } = useAuth();
   const storeName = useStoreName();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
@@ -198,14 +206,30 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
+  const [ownQuery, setOwnQuery] = useState('');
+  const [ownStatus, setOwnStatus] = useState<FAQStatusFilter>('all');
+  const externalSearch = query !== undefined;
+  const searchQuery = query ?? ownQuery;
+  const setSearchQuery = onQueryChange ?? setOwnQuery;
+  const statusFilter = status ?? ownStatus;
+  const setStatusFilter = onStatusChange ?? setOwnStatus;
   const [sort, setSort] = useState<FAQSort>('newest');
   const [mineOnly, setMineOnly] = useState(false);
   const [scopeFilter, setScopeFilter] = useState<FAQScopeFilter>('all');
   const [selectedAppId, setSelectedAppId] = useState('');
   const [faqApps, setFAQApps] = useState<FAQAppOption[]>([]);
   const [composerOpen, setComposerOpen] = useState(false);
+  // Opened from outside (a page-level "Frage stellen"), once per request.
+  const handledAsk = useRef(askRequest ?? 0);
+  useEffect(() => {
+    if (!askRequest || askRequest === handledAsk.current) return;
+    handledAsk.current = askRequest;
+    const timeout = window.setTimeout(() => {
+      setComposerOpen(true);
+      document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [askRequest]);
   const [questionPage, setQuestionPage] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [hasMoreQuestions, setHasMoreQuestions] = useState(false);
@@ -638,7 +662,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div id="faq-section" className="flex scroll-mt-24 flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           {global ? 'Alle Fragen' : 'Fragen und Antworten'}
@@ -701,7 +725,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       )}
 
       <div className="flex flex-col gap-3">
-        <Input.Group>
+        {!externalSearch && <Input.Group>
           <Input.Addon><Search /></Input.Addon>
           <Input
             value={searchQuery}
@@ -714,7 +738,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
               <Button size="icon-sm" variant="ghost" aria-label="Suche löschen" onClick={() => setSearchQuery('')}><X /></Button>
             </Input.Addon>
           )}
-        </Input.Group>
+        </Input.Group>}
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter und Sortierung">
           {global && pillSelect('FAQ-Bereich filtern', scopeItems, scopeFilter, (value) => {
             setScopeFilter(value as FAQScopeFilter);
