@@ -1,336 +1,155 @@
 'use client';
 
-import { AppStoreGate } from '@/components/AppStoreGate';
-import { GroupIcon } from '@/components/GroupIcon';
-import { PageContainer, PageFilters, PageHeader } from '@/components/PageHeader';
-import { AppConfig } from '@/config/apps';
-import { fetchApi } from '@/lib/api';
-import { getAppFreshness, getRelativeTimeMeta } from '@/lib/appFreshness';
-import { Input } from '@heroui/react';
-import { ArrowRight, Layers2, Loader2, Search, Star } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { AppStoreGate } from "@/components/AppStoreGate";
+import { GroupIcon } from "@/components/GroupIcon";
+import { AppIconStack } from "@/components/groups/AppIconStack";
+import { Badge } from "@/components/panelui/badge";
+import { Input } from "@/components/panelui/input";
+import { Select } from "@/components/panelui/select";
+import { Spinner } from "@/components/panelui/spinner";
+import { getRelativeTimeMeta } from "@/lib/appFreshness";
+import { type GroupSummary, loadApps, loadGroups, summarizeGroups } from "@/lib/appGroups";
+import { ArrowUpDown, Layers2, Search, X } from "lucide-react";
+import NextLink from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-interface AppGroup {
-  id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-}
+type Sort = "size" | "name" | "activity";
+const SORT_ITEMS: { value: Sort; label: string }[] = [
+  { value: "size", label: "Meiste Apps" },
+  { value: "activity", label: "Zuletzt aktiv" },
+  { value: "name", label: "Name" },
+];
 
-interface EnrichedAppGroup extends AppGroup {
-  members: AppConfig[];
-  appCount: number;
-  featuredCount: number;
-  reuseCount: number;
-  freshCount: number;
-  previewApps: AppConfig[];
-  topCategories: string[];
-  lastUpdatedLabel?: string;
-}
+function GroupCard({ group }: { group: GroupSummary }) {
+  const activity = getRelativeTimeMeta(group.lastUpdatedAt)?.label;
+  return (
+    <NextLink
+      href={`/gruppen/${group.id}`}
+      className="group flex h-full flex-col gap-5 rounded-2xl border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      <div className="flex items-start gap-4">
+        <GroupIcon icon={group.icon} name="" className="size-12 shrink-0 rounded-2xl border bg-muted text-foreground [&_svg]:size-5" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-base font-semibold leading-snug">{group.name}</h2>
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {group.description || (group.members.length ? `${group.members.length} Apps rund um ${group.topCategories.slice(0, 2).join(" und ") || group.name}.` : "Noch ohne Beschreibung.")}
+          </p>
+        </div>
+      </div>
 
-async function loadGroups(): Promise<AppGroup[]> {
-  try {
-    const res = await fetchApi('/app-groups', { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
+      {group.members.length > 0 ? (
+        <AppIconStack apps={group.members} />
+      ) : (
+        <p className="text-sm text-muted-foreground">Noch keine Apps in dieser Gruppe.</p>
+      )}
 
-async function loadApps(): Promise<AppConfig[]> {
-  try {
-    const res = await fetchApi('/apps', { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
+      {group.topCategories.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {group.topCategories.map((category) => <Badge key={category} variant="outline" size="sm">{category}</Badge>)}
+        </div>
+      )}
 
-function getTopCategories(members: AppConfig[]): string[] {
-  const counts = new Map<string, number>();
-
-  for (const app of members) {
-    for (const category of app.categories || []) {
-      counts.set(category, (counts.get(category) || 0) + 1);
-    }
-  }
-
-  return [...counts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'de'))
-    .slice(0, 3)
-    .map(([category]) => category);
-}
-
-function getLatestUpdatedAt(members: AppConfig[]): string | undefined {
-  return members
-    .map((app) => app.updatedAt)
-    .filter((value): value is string => Boolean(value))
-    .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
-}
-
-function enrichGroups(groups: AppGroup[], apps: AppConfig[]): EnrichedAppGroup[] {
-  return groups
-    .map((group) => {
-      const members = apps.filter((app) => app.appGroups?.some((entry) => entry.id === group.id));
-      const previewApps = [...members]
-        .sort((left, right) => {
-          const leftFreshness = getAppFreshness(left).kind;
-          const rightFreshness = getAppFreshness(right).kind;
-          const freshnessRank = { reuse: 3, new: 2, updated: 1, none: 0 };
-
-          return (Number(right.isFeatured) - Number(left.isFeatured))
-            || (freshnessRank[rightFreshness] - freshnessRank[leftFreshness])
-            || (new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
-        })
-        .slice(0, 3);
-
-      const freshCount = members.filter((app) => {
-        const kind = getAppFreshness(app).kind;
-        return kind === 'new' || kind === 'updated';
-      }).length;
-
-      return {
-        ...group,
-        members,
-        appCount: members.length,
-        featuredCount: members.filter((app) => app.isFeatured).length,
-        reuseCount: members.filter((app) => app.isReuse).length,
-        freshCount,
-        previewApps,
-        topCategories: getTopCategories(members),
-        lastUpdatedLabel: getRelativeTimeMeta(getLatestUpdatedAt(members))?.label,
-      };
-    })
-    .sort((left, right) => right.appCount - left.appCount || right.featuredCount - left.featuredCount || left.name.localeCompare(right.name, 'de'));
+      <div className="mt-auto flex items-center gap-2 border-t pt-4 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground tabular-nums">{group.members.length} {group.members.length === 1 ? "App" : "Apps"}</span>
+        {group.freshCount > 0 && <Badge variant="info" size="sm" dot>{group.freshCount} neu oder aktualisiert</Badge>}
+        {activity && <span className="ms-auto text-xs">aktiv {activity}</span>}
+      </div>
+    </NextLink>
+  );
 }
 
 function GruppenPageContent() {
-  const [groups, setGroups] = useState<AppGroup[]>([]);
-  const [apps, setApps] = useState<AppConfig[]>([]);
+  const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>("size");
 
   useEffect(() => {
     let active = true;
-
     Promise.all([loadGroups(), loadApps()])
-      .then(([nextGroups, nextApps]) => {
-        if (!active) {
-          return;
-        }
-
-        setGroups(nextGroups);
-        setApps(nextApps);
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
-
+      .then(([nextGroups, apps]) => active && setGroups(summarizeGroups(nextGroups, apps)))
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, []);
 
-  if (loading) {
-    return (
-      <PageContainer>
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      </PageContainer>
-    );
-  }
+  const visible = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("de");
+    const filtered = needle
+      ? groups.filter((group) =>
+          [group.name, group.description || "", ...group.topCategories, ...group.members.map((app) => app.name)]
+            .some((value) => value.toLocaleLowerCase("de").includes(needle)))
+      : groups;
+    return [...filtered].sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name, "de");
+      if (sort === "activity") return new Date(b.lastUpdatedAt || 0).getTime() - new Date(a.lastUpdatedAt || 0).getTime();
+      return b.members.length - a.members.length || a.name.localeCompare(b.name, "de");
+    });
+  }, [groups, query, sort]);
 
-  const enrichedGroups = enrichGroups(groups, apps);
-  const totalGroupedApps = new Set(enrichedGroups.flatMap((group) => group.members.map((app) => app.id))).size;
-  const totalFreshApps = enrichedGroups.reduce((sum, group) => sum + group.freshCount, 0);
-  const normalizedQuery = query.trim().toLocaleLowerCase('de');
-  const visibleGroups = normalizedQuery
-    ? enrichedGroups.filter((group) => [
-        group.name,
-        group.description || '',
-        ...group.topCategories,
-        ...group.members.map((app) => app.name),
-      ].some((value) => value.toLocaleLowerCase('de').includes(normalizedQuery)))
-    : enrichedGroups;
+  const appCount = new Set(groups.flatMap((group) => group.members.map((app) => app.id))).size;
 
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow="Entdecken"
-        title="App-Gruppen"
-        description="Gruppen bündeln thematisch passende Apps und machen neue oder aktualisierte Lösungen schneller auffindbar."
-        actions={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Gruppen</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">{enrichedGroups.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Apps</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">{totalGroupedApps}</p>
-            </div>
-            <div className="col-span-2 rounded-2xl border border-border bg-surface-secondary/80 px-4 py-3 sm:col-span-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Neu & Akt.</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">{totalFreshApps}</p>
-            </div>
-          </div>
-        }
-      />
+    <div className="flex w-full flex-col gap-8 pb-16">
+      <header className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Gruppen</h1>
+        <p className="max-w-2xl text-muted-foreground">
+          Gruppen bündeln Apps zu einem Thema oder Programm. So findest du schnell alles, was zusammengehört.
+        </p>
+      </header>
 
-      <PageFilters>
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Gruppen, Apps oder Kategorien durchsuchen" aria-label="Gruppen durchsuchen" variant="secondary" className="w-full pl-10" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Input.Group className="min-w-0 flex-1 sm:max-w-md">
+          <Input.Addon><Search /></Input.Addon>
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Gruppen, Apps oder Kategorien suchen" aria-label="Gruppen durchsuchen" />
+          {query && (
+            <Input.Addon align="end">
+              <button type="button" aria-label="Suche löschen" onClick={() => setQuery("")} className="cursor-pointer rounded p-1 text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            </Input.Addon>
+          )}
+        </Input.Group>
+        <p className="text-sm text-muted-foreground sm:ms-2" role="status">
+          {loading ? "Wird geladen …" : query ? `${visible.length} von ${groups.length} Gruppen` : `${groups.length} Gruppen mit ${appCount} Apps`}
+        </p>
+        <Select items={SORT_ITEMS} value={sort} onValueChange={(value) => value && setSort(value as Sort)}>
+          <Select.Trigger variant="ghost" size="sm" aria-label="Gruppen sortieren" className="sm:ms-auto">
+            <ArrowUpDown />
+            <Select.Value />
+          </Select.Trigger>
+          <Select.Content align="end">
+            {SORT_ITEMS.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}
+          </Select.Content>
+        </Select>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-24 text-muted-foreground">
+          <Spinner />
+          Gruppen werden geladen …
         </div>
-        <p className="text-sm text-muted-foreground" role="status">{visibleGroups.length} {visibleGroups.length === 1 ? 'Gruppe' : 'Gruppen'}</p>
-      </PageFilters>
-
-      {visibleGroups.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <Layers2 className="w-10 h-10 text-muted-foreground/40" />
-          <p className="text-lg font-semibold text-foreground">{enrichedGroups.length === 0 ? 'Noch keine Gruppen vorhanden' : 'Keine passenden Gruppen'}</p>
-          <p className="text-sm text-muted-foreground">{enrichedGroups.length === 0 ? 'Administratoren können Gruppen unter Verwaltung anlegen.' : 'Versuchen Sie einen anderen Suchbegriff.'}</p>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed py-16 text-center">
+          <Layers2 className="size-8 text-muted-foreground/50" />
+          <p className="font-medium">{groups.length === 0 ? "Noch keine Gruppen" : "Keine passende Gruppe"}</p>
+          <p className="text-sm text-muted-foreground">
+            {groups.length === 0 ? "Gruppen lassen sich im App-Editor unter „Zuordnungen“ anlegen." : "Versuch es mit einem anderen Suchbegriff."}
+          </p>
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {visibleGroups.map((group) => (
-            <Link
-              key={group.id}
-              href={`/gruppen/${group.id}`}
-              className="group relative isolate flex min-h-[23.5rem] flex-col overflow-hidden rounded-[2rem] border border-border/80 bg-gradient-to-b from-surface to-surface-secondary p-5 pt-12 shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_24px_54px_rgba(0,75,118,0.16)] focus-visible:-translate-y-1 focus-visible:border-primary/35 focus-visible:shadow-[0_24px_54px_rgba(0,75,118,0.16)] sm:p-6 sm:pt-14"
-            >
-              <div className="absolute left-5 top-0 h-8 w-28 rounded-b-[1.2rem] border-x border-b border-border/70 bg-[linear-gradient(180deg,rgba(0,75,118,0.16),rgba(0,75,118,0.05))] sm:left-6 sm:h-9 sm:w-32" />
-
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-4">
-                  <GroupIcon icon={group.icon} name={group.name} className="h-12 w-12 rounded-[1.15rem] border border-primary/10 bg-primary/10 text-primary shrink-0 shadow-sm" />
-                  <div className="min-w-0">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface-secondary/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-sm">
-                      Ordner
-                    </div>
-                    <p className="mt-2.5 text-lg font-semibold text-foreground transition-colors group-hover:text-primary group-focus-visible:text-primary sm:text-xl">{group.name}</p>
-                    <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground line-clamp-2">
-                      {group.description || 'Kuratiertes Themenfeld mit passenden Apps, Statussignalen und schnellen Einstiegen.'}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="shrink-0 rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground shadow-sm backdrop-blur-sm">
-                  {group.appCount} {group.appCount === 1 ? 'App' : 'Apps'}
-                </span>
-              </div>
-
-              <div className="relative mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-primary/15 bg-primary/8 px-3 py-1.5 text-[11px] font-semibold text-primary">
-                  {group.featuredCount} Highlights
-                </span>
-                <span className="rounded-full border border-border bg-surface-secondary/85 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
-                  {group.reuseCount} Nachnutzung
-                </span>
-                <span className="rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-[11px] font-semibold text-success">
-                  {group.freshCount} neu oder aktualisiert
-                </span>
-              </div>
-
-              <div className="relative mt-4 flex-1 overflow-hidden rounded-[1.6rem] border border-border/70 bg-gradient-to-b from-surface-secondary/90 to-surface-tertiary/90 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-[linear-gradient(180deg,rgba(0,75,118,0.09),transparent)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent)]" />
-                <div className="relative flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Karten im Ordner</p>
-                    <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Beim Hover kommen die wichtigsten Apps nach vorn.</p>
-                  </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    {group.lastUpdatedLabel ? `Aktiv ${group.lastUpdatedLabel}` : 'Noch keine Aktivität'}
-                  </div>
-                </div>
-
-                {group.previewApps.length > 0 ? (
-                  <div className="relative mt-4 min-h-[8.25rem] sm:min-h-[9.25rem]">
-                    {group.previewApps.map((app, index) => {
-                      const freshness = getAppFreshness(app);
-                      const previewClassNames = [
-                        'absolute bottom-0 left-0 w-[calc(100%-1rem)] max-w-[18rem] sm:w-[calc(100%-2rem)]',
-                        '-rotate-[6deg] translate-x-0 translate-y-3 opacity-75 group-hover:-translate-y-1 group-hover:-rotate-[9deg] group-focus-visible:-translate-y-1 group-focus-visible:-rotate-[9deg]',
-                        'rotate-[1deg] translate-x-4 translate-y-1 opacity-90 group-hover:-translate-y-2 group-hover:rotate-0 group-focus-visible:-translate-y-2 group-focus-visible:rotate-0 sm:translate-x-6',
-                        'rotate-[6deg] translate-x-8 translate-y-0 opacity-100 group-hover:-translate-y-4 group-hover:rotate-[4deg] group-focus-visible:-translate-y-4 group-focus-visible:rotate-[4deg] sm:translate-x-12',
-                      ];
-
-                      return (
-                        <div
-                          key={app.id}
-                          className={`rounded-[1.35rem] border border-border/80 bg-surface/95 p-3 shadow-[0_14px_32px_rgba(15,23,42,0.10)] backdrop-blur-sm transition-all duration-300 ${previewClassNames[Math.min(index + 1, 3)]}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <GroupIcon icon={app.icon} name={app.name} className="h-10 w-10 rounded-xl border border-border bg-surface-secondary text-foreground shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="truncate text-sm font-semibold text-foreground">{app.name}</p>
-                                {app.isFeatured && <Star className="h-3.5 w-3.5 shrink-0 text-gov-gold" />}
-                              </div>
-                              <p className="mt-1 truncate text-xs text-muted-foreground">{app.categories?.slice(0, 2).join(' · ') || 'Ohne Kategorie'}</p>
-                              <p className="mt-1.5 line-clamp-1 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2">{app.description}</p>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em]">
-                            {freshness.badgeLabel && (
-                              <span className={`rounded-full px-2 py-1 ${
-                                freshness.badgeColor === 'warning'
-                                  ? 'bg-warning/10 text-warning'
-                                  : freshness.badgeColor === 'accent'
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'bg-success/10 text-success'
-                              }`}>
-                                {freshness.badgeLabel}
-                              </span>
-                            )}
-                            <span className="rounded-full border border-border bg-surface-secondary px-2 py-1 text-muted-foreground">
-                              {app.status || 'Verfügbar'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="mt-4 rounded-[1.2rem] border border-dashed border-border bg-surface/70 px-4 py-4 text-sm text-muted-foreground">
-                    Diese Gruppe wartet noch auf erste Apps im Ordner.
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {group.topCategories.length > 0 ? group.topCategories.map((category) => (
-                  <span key={category} className="rounded-full border border-border/80 bg-surface-secondary/85 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                    {category}
-                  </span>
-                )) : (
-                  <span className="text-sm text-muted-foreground">Diese Gruppe wartet noch auf erste Apps.</span>
-                )}
-              </div>
-
-              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4 text-sm">
-                <span className="text-muted-foreground">Zum Öffnen klicken</span>
-                <span className="inline-flex items-center gap-2 font-semibold text-primary">
-                  Gruppe entdecken
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
-              </div>
-            </Link>
+        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {visible.map((group) => (
+            <li key={group.id}>
+              <GroupCard group={group} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </PageContainer>
+    </div>
   );
 }
 
