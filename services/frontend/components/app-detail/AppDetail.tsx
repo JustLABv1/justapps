@@ -35,7 +35,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { extractHeadings } from "./headings";
 import { docComponents, stripLeadingTitle } from "./markdown";
-import { ReleaseList } from "./ReleaseList";
+import { ChangelogTab } from "./ChangelogTab";
 
 type TabId = "docs" | "deployment" | "ratings" | "faq" | "changelog";
 const TAB_IDS: TabId[] = ["docs", "deployment", "ratings", "faq", "changelog"];
@@ -690,13 +690,17 @@ export function AppDetail({ id }: { id: string }) {
 
             {showChangelog && (
               <Tabs.Content value="changelog" className="pt-2">
-                {releases.length > 0 ? (
-                  <ReleaseList releases={releases} />
-                ) : (
-                  <div className="prose prose-bund max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{app.changelog || ""}</ReactMarkdown>
-                  </div>
-                )}
+                <ChangelogTab
+                  appId={app.id}
+                  releases={releases}
+                  active={currentTab === "changelog"}
+                  isOwner={isOwner}
+                  fallback={
+                    <div className="prose prose-bund max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{app.changelog || ""}</ReactMarkdown>
+                    </div>
+                  }
+                />
               </Tabs.Content>
             )}
           </Tabs>

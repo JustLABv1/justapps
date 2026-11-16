@@ -30,6 +30,7 @@ type globalFAQQuestionRow struct {
 	Question    string    `bun:"question"`
 	CreatedAt   time.Time `bun:"created_at"`
 	AnswerCount int       `bun:"answer_count"`
+	Solved      bool      `bun:"solved"`
 	Total       int       `bun:"total"`
 }
 
@@ -65,8 +66,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 	status := c.DefaultQuery("status", "all")
-	if status != "all" && status != "open" && status != "answered" {
-		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+	if status != "all" && status != "open" && status != "answered" && status != "solved" && status != "unsolved" {
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, answered, solved, or unsolved"))
 		return
 	}
 	scope := c.DefaultQuery("scope", "all")
@@ -75,6 +76,13 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 	appID := strings.TrimSpace(c.Query("appId"))
+	questionID := strings.TrimSpace(c.Query("questionId"))
+	if questionID != "" {
+		if _, err := uuid.Parse(questionID); err != nil {
+			httperror.StatusBadRequest(c, "Invalid FAQ question ID", err)
+			return
+		}
+	}
 	search := strings.TrimSpace(c.Query("q"))
 	owner := strings.TrimSpace(c.Query("owner"))
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
@@ -95,7 +103,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		WITH combined AS (
 			SELECT q.id, 'global'::text AS scope, NULL::text AS app_id, NULL::text AS app_name,
 				NULL::text AS app_icon, q.user_id, q.username, q.question, q.created_at,
-				(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+				(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count,
+				EXISTS (SELECT 1 FROM global_faq_answers answer WHERE answer.question_id = q.id AND answer.accepted_by_author) AS solved
 			FROM global_faq_questions q
 			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
 				SELECT 1 FROM global_faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
@@ -103,7 +112,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 			UNION ALL
 			SELECT q.id, 'app'::text AS scope, q.app_id, app.name AS app_name, app.icon AS app_icon,
 				q.user_id, q.username, q.question, q.created_at,
-				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count,
+				EXISTS (SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND answer.accepted_by_author) AS solved
 			FROM faq_questions q
 			JOIN apps app ON app.id = q.app_id AND app.space_id IS NULL
 			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
@@ -122,8 +132,10 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		FROM combined
 		WHERE (? = 'all' OR scope = ?)
 			AND (? = '' OR app_id = ?)
+			AND (? = '' OR id::text = ?)
 			AND (? = '' OR user_id = ?)
-			AND (? = 'all' OR (? = 'open' AND answer_count = 0) OR (? = 'answered' AND answer_count > 0))
+			AND (? = 'all' OR (? = 'open' AND answer_count = 0) OR (? = 'answered' AND answer_count > 0)
+				OR (? = 'solved' AND solved) OR (? = 'unsolved' AND NOT solved))
 		ORDER BY
 			CASE WHEN ? = 'most-answered' THEN answer_count END DESC,
 			created_at DESC, id DESC
@@ -132,11 +144,30 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		search, pattern, pattern, pattern, pattern,
 		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		canViewAppDrafts, hasViewer, viewerID, viewerID,
-		scope, scope, appID, appID, owner, viewerID,
-		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
+		scope, scope, appID, appID, questionID, questionID, owner, viewerID,
+		status, status, status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
 	).Scan(c.Request.Context(), &questions)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ questions", err)
+		return
+	}
+
+	var globalIDs, appIDs []uuid.UUID
+	for _, row := range questions {
+		if row.Scope == "global" {
+			globalIDs = append(globalIDs, row.ID)
+		} else {
+			appIDs = append(appIDs, row.ID)
+		}
+	}
+	_, globalTop, err := faqQuestionHighlights(c.Request.Context(), db, "global_faq_answers", "global_faq_answer_upvotes", globalIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
+		return
+	}
+	_, appTop, err := faqQuestionHighlights(c.Request.Context(), db, "faq_answers", "faq_answer_upvotes", appIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
 		return
 	}
 
@@ -144,7 +175,13 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	result := make([]gin.H, 0, len(questions))
 	for _, row := range questions {
 		total = row.Total
-		result = append(result, gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "answers": []models.GlobalFAQAnswer{}})
+		item := gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "solved": row.Solved, "answers": []models.GlobalFAQAnswer{}}
+		if preview := globalTop[row.ID]; row.Scope == "global" && preview != nil {
+			item["topAnswer"] = preview
+		} else if preview := appTop[row.ID]; row.Scope != "global" && preview != nil {
+			item["topAnswer"] = preview
+		}
+		result = append(result, item)
 	}
 
 	apps := make([]globalFAQAppOption, 0)

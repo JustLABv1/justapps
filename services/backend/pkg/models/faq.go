@@ -11,14 +11,29 @@ import (
 type FAQQuestion struct {
 	bun.BaseModel `bun:"table:faq_questions"`
 
-	ID          uuid.UUID   `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
-	AppID       string      `bun:"app_id,notnull" json:"appId"`
-	UserID      uuid.UUID   `bun:"user_id,notnull,type:uuid" json:"userId"`
-	Username    string      `bun:"username,notnull,default:''" json:"username"`
-	Question    string      `bun:"question,notnull" json:"question"`
-	CreatedAt   time.Time   `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
-	AnswerCount int         `bun:"-" json:"answerCount"`
-	Answers     []FAQAnswer `bun:"-" json:"answers"`
+	ID          uuid.UUID         `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
+	AppID       string            `bun:"app_id,notnull" json:"appId"`
+	UserID      uuid.UUID         `bun:"user_id,notnull,type:uuid" json:"userId"`
+	Username    string            `bun:"username,notnull,default:''" json:"username"`
+	Question    string            `bun:"question,notnull" json:"question"`
+	CreatedAt   time.Time         `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	AnswerCount int               `bun:"-" json:"answerCount"`
+	Solved      bool              `bun:"-" json:"solved"`
+	TopAnswer   *FAQAnswerPreview `bun:"-" json:"topAnswer,omitempty"`
+	Answers     []FAQAnswer       `bun:"-" json:"answers"`
+}
+
+// FAQAnswerPreview is the answer a question list shows under a question: the
+// one the answers list would put first.
+type FAQAnswerPreview struct {
+	ID               uuid.UUID `bun:"id" json:"id"`
+	QuestionID       uuid.UUID `bun:"question_id" json:"-"`
+	Username         string    `bun:"username" json:"username"`
+	Answer           string    `bun:"answer" json:"answer"`
+	IsPinned         bool      `bun:"is_pinned" json:"isPinned"`
+	CreatorLiked     bool      `bun:"creator_liked" json:"creatorLiked"`
+	AcceptedByAuthor bool      `bun:"accepted_by_author" json:"acceptedByAuthor"`
+	UpvoteCount      int       `bun:"upvote_count" json:"upvoteCount"`
 }
 
 // FAQAnswer is a community answer. IsPinned and CreatorLiked are the two

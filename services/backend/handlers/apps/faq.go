@@ -84,6 +84,15 @@ func parseFAQPagination(c *gin.Context) (int, int, bool) {
 }
 
 func applyFAQQuestionFilters(query *bun.SelectQuery, c *gin.Context, answerTable string) (*bun.SelectQuery, bool) {
+	// A shared link to one question asks for just that question.
+	if questionID := strings.TrimSpace(c.Query("questionId")); questionID != "" {
+		id, err := uuid.Parse(questionID)
+		if err != nil {
+			httperror.StatusBadRequest(c, "Invalid FAQ question ID", err)
+			return nil, false
+		}
+		query = query.Where("q.id = ?", id)
+	}
 	search := strings.TrimSpace(c.Query("q"))
 	if search != "" {
 		pattern := "%" + search + "%"
@@ -100,8 +109,12 @@ func applyFAQQuestionFilters(query *bun.SelectQuery, c *gin.Context, answerTable
 		query = query.Where(fmt.Sprintf("NOT EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
 	case "answered":
 		query = query.Where(fmt.Sprintf("EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
+	case "solved":
+		query = query.Where(fmt.Sprintf("EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id AND status_answer.accepted_by_author)", answerTable))
+	case "unsolved":
+		query = query.Where(fmt.Sprintf("NOT EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id AND status_answer.accepted_by_author)", answerTable))
 	default:
-		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, answered, solved, or unsolved"))
 		return nil, false
 	}
 
@@ -197,6 +210,46 @@ func faqQuestionResponse(row faqQuestionRow) models.FAQQuestion {
 	}
 }
 
+// faqQuestionHighlights loads, for a page of questions, whether each is solved
+// (an answer was confirmed by the asker) and its leading answer, ordered the
+// same way the answers list orders them. Table names are fixed by the callers.
+func faqQuestionHighlights(ctx context.Context, db *bun.DB, answerTable, upvoteTable string, questionIDs []uuid.UUID) (map[uuid.UUID]bool, map[uuid.UUID]*models.FAQAnswerPreview, error) {
+	solved := make(map[uuid.UUID]bool)
+	top := make(map[uuid.UUID]*models.FAQAnswerPreview)
+	if len(questionIDs) == 0 {
+		return solved, top, nil
+	}
+	var solvedIDs []uuid.UUID
+	if err := db.NewSelect().
+		TableExpr(answerTable+" AS a").
+		ColumnExpr("DISTINCT a.question_id").
+		Where("a.question_id IN (?)", bun.In(questionIDs)).
+		Where("a.accepted_by_author").
+		Scan(ctx, &solvedIDs); err != nil {
+		return nil, nil, err
+	}
+	for _, id := range solvedIDs {
+		solved[id] = true
+	}
+	var previews []models.FAQAnswerPreview
+	if err := db.NewSelect().
+		TableExpr(answerTable+" AS a").
+		ColumnExpr("DISTINCT ON (a.question_id) a.question_id, a.id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author").
+		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
+		Join("LEFT JOIN "+upvoteTable+" AS v ON v.answer_id = a.id").
+		Where("a.question_id IN (?)", bun.In(questionIDs)).
+		Where("a.reply_to_answer_id IS NULL").
+		GroupExpr("a.id").
+		OrderExpr("a.question_id, a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").
+		Scan(ctx, &previews); err != nil {
+		return nil, nil, err
+	}
+	for i := range previews {
+		top[previews[i].QuestionID] = &previews[i]
+	}
+	return solved, top, nil
+}
+
 // GetFAQ returns a filtered page of questions. Answers are loaded lazily through
 // GetFAQAnswers when a question is opened.
 func GetFAQ(c *gin.Context, db *bun.DB) {
@@ -239,9 +292,21 @@ func GetFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	questionIDs := make([]uuid.UUID, len(questionRows))
+	for i, row := range questionRows {
+		questionIDs[i] = row.ID
+	}
+	solved, top, err := faqQuestionHighlights(ctx, db, "faq_answers", "faq_answer_upvotes", questionIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
+		return
+	}
 	questions := make([]models.FAQQuestion, 0, len(questionRows))
 	for _, row := range questionRows {
-		questions = append(questions, faqQuestionResponse(row))
+		question := faqQuestionResponse(row)
+		question.Solved = solved[row.ID]
+		question.TopAnswer = top[row.ID]
+		questions = append(questions, question)
 	}
 	c.JSON(http.StatusOK, gin.H{"questions": questions, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }

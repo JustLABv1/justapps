@@ -17,12 +17,15 @@ import { Select } from '@/components/panelui/select';
 import { Spinner } from '@/components/panelui/spinner';
 import { Textarea } from '@/components/panelui/textarea';
 import { toast } from '@/lib/toast';
-import { ArrowUp, ArrowUpDown, ChevronDown, Heart, MessageCircleQuestion, MoreHorizontal, Reply, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import { ArrowUp, ArrowUpDown, ChevronDown, Heart, Link2, MessageCircleQuestion, MoreHorizontal, Reply, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { docComponents } from '@/components/app-detail/markdown';
 import Image from 'next/image';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { getImageAssetUrl } from '@/lib/assets';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
@@ -52,6 +55,8 @@ interface FAQQuestion {
   question: string;
   createdAt: string;
   answerCount: number;
+  solved?: boolean;
+  topAnswer?: FAQAnswerPreview;
   answers: FAQAnswer[];
 }
 
@@ -64,7 +69,36 @@ interface FAQSectionProps {
   global?: boolean;
 }
 
-type FAQStatusFilter = 'all' | 'open' | 'answered';
+type FAQStatusFilter = 'all' | 'open' | 'answered' | 'solved' | 'unsolved';
+type FAQAnswerPreview = { id: string; username: string; answer: string; isPinned: boolean; creatorLiked: boolean; acceptedByAuthor: boolean; upvoteCount: number };
+
+/** Renderers for answers: the docs' copyable code blocks and notes, without repository links. */
+const ANSWER_MARKDOWN = docComponents({});
+
+/** Answers are Markdown; shown with the same code blocks and notes as the docs, in a compact style of their own. */
+function AnswerText({ text }: { text: string }) {
+  return (
+    <div className="flex max-w-3xl flex-col gap-2 text-sm leading-6 break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-s-2 [&_blockquote]:ps-3 [&_blockquote]:text-muted-foreground [&_h1,&_h2,&_h3,&_h4]:font-semibold [&_li]:mt-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[0.8125rem]">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={ANSWER_MARKDOWN}>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+/** Markdown reduced to one line of plain text, for a preview. */
+const plainText = (markdown: string) => markdown
+  .replace(/```[\s\S]*?```/g, ' [Code] ')
+  .replace(/`([^`]*)`/g, '$1')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/[*_>#~]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const STOPWORDS = new Set(['aber', 'alle', 'auch', 'bitte', 'damit', 'dann', 'dass', 'diese', 'dieser', 'dieses', 'eine', 'einem', 'einen', 'einer', 'gibt', 'haben', 'kann', 'können', 'man', 'mich', 'oder', 'sich', 'sind', 'warum', 'welche', 'werden', 'wird', 'wie', 'wieso', 'with', 'what', 'about', 'there']);
+/** The few most telling words of a question, to look for similar ones. */
+const keywords = (text: string) => Array.from(new Set(text.toLowerCase().match(/[\p{L}\p{N}-]{4,}/gu) ?? []))
+  .filter((word) => !STOPWORDS.has(word))
+  .sort((a, b) => b.length - a.length)
+  .slice(0, 3);
 type FAQSort = 'newest' | 'most-answered';
 type FAQScopeFilter = 'all' | 'global' | 'app';
 type FAQAppOption = { id: string; name: string; icon?: string };
@@ -137,6 +171,7 @@ function FAQAnswerComposer({ recipient, value, onChange, onSubmit, onCancel, pen
           rows={3}
           maxLength={5000}
         />
+        <Field.Description>Markdown wird unterstützt, z. B. `Befehl` oder Codeblöcke mit ```.</Field.Description>
       </Field>
       <div className="flex justify-end gap-2">
         {onCancel && <Button size="sm" variant="ghost" onClick={onCancel} disabled={pending}>Abbrechen</Button>}
@@ -177,6 +212,10 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [answerPages, setAnswerPages] = useState<Record<string, FAQAnswerPage>>({});
+  // A shared link (?frage=<id>) shows just that question, opened.
+  const [focusQuestionId, setFocusQuestionId] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('frage'));
+  const [similar, setSimilar] = useState<FAQQuestion[]>([]);
   const loadMoreQuestionsRef = useRef<HTMLDivElement>(null);
   const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
@@ -190,7 +229,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
   }, [replyTargets]);
 
-  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
+  const hasActiveFilters = !!focusQuestionId || searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
 
   const loadFAQ = useCallback(async (page = 1, append = false) => {
     if (append) setLoadingMoreQuestions(true);
@@ -201,6 +240,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (mineOnly) params.set('owner', 'me');
       if (global) params.set('scope', scopeFilter);
       if (global && selectedAppId) params.set('appId', selectedAppId);
+      if (focusQuestionId) params.set('questionId', focusQuestionId);
       const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
@@ -229,7 +269,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (append) setLoadingMoreQuestions(false);
       else setLoading(false);
     }
-  }, [endpoint, global, mineOnly, scopeFilter, searchQuery, selectedAppId, sort, statusFilter]);
+  }, [endpoint, focusQuestionId, global, mineOnly, scopeFilter, searchQuery, selectedAppId, sort, statusFilter]);
 
   const endpointForQuestion = useCallback((questionId: string) => {
     const question = questions.find((candidate) => candidate.id === questionId);
@@ -303,6 +343,71 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
     setExpandedQuestionId(questionId);
     if (!answerPages[questionId]) void loadAnswers(questionId);
+  };
+
+  // Open the linked question once it has loaded.
+  const openedFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusQuestionId || openedFocus.current === focusQuestionId || !questions.some((question) => question.id === focusQuestionId)) return;
+    openedFocus.current = focusQuestionId;
+    const timeout = window.setTimeout(() => {
+      setExpandedQuestionId(focusQuestionId);
+      if (!answerPages[focusQuestionId]) void loadAnswers(focusQuestionId);
+      document.getElementById(`faq-question-${focusQuestionId}`)?.scrollIntoView({ block: 'center' });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [answerPages, focusQuestionId, loadAnswers, questions]);
+
+  const clearFocus = () => {
+    setFocusQuestionId(null);
+    openedFocus.current = null;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('frage');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  };
+
+  const copyQuestionLink = (questionId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('frage', questionId);
+    if (!global) url.hash = 'faq';
+    void navigator.clipboard.writeText(url.toString());
+    toast.success('Link zur Frage kopiert.');
+  };
+
+  // While a question is being written, look for ones that were asked already.
+  const draftKeywords = useMemo(() => (questionDraft.trim().length >= 12 ? keywords(questionDraft) : []), [questionDraft]);
+  useEffect(() => {
+    if (!composerOpen || draftKeywords.length === 0) {
+      const timeout = window.setTimeout(() => setSimilar([]), 0);
+      return () => window.clearTimeout(timeout);
+    }
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      const results = await Promise.all(draftKeywords.map(async (word) => {
+        const params = new URLSearchParams({ page: '1', pageSize: '5', status: 'all', sort: 'most-answered', q: word });
+        const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' }).catch(() => null);
+        if (!response?.ok) return [] as FAQQuestion[];
+        const data = await response.json() as { questions?: FAQQuestion[] };
+        return data.questions ?? [];
+      }));
+      if (cancelled) return;
+      const hits = new Map<string, { question: FAQQuestion; score: number }>();
+      results.flat().forEach((question) => {
+        const entry = hits.get(question.id);
+        hits.set(question.id, { question, score: (entry?.score ?? 0) + 1 });
+      });
+      setSimilar([...hits.values()].sort((a, b) => b.score - a.score || b.question.answerCount - a.question.answerCount).slice(0, 4).map((hit) => hit.question));
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [composerOpen, draftKeywords, endpoint]);
+
+  const openSimilar = (questionId: string) => {
+    setComposerOpen(false);
+    openedFocus.current = null;
+    setFocusQuestionId(questionId);
   };
 
   const handleAskQuestion = async () => {
@@ -511,9 +616,11 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   ];
   const appItems = [{ value: 'all', label: 'Alle Apps' }, ...faqApps.map((app) => ({ value: app.id, label: app.name }))];
   const statusItems = [
-    { value: 'all', label: 'Alle Status' },
-    { value: 'open', label: 'Offen' },
-    { value: 'answered', label: 'Beantwortet' },
+    { value: 'all', label: 'Alle Fragen' },
+    { value: 'unsolved', label: 'Ungelöst' },
+    { value: 'solved', label: 'Gelöst' },
+    { value: 'open', label: 'Ohne Antwort' },
+    { value: 'answered', label: 'Mit Antworten' },
   ];
   const sortItems = [
     { value: 'newest', label: 'Neueste zuerst' },
@@ -559,6 +666,30 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
               />
               <Field.Description>Höchstens 1.000 Zeichen.</Field.Description>
             </Field>
+            {similar.length > 0 && (
+              <div className="flex flex-col gap-1.5" aria-live="polite">
+                <span className="text-sm font-medium">Wurde das schon gefragt?</span>
+                <ul className="-mx-2 flex flex-col">
+                  {similar.map((question) => (
+                    <li key={question.id}>
+                      <button
+                        type="button"
+                        onClick={() => openSimilar(question.id)}
+                        className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-start text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <MessageCircleQuestion className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate">{question.question}</span>
+                        {question.solved ? (
+                          <Badge variant="success" size="sm">Gelöst</Badge>
+                        ) : (
+                          <span className="shrink-0 text-xs text-muted-foreground">{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card.Content>
           <Card.Footer variant="panel" className="justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setComposerOpen(false)}>Abbrechen</Button>
@@ -597,7 +728,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
             </Button>
           )}
           {hasActiveFilters && (
-            <Button size="sm" variant="ghost" onClick={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); setScopeFilter('all'); setSelectedAppId(''); }}>
+            <Button size="sm" variant="ghost" onClick={() => { clearFocus(); setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); setScopeFilter('all'); setSelectedAppId(''); }}>
               Zurücksetzen
             </Button>
           )}
@@ -611,6 +742,13 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
             </Select.Content>
           </Select>
         </div>
+        {focusQuestionId && (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Link2 className="size-4" />
+            Es wird eine verlinkte Frage gezeigt.
+            <Button variant="link" size="sm" className="h-auto px-0" onClick={clearFocus}>Alle Fragen anzeigen</Button>
+          </div>
+        )}
         <span role="status" className="sr-only">{loading ? 'Fragen werden geladen' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
       </div>
 
@@ -696,7 +834,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                     {isReply && answer.replyToAnswerId !== threadRootId && (
                       <p className="flex items-center gap-1 text-xs text-muted-foreground"><Reply className="size-3" />an {answer.replyToUsername || 'Anonymer Nutzer'}</p>
                     )}
-                    <p className="max-w-3xl text-sm leading-6 break-words whitespace-pre-wrap">{answer.answer}</p>
+                    <AnswerText text={answer.answer} />
                     <div className="-ms-2 flex flex-wrap items-center gap-1">
                       <Button
                         size="sm"
@@ -730,7 +868,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
             };
 
             return (
-              <li key={question.id} className="overflow-hidden rounded-xl border bg-card">
+              <li key={question.id} id={`faq-question-${question.id}`} className="scroll-mt-32 overflow-hidden rounded-xl border bg-card">
                 <div className="flex items-start gap-2 p-4 sm:p-5">
                   <button
                     type="button"
@@ -756,29 +894,53 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                         <span aria-hidden="true">·</span>
                         <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
                         <span aria-hidden="true">·</span>
-                        {question.answerCount === 0 ? (
+                        <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                        {question.solved ? (
+                          <Badge variant="success" size="sm"><CheckCircle2 />Gelöst</Badge>
+                        ) : question.answerCount === 0 ? (
                           <Badge variant="warning" size="sm">Antwort gesucht</Badge>
-                        ) : (
-                          <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
-                        )}
+                        ) : null}
                       </div>
+                      {!isExpanded && question.topAnswer && (
+                        <div className="mt-1.5 flex flex-col gap-0.5 border-s-2 ps-3">
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            {question.topAnswer.acceptedByAuthor ? (
+                              <><CheckCircle2 className="size-3 text-success" />Bestätigte Antwort</>
+                            ) : question.topAnswer.isPinned ? (
+                              <><Pin className="size-3" />Angeheftete Antwort</>
+                            ) : question.topAnswer.creatorLiked ? (
+                              <><Heart className="size-3" />Empfohlene Antwort</>
+                            ) : (
+                              'Beste Antwort'
+                            )}
+                            <span aria-hidden="true">·</span>
+                            {question.topAnswer.username || 'Anonymer Nutzer'}
+                          </span>
+                          <p className="line-clamp-2 text-sm text-foreground/90">{plainText(question.topAnswer.answer)}</p>
+                        </div>
+                      )}
                     </div>
-                    <ChevronDown className={`mt-1 size-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center">
+                      <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </span>
                   </button>
-                  {canDeleteQuestion && (
-                    <Menu>
-                      <Menu.Trigger
-                        render={<Button size="icon-sm" variant="ghost" aria-label="Weitere Aktionen für diese Frage" disabled={busyAction === `delete-question:${question.id}`} />}
-                      >
-                        <MoreHorizontal />
-                      </Menu.Trigger>
-                      <Menu.Content align="end">
+                  <Menu>
+                    <Menu.Trigger
+                      render={<Button size="icon-sm" variant="ghost" aria-label="Weitere Aktionen für diese Frage" disabled={busyAction === `delete-question:${question.id}`} />}
+                    >
+                      <MoreHorizontal />
+                    </Menu.Trigger>
+                    <Menu.Content align="end">
+                      <Menu.Item onClick={() => copyQuestionLink(question.id)}>
+                        <Link2 />Link kopieren
+                      </Menu.Item>
+                      {canDeleteQuestion && (
                         <Menu.Item variant="destructive" onClick={() => setQuestionToDelete(question)}>
                           <Trash2 />Frage löschen
                         </Menu.Item>
-                      </Menu.Content>
-                    </Menu>
-                  )}
+                      )}
+                    </Menu.Content>
+                  </Menu>
                 </div>
 
                 {isExpanded && (
