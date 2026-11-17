@@ -11,7 +11,6 @@ import { Sheet } from "@/components/panelui/sheet";
 import { Tooltip } from "@/components/panelui/tooltip";
 import {
   Bell,
-  Bot,
   BookOpen,
   Layers,
   Layers2,
@@ -37,7 +36,6 @@ import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { useUpdates } from "../context/UpdatesContext";
 import { adminNavGroups, adminNavLinks } from "../lib/admin-navigation";
-import { canAccessAI } from "../lib/ai-access";
 import { fetchApi } from "../lib/api";
 import { JustAppsLogo } from "./JustAppsLogo";
 import { UserAvatar, displayNameOf } from "./profile/UserAvatar";
@@ -195,16 +193,6 @@ export function Navigation() {
             label: "Updates",
             icon: Bell,
             active: pathname === "/updates",
-          },
-        ]
-      : []),
-    ...(canAccessAI(settings, !!user)
-      ? [
-          {
-            href: "/chat",
-            label: "AI Chat",
-            icon: Bot,
-            active: pathname === "/chat",
           },
         ]
       : []),

@@ -78,7 +78,6 @@ type SettingsState = {
   faqEnabled: boolean;
   allowAppSubmissions: boolean;
   requireAuthForAppStore: boolean;
-  allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
   topBannerType: string;
@@ -110,7 +109,6 @@ const defaultState: SettingsState = {
   faqEnabled: true,
   allowAppSubmissions: true,
   requireAuthForAppStore: false,
-  allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: "",
   topBannerType: "info",
@@ -1477,19 +1475,11 @@ export function AdminSettingsWorkspace({
           <SettingsCard icon={<Bot />} title="AI-Zugriff">
             <div className="flex flex-col gap-3">
               <ToggleRow
-                title="AI-Funktion aktivieren"
-                description="Schaltet den AI-Chat, das Floating-Widget und die zugehörigen API-Endpunkte global ein oder aus."
+                title="KI-Funktionen aktivieren"
+                description="Schaltet alle KI-Funktionen (App-Vorschläge, Changelog-Entwürfe, Gesundheits-Erklärungen, Katalogprüfung) global ein oder aus."
                 checked={settings.aiEnabled}
                 pending={saving}
                 onChange={(value) => void save({ aiEnabled: value }, "aiEnabled")}
-              />
-              <ToggleRow
-                title="Anonymen AI-Zugriff erlauben"
-                description="Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert."
-                checked={settings.allowAnonymousAI}
-                disabled={!settings.aiEnabled}
-                pending={saving}
-                onChange={(value) => void save({ allowAnonymousAI: value }, "anonymousAI")}
               />
               {!settings.aiEnabled && (
                 <p className="text-xs text-muted-foreground">

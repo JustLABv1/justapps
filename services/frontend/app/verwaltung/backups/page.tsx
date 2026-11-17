@@ -106,12 +106,6 @@ const sectionOptions: SectionOption[] = [
     description: "AI-Provider-Einstellungen und verschlüsselte API-Keys.",
   },
   {
-    id: "aiConversations",
-    label: "AI-Chats",
-    description: "Chat-Verläufe und zitierte Quellen.",
-    sensitive: true,
-  },
-  {
     id: "tokens",
     label: "Tokens",
     description: "API- und Zugriffstoken.",

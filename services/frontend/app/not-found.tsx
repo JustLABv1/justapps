@@ -20,7 +20,7 @@ export default function NotFound() {
         </NextLink>
         <NextLink
           href="/verwaltung"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-surface text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface-secondary transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           Verwaltung
         </NextLink>

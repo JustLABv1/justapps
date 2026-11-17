@@ -25,11 +25,6 @@ var trackedOperations = []string{
 	"app.rating.delete",
 	"app.favorite.add",
 	"app.favorite.remove",
-	"ai.conversation.create",
-	"ai.chat.authenticated.success",
-	"ai.chat.authenticated.error",
-	"ai.chat.public.success",
-	"ai.chat.public.error",
 	"auth.login.local.success",
 }
 
@@ -46,10 +41,6 @@ type collector struct {
 	usersRecentLoginCountDesc  *prometheus.Desc
 	ratingsCountDesc           *prometheus.Desc
 	favoritesCountDesc         *prometheus.Desc
-	aiConversationsCountDesc   *prometheus.Desc
-	aiMessagesCountDesc        *prometheus.Desc
-	aiPromptTokensStoredDesc   *prometheus.Desc
-	aiResponseTokensStoredDesc *prometheus.Desc
 	functionalEventsTotalDesc  *prometheus.Desc
 	appInfoDesc                *prometheus.Desc
 	appRatingAverageDesc       *prometheus.Desc
@@ -77,13 +68,6 @@ type userRoleRow struct {
 type recentLoginRow struct {
 	Last7d  int64 `bun:"last_7d"`
 	Last30d int64 `bun:"last_30d"`
-}
-
-type aiTotalsRow struct {
-	ConversationsCount   int64 `bun:"conversations_count"`
-	MessagesCount        int64 `bun:"messages_count"`
-	PromptTokensStored   int64 `bun:"prompt_tokens_stored"`
-	ResponseTokensStored int64 `bun:"response_tokens_stored"`
 }
 
 type auditCountRow struct {
@@ -164,30 +148,6 @@ func newCollector(db *bun.DB) *collector {
 			nil,
 			nil,
 		),
-		aiConversationsCountDesc: prometheus.NewDesc(
-			"justapps_ai_conversations_count",
-			"Current number of persisted AI conversations.",
-			nil,
-			nil,
-		),
-		aiMessagesCountDesc: prometheus.NewDesc(
-			"justapps_ai_messages_count",
-			"Current number of persisted AI messages.",
-			nil,
-			nil,
-		),
-		aiPromptTokensStoredDesc: prometheus.NewDesc(
-			"justapps_ai_prompt_tokens_stored",
-			"Current number of stored prompt tokens across persisted AI messages.",
-			nil,
-			nil,
-		),
-		aiResponseTokensStoredDesc: prometheus.NewDesc(
-			"justapps_ai_response_tokens_stored",
-			"Current number of stored response tokens across persisted AI messages.",
-			nil,
-			nil,
-		),
 		functionalEventsTotalDesc: prometheus.NewDesc(
 			"justapps_functional_events_total",
 			"Cumulative number of selected functional events recorded in the audit log.",
@@ -232,10 +192,6 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.usersRecentLoginCountDesc
 	ch <- c.ratingsCountDesc
 	ch <- c.favoritesCountDesc
-	ch <- c.aiConversationsCountDesc
-	ch <- c.aiMessagesCountDesc
-	ch <- c.aiPromptTokensStoredDesc
-	ch <- c.aiResponseTokensStoredDesc
 	ch <- c.functionalEventsTotalDesc
 	ch <- c.appInfoDesc
 	ch <- c.appRatingAverageDesc
@@ -326,16 +282,6 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	}
 	ch <- prometheus.MustNewConstMetric(c.ratingsCountDesc, prometheus.GaugeValue, float64(ratingsCount))
 
-	aiTotals, err := c.loadAITotals(ctx)
-	if err != nil {
-		ch <- prometheus.NewInvalidMetric(c.aiConversationsCountDesc, err)
-		return
-	}
-	ch <- prometheus.MustNewConstMetric(c.aiConversationsCountDesc, prometheus.GaugeValue, float64(aiTotals.ConversationsCount))
-	ch <- prometheus.MustNewConstMetric(c.aiMessagesCountDesc, prometheus.GaugeValue, float64(aiTotals.MessagesCount))
-	ch <- prometheus.MustNewConstMetric(c.aiPromptTokensStoredDesc, prometheus.GaugeValue, float64(aiTotals.PromptTokensStored))
-	ch <- prometheus.MustNewConstMetric(c.aiResponseTokensStoredDesc, prometheus.GaugeValue, float64(aiTotals.ResponseTokensStored))
-
 	auditCounts, err := c.loadAuditCounts(ctx)
 	if err != nil {
 		ch <- prometheus.NewInvalidMetric(c.functionalEventsTotalDesc, err)
@@ -397,21 +343,6 @@ func (c *collector) loadRecentLoginCounts(ctx context.Context) (recentLoginRow, 
 	`).Scan(ctx, &row)
 	if err != nil {
 		return recentLoginRow{}, fmt.Errorf("metrics: load recent logins: %w", err)
-	}
-	return row, nil
-}
-
-func (c *collector) loadAITotals(ctx context.Context) (aiTotalsRow, error) {
-	row := aiTotalsRow{}
-	err := c.db.NewRaw(`
-		SELECT
-			(SELECT COUNT(*)::bigint FROM ai_conversations) AS conversations_count,
-			(SELECT COUNT(*)::bigint FROM ai_messages) AS messages_count,
-			COALESCE((SELECT SUM(prompt_tokens)::bigint FROM ai_messages), 0) AS prompt_tokens_stored,
-			COALESCE((SELECT SUM(response_tokens)::bigint FROM ai_messages), 0) AS response_tokens_stored
-	`).Scan(ctx, &row)
-	if err != nil {
-		return aiTotalsRow{}, fmt.Errorf("metrics: load ai totals: %w", err)
 	}
 	return row, nil
 }

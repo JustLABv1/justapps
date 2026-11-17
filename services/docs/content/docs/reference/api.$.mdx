@@ -34,9 +34,9 @@ The `/metrics` endpoint is intentionally public and emits cluster-global metrics
 
 It includes:
 
-- catalog snapshots such as app, user, rating, favorite, and AI conversation/message counts
+- catalog snapshots such as app, user, rating, and favorite counts
 - per-app low-cardinality series keyed by `app_id`
-- cumulative functional counters derived from audit operations such as app lifecycle, GitLab sync, rating, favorite, AI chat, and local login events
+- cumulative functional counters derived from audit operations such as app lifecycle, GitLab sync, rating, favorite, and local login events
 
 It intentionally excludes per-process Go runtime, memory, and HTTP request metrics so the public scrape remains correct behind load balancing and multiple backend replicas.
 
@@ -268,18 +268,11 @@ Do not store secrets in platform settings. The `/settings` endpoint is public by
 
 ---
 
-## AI Chat
+## AI index
 
-| Method   | Path                                         | Auth  | Description                                        |
-| -------- | -------------------------------------------- | ----- | -------------------------------------------------- |
-| `GET`    | `/ai/providers`                              | User  | List enabled AI providers available for chat       |
-| `GET`    | `/ai/conversations`                          | User  | List own AI chat conversations                     |
-| `POST`   | `/ai/conversations`                          | User  | Create a chat conversation                         |
-| `GET`    | `/ai/conversations/:id`                      | User  | Get one own conversation with messages             |
-| `DELETE` | `/ai/conversations/:id`                      | User  | Delete one own conversation                        |
-| `POST`   | `/ai/chat`                                   | User  | Send a message and create a conversation if needed |
-| `POST`   | `/ai/conversations/:conversationId/messages` | User  | Send a message in an existing conversation         |
-| `POST`   | `/ai/knowledge/reindex`                      | Admin | Rebuild the app knowledge index                    |
+| Method | Path                    | Auth  | Description                      |
+| ------ | ----------------------- | ----- | -------------------------------- |
+| `POST` | `/ai/knowledge/reindex` | Admin | Rebuild the app search index     |
 
 ### AI Provider Settings
 

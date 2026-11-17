@@ -84,8 +84,6 @@ type BackupData struct {
 	RepositoryProviders []GitLabProviderSettings   `json:"repositoryProviders,omitempty"`
 	RepositoryAppLinks  []GitLabAppLink            `json:"repositoryAppLinks,omitempty"`
 	AIProviders         []AIProviderSettings       `json:"aiProviders,omitempty"`
-	AIConversations     []AIConversation           `json:"aiConversations,omitempty"`
-	AIMessages          []AIMessage                `json:"aiMessages,omitempty"`
 	Tokens              []BackupToken              `json:"tokens,omitempty"`
 	Favorites           []UserFavorite             `json:"favorites,omitempty"`
 	Ratings             []Rating                   `json:"ratings,omitempty"`
@@ -119,8 +117,6 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		LegacyProviders     []GitLabProviderSettings   `json:"gitLabProviders,omitempty"`
 		LegacyAppLinks      []GitLabAppLink            `json:"gitLabAppLinks,omitempty"`
 		AIProviders         []AIProviderSettings       `json:"aiProviders,omitempty"`
-		AIConversations     []AIConversation           `json:"aiConversations,omitempty"`
-		AIMessages          []AIMessage                `json:"aiMessages,omitempty"`
 		Tokens              []BackupToken              `json:"tokens,omitempty"`
 		Favorites           []UserFavorite             `json:"favorites,omitempty"`
 		Ratings             []Rating                   `json:"ratings,omitempty"`
@@ -151,8 +147,6 @@ func (data *BackupData) UnmarshalJSON(payload []byte) error {
 		RepositoryProviders: raw.RepositoryProviders,
 		RepositoryAppLinks:  raw.RepositoryAppLinks,
 		AIProviders:         raw.AIProviders,
-		AIConversations:     raw.AIConversations,
-		AIMessages:          raw.AIMessages,
 		Tokens:              raw.Tokens,
 		Favorites:           raw.Favorites,
 		Ratings:             raw.Ratings,

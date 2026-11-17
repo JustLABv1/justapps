@@ -23,7 +23,6 @@ export interface StoreSettings {
   faqEnabled: boolean;
   allowAppSubmissions: boolean;
   requireAuthForAppStore: boolean;
-  allowAnonymousAI: boolean;
   showTopBanner: boolean;
   topBannerText: string;
   topBannerType: string;
@@ -79,7 +78,6 @@ export const defaultSettings: StoreSettings = {
   faqEnabled: true,
   allowAppSubmissions: true,
   requireAuthForAppStore: false,
-  allowAnonymousAI: false,
   showTopBanner: false,
   topBannerText: '',
   topBannerType: 'info',

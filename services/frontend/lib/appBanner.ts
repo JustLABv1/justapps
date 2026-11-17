@@ -31,9 +31,9 @@ const PRESET: Record<Exclude<AppBannerType, 'custom'>, Omit<AppBannerMeta, 'labe
   },
   danger: {
     Icon: ShieldAlert,
-    bg: 'bg-danger/10',
-    border: 'border-danger/30',
-    text: 'text-danger',
+    bg: 'bg-destructive/10',
+    border: 'border-destructive/30',
+    text: 'text-destructive',
   },
 };
 

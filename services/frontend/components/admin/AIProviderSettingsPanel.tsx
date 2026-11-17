@@ -87,8 +87,8 @@ export function AIProviderSettingsPanel() {
     useState<AIProviderAdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [reindexing, setReindexing] = useState(false);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -261,11 +261,7 @@ export function AIProviderSettingsPanel() {
       const result = await reindexAIKnowledge();
       setStatus(`${result.indexedApps} Apps indexiert.`);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "AI-Wissensindex konnte nicht aufgebaut werden.",
-      );
+      setError(err instanceof Error ? err.message : "Suchindex konnte nicht aufgebaut werden.");
     } finally {
       setReindexing(false);
     }
@@ -293,7 +289,7 @@ export function AIProviderSettingsPanel() {
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" loading={reindexing} onClick={() => void runReindex()}>
             <DatabaseZap />
-            Index neu aufbauen
+            Suchindex neu aufbauen
           </Button>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus />
@@ -356,7 +352,7 @@ export function AIProviderSettingsPanel() {
                 <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
                   <Field>
                     <Field.Label>Bezeichnung</Field.Label>
-                    <Input value={provider.label} placeholder="Interner Chat Provider" onChange={(event) => updateProvider(provider.providerKey, { label: event.target.value })} />
+                    <Input value={provider.label} placeholder="Interner KI-Provider" onChange={(event) => updateProvider(provider.providerKey, { label: event.target.value })} />
                   </Field>
                   <Field>
                     <Field.Label>Base URL</Field.Label>
@@ -410,14 +406,14 @@ export function AIProviderSettingsPanel() {
                   <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium">Aktiv</span>
-                      <span className="text-xs text-muted-foreground">Im AI Chat auswählbar</span>
+                      <span className="text-xs text-muted-foreground">Für KI-Funktionen auswählbar</span>
                     </div>
                     <Switch label="Aktiv" checked={provider.enabled} onCheckedChange={(value) => updateProvider(provider.providerKey, { enabled: value })} />
                   </div>
                   <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium">Standard</span>
-                      <span className="text-xs text-muted-foreground">Vorauswahl für neue Chats</span>
+                      <span className="text-xs text-muted-foreground">Standard für KI-Funktionen</span>
                     </div>
                     <Switch label="Standard" checked={provider.isDefault} onCheckedChange={(value) => updateProvider(provider.providerKey, { isDefault: value })} />
                   </div>

@@ -215,9 +215,9 @@ export const adminNavGroups: { label: string; items: AdminDestination[] }[] = [
         href: "/verwaltung/integrationen/ai",
         label: "KI-Provider & Modelle",
         description:
-          "KI-Anbindungen, Modelle und den Wissensindex konfigurieren.",
+          "KI-Anbindungen, Modelle und den Suchindex konfigurieren.",
         icon: Bot,
-        keywords: "AI Chat OpenAI Index",
+        keywords: "KI OpenAI Modelle",
       },
     ],
   },

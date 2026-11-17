@@ -227,12 +227,6 @@ func executeBackupImport(ctx context.Context, db *bun.DB, dataPath string, paylo
 			}); result != nil {
 				return *result
 			}
-		case "aiConversations":
-			if result := applySection(section, func() (importSectionStats, []string, error) {
-				return importAIConversations(ctx, tx, manifest.Data.AIConversations, manifest.Data.AIMessages)
-			}); result != nil {
-				return *result
-			}
 		case "tokens":
 			if result := applySection(section, func() (importSectionStats, []string, error) {
 				return importTokens(ctx, tx, manifest.Data.Tokens)
@@ -402,9 +396,6 @@ func inferManifestSections(manifest models.BackupManifest) []string {
 	if len(manifest.Data.AIProviders) > 0 {
 		sections = append(sections, "aiProviders")
 	}
-	if len(manifest.Data.AIConversations) > 0 || len(manifest.Data.AIMessages) > 0 {
-		sections = append(sections, "aiConversations")
-	}
 	if len(manifest.Data.Tokens) > 0 {
 		sections = append(sections, "tokens")
 	}
@@ -464,8 +455,6 @@ func clearDatabaseForReplace(ctx context.Context, tx bun.Tx) error {
 		(*models.Rating)(nil),
 		(*models.UserFavorite)(nil),
 		(*models.Tokens)(nil),
-		(*models.AIMessage)(nil),
-		(*models.AIConversation)(nil),
 		(*models.AIKnowledgeChunk)(nil),
 		(*models.GitLabAppLink)(nil),
 		(*models.AppEditor)(nil),
@@ -629,7 +618,7 @@ func importSettings(ctx context.Context, tx bun.Tx, settings *models.PlatformSet
 		_, err = tx.NewUpdate().Model(settings).
 			Where("id = ?", "default").
 			Column(
-				"ai_enabled", "allow_app_submissions", "require_auth_for_app_store", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
+				"ai_enabled", "allow_app_submissions", "require_auth_for_app_store", "show_top_banner", "top_banner_text", "top_banner_type",
 				"detail_fields", "store_name", "store_description", "logo_url", "logo_dark_url",
 				"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_title_preset", "hero_title_colors", "hero_subtitle",
 				"footer_text", "footer_links", "show_flag_bar", "top_bar_preset", "top_bar_colors", "app_sort_field", "app_sort_direction",
@@ -864,99 +853,6 @@ func importAIProviders(ctx context.Context, tx bun.Tx, providers []models.AIProv
 		stats.Created++
 	}
 	return stats, nil, nil
-}
-
-func importAIConversations(ctx context.Context, tx bun.Tx, conversations []models.AIConversation, messages []models.AIMessage) (importSectionStats, []string, error) {
-	stats := importSectionStats{}
-	warnings := make([]string, 0)
-	now := time.Now().UTC()
-
-	for _, conversation := range conversations {
-		if conversation.ID == uuid.Nil || conversation.UserID == uuid.Nil {
-			stats.Skipped++
-			warnings = append(warnings, "Skipped one or more AI conversations because required identifiers were missing.")
-			continue
-		}
-		conversation.AppID = strings.TrimSpace(conversation.AppID)
-		if strings.TrimSpace(conversation.Title) == "" {
-			conversation.Title = "Neuer Chat"
-		}
-		if strings.TrimSpace(conversation.ScopeType) == "" {
-			if conversation.AppID != "" {
-				conversation.ScopeType = "app"
-			} else {
-				conversation.ScopeType = "global"
-			}
-		}
-		if conversation.CreatedAt.IsZero() {
-			conversation.CreatedAt = now
-		}
-		if conversation.UpdatedAt.IsZero() {
-			conversation.UpdatedAt = conversation.CreatedAt
-		}
-
-		exists, err := tx.NewSelect().Model((*models.AIConversation)(nil)).Where("id = ?", conversation.ID).Exists(ctx)
-		if err != nil {
-			return stats, warnings, err
-		}
-		if exists {
-			_, err = tx.NewUpdate().Model(&conversation).
-				Where("id = ?", conversation.ID).
-				Column("user_id", "title", "scope_type", "app_id", "created_at", "updated_at").
-				Exec(ctx)
-			if err != nil {
-				return stats, warnings, err
-			}
-			stats.Updated++
-			continue
-		}
-		_, err = tx.NewInsert().Model(&conversation).Exec(ctx)
-		if err != nil {
-			return stats, warnings, err
-		}
-		stats.Created++
-	}
-
-	for _, message := range messages {
-		if message.ID == uuid.Nil || message.ConversationID == uuid.Nil {
-			stats.Skipped++
-			warnings = append(warnings, "Skipped one or more AI messages because required identifiers were missing.")
-			continue
-		}
-		message.Role = strings.TrimSpace(message.Role)
-		if message.Role == "" {
-			message.Role = "assistant"
-		}
-		if message.Sources == nil {
-			message.Sources = []models.AIMessageSource{}
-		}
-		if message.CreatedAt.IsZero() {
-			message.CreatedAt = now
-		}
-
-		exists, err := tx.NewSelect().Model((*models.AIMessage)(nil)).Where("id = ?", message.ID).Exists(ctx)
-		if err != nil {
-			return stats, warnings, err
-		}
-		if exists {
-			_, err = tx.NewUpdate().Model(&message).
-				Where("id = ?", message.ID).
-				Column("conversation_id", "role", "content", "provider_key", "provider_type", "model", "prompt_tokens", "response_tokens", "sources", "error", "created_at").
-				Exec(ctx)
-			if err != nil {
-				return stats, warnings, err
-			}
-			stats.Updated++
-			continue
-		}
-		_, err = tx.NewInsert().Model(&message).Exec(ctx)
-		if err != nil {
-			return stats, warnings, err
-		}
-		stats.Created++
-	}
-
-	return stats, dedupeWarnings(warnings), nil
 }
 
 func importTokens(ctx context.Context, tx bun.Tx, tokens []models.BackupToken) (importSectionStats, []string, error) {

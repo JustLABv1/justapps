@@ -1,11 +1,7 @@
 @import "tailwindcss";
-@import "@heroui/styles";
-@import "./heroui-compat.css";
 
-/* HeroUI's `dark` variant also styles ::before and ::after. PanelUI uses those
-   pseudo-elements as overlays (the dialog's dimming layer, for one), so with
-   HeroUI's version they took the element's dark background and covered its
-   content. This is the plain shadcn definition PanelUI is written against. */
+/* The shadcn definition of the `dark` variant PanelUI is written against:
+   it follows the `.dark` class that next-themes sets, not the system setting. */
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 
 /* ── Government brand colours (used for accents in page content) ── */
@@ -15,13 +11,11 @@
   --color-gov-gold: #DDAA00;
   --color-gov-red: #CC0000;
   --color-gov-gray: #4a5568;
-  --color-field-background: var(--field-background);
 }
 
 /* ── PanelUI theme ──
    The values of PanelUI's default theme (panelui.dev, light and dark), in the
-   shadcn/ui token names its components read. These are the source of truth:
-   HeroUI's variables below are derived from them. */
+   shadcn/ui token names its components read. */
 :root,
 [data-theme="light"] {
   color-scheme: light;
@@ -84,40 +78,16 @@
   --overlay-shadow: 0 0 0 0 transparent;
 }
 
-/* ── HeroUI variables, derived from the PanelUI theme ──
-   Declared once on the root element: next-themes sets `.dark` on <html>, so
-   every var() here resolves against the light or dark values above. */
-:root {
-  --surface: var(--card);
-  --surface-foreground: var(--card-foreground);
-  --surface-secondary: color-mix(in oklab, var(--card) 96%, var(--foreground));
-  --surface-secondary-foreground: var(--foreground);
-  --surface-tertiary: color-mix(in oklab, var(--card) 93%, var(--foreground));
-  --surface-tertiary-foreground: var(--foreground);
-
-  --overlay: var(--popover);
-  --overlay-foreground: var(--popover-foreground);
-
-  --default: var(--secondary);
-  --default-foreground: var(--secondary-foreground);
-
-  --success-foreground: #052e1b;
-  --warning-foreground: #3a2201;
-  --danger: var(--destructive);
-  --danger-foreground: #ffffff;
-
-  --separator: var(--border);
-  --focus: var(--ring);
-  --link: var(--foreground);
-
-  --field-background: var(--background);
-  --field-foreground: var(--foreground);
-  --field-border: var(--input);
-  --field-placeholder: var(--muted-foreground);
-}
-
-/* shadcn/ui colour utilities HeroUI does not register itself. */
+/* The colour utilities (bg-card, text-muted-foreground, border-border …). */
 @theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -136,6 +106,14 @@
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
 }
 
+*,
+::after,
+::before,
+::backdrop,
+::file-selector-button {
+  border-color: var(--border, currentColor);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -144,22 +122,22 @@ body {
 
 /* ── Markdown prose styling (skips anything inside .not-prose, e.g. code blocks and notes) ── */
 .prose-bund h1:not(:where(.not-prose, .not-prose *)) { @apply text-3xl font-bold text-foreground mb-6 mt-8; }
-.prose-bund h2:not(:where(.not-prose, .not-prose *)) { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-separator; }
+.prose-bund h2:not(:where(.not-prose, .not-prose *)) { @apply text-2xl font-semibold text-foreground mb-4 mt-8 pb-2 border-b border-border; }
 .prose-bund h3:not(:where(.not-prose, .not-prose *)) { @apply text-xl font-semibold text-foreground mb-3 mt-6; }
 .prose-bund p:not(:where(.not-prose, .not-prose *)) { @apply text-muted-foreground leading-relaxed mb-4; }
 .prose-bund ul:not(:where(.not-prose, .not-prose *)) { @apply list-disc pl-6 mb-4 space-y-2 text-muted-foreground; }
 .prose-bund ol:not(:where(.not-prose, .not-prose *)) { @apply list-decimal pl-6 mb-4 space-y-2 text-muted-foreground; }
 .prose-bund li:not(:where(.not-prose, .not-prose *)) { @apply pl-1; }
-.prose-bund code:not(:where(.not-prose, .not-prose *)) { @apply bg-default px-1.5 py-0.5 rounded text-sm font-mono text-primary; }
+.prose-bund code:not(:where(.not-prose, .not-prose *)) { @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-primary; }
 .prose-bund pre:not(:where(.not-prose, .not-prose *)) { @apply bg-[oklch(0.18_0.01_250)] text-[oklch(0.92_0_0)] p-5 rounded-lg font-mono text-sm overflow-x-auto my-6; }
 .prose-bund pre code:not(:where(.not-prose, .not-prose *)) { @apply bg-transparent p-0 text-inherit; }
 .prose-bund a:not(:where(.not-prose, .not-prose *)) { @apply text-primary hover:underline font-medium; }
 .prose-bund blockquote:not(:where(.not-prose, .not-prose *)) { @apply border-l-4 border-gov-gold pl-4 italic text-muted-foreground my-4; }
-.prose-bund hr:not(:where(.not-prose, .not-prose *)) { @apply my-8 border-separator; }
+.prose-bund hr:not(:where(.not-prose, .not-prose *)) { @apply my-8 border-border; }
 .prose-bund strong:not(:where(.not-prose, .not-prose *)) { @apply font-semibold text-foreground; }
 .prose-bund table:not(:where(.not-prose, .not-prose *)) { @apply w-full text-sm my-4; }
-.prose-bund th:not(:where(.not-prose, .not-prose *)) { @apply text-left font-semibold text-foreground border-b-2 border-separator pb-2 px-3; }
-.prose-bund td:not(:where(.not-prose, .not-prose *)) { @apply border-b border-separator py-2 px-3 text-muted-foreground; }
+.prose-bund th:not(:where(.not-prose, .not-prose *)) { @apply text-left font-semibold text-foreground border-b-2 border-border pb-2 px-3; }
+.prose-bund td:not(:where(.not-prose, .not-prose *)) { @apply border-b border-border py-2 px-3 text-muted-foreground; }
 
 /* ── Highlighted code (Shiki, both themes as CSS variables) ── */
 .code-highlight .shiki { background: transparent !important; }

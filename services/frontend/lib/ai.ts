@@ -1,16 +1,6 @@
 import { fetchApi } from './api';
 import type { AppLink, GitLabSyncSnapshot } from '@/config/apps';
 
-export interface AIProviderSummary {
-  key: string;
-  type: string;
-  label: string;
-  chatModel: string;
-  baseUrl?: string;
-  default: boolean;
-  tokenConfigured: boolean;
-}
-
 export interface AIProviderAdminSettings {
   providerKey: string;
   providerType: string;
@@ -31,58 +21,6 @@ export interface AIProviderAdminSettings {
   maxContextTokens: number;
   maxOutputTokens: number;
   temperature: number;
-}
-
-export interface AIMessageSource {
-  appId: string;
-  appName: string;
-  chunkId: string;
-  sourceType: string;
-  sourceId: string;
-  title: string;
-  snippet: string;
-  score?: number;
-}
-
-export interface AIMessage {
-  id: string;
-  conversationId: string;
-  role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string;
-  providerKey?: string;
-  providerType?: string;
-  model?: string;
-  promptTokens?: number;
-  responseTokens?: number;
-  sources?: AIMessageSource[];
-  error?: string;
-  feedback?: 'positive' | 'negative' | '';
-  createdAt: string;
-}
-
-export interface AIConversation {
-  id: string;
-  userId: string;
-  title: string;
-  scopeType: string;
-  appId?: string;
-  createdAt: string;
-  updatedAt: string;
-  messages?: AIMessage[];
-}
-
-export interface AISendMessageResponse {
-  conversation: AIConversation;
-  userMessage: AIMessage;
-  assistantMessage: AIMessage;
-  sources: AIMessageSource[];
-}
-
-export interface AISendMessagePayload {
-  conversationId?: string;
-  message: string;
-  appId?: string;
-  providerKey?: string;
 }
 
 export interface ChangelogSuggestion {
@@ -180,86 +118,12 @@ export interface ChangelogSuggestionPayload {
   repositories?: AppLink[];
 }
 
-export interface PublicAIHistoryMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-export interface PublicAISendMessagePayload {
-  message: string;
-  appId?: string;
-  providerKey?: string;
-  history?: PublicAIHistoryMessage[];
-}
-
-export interface PublicAIAssistantMessage {
-  role: 'assistant';
-  content: string;
-  providerKey?: string;
-  providerType?: string;
-  model?: string;
-  promptTokens?: number;
-  responseTokens?: number;
-  sources?: AIMessageSource[];
-  error?: string;
-  createdAt: string;
-}
-
-export interface PublicAISendMessageResponse {
-  assistantMessage: PublicAIAssistantMessage;
-  sources: AIMessageSource[];
-}
-
 async function parseError(response: Response, fallback: string): Promise<Error> {
   const data = await response.json().catch(() => ({})) as { message?: string; error?: string };
   const message = data.message?.trim();
   const detail = data.error?.trim();
   if (message && detail && detail !== message) return new Error(`${message}: ${detail}`);
   return new Error(message || detail || fallback);
-}
-
-export async function listAIProviders(): Promise<AIProviderSummary[]> {
-  const response = await fetchApi('/ai/providers', { cache: 'no-store' });
-  if (!response.ok) throw await parseError(response, 'AI-Provider konnten nicht geladen werden.');
-  const data = await response.json();
-  return Array.isArray(data) ? data : [];
-}
-
-export async function listPublicAIProviders(): Promise<AIProviderSummary[]> {
-	const response = await fetchApi('/ai/public/providers', { cache: 'no-store' });
-	if (!response.ok) throw await parseError(response, 'AI-Provider konnten nicht geladen werden.');
-	const data = await response.json();
-	return Array.isArray(data) ? data : [];
-}
-
-export async function listAIConversations(): Promise<AIConversation[]> {
-  const response = await fetchApi('/ai/conversations', { cache: 'no-store' });
-  if (!response.ok) throw await parseError(response, 'Konversationen konnten nicht geladen werden.');
-  const data = await response.json();
-  return Array.isArray(data) ? data : [];
-}
-
-export async function getAIConversation(id: string): Promise<AIConversation> {
-  const response = await fetchApi(`/ai/conversations/${id}`, { cache: 'no-store' });
-  if (!response.ok) throw await parseError(response, 'Konversation konnte nicht geladen werden.');
-  return response.json();
-}
-
-export async function deleteAIConversation(id: string): Promise<void> {
-  const response = await fetchApi(`/ai/conversations/${id}`, { method: 'DELETE' });
-  if (!response.ok) throw await parseError(response, 'Konversation konnte nicht gelöscht werden.');
-}
-
-export async function sendAIMessage(payload: AISendMessagePayload): Promise<AISendMessageResponse> {
-  const endpoint = payload.conversationId
-    ? `/ai/conversations/${payload.conversationId}/messages`
-    : '/ai/chat';
-  const response = await fetchApi(endpoint, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
-  return response.json();
 }
 
 export async function suggestChangelog(payload: ChangelogSuggestionPayload): Promise<ChangelogSuggestion> {
@@ -318,27 +182,6 @@ export async function runCatalogSteward(): Promise<CatalogStewardReport> {
   return response.json() as Promise<CatalogStewardReport>;
 }
 
-export async function sendPublicAIMessage(payload: PublicAISendMessagePayload): Promise<PublicAISendMessageResponse> {
-  const response = await fetchApi('/ai/public/chat', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw await parseError(response, 'AI-Antwort konnte nicht erzeugt werden.');
-  return response.json();
-}
-
-export type AIMessageFeedback = 'positive' | 'negative' | '';
-
-export async function setAIMessageFeedback(id: string, feedback: AIMessageFeedback): Promise<AIMessageFeedback> {
-  const response = await fetchApi(`/ai/messages/${encodeURIComponent(id)}/feedback`, {
-    method: 'PUT',
-    body: JSON.stringify({ feedback }),
-  });
-  if (!response.ok) throw await parseError(response, 'Feedback konnte nicht gespeichert werden.');
-  const data = await response.json() as { feedback?: AIMessageFeedback };
-  return data.feedback === 'positive' || data.feedback === 'negative' ? data.feedback : '';
-}
-
 export async function listAIProviderSettings(): Promise<AIProviderAdminSettings[]> {
   const response = await fetchApi('/settings/ai-providers', { cache: 'no-store' });
   if (!response.ok) throw await parseError(response, 'AI-Provider konnten nicht geladen werden.');
@@ -348,7 +191,7 @@ export async function listAIProviderSettings(): Promise<AIProviderAdminSettings[
 
 export async function reindexAIKnowledge(): Promise<{ indexedApps: number }> {
   const response = await fetchApi('/ai/knowledge/reindex', { method: 'POST' });
-  if (!response.ok) throw await parseError(response, 'AI-Wissensindex konnte nicht aufgebaut werden.');
+  if (!response.ok) throw await parseError(response, 'Suchindex konnte nicht aufgebaut werden.');
   return response.json();
 }
 

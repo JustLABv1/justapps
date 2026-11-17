@@ -40,7 +40,6 @@ var allSections = []string{
 	"repositoryProviders",
 	"repositoryAppLinks",
 	"aiProviders",
-	"aiConversations",
 	"tokens",
 	"favorites",
 	"ratings",
@@ -50,10 +49,9 @@ var allSections = []string{
 }
 
 var sensitiveSections = map[string]bool{
-	"users":           true,
-	"tokens":          true,
-	"audit":           true,
-	"aiConversations": true,
+	"users":  true,
+	"tokens": true,
+	"audit":  true,
 }
 
 func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
@@ -189,15 +187,6 @@ func ExportBackup(c *gin.Context, db *bun.DB, dataPath string) {
 			}
 			manifest.Data.AIProviders = providers
 			appendSummary(&manifest, section, len(providers))
-		case "aiConversations":
-			conversations, messages, sectionErr := exportAIConversations(c, db)
-			if sectionErr != nil {
-				respondSectionError(c, section, sectionErr)
-				return
-			}
-			manifest.Data.AIConversations = conversations
-			manifest.Data.AIMessages = messages
-			appendSummary(&manifest, section, len(conversations))
 		case "tokens":
 			tokens, redacted, sectionErr := exportTokens(c, db, mode)
 			if sectionErr != nil {
@@ -446,20 +435,6 @@ func exportAIProviders(c *gin.Context, db *bun.DB) ([]models.AIProviderSettings,
 	var providers []models.AIProviderSettings
 	err := db.NewSelect().Model(&providers).Order("provider_key ASC").Scan(c.Request.Context())
 	return providers, err
-}
-
-func exportAIConversations(c *gin.Context, db *bun.DB) ([]models.AIConversation, []models.AIMessage, error) {
-	var conversations []models.AIConversation
-	if err := db.NewSelect().Model(&conversations).Order("updated_at DESC", "created_at ASC").Scan(c.Request.Context()); err != nil {
-		return nil, nil, err
-	}
-
-	var messages []models.AIMessage
-	if err := db.NewSelect().Model(&messages).Order("conversation_id ASC", "created_at ASC").Scan(c.Request.Context()); err != nil {
-		return nil, nil, err
-	}
-
-	return conversations, messages, nil
 }
 
 func exportTokens(c *gin.Context, db *bun.DB, mode models.BackupMode) ([]models.BackupToken, bool, error) {

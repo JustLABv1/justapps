@@ -6,10 +6,8 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"justapps-backend/pkg/appaccess"
 	"strings"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	"justapps-backend/pkg/models"
@@ -118,172 +116,6 @@ func BuildKnowledgeChunks(app models.Apps) []models.AIKnowledgeChunk {
 	return chunks
 }
 
-func RetrieveContext(ctx context.Context, db *bun.DB, viewer Viewer, query RetrievalQuery) (RetrievedContext, error) {
-	limit := query.Limit
-	if limit <= 0 {
-		limit = 8
-	}
-	if limit > 20 {
-		limit = 20
-	}
-
-	chunks := make([]models.AIKnowledgeChunk, 0, limit)
-	selectQuery := db.NewSelect().
-		Model(&chunks).
-		Join("JOIN apps AS a ON a.id = aikc.app_id").
-		Limit(int64(limit))
-
-	if viewer.Role != "admin" {
-		if viewer.HasUser && strings.TrimSpace(viewer.UserID) != "" {
-			selectQuery = selectQuery.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
-		} else {
-			selectQuery = selectQuery.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf'))")
-		}
-	}
-
-	selectQuery = appaccess.FilterSpaces(selectQuery, "a", viewer.UserID)
-	text := strings.TrimSpace(query.Text)
-	terms := searchTerms(text)
-	if len(terms) > 0 {
-		clauses := make([]string, 0, len(terms)*3)
-		args := make([]interface{}, 0, len(terms)*3)
-		for _, term := range terms {
-			pattern := "%" + term + "%"
-			clauses = append(clauses, "LOWER(aikc.search_text) LIKE ?", "LOWER(a.name) LIKE ?", "LOWER(a.description) LIKE ?")
-			args = append(args, pattern, pattern, pattern)
-		}
-		selectQuery = selectQuery.Where("("+strings.Join(clauses, " OR ")+")", args...)
-	}
-
-	if strings.TrimSpace(query.AppID) != "" {
-		selectQuery = selectQuery.OrderExpr("CASE WHEN aikc.app_id = ? THEN 0 ELSE 1 END", strings.TrimSpace(query.AppID))
-	}
-	if text != "" {
-		selectQuery = selectQuery.OrderExpr("ts_rank(to_tsvector('simple', aikc.search_text), plainto_tsquery('simple', ?)) DESC", text)
-	}
-	selectQuery = selectQuery.OrderExpr("aikc.indexed_at DESC")
-
-	if err := selectQuery.Scan(ctx); err != nil {
-		return RetrievedContext{}, err
-	}
-
-	if len(chunks) == 0 && strings.TrimSpace(query.AppID) != "" {
-		fallback := db.NewSelect().
-			Model(&chunks).
-			Join("JOIN apps AS a ON a.id = aikc.app_id").
-			Where("aikc.app_id = ?", strings.TrimSpace(query.AppID)).
-			OrderExpr("aikc.indexed_at DESC").
-			Limit(int64(limit))
-		if viewer.Role != "admin" {
-			fallback = fallback.Where("(a.status IS NULL OR a.status = '' OR LOWER(a.status) NOT IN ('draft', 'entwurf') OR a.owner_id::text = ? OR EXISTS (SELECT 1 FROM app_editors ae WHERE ae.app_id = a.id AND ae.user_id::text = ?))", viewer.UserID, viewer.UserID)
-		}
-		fallback = appaccess.FilterSpaces(fallback, "a", viewer.UserID)
-		if err := fallback.Scan(ctx); err != nil {
-			return RetrievedContext{}, err
-		}
-	}
-
-	sources := SourcesFromChunks(chunks)
-	return RetrievedContext{Chunks: chunks, Sources: sources}, nil
-}
-
-func AppIsViewable(ctx context.Context, db *bun.DB, appID string, viewer Viewer) (bool, error) {
-	if strings.TrimSpace(appID) == "" {
-		return true, nil
-	}
-	var app models.Apps
-	if err := db.NewSelect().Model(&app).Where("id = ?", strings.TrimSpace(appID)).Scan(ctx); err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
-		return false, err
-	}
-	if app.SpaceID != nil {
-		if !viewer.HasUser {
-			return false, nil
-		}
-		if app.OwnerID.String() == viewer.UserID {
-			return true, nil
-		}
-		return appaccess.HasSpace(ctx, db, app.SpaceID.String(), viewer.UserID)
-	}
-	if viewer.Role == "admin" {
-		return true, nil
-	}
-	status := strings.ToLower(strings.TrimSpace(app.Status))
-	if status != "draft" && status != "entwurf" {
-		return true, nil
-	}
-	if !viewer.HasUser || strings.TrimSpace(viewer.UserID) == "" {
-		return false, nil
-	}
-	if app.OwnerID.String() == viewer.UserID {
-		return true, nil
-	}
-	return db.NewSelect().Model((*models.AppEditor)(nil)).
-		Where("app_id = ?", strings.TrimSpace(appID)).
-		Where("user_id::text = ?", viewer.UserID).
-		Exists(ctx)
-}
-
-func SourcesFromChunks(chunks []models.AIKnowledgeChunk) []models.AIMessageSource {
-	sources := make([]models.AIMessageSource, 0, len(chunks))
-	seen := make(map[string]struct{}, len(chunks))
-	for _, chunk := range chunks {
-		key := chunk.AppID + "|" + chunk.SourceType + "|" + chunk.SourceID
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		sources = append(sources, models.AIMessageSource{
-			AppID:      chunk.AppID,
-			AppName:    chunk.AppName,
-			ChunkID:    chunk.ID.String(),
-			SourceType: chunk.SourceType,
-			SourceID:   chunk.SourceID,
-			Title:      chunk.Title,
-			Snippet:    trimRunes(strings.TrimSpace(chunk.Content), 280),
-		})
-	}
-	return sources
-}
-
-func BuildPromptMessages(question string, history []models.AIMessage, chunks []models.AIKnowledgeChunk, maxContextTokens int) []ChatMessage {
-	contextLimit := maxContextTokens * 4
-	if contextLimit <= 0 {
-		contextLimit = 24000
-	}
-
-	contextBuilder := strings.Builder{}
-	for index, chunk := range chunks {
-		entry := fmt.Sprintf("Quelle %d: %s (%s, App: %s)\n%s\n\n", index+1, chunk.Title, chunk.SourceType, chunk.AppName, strings.TrimSpace(chunk.Content))
-		if contextBuilder.Len()+len(entry) > contextLimit {
-			break
-		}
-		contextBuilder.WriteString(entry)
-	}
-
-	systemPrompt := `Du bist der JustApps AI Chat. Beantworte Fragen zu Apps, Konfiguration, Deployment, Nachnutzung und Repository-Dokumentation.
-Nutze bevorzugt den bereitgestellten JustApps-Kontext. Wenn der Kontext nicht reicht, sage das klar und schlage vor, welche App-Daten oder Repository-Quellen fehlen.
-Antworte in der Sprache der Nutzerfrage. Nenne relevante App- oder Quellentitel im Text, aber erfinde keine Quellen, Versionen oder Konfigurationswerte.`
-	if strings.TrimSpace(contextBuilder.String()) != "" {
-		systemPrompt += "\n\nJustApps-Kontext:\n" + contextBuilder.String()
-	}
-
-	messages := []ChatMessage{{Role: "system", Content: systemPrompt}}
-	for _, message := range lastMessages(history, 12) {
-		if message.Role != "user" && message.Role != "assistant" {
-			continue
-		}
-		if strings.TrimSpace(message.Content) == "" {
-			continue
-		}
-		messages = append(messages, ChatMessage{Role: message.Role, Content: message.Content})
-	}
-	messages = append(messages, ChatMessage{Role: "user", Content: question})
-	return messages
-}
-
 func buildAppSummary(app models.Apps) string {
 	lines := []string{
 		"Name: " + app.Name,
@@ -366,37 +198,6 @@ func buildSearchText(app models.Apps, title, content string) string {
 	return strings.ToLower(strings.Join(filterBlankLines(parts), " "))
 }
 
-func searchTerms(query string) []string {
-	query = strings.ToLower(strings.TrimSpace(query))
-	if query == "" {
-		return nil
-	}
-
-	seen := make(map[string]struct{})
-	terms := make([]string, 0, 8)
-	for _, term := range strings.FieldsFunc(query, func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-	}) {
-		term = strings.TrimSpace(term)
-		if len([]rune(term)) < 3 {
-			continue
-		}
-		if _, exists := seen[term]; exists {
-			continue
-		}
-		seen[term] = struct{}{}
-		terms = append(terms, term)
-		if len(terms) >= 8 {
-			break
-		}
-	}
-
-	if len(terms) == 0 {
-		return []string{query}
-	}
-	return terms
-}
-
 func splitContent(content string, size int) []string {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -443,11 +244,4 @@ func trimRunes(value string, limit int) string {
 		return value
 	}
 	return strings.TrimSpace(string(runes[:limit])) + "..."
-}
-
-func lastMessages(messages []models.AIMessage, limit int) []models.AIMessage {
-	if limit <= 0 || len(messages) <= limit {
-		return messages
-	}
-	return messages[len(messages)-limit:]
 }

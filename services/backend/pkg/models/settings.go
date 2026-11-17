@@ -24,7 +24,6 @@ type PlatformSettings struct {
 	FAQEnabled             bool   `bun:"faq_enabled,notnull,default:true" json:"faqEnabled"`
 	AllowAppSubmissions    bool   `bun:"allow_app_submissions,notnull,default:true" json:"allowAppSubmissions"`
 	RequireAuthForAppStore bool   `bun:"require_auth_for_app_store,notnull,default:false" json:"requireAuthForAppStore"`
-	AllowAnonymousAI       bool   `bun:"allow_anonymous_ai,notnull,default:false" json:"allowAnonymousAI"`
 	ShowTopBanner          bool   `bun:"show_top_banner,notnull,default:false" json:"showTopBanner"`
 	TopBannerText          string `bun:"top_banner_text" json:"topBannerText"`
 	TopBannerType          string `bun:"top_banner_type,notnull,default:'info'" json:"topBannerType"`
