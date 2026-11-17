@@ -11,26 +11,18 @@ import {
     reindexAIKnowledge,
 } from "@/lib/ai";
 import { fetchApi } from "@/lib/api";
-import {
-    Button,
-    Input,
-    Label,
-    ListBox,
-    Modal,
-    Select,
-    Surface,
-    Switch,
-    TextField,
-    Tooltip,
-} from "@heroui/react";
-import {
-    Bot,
-    DatabaseZap,
-    Loader2,
-    Plus,
-    Sparkles,
-    Trash2,
-} from "lucide-react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Select } from "@/components/panelui/select";
+import { Switch } from "@/components/panelui/switch";
+import { Tooltip } from "@/components/panelui/tooltip";
+import { Bot, DatabaseZap, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type ProviderDraft = {
@@ -87,6 +79,7 @@ async function parseApiError(
 
 export function AIProviderSettingsPanel() {
   const [providers, setProviders] = useState<AIProviderAdminSettings[]>([]);
+  const [temperatureDrafts, setTemperatureDrafts] = useState<Record<string, string>>({});
   const [tokenDrafts, setTokenDrafts] = useState<Record<string, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [newProvider, setNewProvider] = useState<ProviderDraft>(defaultDraft);
@@ -279,581 +272,250 @@ export function AIProviderSettingsPanel() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-      </div>
-    );
+    return <p role="status" className="py-10 text-center text-sm text-muted-foreground">AI-Provider werden geladen …</p>;
   }
+
+  const typeItems = AI_PROVIDER_TYPES.map((type) => ({ value: type, label: aiProviderTypeLabel(type) }));
+  const mono = "font-mono text-sm";
 
   return (
     <div className="flex flex-col gap-6">
-      <Surface className="border border-border/50 p-6 shadow-sm">
-        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <Bot className="h-4 w-4 text-primary" /> AI-Provider
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Tokens werden verschlüsselt gespeichert und nach dem Speichern
-              nicht mehr angezeigt.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              isDisabled={reindexing}
-              onPress={runReindex}
-            >
-              {reindexing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <DatabaseZap className="h-4 w-4" />
-              )}
-              Index neu aufbauen
-            </Button>
-            <Button
-              className="bg-primary text-white"
-              onPress={() => setCreateOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Provider anlegen
-            </Button>
-          </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+            <Bot className="size-5 text-muted-foreground" />
+            AI-Provider
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Tokens werden verschlüsselt gespeichert und nach dem Speichern nicht mehr angezeigt.
+          </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" loading={reindexing} onClick={() => void runReindex()}>
+            <DatabaseZap />
+            Index neu aufbauen
+          </Button>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus />
+            Provider anlegen
+          </Button>
+        </div>
+      </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-            {error}
-          </div>
-        )}
-        {status && (
-          <div className="mb-4 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
-            {status}
-          </div>
-        )}
+      {error && (
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+        </Alert>
+      )}
+      {status && (
+        <Alert variant="plain" tone="success">
+          <Alert.Icon />
+          <Alert.Title>{status}</Alert.Title>
+        </Alert>
+      )}
 
-        {providers.length === 0 ? (
-          <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-            Es ist aktuell kein AI-Provider konfiguriert.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {providers.map((provider) => (
-              <div
-                key={provider.providerKey}
-                className="rounded-2xl border border-border bg-surface p-5"
-              >
-                <div className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
-                  <div>
+      {providers.length === 0 ? (
+        <Alert variant="plain" tone="warning">
+          <Alert.Icon />
+          <Alert.Title>Es ist aktuell kein AI-Provider konfiguriert.</Alert.Title>
+        </Alert>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {providers.map((provider) => (
+            <Card key={provider.providerKey} className="@container">
+              <Card.Header>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        {provider.providerKey}
-                      </p>
-                      <span className="rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        {aiProviderTypeLabel(provider.providerType)}
-                      </span>
-                      {provider.isDefault && (
-                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                          Standard
-                        </span>
-                      )}
+                      <Card.Title>{provider.label || provider.providerKey}</Card.Title>
+                      {provider.label && <code className="font-mono text-xs text-muted-foreground">{provider.providerKey}</code>}
+                      <Badge variant="secondary" size="sm">{aiProviderTypeLabel(provider.providerType)}</Badge>
+                      {provider.isDefault && <Badge variant="default" size="sm">Standard</Badge>}
+                      {!provider.enabled && <Badge variant="outline" size="sm">Deaktiviert</Badge>}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {provider.tokenConfigured
-                        ? "Token gespeichert"
-                        : provider.requiresToken
-                          ? "Token erforderlich"
-                          : "Token optional"}{" "}
-                      · {provider.chatModel}
-                    </p>
+                    <Card.Description>
+                      {provider.tokenConfigured ? "Token gespeichert" : provider.requiresToken ? "Token erforderlich" : "Token optional"} · {provider.chatModel}
+                    </Card.Description>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      isDisabled={testingProvider === provider.providerKey}
-                      onPress={() => void testProvider(provider.providerKey)}
-                    >
-                      {testingProvider === provider.providerKey ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="secondary" loading={testingProvider === provider.providerKey} onClick={() => void testProvider(provider.providerKey)}>
+                      <Sparkles />
                       Test
                     </Button>
-                    <Tooltip delay={0}>
-                      <Tooltip.Trigger>
-                        <div>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="secondary"
-                            className="text-danger"
-                            onPress={() => setProviderToDelete(provider)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    <Tooltip>
+                      <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={`${provider.providerKey} löschen`} onClick={() => setProviderToDelete(provider)} />}>
+                        <Trash2 />
                       </Tooltip.Trigger>
                       <Tooltip.Content>Provider löschen</Tooltip.Content>
                     </Tooltip>
                   </div>
                 </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <TextField
-                    value={provider.label}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, { label: value })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Bezeichnung
-                    </Label>
+              </Card.Header>
+              <Card.Content className="flex flex-col gap-5">
+                <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
+                  <Field>
+                    <Field.Label>Bezeichnung</Field.Label>
+                    <Input value={provider.label} placeholder="Interner Chat Provider" onChange={(event) => updateProvider(provider.providerKey, { label: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>Base URL</Field.Label>
+                    <Input className={mono} value={provider.baseUrl} placeholder="https://api.example.com/v1" onChange={(event) => updateProvider(provider.providerKey, { baseUrl: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>API-Pfad</Field.Label>
+                    <Input className={mono} value={provider.apiPath || ""} placeholder="optional" onChange={(event) => updateProvider(provider.providerKey, { apiPath: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>Chat-Modell</Field.Label>
+                    <Input className={mono} value={provider.chatModel} placeholder="gpt-4o-mini" onChange={(event) => updateProvider(provider.providerKey, { chatModel: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>API-Version</Field.Label>
+                    <Input className={mono} value={provider.apiVersion || ""} placeholder="2024-10-21" onChange={(event) => updateProvider(provider.providerKey, { apiVersion: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>Organisation</Field.Label>
+                    <Input className={mono} value={provider.organization || ""} placeholder="optional" onChange={(event) => updateProvider(provider.providerKey, { organization: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>API-Key ersetzen</Field.Label>
                     <Input
-                      className="bg-field-background"
-                      placeholder="Interner Chat Provider"
-                    />
-                  </TextField>
-                  <TextField
-                    value={provider.baseUrl}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, { baseUrl: value })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Base URL
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder="https://api.example.com/v1"
-                    />
-                  </TextField>
-                  <TextField
-                    value={provider.apiPath || ""}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, { apiPath: value })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      API-Pfad
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder="optional"
-                    />
-                  </TextField>
-                  <TextField
-                    value={provider.chatModel}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, { chatModel: value })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Chat-Modell
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder="gpt-4o-mini"
-                    />
-                  </TextField>
-                  <TextField
-                    value={provider.apiVersion || ""}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, {
-                        apiVersion: value,
-                      })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      API-Version
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder="2024-10-21"
-                    />
-                  </TextField>
-                  <TextField
-                    value={provider.organization || ""}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, {
-                        organization: value,
-                      })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Organisation
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder="optional"
-                    />
-                  </TextField>
-                  <TextField
-                    value={tokenDrafts[provider.providerKey] || ""}
-                    onChange={(value) =>
-                      setTokenDrafts((current) => ({
-                        ...current,
-                        [provider.providerKey]: value,
-                      }))
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      API-Key ersetzen
-                    </Label>
-                    <Input
-                      className="bg-field-background font-mono text-sm"
-                      placeholder={
-                        provider.tokenConfigured
-                          ? "Neuen Key eingeben"
-                          : provider.requiresToken
-                            ? "API-Key eingeben"
-                            : "Optional"
-                      }
+                      className={mono}
                       type="password"
+                      autoComplete="new-password"
+                      value={tokenDrafts[provider.providerKey] || ""}
+                      placeholder={provider.tokenConfigured ? "Neuen Key eingeben" : provider.requiresToken ? "API-Key eingeben" : "Optional"}
+                      onChange={(event) => setTokenDrafts((current) => ({ ...current, [provider.providerKey]: event.target.value }))}
                     />
-                  </TextField>
-                  <TextField
-                    value={String(provider.temperature)}
-                    onChange={(value) =>
-                      updateProvider(provider.providerKey, {
-                        temperature: Number.parseFloat(value || "0.2") || 0.2,
-                      })
-                    }
-                  >
-                    <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Temperatur
-                    </Label>
+                  </Field>
+                  <Field>
+                    <Field.Label>Temperatur</Field.Label>
                     <Input
-                      className="bg-field-background font-mono text-sm"
+                      className={mono}
+                      inputMode="decimal"
+                      value={temperatureDrafts[provider.providerKey] ?? String(provider.temperature)}
                       placeholder="0.2"
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setTemperatureDrafts((current) => ({ ...current, [provider.providerKey]: value }));
+                        const parsed = Number.parseFloat(value.replace(",", "."));
+                        if (!Number.isNaN(parsed)) updateProvider(provider.providerKey, { temperature: parsed });
+                      }}
                     />
-                    <p className="mt-1 ml-1 text-[11px] text-muted-foreground">
-                      Bestimmt die Kreativität der Antworten. 0 = sehr
-                      deterministisch und faktentreu, 1 = ausgewogen, &gt;1 =
-                      experimentell und variabler. Empfohlen: 0.1–0.3 für
-                      Wissensfragen.
-                    </p>
-                  </TextField>
-
-                  <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          Aktiv
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Im AI Chat auswählbar
-                        </p>
-                      </div>
-                      <Switch
-                        isSelected={provider.enabled}
-                        onChange={(value) =>
-                          updateProvider(provider.providerKey, {
-                            enabled: value,
-                          })
-                        }
-                      >
-                        <Switch.Content>
-                          <Switch.Control>
-                            <Switch.Thumb />
-                          </Switch.Control>
-                        </Switch.Content>
-                      </Switch>
+                    <Field.Description>
+                      Bestimmt die Kreativität der Antworten. 0 = sehr deterministisch und faktentreu, 1 = ausgewogen, &gt;1 = experimentell und variabler. Empfohlen: 0.1–0.3 für Wissensfragen.
+                    </Field.Description>
+                  </Field>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium">Aktiv</span>
+                      <span className="text-xs text-muted-foreground">Im AI Chat auswählbar</span>
                     </div>
+                    <Switch label="Aktiv" checked={provider.enabled} onCheckedChange={(value) => updateProvider(provider.providerKey, { enabled: value })} />
                   </div>
-                  <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          Standard
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Vorauswahl für neue Chats
-                        </p>
-                      </div>
-                      <Switch
-                        isSelected={provider.isDefault}
-                        onChange={(value) =>
-                          updateProvider(provider.providerKey, {
-                            isDefault: value,
-                          })
-                        }
-                      >
-                        <Switch.Content>
-                          <Switch.Control>
-                            <Switch.Thumb />
-                          </Switch.Control>
-                        </Switch.Content>
-                      </Switch>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium">Standard</span>
+                      <span className="text-xs text-muted-foreground">Vorauswahl für neue Chats</span>
                     </div>
+                    <Switch label="Standard" checked={provider.isDefault} onCheckedChange={(value) => updateProvider(provider.providerKey, { isDefault: value })} />
                   </div>
                 </div>
+              </Card.Content>
+              <Card.Footer className="justify-end gap-2">
+                <Button variant="ghost" disabled={saving || !provider.tokenConfigured || provider.requiresToken} onClick={() => void saveProvider(provider, { clearToken: true })}>
+                  Token löschen
+                </Button>
+                <Button loading={saving} onClick={() => void saveProvider(provider)}>Provider speichern</Button>
+              </Card.Footer>
+            </Card>
+          ))}
+        </div>
+      )}
 
-                <div className="mt-5 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-                  <Button
-                    variant="secondary"
-                    className="text-danger"
-                    isDisabled={
-                      saving ||
-                      !provider.tokenConfigured ||
-                      provider.requiresToken
-                    }
-                    onPress={() =>
-                      void saveProvider(provider, { clearToken: true })
-                    }
+      <Dialog open={createOpen} onOpenChange={(open) => { if (!open && !saving) setCreateOpen(false); }}>
+        <Dialog.Content size="lg">
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void createProvider();
+            }}
+          >
+            <Dialog.Header title="AI-Provider anlegen" />
+            <Dialog.Body className="@container">
+              <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
+                <Field>
+                  <Field.Label required>Provider-Schlüssel</Field.Label>
+                  <Input required className={mono} value={newProvider.providerKey} placeholder="vllm-local" onChange={(event) => setNewProvider((current) => ({ ...current, providerKey: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>Provider-Typ</Field.Label>
+                  <Select
+                    items={typeItems}
+                    value={newProvider.providerType}
+                    onValueChange={(key) => {
+                      const providerType = String(key) as AIProviderType;
+                      setNewProvider((current) => ({
+                        ...current,
+                        providerType,
+                        baseUrl: defaultAIBaseUrl(providerType),
+                        chatModel: defaultAIModel(providerType),
+                      }));
+                    }}
                   >
-                    Token löschen
-                  </Button>
-                  <Button
-                    className="bg-primary text-white"
-                    isDisabled={saving}
-                    onPress={() => void saveProvider(provider)}
-                  >
-                    {saving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : null}
-                    Provider speichern
-                  </Button>
-                </div>
+                    <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                    <Select.Content>{typeItems.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+                  </Select>
+                </Field>
+                <Field>
+                  <Field.Label>Bezeichnung</Field.Label>
+                  <Input value={newProvider.label} placeholder="Lokales vLLM" onChange={(event) => setNewProvider((current) => ({ ...current, label: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>Base URL</Field.Label>
+                  <Input className={mono} value={newProvider.baseUrl} placeholder="http://localhost:8000/v1" onChange={(event) => setNewProvider((current) => ({ ...current, baseUrl: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label required>Chat-Modell</Field.Label>
+                  <Input required className={mono} value={newProvider.chatModel} placeholder="local-model" onChange={(event) => setNewProvider((current) => ({ ...current, chatModel: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>API-Key</Field.Label>
+                  <Input className={mono} type="password" autoComplete="new-password" value={newProvider.token} placeholder="Optional für lokale Provider" onChange={(event) => setNewProvider((current) => ({ ...current, token: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>API-Version</Field.Label>
+                  <Input className={mono} value={newProvider.apiVersion} placeholder="optional" onChange={(event) => setNewProvider((current) => ({ ...current, apiVersion: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>Organisation</Field.Label>
+                  <Input className={mono} value={newProvider.organization} placeholder="optional" onChange={(event) => setNewProvider((current) => ({ ...current, organization: event.target.value }))} />
+                </Field>
               </div>
-            ))}
-          </div>
-        )}
-      </Surface>
-
-      <Modal.Backdrop
-        isOpen={createOpen}
-        onOpenChange={(open) => {
-          if (!open) setCreateOpen(false);
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-primary/10 text-primary">
-                <Bot className="h-5 w-5" />
-              </Modal.Icon>
-              <Modal.Heading>AI-Provider anlegen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <TextField
-                  value={newProvider.providerKey}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({
-                      ...current,
-                      providerKey: value,
-                    }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Provider-Schlüssel
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="vllm-local"
-                  />
-                </TextField>
-                <Select
-                  selectedKey={newProvider.providerType}
-                  onSelectionChange={(key) => {
-                    const providerType = String(key) as AIProviderType;
-                    setNewProvider((current) => ({
-                      ...current,
-                      providerType,
-                      baseUrl: defaultAIBaseUrl(providerType),
-                      chatModel: defaultAIModel(providerType),
-                    }));
-                  }}
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Provider-Typ
-                  </Label>
-                  <Select.Trigger className="bg-field-background">
-                    <Select.Value />
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover>
-                    <ListBox>
-                      {AI_PROVIDER_TYPES.map((providerType) => (
-                        <ListBox.Item
-                          key={providerType}
-                          id={providerType}
-                          textValue={aiProviderTypeLabel(providerType)}
-                        >
-                          {aiProviderTypeLabel(providerType)}
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                      ))}
-                    </ListBox>
-                  </Select.Popover>
-                </Select>
-                <TextField
-                  value={newProvider.label}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({ ...current, label: value }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Bezeichnung
-                  </Label>
-                  <Input
-                    className="bg-field-background"
-                    placeholder="Lokales vLLM"
-                  />
-                </TextField>
-                <TextField
-                  value={newProvider.baseUrl}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({
-                      ...current,
-                      baseUrl: value,
-                    }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Base URL
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="http://localhost:8000/v1"
-                  />
-                </TextField>
-                <TextField
-                  value={newProvider.chatModel}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({
-                      ...current,
-                      chatModel: value,
-                    }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Chat-Modell
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="local-model"
-                  />
-                </TextField>
-                <TextField
-                  value={newProvider.token}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({ ...current, token: value }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    API-Key
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="Optional für lokale Provider"
-                    type="password"
-                  />
-                </TextField>
-                <TextField
-                  value={newProvider.apiVersion}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({
-                      ...current,
-                      apiVersion: value,
-                    }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    API-Version
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="optional"
-                  />
-                </TextField>
-                <TextField
-                  value={newProvider.organization}
-                  onChange={(value) =>
-                    setNewProvider((current) => ({
-                      ...current,
-                      organization: value,
-                    }))
-                  }
-                >
-                  <Label className="mb-1.5 ml-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Organisation
-                  </Label>
-                  <Input
-                    className="bg-field-background font-mono text-sm"
-                    placeholder="optional"
-                  />
-                </TextField>
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onPress={() => setCreateOpen(false)}>
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-primary text-white"
-                isDisabled={
-                  saving ||
-                  !newProvider.providerKey.trim() ||
-                  !newProvider.chatModel.trim()
-                }
-                onPress={() => void createProvider()}
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button type="button" variant="secondary" disabled={saving} onClick={() => setCreateOpen(false)}>Abbrechen</Button>
+              <Button type="submit" loading={saving} disabled={!newProvider.providerKey.trim() || !newProvider.chatModel.trim()}>
+                <Plus />
                 Provider anlegen
               </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
 
-      <Modal.Backdrop
+      <ConfirmDialog
         isOpen={providerToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setProviderToDelete(null);
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="sm:max-w-md">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-danger/10 text-danger">
-                <Trash2 className="h-5 w-5" />
-              </Modal.Icon>
-              <Modal.Heading>AI-Provider löschen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-sm text-muted-foreground">
-                {providerToDelete?.providerKey}
-              </p>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onPress={() => setProviderToDelete(null)}
-              >
-                Abbrechen
-              </Button>
-              <Button
-                variant="danger"
-                isDisabled={saving}
-                onPress={() => void deleteProvider()}
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Löschen
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+        onOpenChange={(open) => { if (!open) setProviderToDelete(null); }}
+        title="AI-Provider löschen?"
+        description={`„${providerToDelete?.providerKey ?? ""}“ wird dauerhaft gelöscht.`}
+        confirmLabel="Löschen"
+        isDanger
+        isLoading={saving}
+        onConfirm={deleteProvider}
+      />
     </div>
   );
 }

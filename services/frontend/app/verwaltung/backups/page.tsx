@@ -1,9 +1,17 @@
 "use client";
 
 import { fetchApi } from "@/lib/api";
-import { Button, Input, Modal, Surface, Switch } from "@heroui/react";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Checkbox } from "@/components/panelui/checkbox";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Switch } from "@/components/panelui/switch";
 import { toast } from "@/lib/toast";
-import { Archive, Download, Loader2, ShieldAlert, Upload } from "lucide-react";
+import { Archive, Download, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 type BackupMode = "safe" | "full";
@@ -525,516 +533,266 @@ export default function BackupsPage() {
     }
   };
 
+  const passphraseHint = !exportPassphrase
+    ? "Geben Sie eine Passphrase ein, um den Export zu starten."
+    : !exportPassphraseValid
+      ? "Die Passphrase muss mindestens 12 Zeichen lang sein."
+      : !exportPassphraseMatches
+        ? "Die Bestätigung stimmt noch nicht mit der Passphrase überein."
+        : "Passphrase bestätigt. Der Export kann jetzt gestartet werden.";
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Backups
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Der Backup-Bereich exportiert jetzt verschlüsselte Sicherungsdateien
-          mit klar markierten Datenabschnitten. Exporte und Importe laufen über
-          dieselbe Oberfläche, damit vollständige Sicherungen und selektive
-          Wiederherstellungen nicht mehr über einzelne Verwaltungsseiten
-          verteilt sind.
+      <header className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Sicherung &amp; Wiederherstellung</h1>
+        <p className="max-w-3xl text-pretty text-muted-foreground">
+          Verschlüsselte Sicherungsdateien mit klar markierten Datenabschnitten. Vollständige Sicherungen und selektive Wiederherstellungen laufen über dieselbe Oberfläche.
         </p>
-      </div>
+      </header>
 
-      <Surface className="border border-warning/25 bg-warning/5 p-5 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning/10 text-warning">
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p className="font-semibold text-foreground">
-              Stand dieser Implementierung
-            </p>
-            <p>
-              Der Export deckt bereits Apps, Gruppen, Relationen, Benutzer,
-              Einstellungen, Repository-Zustand, Tokens, Favoriten, Ratings,
-              FAQ, Audit-Daten und hochgeladene Dateien ab. Jede neue Sicherung wird
-              mit einer Backup-Passphrase verschlüsselt; Merge-Importe und
-              vollständige Replace-Restores bleiben verfügbar.
-            </p>
-            <p>
-              Der sichere Modus entfernt sensible Geheimnisse.
-              Legacy-JSON-Backups können weiter importiert werden, werden dabei
-              aber explizit gewarnt. Replace-Restores bleiben absichtlich auf
-              Vollsicherungen beschränkt.
-            </p>
-          </div>
-        </div>
-      </Surface>
+      <Alert variant="plain" tone="warning">
+        <Alert.Icon />
+        <Alert.Title>Was gesichert wird</Alert.Title>
+        <Alert.Description>
+          Der Export deckt Apps, Gruppen, Relationen, Benutzer, Einstellungen, Repository-Zustand, Tokens, Favoriten, Ratings, FAQ, Audit-Daten und hochgeladene Dateien ab. Jede Sicherung wird mit einer Passphrase verschlüsselt. Der sichere Modus entfernt Passwort-Hashes und Token-Secrets. Legacy-JSON-Backups lassen sich weiter importieren, werden aber mit einer Warnung versehen. Replace-Restores bleiben auf Vollsicherungen beschränkt.
+        </Alert.Description>
+      </Alert>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {sectionPresets.map((preset) => {
-          const isLoading = downloadingId === preset.id;
-          return (
-            <Surface
-              key={preset.id}
-              className="flex h-full flex-col gap-4 border border-border/60 p-6 shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <Archive className="h-5 w-5" />
+        {sectionPresets.map((preset) => (
+          <Card key={preset.id}>
+            <Card.Header>
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Archive className="size-5" />
                 </div>
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">
-                    {preset.title}
-                  </h2>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="flex min-w-0 flex-col items-start gap-1">
+                  <Card.Title>{preset.title}</Card.Title>
+                  <Badge variant={preset.mode === "safe" ? "success" : "warning"} size="sm">
                     {preset.mode === "safe" ? "Empfohlen" : "Sensitiv"}
-                  </p>
+                  </Badge>
                 </div>
               </div>
-              <p className="flex-1 text-sm text-muted-foreground">{preset.description}</p>
-              <Button
-                className="gap-2 bg-primary text-white"
-                onPress={() =>
-                  openExportModal(preset.mode, preset.id, preset.sections)
-                }
-                isDisabled={Boolean(downloadingId)}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
+            </Card.Header>
+            <Card.Content className="flex-1">
+              <p className="text-sm text-muted-foreground">{preset.description}</p>
+            </Card.Content>
+            <Card.Footer>
+              <Button className="w-full" loading={downloadingId === preset.id} disabled={Boolean(downloadingId)} onClick={() => openExportModal(preset.mode, preset.id, preset.sections)}>
+                <Download />
                 Export herunterladen
               </Button>
-            </Surface>
-          );
-        })}
+            </Card.Footer>
+          </Card>
+        ))}
       </div>
 
-      <Surface className="border border-border/60 p-6 shadow-sm">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-semibold text-foreground">
-              Selektiver Export und Import
-            </h2>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Wählen Sie gezielt Abschnitte aus, exportieren Sie nur den
-              benötigten Scope oder spielen Sie eine bestehende Sicherung im
-              Merge- oder Replace-Modus zurück.
-            </p>
-          </div>
-
+      <Card>
+        <Card.Header>
+          <Card.Title>Selektiver Export und Import</Card.Title>
+          <Card.Description>
+            Wählen Sie gezielt Abschnitte aus, exportieren Sie nur den benötigten Umfang oder spielen Sie eine bestehende Sicherung im Merge- oder Replace-Modus zurück.
+          </Card.Description>
+        </Card.Header>
+        <Card.Content>
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onPress={selectAllSections}
-                >
-                  Alle auswählen
-                </Button>
-                <Button size="sm" variant="secondary" onPress={clearSections}>
-                  Auswahl leeren
-                </Button>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  {selectedSections.length} von {sectionOptions.length}{" "}
-                  Abschnitten ausgewählt
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={selectAllSections}>Alle auswählen</Button>
+                <Button size="sm" variant="secondary" onClick={clearSections}>Auswahl leeren</Button>
+                <p className="text-sm text-muted-foreground">
+                  {selectedSections.length} von {sectionOptions.length} Abschnitten ausgewählt
                 </p>
               </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2 md:grid-cols-2">
                 {sectionOptions.map((section) => {
                   const isSelected = selectedSections.includes(section.id);
                   return (
                     <label
                       key={section.id}
-                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border/60 bg-surface-secondary/40 hover:bg-surface-secondary"
-                      }`}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl p-3.5 ring-1 transition-colors ${isSelected ? "bg-primary/5 ring-primary/40" : "bg-muted/30 ring-foreground/10 hover:bg-muted/60"}`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSection(section.id)}
-                        className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                      />
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground">
-                            {section.label}
-                          </span>
-                          {section.sensitive ? (
-                            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-warning">
-                              Sensitiv
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {section.description}
-                        </p>
-                      </div>
+                      <Checkbox className="mt-0.5" label={section.label} checked={isSelected} onCheckedChange={() => toggleSection(section.id)} />
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          {section.label}
+                          {section.sensitive && <Badge variant="warning" size="sm">Sensitiv</Badge>}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{section.description}</span>
+                      </span>
                     </label>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-4 rounded-3xl border border-border/60 bg-surface-secondary/30 p-5">
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  Exportmodus
-                </p>
-                <Switch isSelected={isFullMode} onChange={setIsFullMode}>
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                  </Switch.Content>
-                </Switch>
-                <p className="text-sm text-muted-foreground">
-                  {isFullMode
-                    ? "Vollständiger Modus mit sensiblen Secrets."
-                    : "Sicherer Modus ohne Passwort-Hashes und Token-Secrets."}
+            <div className="flex flex-col gap-5 rounded-xl bg-muted/30 p-5">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium">Vollständiger Export</span>
+                  <Switch label="Vollständiger Export mit sensiblen Secrets" checked={isFullMode} onCheckedChange={setIsFullMode} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isFullMode ? "Vollständiger Modus mit sensiblen Secrets." : "Sicherer Modus ohne Passwort-Hashes und Token-Secrets."}
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  Restoremodus
-                </p>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Restore-Modus</span>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant={restoreMode === "merge" ? "secondary" : "ghost"}
-                    onPress={() => setRestoreMode("merge")}
-                  >
-                    Merge
-                  </Button>
-                  <Button
-                    variant={restoreMode === "replace" ? "danger" : "ghost"}
-                    onPress={() => setRestoreMode("replace")}
-                  >
-                    Replace
-                  </Button>
+                  <Button variant={restoreMode === "merge" ? "default" : "secondary"} aria-pressed={restoreMode === "merge"} onClick={() => setRestoreMode("merge")}>Merge</Button>
+                  <Button variant={restoreMode === "replace" ? "destructive" : "secondary"} aria-pressed={restoreMode === "replace"} onClick={() => setRestoreMode("replace")}>Replace</Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {restoreMode === "merge"
                     ? "Merge aktualisiert vorhandene Datensätze und ergänzt fehlende Einträge."
                     : "Replace löscht die aktuelle Instanz und stellt den Backup-Stand vollständig wieder her."}
                 </p>
-                {replaceBlocked ? (
-                  <p className="text-sm font-medium text-warning">
-                    Replace ist nur mit vollständiger Abschnittsauswahl
-                    verfügbar.
-                  </p>
-                ) : null}
+                {replaceBlocked && <p className="text-xs font-medium text-warning">Replace ist nur mit vollständiger Abschnittsauswahl verfügbar.</p>}
               </div>
 
-              <div className="flex flex-col gap-3">
-                <Button
-                  className="gap-2 bg-primary text-white"
-                  onPress={handleAdvancedExport}
-                  isDisabled={
-                    Boolean(downloadingId) || selectedSections.length === 0
-                  }
-                >
-                  {downloadingId === "advanced-export" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
+              <div className="flex flex-col gap-2 border-t pt-5">
+                <Button loading={downloadingId === "advanced-export"} disabled={Boolean(downloadingId) || selectedSections.length === 0} onClick={handleAdvancedExport}>
+                  <Download />
                   Auswahl exportieren
                 </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json,.json,.jabackup"
-                  className="hidden"
-                  onChange={handleImportFile}
-                />
-                <Button
-                  variant="secondary"
-                  className="gap-2"
-                  onPress={handleImportClick}
-                  isDisabled={
-                    importing || selectedSections.length === 0 || replaceBlocked
-                  }
-                >
-                  {importing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
+                <input ref={fileInputRef} type="file" accept="application/json,.json,.jabackup" className="hidden" onChange={handleImportFile} />
+                <Button variant="secondary" loading={importing} disabled={selectedSections.length === 0 || replaceBlocked} onClick={handleImportClick}>
+                  <Upload />
                   Backup importieren
                 </Button>
-                <p className="text-sm text-muted-foreground">
-                  {selectedFileName
-                    ? `Letzte Datei: ${selectedFileName}`
-                    : "Die Passphrase wird nach dem Klick und der Dateiauswahl in einem Modal abgefragt."}
+                <p className="text-xs text-muted-foreground">
+                  {selectedFileName ? `Letzte Datei: ${selectedFileName}` : "Die Passphrase wird nach der Dateiauswahl in einem Dialog abgefragt."}
                 </p>
               </div>
             </div>
           </div>
-        </div>
-      </Surface>
+        </Card.Content>
+      </Card>
 
-      {importResult ? (
-        <Surface className="border border-border/60 p-6 shadow-sm">
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                Letztes Import-Ergebnis
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {importResult.message} · Modus: {importResult.restoreMode}
-              </p>
-            </div>
+      {importResult && (
+        <Card>
+          <Card.Header>
+            <Card.Title>Letztes Import-Ergebnis</Card.Title>
+            <Card.Description>{importResult.message} · Modus: {importResult.restoreMode}</Card.Description>
+          </Card.Header>
+          <Card.Content className="flex flex-col gap-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {Object.entries(importResult.stats).map(([section, stats]) => (
-                <div
-                  key={section}
-                  className="rounded-2xl border border-border/60 bg-surface-secondary/40 p-4"
-                >
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                    {section}
-                  </p>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {stats.created}
-                      </p>
-                      <p className="text-muted-foreground">neu</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {stats.updated}
-                      </p>
-                      <p className="text-muted-foreground">aktualisiert</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {stats.skipped}
-                      </p>
-                      <p className="text-muted-foreground">übersprungen</p>
-                    </div>
-                  </div>
+                <div key={section} className="rounded-xl bg-muted/40 p-4">
+                  <p className="text-sm font-medium">{section}</p>
+                  <dl className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                    <div><dd className="font-semibold">{stats.created}</dd><dt className="text-xs text-muted-foreground">neu</dt></div>
+                    <div><dd className="font-semibold">{stats.updated}</dd><dt className="text-xs text-muted-foreground">aktualisiert</dt></div>
+                    <div><dd className="font-semibold">{stats.skipped}</dd><dt className="text-xs text-muted-foreground">übersprungen</dt></div>
+                  </dl>
                 </div>
               ))}
             </div>
-            {importResult.warnings && importResult.warnings.length > 0 ? (
-              <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4 text-sm text-muted-foreground">
-                <p className="font-semibold text-foreground">Warnungen</p>
-                <ul className="mt-3 space-y-2">
-                  {importResult.warnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        </Surface>
-      ) : null}
+            {importResult.warnings && importResult.warnings.length > 0 && (
+              <Alert variant="plain" tone="warning">
+                <Alert.Icon />
+                <Alert.Title>Warnungen</Alert.Title>
+                <Alert.Description>
+                  <ul className="list-disc ps-4">
+                    {importResult.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                  </ul>
+                </Alert.Description>
+              </Alert>
+            )}
+          </Card.Content>
+        </Card>
+      )}
 
-      <Modal>
-        <Modal.Backdrop
-          isOpen={exportModalOpen}
-          onOpenChange={(open) => {
-            if (!open) closeExportModal();
-          }}
-        >
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-md">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Icon className="bg-primary/10 text-primary">
-                  <Download className="h-5 w-5" />
-                </Modal.Icon>
-                <Modal.Heading>Backup verschlüsseln</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <div className="space-y-5">
-                  <p className="text-sm text-muted-foreground">
-                    Die ausgewählte Sicherung wird erst nach Eingabe einer
-                    Passphrase exportiert. Ohne diese Passphrase kann das Backup
-                    später nicht wiederhergestellt werden.
-                  </p>
-                  {pendingExport ? (
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                      {pendingExport.sections.length} Abschnitt
-                      {pendingExport.sections.length !== 1 ? "e" : ""} ·{" "}
-                      {pendingExport.mode === "safe"
-                        ? "Sicherer Modus"
-                        : "Vollmodus"}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-col gap-4">
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                        Passphrase
-                      </p>
-                      <Input
-                        aria-label="Backup-Passphrase"
-                        autoComplete="new-password"
-                        className="w-full"
-                        onChange={(event) =>
-                          setExportPassphrase(event.target.value)
-                        }
-                        placeholder="Mindestens 12 Zeichen"
-                        type="password"
-                        value={exportPassphrase}
-                        variant="secondary"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                        Passphrase bestätigen
-                      </p>
-                      <Input
-                        aria-label="Backup-Passphrase bestätigen"
-                        autoComplete="new-password"
-                        className="w-full"
-                        onChange={(event) =>
-                          setExportPassphraseConfirm(event.target.value)
-                        }
-                        placeholder="Passphrase erneut eingeben"
-                        type="password"
-                        value={exportPassphraseConfirm}
-                        variant="secondary"
-                      />
-                    </div>
-                  </div>
-                  <p
-                    className={`text-sm ${exportReady ? "text-success" : "text-muted-foreground"}`}
-                  >
-                    {!exportPassphrase
-                      ? "Geben Sie eine Passphrase ein, um den Export zu starten."
-                      : !exportPassphraseValid
-                        ? "Die Passphrase muss mindestens 12 Zeichen lang sein."
-                        : !exportPassphraseMatches
-                          ? "Die Bestätigung stimmt noch nicht mit der Passphrase überein."
-                          : "Passphrase bestätigt. Der Export kann jetzt gestartet werden."}
-                  </p>
-                </div>
-              </Modal.Body>
-              <Modal.Footer>
-                <div className="flex w-full justify-end gap-3">
-                  <Button
-                    variant="secondary"
-                    onPress={closeExportModal}
-                    isDisabled={Boolean(downloadingId)}
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button
-                    className="bg-primary text-white"
-                    onPress={() => void submitExport()}
-                    isDisabled={!exportReady || Boolean(downloadingId)}
-                  >
-                    {downloadingId ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                    Export herunterladen
-                  </Button>
-                </div>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <Dialog open={exportModalOpen} onOpenChange={(open) => { if (!open) closeExportModal(); }}>
+        <Dialog.Content size="md">
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (exportReady && !downloadingId) void submitExport();
+            }}
+          >
+            <Dialog.Header
+              title="Backup verschlüsseln"
+              description="Die Sicherung wird erst nach Eingabe einer Passphrase exportiert. Ohne diese Passphrase kann das Backup später nicht wiederhergestellt werden."
+            />
+            <Dialog.Body className="flex flex-col gap-4">
+              {pendingExport && (
+                <p className="text-xs text-muted-foreground">
+                  {pendingExport.sections.length} Abschnitt{pendingExport.sections.length !== 1 ? "e" : ""} · {pendingExport.mode === "safe" ? "Sicherer Modus" : "Vollmodus"}
+                </p>
+              )}
+              <Field>
+                <Field.Label>Passphrase</Field.Label>
+                <Input type="password" autoComplete="new-password" placeholder="Mindestens 12 Zeichen" value={exportPassphrase} onChange={(event) => setExportPassphrase(event.target.value)} />
+              </Field>
+              <Field>
+                <Field.Label>Passphrase bestätigen</Field.Label>
+                <Input type="password" autoComplete="new-password" placeholder="Passphrase erneut eingeben" value={exportPassphraseConfirm} onChange={(event) => setExportPassphraseConfirm(event.target.value)} />
+              </Field>
+              <p role="status" className={`text-sm ${exportReady ? "text-success" : "text-muted-foreground"}`}>{passphraseHint}</p>
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button type="button" variant="secondary" disabled={Boolean(downloadingId)} onClick={closeExportModal}>Abbrechen</Button>
+              <Button type="submit" loading={Boolean(downloadingId)} disabled={!exportReady}>
+                <Download />
+                Export herunterladen
+              </Button>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
 
-      <Modal>
-        <Modal.Backdrop
-          isOpen={importModalOpen}
-          onOpenChange={(open) => {
-            if (!open) closeImportModal();
-          }}
-        >
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-md">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Icon className="bg-warning/10 text-warning">
-                  <Upload className="h-5 w-5" />
-                </Modal.Icon>
-                <Modal.Heading>Backup importieren</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body>
-                <div className="space-y-5">
-                  <p className="text-sm text-muted-foreground">
-                    {pendingImportFile
-                      ? `Datei: ${pendingImportFile.name}`
-                      : "Nach der Dateiauswahl kann der Import hier gestartet werden."}
-                  </p>
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                      Passphrase
-                    </p>
-                    <Input
-                      aria-label="Import-Passphrase"
-                      autoComplete="current-password"
-                      className="w-full"
-                      onChange={(event) =>
-                        setImportPassphrase(event.target.value)
-                      }
-                      placeholder="Nur für verschlüsselte Backups erforderlich"
-                      type="password"
-                      value={importPassphrase}
-                      variant="secondary"
-                    />
+      <Dialog open={importModalOpen} onOpenChange={(open) => { if (!open) closeImportModal(); }}>
+        <Dialog.Content size="md">
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!importing && pendingImportFile) void submitImport();
+            }}
+          >
+            <Dialog.Header
+              title="Backup importieren"
+              description={pendingImportFile ? `Datei: ${pendingImportFile.name}` : "Nach der Dateiauswahl kann der Import hier gestartet werden."}
+            />
+            <Dialog.Body className="flex flex-col gap-4">
+              {restoreMode === "replace" && (
+                <Alert variant="plain" tone="destructive">
+                  <Alert.Icon />
+                  <Alert.Title>Replace löscht die aktuelle Instanz und ersetzt sie vollständig durch den Backup-Stand.</Alert.Title>
+                </Alert>
+              )}
+              <Field>
+                <Field.Label>Passphrase</Field.Label>
+                <Input type="password" autoComplete="current-password" placeholder="Nur für verschlüsselte Backups erforderlich" value={importPassphrase} onChange={(event) => setImportPassphrase(event.target.value)} />
+                <Field.Description>
+                  Für .jabackup-Dateien ist die Passphrase erforderlich. Legacy-JSON-Backups können ohne Passphrase importiert werden und erzeugen einen Warnhinweis.
+                </Field.Description>
+              </Field>
+              {importing && (
+                <div className="flex flex-col gap-2" role="status">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{importPhase === "uploading" ? "Backup wird in kleinen Teilen übertragen" : "Backup wird wiederhergestellt"}</span>
+                    <span>{importProgress}%</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Für `.jabackup`-Dateien ist die Passphrase erforderlich.
-                    Legacy-JSON-Backups können ohne Passphrase importiert werden
-                    und erzeugen einen Warnhinweis.
-                  </p>
-                  {importing ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {importPhase === "uploading"
-                            ? "Backup wird in kleinen Teilen übertragen"
-                            : "Backup wird wiederhergestellt"}
-                        </span>
-                        <span>{importProgress}%</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-default">
-                        <div
-                          className="h-full rounded-full bg-primary transition-[width] duration-200"
-                          style={{ width: `${importProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${importProgress}%` }} />
+                  </div>
                 </div>
-              </Modal.Body>
-              <Modal.Footer>
-                <div className="flex w-full justify-end gap-3">
-                  <Button
-                    variant="secondary"
-                    onPress={closeImportModal}
-                    isDisabled={importing}
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="gap-2"
-                    onPress={() => void submitImport()}
-                    isDisabled={importing || !pendingImportFile}
-                  >
-                    {importing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4" />
-                    )}
-                    Backup importieren
-                  </Button>
-                </div>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+              )}
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button type="button" variant="secondary" disabled={importing} onClick={closeImportModal}>Abbrechen</Button>
+              <Button type="submit" variant={restoreMode === "replace" ? "destructive" : "default"} loading={importing} disabled={!pendingImportFile}>
+                <Upload />
+                Backup importieren
+              </Button>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
     </div>
   );
 }

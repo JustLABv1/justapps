@@ -23,28 +23,26 @@ import {
   resolveTopBarColors,
   seedCustomBrandColors,
 } from "@/lib/branding";
+import { toast } from "@/lib/toast";
 import { AVAILABLE_ICONS } from "@/lib/detailFieldIcons";
-import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  Surface,
-  Switch,
-  TextField,
-  Tooltip,
-} from "@heroui/react";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Select } from "@/components/panelui/select";
+import { Switch } from "@/components/panelui/switch";
+import { Textarea } from "@/components/panelui/textarea";
+import { Tooltip } from "@/components/panelui/tooltip";
 import {
   ArrowDown,
   ArrowUp,
   Bot,
   ExternalLink,
-  GitBranch,
   Globe,
   Layers,
-  Loader2,
   Paintbrush,
   Pin,
   Plus,
@@ -214,16 +212,255 @@ function normalizeSettingsState(data: Partial<SettingsState>): SettingsState {
   };
 }
 
+const BANNER_TYPES = [
+  { value: "info", label: "Info" },
+  { value: "warning", label: "Warnung" },
+  { value: "critical", label: "Kritisch" },
+];
+
+const SORT_FIELDS = [
+  { value: "name", label: "Name (A–Z)" },
+  { value: "rating_avg", label: "Bewertung" },
+  { value: "updated_at", label: "Zuletzt aktualisiert" },
+  { value: "status", label: "Status" },
+];
+
+const PROVIDER_TYPES = [
+  { value: "gitlab", label: "GitLab" },
+  { value: "github", label: "GitHub" },
+];
+
 function PalettePreview({ colors }: { colors: string[] }) {
   return (
-    <div className="flex h-3 overflow-hidden rounded-full border border-border/70 bg-default">
+    <div className="flex h-3 overflow-hidden rounded-full bg-muted ring-1 ring-foreground/10">
       {colors.map((color, index) => (
-        <div
-          key={`${color}-${index}`}
-          className="h-full flex-1"
-          style={{ backgroundColor: color }}
-        />
+        <div key={`${color}-${index}`} className="h-full flex-1" style={{ backgroundColor: color }} />
       ))}
+    </div>
+  );
+}
+
+/** One group of related settings: a titled card with its own save bar. */
+function SettingsCard({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <Card.Header>
+        <Card.Title className="flex items-center gap-2 [&_svg]:size-4 [&_svg]:text-muted-foreground">
+          {icon}
+          {title}
+        </Card.Title>
+        {description && <Card.Description>{description}</Card.Description>}
+      </Card.Header>
+      <Card.Content>{children}</Card.Content>
+    </Card>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  onChange,
+  pending,
+  disabled,
+}: {
+  title: string;
+  description?: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  pending?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-sm font-medium">{title}</span>
+        {description && <span className="text-xs text-muted-foreground">{description}</span>}
+      </div>
+      <Switch label={title} checked={checked} disabled={disabled} pending={pending} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function SaveBar({
+  saving,
+  saved,
+  label,
+  onSave,
+  start,
+}: {
+  saving: boolean;
+  saved: boolean;
+  label: string;
+  onSave: () => void;
+  start?: React.ReactNode;
+}) {
+  return (
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+      <div>{start}</div>
+      <Button loading={saving} onClick={onSave}>
+        {saved ? "Gespeichert ✓" : label}
+      </Button>
+    </div>
+  );
+}
+
+function PresetSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: ReadonlyArray<{ id: string; label: string; description: string }>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const items = options.map((option) => ({ value: option.id, label: option.label }));
+  return (
+    <Select items={items} value={value} onValueChange={(next) => onChange(String(next))}>
+      <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+      <Select.Content>
+        {options.map((option) => (
+          <Select.Item key={option.id} value={option.id}>
+            <span className="flex flex-col gap-0.5">
+              <span>{option.label}</span>
+              <span className="text-xs text-muted-foreground">{option.description}</span>
+            </span>
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select>
+  );
+}
+
+function ColorField({ label, color, value, onChange }: { label: string; color: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="flex items-end gap-2">
+      <span className="mb-0.5 size-9 shrink-0 rounded-lg ring-1 ring-foreground/15" style={{ backgroundColor: color || "transparent" }} />
+      <Field className="flex-1">
+        <Field.Label>{label}</Field.Label>
+        <Input className="font-mono text-sm" value={value} placeholder="#004B76" onChange={(event) => onChange(event.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
+/** A URL field with a preview and an upload button. */
+function AssetField({
+  label,
+  previewUrl,
+  previewClassName,
+  value,
+  placeholder,
+  uploading,
+  inputRef,
+  onChange,
+  onFile,
+}: {
+  label: string;
+  previewUrl: string | null | undefined;
+  previewClassName: string;
+  value: string;
+  placeholder: string;
+  uploading: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onChange: (value: string) => void;
+  onFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <Field>
+      <Field.Label>{label}</Field.Label>
+      <div className="flex items-center gap-2">
+        {previewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl} alt="" className={`size-9 shrink-0 rounded-lg object-contain ring-1 ring-foreground/15 ${previewClassName}`} />
+        )}
+        <Input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        <Button type="button" variant="secondary" className="shrink-0" loading={uploading} onClick={() => inputRef.current?.click()}>
+          <Upload />
+          Upload
+        </Button>
+      </div>
+    </Field>
+  );
+}
+
+type RepositoryProviderValues = {
+  label: string;
+  baseUrl: string;
+  token: string;
+  namespaceAllowlist: string;
+  enabled: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  defaultReadmePath: string;
+  defaultHelmValuesPath: string;
+  defaultComposeFilePath: string;
+};
+
+/** The fields of a repository provider, shared by the editor of an existing one and the dialog that creates one. */
+function RepositoryProviderFields({
+  values,
+  onChange,
+  tokenLabel,
+  tokenPlaceholder,
+  tokenStatus,
+}: {
+  values: RepositoryProviderValues;
+  onChange: (patch: Partial<RepositoryProviderValues>) => void;
+  tokenLabel: string;
+  tokenPlaceholder: string;
+  tokenStatus?: React.ReactNode;
+}) {
+  const mono = "font-mono text-sm";
+  return (
+    <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
+      <Field>
+        <Field.Label>Bezeichnung</Field.Label>
+        <Input value={values.label} placeholder="z. B. interne Forge oder GitHub.com" onChange={(event) => onChange({ label: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>Base URL</Field.Label>
+        <Input className={mono} value={values.baseUrl} placeholder="https://gitlab.example.org oder https://github.com" onChange={(event) => onChange({ baseUrl: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>{tokenLabel}</Field.Label>
+        <Input className={mono} type="password" autoComplete="new-password" value={values.token} placeholder={tokenPlaceholder} onChange={(event) => onChange({ token: event.target.value })} />
+        {tokenStatus}
+      </Field>
+      <Field>
+        <Field.Label>Sync-Intervall (Minuten)</Field.Label>
+        <Input className={mono} inputMode="numeric" value={String(values.syncIntervalMinutes)} placeholder="15" onChange={(event) => onChange({ syncIntervalMinutes: Number.parseInt(event.target.value || "15", 10) || 15 })} />
+      </Field>
+      <Field>
+        <Field.Label>Standard README-Pfad</Field.Label>
+        <Input className={mono} value={values.defaultReadmePath} placeholder="optional, z. B. docs/README.md" onChange={(event) => onChange({ defaultReadmePath: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>Standard Helm Values</Field.Label>
+        <Input className={mono} value={values.defaultHelmValuesPath} placeholder="chart/values.yaml" onChange={(event) => onChange({ defaultHelmValuesPath: event.target.value })} />
+      </Field>
+      <Field className="@lg:col-span-2">
+        <Field.Label>Standard Compose-Datei</Field.Label>
+        <Input className={mono} value={values.defaultComposeFilePath} placeholder="docker-compose.yml" onChange={(event) => onChange({ defaultComposeFilePath: event.target.value })} />
+      </Field>
+      <Field className="@lg:col-span-2">
+        <Field.Label>Namespace-Allowlist</Field.Label>
+        <Textarea className={mono} rows={4} value={values.namespaceAllowlist} placeholder={"gruppe\norganisation/team"} onChange={(event) => onChange({ namespaceAllowlist: event.target.value })} />
+        <Field.Description>Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro Zeile oder komma-getrennt.</Field.Description>
+      </Field>
+      <ToggleRow title="Provider im UI aktiv" description="Steuert, ob Apps diesen Provider auswählen dürfen." checked={values.enabled} onChange={(enabled) => onChange({ enabled })} />
+      <ToggleRow title="Automatische Synchronisation" description="Aktiviert den geplanten Hintergrund-Sync für verknüpfte Apps dieses Providers." checked={values.autoSyncEnabled} onChange={(autoSyncEnabled) => onChange({ autoSyncEnabled })} />
     </div>
   );
 }
@@ -434,9 +671,13 @@ export function AdminSettingsWorkspace({
         await refreshSettings();
         setSavedSection(sectionKey);
         setTimeout(() => setSavedSection(null), 2000);
+      } else {
+        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        toast.danger(body.message || "Die Einstellungen konnten nicht gespeichert werden.");
       }
     } catch (err) {
       console.error(err);
+      toast.danger("Die Einstellungen konnten nicht gespeichert werden.");
     } finally {
       setSaving(false);
     }
@@ -609,2044 +850,724 @@ export function AdminSettingsWorkspace({
 
   if (loading)
     return (
-      <div className="py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <p role="status" className="py-16 text-center text-sm text-muted-foreground">
+        Einstellungen werden geladen …
+      </p>
     );
 
   if (loadError)
     return (
-      <div
-        role="alert"
-        className="rounded-xl border border-danger/20 bg-danger/5 p-5"
-      >
-        <p className="text-sm text-danger">{loadError}</p>
-        <Button
-          variant="secondary"
-          className="mt-3"
-          onPress={() => {
-            setLoading(true);
-            setLoadError(null);
-            setLoadVersion((current) => current + 1);
-          }}
-        >
-          Erneut laden
-        </Button>
-      </div>
+      <Alert variant="plain" tone="destructive">
+        <Alert.Icon />
+        <Alert.Title>{loadError}</Alert.Title>
+        <Alert.Actions>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              setLoadVersion((current) => current + 1);
+            }}
+          >
+            Erneut laden
+          </Button>
+        </Alert.Actions>
+      </Alert>
     );
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex w-full flex-col gap-6">
       {showHeading && (
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {title}
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-3xl">{description}</p>
-        </div>
+        <header className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+          <p className="max-w-3xl text-pretty text-muted-foreground">{description}</p>
+        </header>
       )}
 
       <div className="flex flex-col gap-6">
         {visibleSections.has("access") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-primary" /> Zugriffsschutz
-              </h3>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">
-                    App Store nur für angemeldete Nutzer
-                  </span>
-                  <p className="text-xs text-muted-foreground max-w-xl">
-                    Blockiert den öffentlichen Zugriff auf Katalog, App-Details
-                    und Gruppen und leitet Besucher direkt zur Anmeldung weiter.
-                  </p>
-                </div>
-                <Switch
-                  isSelected={settings.requireAuthForAppStore}
-                  onChange={(val) =>
-                    save(
-                      { requireAuthForAppStore: val },
-                      "requireAuthForAppStore",
-                    )
-                  }
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                  </Switch.Content>
-                </Switch>
-              </div>
-            </Surface>
-          </div>
+          <SettingsCard icon={<ShieldCheck />} title="Zugriffsschutz">
+            <ToggleRow
+              title="App Store nur für angemeldete Nutzer"
+              description="Blockiert den öffentlichen Zugriff auf Katalog, App-Details und Gruppen und leitet Besucher direkt zur Anmeldung weiter."
+              checked={settings.requireAuthForAppStore}
+              pending={saving}
+              onChange={(value) => void save({ requireAuthForAppStore: value }, "requireAuthForAppStore")}
+            />
+          </SettingsCard>
         )}
 
         {visibleSections.has("governance") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-primary" /> Einreichungen
-              </h3>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">
-                    App-Einreichungen erlauben
-                  </span>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen.
-                  </p>
-                </div>
-                <Switch
-                  isSelected={settings.allowAppSubmissions}
-                  onChange={(val) =>
-                    save({ allowAppSubmissions: val }, "submissions")
-                  }
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                  </Switch.Content>
-                </Switch>
-              </div>
-            </Surface>
+          <>
+            <SettingsCard icon={<ShieldCheck />} title="Einreichungen">
+              <ToggleRow
+                title="App-Einreichungen erlauben"
+                description="Geben Sie Benutzern die Freiheit, eigene Apps vorzuschlagen."
+                checked={settings.allowAppSubmissions}
+                pending={saving}
+                onChange={(value) => void save({ allowAppSubmissions: value }, "submissions")}
+              />
+            </SettingsCard>
 
             <SpaceCreationPolicyPanel />
 
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" /> FAQ & Community
-              </h3>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">FAQ aktivieren</span>
-                  <p className="text-xs text-muted-foreground max-w-xl">
-                    Erlaubt Benutzern, Fragen zu Apps zu stellen, Antworten zu
-                    geben und hilfreiche Antworten hochzuwerten.
-                  </p>
-                </div>
-                <Switch
-                  aria-label="FAQ aktivieren"
-                  isSelected={settings.faqEnabled}
-                  onChange={(val) => save({ faqEnabled: val }, "faqEnabled")}
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                  </Switch.Content>
-                </Switch>
-              </div>
-              <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
-                Wenn deaktiviert, wird die FAQ-Registerkarte ausgeblendet und
-                bestehende Fragen und Antworten bleiben erhalten.
-              </p>
-            </Surface>
-          </div>
+            <SettingsCard icon={<Layers />} title="FAQ & Community">
+              <ToggleRow
+                title="FAQ aktivieren"
+                description="Erlaubt Benutzern, Fragen zu Apps zu stellen, Antworten zu geben und hilfreiche Antworten hochzuwerten. Wenn deaktiviert, wird die FAQ-Registerkarte ausgeblendet; bestehende Fragen und Antworten bleiben erhalten."
+                checked={settings.faqEnabled}
+                pending={saving}
+                onChange={(value) => void save({ faqEnabled: value }, "faqEnabled")}
+              />
+            </SettingsCard>
+          </>
         )}
 
         {visibleSections.has("startseite") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary" /> Top Banner
-              </h3>
+          <>
+            <SettingsCard icon={<Globe />} title="Top Banner" description="Eine Ankündigung über der gesamten Seite.">
               <div className="flex flex-col gap-4">
-                <div className="flex gap-2 items-end">
-                  <TextField
-                    className="flex-grow"
-                    value={settings.topBannerText}
-                    onChange={(val) =>
-                      setSettings({ ...settings, topBannerText: val })
-                    }
-                  >
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                      Banner Text
-                    </Label>
-                    <Input
-                      placeholder="Ankuendigung hier eingeben..."
-                      className="bg-field-background"
-                    />
-                  </TextField>
-                  <Button
-                    size="sm"
-                    className="bg-primary text-white"
-                    isDisabled={saving}
-                    onPress={() =>
-                      save(
-                        {
-                          topBannerText: settings.topBannerText,
-                          topBannerType: settings.topBannerType,
-                        },
-                        "banner",
-                      )
-                    }
-                  >
-                    {savedSection === "banner" ? "Gespeichert ✓" : "Speichern"}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Typ
-                  </span>
-                  <Select
-                    selectedKey={settings.topBannerType || "info"}
-                    onSelectionChange={(key) =>
-                      setSettings({ ...settings, topBannerType: String(key) })
-                    }
-                    className="w-40"
-                    aria-label="Banner-Typ"
-                  >
-                    <Select.Trigger>
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id="info">Info</ListBox.Item>
-                        <ListBox.Item id="warning">Warnung</ListBox.Item>
-                        <ListBox.Item id="critical">Kritisch</ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                </div>
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Status
-                  </span>
-                  <Switch
-                    isSelected={settings.showTopBanner}
-                    onChange={(val) =>
-                      save({ showTopBanner: val }, "bannerToggle")
-                    }
-                  >
-                    <Switch.Content>
-                      <Switch.Control>
-                        <Switch.Thumb />
-                      </Switch.Control>
-                    </Switch.Content>
-                  </Switch>
+                <ToggleRow
+                  title="Banner anzeigen"
+                  checked={settings.showTopBanner}
+                  pending={saving}
+                  onChange={(value) => void save({ showTopBanner: value }, "bannerToggle")}
+                />
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                  <Field>
+                    <Field.Label>Banner-Text</Field.Label>
+                    <Input value={settings.topBannerText} placeholder="Ankündigung hier eingeben …" onChange={(event) => setSettings({ ...settings, topBannerText: event.target.value })} />
+                  </Field>
+                  <Field>
+                    <Field.Label>Typ</Field.Label>
+                    <Select items={BANNER_TYPES} value={settings.topBannerType || "info"} onValueChange={(value) => setSettings({ ...settings, topBannerType: String(value) })}>
+                      <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                      <Select.Content>{BANNER_TYPES.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+                    </Select>
+                  </Field>
                 </div>
               </div>
-            </Surface>
+              <SaveBar
+                saving={saving}
+                saved={savedSection === "banner"}
+                label="Speichern"
+                onSave={() => void save({ topBannerText: settings.topBannerText, topBannerType: settings.topBannerType }, "banner")}
+              />
+            </SettingsCard>
 
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary" /> Hero & Footer
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <TextField
-                  value={settings.heroBadge}
-                  onChange={(val) =>
-                    setSettings({ ...settings, heroBadge: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Hero Badge
-                  </Label>
-                  <Input
-                    placeholder="Open Source. Community-getrieben."
-                    className="bg-field-background"
+            <SettingsCard icon={<Globe />} title="Hero & Footer">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field>
+                  <Field.Label>Hero-Badge</Field.Label>
+                  <Input value={settings.heroBadge} placeholder="Open Source. Community-getrieben." onChange={(event) => setSettings({ ...settings, heroBadge: event.target.value })} />
+                </Field>
+                <Field>
+                  <Field.Label>Hero-Titel</Field.Label>
+                  <Input value={settings.heroTitle} placeholder="Der App Store für alle." onChange={(event) => setSettings({ ...settings, heroTitle: event.target.value })} />
+                </Field>
+                <Field className="md:col-span-2">
+                  <Field.Label>Hero-Untertitel</Field.Label>
+                  <Input value={settings.heroSubtitle} placeholder="Entdecken Sie Open-Source-Apps, cloud-native Lösungen …" onChange={(event) => setSettings({ ...settings, heroSubtitle: event.target.value })} />
+                </Field>
+                <Field className="md:col-span-2">
+                  <Field.Label>Footer-Text</Field.Label>
+                  <Input value={settings.footerText} placeholder="Die Plattform für moderne, souveräne Software-Lösungen …" onChange={(event) => setSettings({ ...settings, footerText: event.target.value })} />
+                </Field>
+                <div className="md:col-span-2">
+                  <ToggleRow
+                    title="Farbbalken oben anzeigen"
+                    description="Zeigt einen schmalen Farbbalken am oberen Seitenrand."
+                    checked={settings.showFlagBar}
+                    onChange={(value) => setSettings({ ...settings, showFlagBar: value })}
                   />
-                </TextField>
-                <TextField
-                  value={settings.heroTitle}
-                  onChange={(val) =>
-                    setSettings({ ...settings, heroTitle: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Hero Titel
-                  </Label>
-                  <Input
-                    placeholder="Der App Store fuer alle."
-                    className="bg-field-background"
-                  />
-                </TextField>
-                <TextField
-                  className="md:col-span-2"
-                  value={settings.heroSubtitle}
-                  onChange={(val) =>
-                    setSettings({ ...settings, heroSubtitle: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Hero Untertitel
-                  </Label>
-                  <Input
-                    placeholder="Entdecken Sie Open-Source-Apps, cloud-native Loesungen..."
-                    className="bg-field-background"
-                  />
-                </TextField>
-                <TextField
-                  className="md:col-span-2"
-                  value={settings.footerText}
-                  onChange={(val) =>
-                    setSettings({ ...settings, footerText: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Footer Text
-                  </Label>
-                  <Input
-                    placeholder="Die Plattform fuer moderne, souveraene Software-Loesungen..."
-                    className="bg-field-background"
-                  />
-                </TextField>
-                <div className="md:col-span-2 flex items-center justify-between border-t border-border pt-4 mt-1">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">
-                      Farbbalken oben anzeigen
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      Zeigt einen schmalen Farbbalken am oberen Seitenrand.
-                    </p>
-                  </div>
-                  <Switch
-                    isSelected={settings.showFlagBar}
-                    onChange={(val) =>
-                      setSettings({ ...settings, showFlagBar: val })
-                    }
-                  >
-                    <Switch.Content>
-                      <Switch.Control>
-                        <Switch.Thumb />
-                      </Switch.Control>
-                    </Switch.Content>
-                  </Switch>
                 </div>
-                <div className="md:col-span-2 grid gap-4 rounded-2xl border border-border/60 bg-surface-secondary/60 p-4">
-                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
-                    <Select
-                      selectedKey={settings.topBarPreset}
-                      onSelectionChange={(key) =>
-                        handleTopBarPresetChange(String(key))
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                        Preset fuer den oberen Balken
-                      </Label>
-                      <Select.Trigger>
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          {TOP_BAR_PRESET_OPTIONS.map((option) => (
-                            <ListBox.Item
-                              key={option.id}
-                              id={option.id}
-                              textValue={option.label}
-                            >
-                              <div className="flex flex-col gap-0.5 py-0.5">
-                                <span>{option.label}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </span>
-                              </div>
-                              <ListBox.ItemIndicator />
-                            </ListBox.Item>
-                          ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
+
+                <div className="@container flex flex-col gap-4 rounded-xl bg-muted/40 p-4 md:col-span-2">
+                  <div className="grid gap-4 @lg:grid-cols-[minmax(0,1fr)_14rem] @lg:items-end">
+                    <Field>
+                      <Field.Label>Preset für den oberen Balken</Field.Label>
+                      <PresetSelect options={TOP_BAR_PRESET_OPTIONS} value={settings.topBarPreset} onChange={handleTopBarPresetChange} />
+                    </Field>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Vorschau
-                      </span>
+                      <span className="text-sm font-medium">Vorschau</span>
                       <PalettePreview colors={topBarPreviewColors} />
                     </div>
                   </div>
                   {settings.topBarPreset === CUSTOM_BRANDING_PRESET && (
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 @lg:grid-cols-3">
                       {topBarPreviewColors.map((color, index) => (
-                        <div
-                          key={`top-bar-color-${index}`}
-                          className="flex items-end gap-2"
-                        >
-                          <div
-                            className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border"
-                            style={{ backgroundColor: color || "transparent" }}
-                          />
-                          <TextField
-                            className="flex-1"
-                            value={settings.topBarColors[index] || ""}
-                            onChange={(val) =>
-                              updateBrandColors("topBarColors", index, val)
-                            }
-                          >
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                              Balkenfarbe {index + 1}
-                            </Label>
-                            <Input
-                              placeholder="#004B76"
-                              className="bg-field-background font-mono text-sm"
-                            />
-                          </TextField>
-                        </div>
+                        <ColorField key={`top-bar-color-${index}`} label={`Balkenfarbe ${index + 1}`} color={color} value={settings.topBarColors[index] || ""} onChange={(value) => updateBrandColors("topBarColors", index, value)} />
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="md:col-span-2 grid gap-4 rounded-2xl border border-border/60 bg-surface-secondary/60 p-4">
-                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px] md:items-end">
-                    <Select
-                      selectedKey={settings.heroTitlePreset}
-                      onSelectionChange={(key) =>
-                        handleHeroTitlePresetChange(String(key))
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                        Preset fuer die Hero-Titel-Farben
-                      </Label>
-                      <Select.Trigger>
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          {HERO_TITLE_PRESET_OPTIONS.map((option) => (
-                            <ListBox.Item
-                              key={option.id}
-                              id={option.id}
-                              textValue={option.label}
-                            >
-                              <div className="flex flex-col gap-0.5 py-0.5">
-                                <span>{option.label}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </span>
-                              </div>
-                              <ListBox.ItemIndicator />
-                            </ListBox.Item>
-                          ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
+
+                <div className="@container flex flex-col gap-4 rounded-xl bg-muted/40 p-4 md:col-span-2">
+                  <div className="grid gap-4 @lg:grid-cols-[minmax(0,1fr)_14rem] @lg:items-end">
+                    <Field>
+                      <Field.Label>Preset für die Hero-Titel-Farben</Field.Label>
+                      <PresetSelect options={HERO_TITLE_PRESET_OPTIONS} value={settings.heroTitlePreset} onChange={handleHeroTitlePresetChange} />
+                    </Field>
                     <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Vorschau
-                      </span>
-                      <div className="rounded-xl border border-border/70 bg-surface px-4 py-3">
+                      <span className="text-sm font-medium">Vorschau</span>
+                      <div className="rounded-lg bg-card px-4 py-2.5 ring-1 ring-foreground/10">
                         <p
-                          className="text-lg font-extrabold tracking-tight bg-clip-text text-transparent"
-                          style={{
-                            backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(", ")})`,
-                          }}
+                          className="truncate bg-clip-text text-lg font-extrabold tracking-tight text-transparent"
+                          style={{ backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(", ")})` }}
                         >
-                          {settings.heroTitle || "Der App Store fuer alle."}
+                          {settings.heroTitle || "Der App Store für alle."}
                         </p>
                       </div>
                     </div>
                   </div>
                   {settings.heroTitlePreset === CUSTOM_BRANDING_PRESET && (
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 @lg:grid-cols-3">
                       {heroTitlePreviewColors.map((color, index) => (
-                        <div
-                          key={`hero-title-color-${index}`}
-                          className="flex items-end gap-2"
-                        >
-                          <div
-                            className="mb-0.5 h-10 w-10 shrink-0 rounded-lg border border-border"
-                            style={{ backgroundColor: color || "transparent" }}
-                          />
-                          <TextField
-                            className="flex-1"
-                            value={settings.heroTitleColors[index] || ""}
-                            onChange={(val) =>
-                              updateBrandColors("heroTitleColors", index, val)
-                            }
-                          >
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                              Titelfarbe {index + 1}
-                            </Label>
-                            <Input
-                              placeholder="#004B76"
-                              className="bg-field-background font-mono text-sm"
-                            />
-                          </TextField>
-                        </div>
+                        <ColorField key={`hero-title-color-${index}`} label={`Titelfarbe ${index + 1}`} color={color} value={settings.heroTitleColors[index] || ""} onChange={(value) => updateBrandColors("heroTitleColors", index, value)} />
                       ))}
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex justify-end mt-4 pt-4 border-t border-border">
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving}
-                  onPress={() =>
-                    save(
-                      {
-                        heroBadge: settings.heroBadge,
-                        heroTitle: settings.heroTitle,
-                        heroTitlePreset: settings.heroTitlePreset,
-                        heroTitleColors: settings.heroTitleColors,
-                        heroSubtitle: settings.heroSubtitle,
-                        footerText: settings.footerText,
-                        showFlagBar: settings.showFlagBar,
-                        topBarPreset: settings.topBarPreset,
-                        topBarColors: settings.topBarColors,
-                      },
-                      "homepage",
-                    )
-                  }
-                >
-                  {savedSection === "homepage"
-                    ? "Gespeichert ✓"
-                    : "Startseite speichern"}
-                </Button>
-              </div>
-            </Surface>
-          </div>
+              <SaveBar
+                saving={saving}
+                saved={savedSection === "homepage"}
+                label="Startseite speichern"
+                onSave={() =>
+                  void save(
+                    {
+                      heroBadge: settings.heroBadge,
+                      heroTitle: settings.heroTitle,
+                      heroTitlePreset: settings.heroTitlePreset,
+                      heroTitleColors: settings.heroTitleColors,
+                      heroSubtitle: settings.heroSubtitle,
+                      footerText: settings.footerText,
+                      showFlagBar: settings.showFlagBar,
+                      topBarPreset: settings.topBarPreset,
+                      topBarColors: settings.topBarColors,
+                    },
+                    "homepage",
+                  )
+                }
+              />
+            </SettingsCard>
+          </>
         )}
 
         {visibleSections.has("branding") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Paintbrush className="w-4 h-4 text-primary" /> Erscheinungsbild
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <TextField
-                  value={settings.storeName}
-                  onChange={(val) =>
-                    setSettings({ ...settings, storeName: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Store Name
-                  </Label>
-                  <Input
-                    placeholder="JustApps"
-                    className="bg-field-background"
-                  />
-                </TextField>
-                <TextField
-                  value={settings.accentColor}
-                  onChange={(val) =>
-                    setSettings({ ...settings, accentColor: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Akzentfarbe (CSS-Wert)
-                  </Label>
-                  <Input
-                    placeholder="#004B76 oder oklch(0.42 0.12 245)"
-                    className="bg-field-background"
-                  />
-                </TextField>
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                    Logo (Hell-Modus)
-                  </Label>
-                  <div className="flex gap-2 items-center">
-                    {logoPreviewUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={logoPreviewUrl}
-                        alt="Logo Preview"
-                        className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0"
-                      />
-                    )}
-                    <TextField
-                      value={settings.logoUrl}
-                      onChange={(val) =>
-                        setSettings({ ...settings, logoUrl: val })
-                      }
-                      className="flex-1"
-                    >
-                      <Input
-                        placeholder="https://example.com/logo.png"
-                        className="bg-field-background"
-                      />
-                    </TextField>
-                    <input
-                      ref={logoInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleLogoUpload(e, "logoUrl")}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="gap-1.5 shrink-0"
-                      isDisabled={uploading === "logo"}
-                      onPress={() => logoInputRef.current?.click()}
-                    >
-                      {uploading === "logo" ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5" />
-                      )}
-                      {uploading === "logo" ? "Laedt..." : "Upload"}
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                    Logo (Dunkel-Modus)
-                  </Label>
-                  <div className="flex gap-2 items-center">
-                    {logoDarkPreviewUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={logoDarkPreviewUrl}
-                        alt="Logo Dark Preview"
-                        className="h-8 w-8 rounded object-contain border border-border bg-[#1a1a1a] shrink-0"
-                      />
-                    )}
-                    <TextField
-                      value={settings.logoDarkUrl}
-                      onChange={(val) =>
-                        setSettings({ ...settings, logoDarkUrl: val })
-                      }
-                      className="flex-1"
-                    >
-                      <Input
-                        placeholder="https://example.com/logo-dark.png"
-                        className="bg-field-background"
-                      />
-                    </TextField>
-                    <input
-                      ref={logoDarkInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleLogoUpload(e, "logoDarkUrl")}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="gap-1.5 shrink-0"
-                      isDisabled={uploading === "logoDark"}
-                      onPress={() => logoDarkInputRef.current?.click()}
-                    >
-                      {uploading === "logoDark" ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5" />
-                      )}
-                      {uploading === "logoDark" ? "Laedt..." : "Upload"}
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                    Favicon
-                  </Label>
-                  <div className="flex gap-2 items-center">
-                    {faviconPreviewUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={faviconPreviewUrl}
-                        alt="Favicon Preview"
-                        className="h-8 w-8 rounded object-contain border border-border bg-surface shrink-0"
-                      />
-                    )}
-                    <TextField
-                      value={settings.faviconUrl}
-                      onChange={(val) =>
-                        setSettings({ ...settings, faviconUrl: val })
-                      }
-                      className="flex-1"
-                    >
-                      <Input
-                        placeholder="https://example.com/favicon.ico"
-                        className="bg-field-background"
-                      />
-                    </TextField>
-                    <input
-                      ref={faviconInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleLogoUpload(e, "faviconUrl")}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="gap-1.5 shrink-0"
-                      isDisabled={uploading === "favicon"}
-                      onPress={() => faviconInputRef.current?.click()}
-                    >
-                      {uploading === "favicon" ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5" />
-                      )}
-                      {uploading === "favicon" ? "Laedt..." : "Upload"}
-                    </Button>
-                  </div>
-                </div>
-                <TextField
-                  className="md:col-span-2"
-                  value={settings.storeDescription}
-                  onChange={(val) =>
-                    setSettings({ ...settings, storeDescription: val })
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Store Beschreibung (SEO / Metadata)
-                  </Label>
-                  <Input
-                    placeholder="Zentraler App Store fuer Softwareloesungen..."
-                    className="bg-field-background"
-                  />
-                </TextField>
+          <SettingsCard icon={<Paintbrush />} title="Erscheinungsbild">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field>
+                <Field.Label>Store-Name</Field.Label>
+                <Input value={settings.storeName} placeholder="JustApps" onChange={(event) => setSettings({ ...settings, storeName: event.target.value })} />
+              </Field>
+              <Field>
+                <Field.Label>Akzentfarbe (CSS-Wert)</Field.Label>
+                <Input value={settings.accentColor} placeholder="#004B76 oder oklch(0.42 0.12 245)" onChange={(event) => setSettings({ ...settings, accentColor: event.target.value })} />
+              </Field>
+              <AssetField
+                label="Logo (Hell-Modus)"
+                previewUrl={logoPreviewUrl}
+                previewClassName="bg-card"
+                value={settings.logoUrl}
+                placeholder="https://example.com/logo.png"
+                uploading={uploading === "logo"}
+                inputRef={logoInputRef}
+                onChange={(value) => setSettings({ ...settings, logoUrl: value })}
+                onFile={(event) => void handleLogoUpload(event, "logoUrl")}
+              />
+              <AssetField
+                label="Logo (Dunkel-Modus)"
+                previewUrl={logoDarkPreviewUrl}
+                previewClassName="bg-[#1a1a1a]"
+                value={settings.logoDarkUrl}
+                placeholder="https://example.com/logo-dark.png"
+                uploading={uploading === "logoDark"}
+                inputRef={logoDarkInputRef}
+                onChange={(value) => setSettings({ ...settings, logoDarkUrl: value })}
+                onFile={(event) => void handleLogoUpload(event, "logoDarkUrl")}
+              />
+              <div className="md:col-span-2">
+                <AssetField
+                  label="Favicon"
+                  previewUrl={faviconPreviewUrl}
+                  previewClassName="bg-card"
+                  value={settings.faviconUrl}
+                  placeholder="https://example.com/favicon.ico"
+                  uploading={uploading === "favicon"}
+                  inputRef={faviconInputRef}
+                  onChange={(value) => setSettings({ ...settings, faviconUrl: value })}
+                  onFile={(event) => void handleLogoUpload(event, "faviconUrl")}
+                />
               </div>
-              {uploadError && (
-                <p className="mt-3 text-xs text-danger font-medium">
-                  {uploadError}
-                </p>
-              )}
-              <div className="flex justify-end mt-4 pt-4 border-t border-border">
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving || uploading !== null}
-                  onPress={() =>
-                    save(
-                      {
-                        storeName: settings.storeName,
-                        storeDescription: settings.storeDescription,
-                        logoUrl: settings.logoUrl,
-                        logoDarkUrl: settings.logoDarkUrl,
-                        faviconUrl: settings.faviconUrl,
-                        accentColor: settings.accentColor,
-                      },
-                      "branding",
-                    )
-                  }
-                >
-                  {savedSection === "branding"
-                    ? "Gespeichert ✓"
-                    : "Erscheinungsbild speichern"}
-                </Button>
-              </div>
-            </Surface>
-          </div>
+              <Field className="md:col-span-2">
+                <Field.Label>Store-Beschreibung (SEO / Metadaten)</Field.Label>
+                <Input value={settings.storeDescription} placeholder="Zentraler App Store für Softwarelösungen …" onChange={(event) => setSettings({ ...settings, storeDescription: event.target.value })} />
+              </Field>
+            </div>
+            {uploadError && (
+              <Alert variant="plain" tone="destructive" className="mt-4">
+                <Alert.Icon />
+                <Alert.Title>{uploadError}</Alert.Title>
+              </Alert>
+            )}
+            <SaveBar
+              saving={saving || uploading !== null}
+              saved={savedSection === "branding"}
+              label="Erscheinungsbild speichern"
+              onSave={() =>
+                void save(
+                  {
+                    storeName: settings.storeName,
+                    storeDescription: settings.storeDescription,
+                    logoUrl: settings.logoUrl,
+                    logoDarkUrl: settings.logoDarkUrl,
+                    faviconUrl: settings.faviconUrl,
+                    accentColor: settings.accentColor,
+                  },
+                  "branding",
+                )
+              }
+            />
+          </SettingsCard>
         )}
 
         {visibleSections.has("inhalte") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" /> Fachliche Details —
-                Felder
-              </h3>
-              <p className="text-xs text-muted-foreground mb-5">
-                Definieren Sie, welche Felder im Tab &quot;Fachliche
-                Details&quot; einer App angezeigt und bearbeitet werden koennen.
-                Reihenfolge, Label und Schluessel sind frei konfigurierbar.
-              </p>
-
-              <div className="flex flex-col gap-2 mb-4">
-                {settings.detailFields.map((field, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5"
-                  >
-                    <div className="flex flex-col gap-1 flex-1 md:flex-row md:gap-3">
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
-                          Icon
-                        </Label>
-                        <div className="flex flex-wrap gap-1 p-1.5 bg-field-background border border-border rounded-lg w-full md:w-56 max-h-24 overflow-y-auto">
+          <SettingsCard
+            icon={<Layers />}
+            title="Fachliche Details – Felder"
+            description="Definieren Sie, welche Felder im Tab „Fachliche Details“ einer App angezeigt und bearbeitet werden können. Reihenfolge, Label und Schlüssel sind frei konfigurierbar."
+          >
+            <div className="flex flex-col gap-3">
+              {settings.detailFields.map((field, idx) => {
+                const patchField = (patch: Partial<DetailFieldDef>) => {
+                  const fields = [...settings.detailFields];
+                  fields[idx] = { ...fields[idx], ...patch };
+                  setSettings({ ...settings, detailFields: fields });
+                };
+                const move = (delta: number) => {
+                  const fields = [...settings.detailFields];
+                  [fields[idx], fields[idx + delta]] = [fields[idx + delta], fields[idx]];
+                  setSettings({ ...settings, detailFields: fields });
+                };
+                return (
+                  <div key={idx} className="@container flex items-start gap-2 rounded-xl bg-muted/40 p-3">
+                    <div className="grid min-w-0 flex-1 gap-3 @xl:grid-cols-[14rem_minmax(0,1fr)]">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-sm font-medium">Icon</span>
+                        <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto rounded-lg bg-card p-1.5 ring-1 ring-foreground/10">
                           {AVAILABLE_ICONS.map(({ name, component }) => (
-                            <Tooltip key={name} delay={0}>
-                              <Tooltip.Trigger>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const fields = [...settings.detailFields];
-                                    fields[idx] = {
-                                      ...fields[idx],
-                                      icon: name,
-                                    };
-                                    setSettings({
-                                      ...settings,
-                                      detailFields: fields,
-                                    });
-                                  }}
-                                  className={`p-1 rounded transition-colors ${field.icon === name ? "bg-primary text-white" : "text-muted-foreground hover:bg-surface-secondary hover:text-foreground"}`}
-                                >
-                                  {component}
-                                </button>
+                            <Tooltip key={name}>
+                              <Tooltip.Trigger
+                                render={
+                                  <button
+                                    type="button"
+                                    aria-label={name}
+                                    aria-pressed={field.icon === name}
+                                    onClick={() => patchField({ icon: name })}
+                                    className={`rounded p-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${field.icon === name ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                                  />
+                                }
+                              >
+                                {component}
                               </Tooltip.Trigger>
                               <Tooltip.Content>{name}</Tooltip.Content>
                             </Tooltip>
                           ))}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-3 flex-1">
-                        <TextField
-                          value={field.label}
-                          onChange={(val) => {
-                            const fields = [...settings.detailFields];
-                            fields[idx] = { ...fields[idx], label: val };
-                            setSettings({ ...settings, detailFields: fields });
-                          }}
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
-                            Bezeichnung
-                          </Label>
-                          <Input
-                            placeholder="z.B. Themenfeld"
-                            className="bg-field-background"
-                          />
-                        </TextField>
-                        <TextField
-                          value={field.key}
-                          onChange={(val) => {
-                            const fields = [...settings.detailFields];
-                            fields[idx] = {
-                              ...fields[idx],
-                              key: val.toLowerCase().replace(/\s+/g, "_"),
-                            };
-                            setSettings({ ...settings, detailFields: fields });
-                          }}
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
-                            Schluessel (intern)
-                          </Label>
-                          <Input
-                            placeholder="z.B. focus"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
+                      <div className="flex flex-col gap-3">
+                        <Field>
+                          <Field.Label>Bezeichnung</Field.Label>
+                          <Input value={field.label} placeholder="z. B. Themenfeld" onChange={(event) => patchField({ label: event.target.value })} />
+                        </Field>
+                        <Field>
+                          <Field.Label>Schlüssel (intern)</Field.Label>
+                          <Input className="font-mono text-sm" value={field.key} placeholder="z. B. focus" onChange={(event) => patchField({ key: event.target.value.toLowerCase().replace(/\s+/g, "_") })} />
+                        </Field>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 w-7 p-0"
-                        isDisabled={idx === 0}
-                        onPress={() => {
-                          const fields = [...settings.detailFields];
-                          [fields[idx - 1], fields[idx]] = [
-                            fields[idx],
-                            fields[idx - 1],
-                          ];
-                          setSettings({ ...settings, detailFields: fields });
-                        }}
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-7 w-7 p-0"
-                        isDisabled={idx === settings.detailFields.length - 1}
-                        onPress={() => {
-                          const fields = [...settings.detailFields];
-                          [fields[idx], fields[idx + 1]] = [
-                            fields[idx + 1],
-                            fields[idx],
-                          ];
-                          setSettings({ ...settings, detailFields: fields });
-                        }}
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </Button>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <Button variant="ghost" size="icon-sm" aria-label="Nach oben" disabled={idx === 0} onClick={() => move(-1)}><ArrowUp /></Button>
+                      <Button variant="ghost" size="icon-sm" aria-label="Nach unten" disabled={idx === settings.detailFields.length - 1} onClick={() => move(1)}><ArrowDown /></Button>
+                      <Button variant="ghost" size="icon-sm" aria-label="Feld entfernen" onClick={() => setSettings({ ...settings, detailFields: settings.detailFields.filter((_, i) => i !== idx) })}><Trash2 /></Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-9 w-9 p-0 text-danger shrink-0"
-                      onPress={() => {
-                        const fields = settings.detailFields.filter(
-                          (_, i) => i !== idx,
-                        );
-                        setSettings({ ...settings, detailFields: fields });
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-border pt-4">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onPress={() => {
-                    const fields = [
-                      ...settings.detailFields,
-                      { key: "", label: "" },
-                    ];
-                    setSettings({ ...settings, detailFields: fields });
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Feld hinzufuegen
+                );
+              })}
+            </div>
+            <SaveBar
+              saving={saving}
+              saved={savedSection === "detailFields"}
+              label="Felder speichern"
+              onSave={() => void save({ detailFields: settings.detailFields }, "detailFields")}
+              start={
+                <Button variant="secondary" onClick={() => setSettings({ ...settings, detailFields: [...settings.detailFields, { key: "", label: "" }] })}>
+                  <Plus />
+                  Feld hinzufügen
                 </Button>
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving}
-                  onPress={() =>
-                    save(
-                      { detailFields: settings.detailFields },
-                      "detailFields",
-                    )
-                  }
-                >
-                  {savedSection === "detailFields"
-                    ? "Gespeichert ✓"
-                    : "Felder speichern"}
-                </Button>
-              </div>
-            </Surface>
-          </div>
+              }
+            />
+          </SettingsCard>
         )}
+
         {visibleSections.has("footer") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-primary" /> Footer — Links
-              </h3>
-              <p className="text-xs text-muted-foreground mb-5">
-                Konfigurieren Sie die Links im Footer (z.B. Impressum,
-                Datenschutz). Ohne Eintraege werden die Standardlinks angezeigt.
-              </p>
-
-              <div className="flex flex-col gap-2 mb-4">
-                {settings.footerLinks.map((link, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-surface/50 border border-border rounded-xl p-2.5"
-                  >
-                    <div className="flex flex-col gap-3 flex-1 md:flex-row md:gap-3">
-                      <TextField
-                        className="flex-1"
-                        value={link.label}
-                        onChange={(val) => {
-                          const links = [...settings.footerLinks];
-                          links[idx] = { ...links[idx], label: val };
-                          setSettings({ ...settings, footerLinks: links });
-                        }}
-                      >
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
-                          Bezeichnung
-                        </Label>
-                        <Input
-                          placeholder="z.B. Impressum"
-                          className="bg-field-background"
-                        />
-                      </TextField>
-                      <TextField
-                        className="flex-1"
-                        value={link.url}
-                        onChange={(val) => {
-                          const links = [...settings.footerLinks];
-                          links[idx] = { ...links[idx], url: val };
-                          setSettings({ ...settings, footerLinks: links });
-                        }}
-                      >
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-0.5">
-                          URL
-                        </Label>
-                        <Input
-                          placeholder="https://example.com/impressum"
-                          className="bg-field-background font-mono text-sm"
-                        />
-                      </TextField>
+          <SettingsCard
+            icon={<ExternalLink />}
+            title="Footer – Links"
+            description="Konfigurieren Sie die Links im Footer (z. B. Impressum, Datenschutz). Ohne Einträge werden die Standardlinks angezeigt."
+          >
+            <div className="flex flex-col gap-3">
+              {settings.footerLinks.map((link, idx) => {
+                const patchLink = (patch: Partial<FooterLink>) => {
+                  const links = [...settings.footerLinks];
+                  links[idx] = { ...links[idx], ...patch };
+                  setSettings({ ...settings, footerLinks: links });
+                };
+                return (
+                  <div key={idx} className="@container flex items-end gap-2 rounded-xl bg-muted/40 p-3">
+                    <div className="grid min-w-0 flex-1 gap-3 @lg:grid-cols-2">
+                      <Field>
+                        <Field.Label>Bezeichnung</Field.Label>
+                        <Input value={link.label} placeholder="z. B. Impressum" onChange={(event) => patchLink({ label: event.target.value })} />
+                      </Field>
+                      <Field>
+                        <Field.Label>URL</Field.Label>
+                        <Input className="font-mono text-sm" value={link.url} placeholder="https://example.com/impressum" onChange={(event) => patchLink({ url: event.target.value })} />
+                      </Field>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-9 w-9 p-0 text-danger shrink-0 self-end mb-0.5"
-                      onPress={() => {
-                        const links = settings.footerLinks.filter(
-                          (_, i) => i !== idx,
-                        );
-                        setSettings({ ...settings, footerLinks: links });
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="Link entfernen" onClick={() => setSettings({ ...settings, footerLinks: settings.footerLinks.filter((_, i) => i !== idx) })}><Trash2 /></Button>
                   </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-border pt-4">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onPress={() => {
-                    const links = [
-                      ...settings.footerLinks,
-                      { label: "", url: "" },
-                    ];
-                    setSettings({ ...settings, footerLinks: links });
-                  }}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Link hinzufuegen
+                );
+              })}
+              {settings.footerLinks.length === 0 && <p className="text-sm text-muted-foreground">Keine eigenen Links – es werden die Standardlinks angezeigt.</p>}
+            </div>
+            <SaveBar
+              saving={saving}
+              saved={savedSection === "footerLinks"}
+              label="Links speichern"
+              onSave={() => void save({ footerLinks: settings.footerLinks }, "footerLinks")}
+              start={
+                <Button variant="secondary" onClick={() => setSettings({ ...settings, footerLinks: [...settings.footerLinks, { label: "", url: "" }] })}>
+                  <Plus />
+                  Link hinzufügen
                 </Button>
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving}
-                  onPress={() =>
-                    save({ footerLinks: settings.footerLinks }, "footerLinks")
-                  }
-                >
-                  {savedSection === "footerLinks"
-                    ? "Gespeichert ✓"
-                    : "Links speichern"}
-                </Button>
-              </div>
-            </Surface>
-          </div>
+              }
+            />
+          </SettingsCard>
         )}
 
         {visibleSections.has("apps") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                <SortAsc className="w-4 h-4 text-primary" /> App-Sortierung
-              </h3>
-              <p className="text-xs text-muted-foreground mb-5">
-                Legen Sie fest, nach welchem Kriterium Apps standardmaessig
-                sortiert werden und welche Apps immer oben erscheinen.
-              </p>
-
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                  <Select
-                    className="flex-1"
-                    selectedKey={settings.appSortField}
-                    onSelectionChange={(key) =>
-                      setSettings({ ...settings, appSortField: String(key) })
-                    }
-                  >
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                      Sortierfeld
-                    </Label>
-                    <Select.Trigger>
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id="name" textValue="Name (A–Z)">
-                          Name (A–Z)
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                        <ListBox.Item id="rating_avg" textValue="Bewertung">
-                          Bewertung
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                        <ListBox.Item
-                          id="updated_at"
-                          textValue="Zuletzt aktualisiert"
-                        >
-                          Zuletzt aktualisiert
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                        <ListBox.Item id="status" textValue="Status">
-                          Status
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-
+          <>
+            <SettingsCard
+              icon={<SortAsc />}
+              title="App-Sortierung"
+              description="Legen Sie fest, nach welchem Kriterium Apps standardmäßig sortiert werden und welche Apps immer oben erscheinen."
+            >
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <Field>
+                    <Field.Label>Sortierfeld</Field.Label>
+                    <Select items={SORT_FIELDS} value={settings.appSortField} onValueChange={(value) => setSettings({ ...settings, appSortField: String(value) })}>
+                      <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                      <Select.Content>{SORT_FIELDS.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+                    </Select>
+                  </Field>
                   <div className="flex flex-col gap-1.5">
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                      Richtung
-                    </Label>
+                    <span className="text-sm font-medium">Richtung</span>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={
-                          settings.appSortDirection === "asc"
-                            ? "primary"
-                            : "secondary"
-                        }
-                        className={`gap-1.5 ${settings.appSortDirection === "asc" ? "bg-primary text-white" : ""}`}
-                        onPress={() =>
-                          setSettings({ ...settings, appSortDirection: "asc" })
-                        }
-                      >
-                        <SortAsc className="w-3.5 h-3.5" /> Aufsteigend
+                      <Button variant={settings.appSortDirection === "asc" ? "default" : "secondary"} aria-pressed={settings.appSortDirection === "asc"} onClick={() => setSettings({ ...settings, appSortDirection: "asc" })}>
+                        <SortAsc /> Aufsteigend
                       </Button>
-                      <Button
-                        size="sm"
-                        variant={
-                          settings.appSortDirection === "desc"
-                            ? "primary"
-                            : "secondary"
-                        }
-                        className={`gap-1.5 ${settings.appSortDirection === "desc" ? "bg-primary text-white" : ""}`}
-                        onPress={() =>
-                          setSettings({ ...settings, appSortDirection: "desc" })
-                        }
-                      >
-                        <SortDesc className="w-3.5 h-3.5" /> Absteigend
+                      <Button variant={settings.appSortDirection === "desc" ? "default" : "secondary"} aria-pressed={settings.appSortDirection === "desc"} onClick={() => setSettings({ ...settings, appSortDirection: "desc" })}>
+                        <SortDesc /> Absteigend
                       </Button>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-border pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Pin className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                <div className="flex flex-col gap-3 border-t pt-5">
+                  <div>
+                    <h4 className="flex items-center gap-2 text-sm font-medium">
+                      <Pin className="size-3.5 text-muted-foreground" />
                       Angepinnte Apps
-                    </span>
+                    </h4>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      App-IDs, die unabhängig von der Sortierung immer an erster Stelle angezeigt werden. Die Reihenfolge entspricht der Anzeigereihenfolge.
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Apps-IDs, die unabhaengig von der Sortierung immer an erster
-                    Stelle angezeigt werden. Reihenfolge entspricht der
-                    Anzeigereihenfolge.
-                  </p>
-
-                  <div className="flex flex-col gap-2 mb-3">
-                    {settings.pinnedApps.length === 0 && (
-                      <p className="text-xs text-muted-foreground/60 italic">
-                        Keine Apps angepinnt.
-                      </p>
-                    )}
-                    {settings.pinnedApps.map((appId, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 bg-surface/50 border border-border rounded-lg px-3 py-2"
-                      >
-                        <Pin className="w-3 h-3 text-primary shrink-0" />
-                        <span className="flex-1 text-sm font-mono truncate">
-                          {appId}
-                        </span>
-                        <div className="flex gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-6 w-6 p-0"
-                            isDisabled={idx === 0}
-                            onPress={() => {
-                              const pins = [...settings.pinnedApps];
-                              [pins[idx - 1], pins[idx]] = [
-                                pins[idx],
-                                pins[idx - 1],
-                              ];
-                              setSettings({ ...settings, pinnedApps: pins });
-                            }}
-                          >
-                            <ArrowUp className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-6 w-6 p-0"
-                            isDisabled={idx === settings.pinnedApps.length - 1}
-                            onPress={() => {
-                              const pins = [...settings.pinnedApps];
-                              [pins[idx], pins[idx + 1]] = [
-                                pins[idx + 1],
-                                pins[idx],
-                              ];
-                              setSettings({ ...settings, pinnedApps: pins });
-                            }}
-                          >
-                            <ArrowDown className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-6 w-6 p-0 text-danger"
-                            onPress={() => {
-                              const pins = settings.pinnedApps.filter(
-                                (_, i) => i !== idx,
-                              );
-                              setSettings({ ...settings, pinnedApps: pins });
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <TextField
-                      className="flex-1"
-                      value={pinnedAppInput}
-                      onChange={(val) => setPinnedAppInput(val)}
-                    >
-                      <Input
-                        placeholder="App-ID eingeben (z.B. nextcloud)"
-                        className="bg-field-background font-mono text-sm"
-                      />
-                    </TextField>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="gap-1.5 shrink-0"
-                      isDisabled={
-                        !pinnedAppInput.trim() ||
-                        settings.pinnedApps.includes(pinnedAppInput.trim())
+                  {settings.pinnedApps.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Keine Apps angepinnt.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-1.5">
+                      {settings.pinnedApps.map((appId, idx) => (
+                        <li key={appId + idx} className="flex items-center gap-2 rounded-lg bg-muted/40 py-1.5 ps-3 pe-1.5">
+                          <Pin className="size-3 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1 truncate font-mono text-sm">{appId}</span>
+                          <Button variant="ghost" size="icon-sm" aria-label="Nach oben" disabled={idx === 0} onClick={() => {
+                            const pins = [...settings.pinnedApps];
+                            [pins[idx - 1], pins[idx]] = [pins[idx], pins[idx - 1]];
+                            setSettings({ ...settings, pinnedApps: pins });
+                          }}><ArrowUp /></Button>
+                          <Button variant="ghost" size="icon-sm" aria-label="Nach unten" disabled={idx === settings.pinnedApps.length - 1} onClick={() => {
+                            const pins = [...settings.pinnedApps];
+                            [pins[idx], pins[idx + 1]] = [pins[idx + 1], pins[idx]];
+                            setSettings({ ...settings, pinnedApps: pins });
+                          }}><ArrowDown /></Button>
+                          <Button variant="ghost" size="icon-sm" aria-label={`${appId} entfernen`} onClick={() => setSettings({ ...settings, pinnedApps: settings.pinnedApps.filter((_, i) => i !== idx) })}><Trash2 /></Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <form
+                    className="flex gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const id = pinnedAppInput.trim();
+                      if (id && !settings.pinnedApps.includes(id)) {
+                        setSettings({ ...settings, pinnedApps: [...settings.pinnedApps, id] });
+                        setPinnedAppInput("");
                       }
-                      onPress={() => {
-                        const id = pinnedAppInput.trim();
-                        if (id && !settings.pinnedApps.includes(id)) {
-                          setSettings({
-                            ...settings,
-                            pinnedApps: [...settings.pinnedApps, id],
-                          });
-                          setPinnedAppInput("");
-                        }
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Hinzufuegen
+                    }}
+                  >
+                    <Input aria-label="App-ID" className="font-mono text-sm" value={pinnedAppInput} placeholder="App-ID eingeben (z. B. nextcloud)" onChange={(event) => setPinnedAppInput(event.target.value)} />
+                    <Button type="submit" variant="secondary" className="shrink-0" disabled={!pinnedAppInput.trim() || settings.pinnedApps.includes(pinnedAppInput.trim())}>
+                      <Plus /> Hinzufügen
                     </Button>
-                  </div>
+                  </form>
                 </div>
               </div>
+              <SaveBar
+                saving={saving}
+                saved={savedSection === "sort"}
+                label="Sortierung speichern"
+                onSave={() => void save({ appSortField: settings.appSortField, appSortDirection: settings.appSortDirection, pinnedApps: settings.pinnedApps }, "sort")}
+              />
+            </SettingsCard>
 
-              <div className="flex justify-end mt-4 pt-4 border-t border-border">
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving}
-                  onPress={() =>
-                    save(
-                      {
-                        appSortField: settings.appSortField,
-                        appSortDirection: settings.appSortDirection,
-                        pinnedApps: settings.pinnedApps,
-                      },
-                      "sort",
-                    )
-                  }
-                >
-                  {savedSection === "sort"
-                    ? "Gespeichert ✓"
-                    : "Sortierung speichern"}
-                </Button>
-              </div>
-            </Surface>
-
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-primary" />{" "}
-                Link-Status-Prüfung
-              </h3>
-              <p className="text-xs text-muted-foreground mb-5">
-                Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links
-                serverseitig geprüft und ein farbiger Status-Punkt angezeigt.
-                Einzelne Apps können die Prüfung über ihre eigene Einstellung
-                deaktivieren (z.B. bei Links hinter Authentifizierung).
-              </p>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold">
-                    Status-Prüfung aktivieren
-                  </span>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links
-                    an.
-                  </p>
-                </div>
-                <Switch
-                  isSelected={settings.enableLinkProbing}
-                  onChange={(val) =>
-                    setSettings({ ...settings, enableLinkProbing: val })
-                  }
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                  </Switch.Content>
-                </Switch>
-              </div>
-              <div className="flex justify-end mt-4 pt-4 border-t border-border">
-                <Button
-                  className="bg-primary text-white"
-                  isDisabled={saving}
-                  onPress={() =>
-                    save(
-                      { enableLinkProbing: settings.enableLinkProbing },
-                      "linkProbing",
-                    )
-                  }
-                >
-                  {savedSection === "linkProbing"
-                    ? "Gespeichert ✓"
-                    : "Speichern"}
-                </Button>
-              </div>
-            </Surface>
-          </div>
+            <SettingsCard
+              icon={<ExternalLink />}
+              title="Link-Status-Prüfung"
+              description="Wenn aktiviert, wird die Erreichbarkeit von Live-Demo-Links serverseitig geprüft und ein farbiger Status-Punkt angezeigt. Einzelne Apps können die Prüfung über ihre eigene Einstellung deaktivieren (z. B. bei Links hinter Authentifizierung)."
+            >
+              <ToggleRow
+                title="Status-Prüfung aktivieren"
+                description="Zeigt einen Erreichbarkeits-Indikator neben Live-Demo-Links an."
+                checked={settings.enableLinkProbing}
+                onChange={(value) => setSettings({ ...settings, enableLinkProbing: value })}
+              />
+              <SaveBar saving={saving} saved={savedSection === "linkProbing"} label="Speichern" onSave={() => void save({ enableLinkProbing: settings.enableLinkProbing }, "linkProbing")} />
+            </SettingsCard>
+          </>
         )}
 
         {visibleSections.has("integrationen") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-primary" />{" "}
-                Repository-Provider
-              </h3>
-              <p className="text-xs text-muted-foreground mb-5">
-                Verwalten Sie hier Repository-Provider vollständig in der
-                Datenbank. Tokens werden verschlüsselt gespeichert und nach dem
-                Speichern nicht mehr angezeigt.
+          <section className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Verwalten Sie hier Repository-Provider vollständig in der Datenbank. Tokens werden verschlüsselt gespeichert und nach dem Speichern nicht mehr angezeigt.
               </p>
+              <Button className="shrink-0" onClick={() => setCreateProviderModalOpen(true)}>
+                <Plus />
+                {savedSection === "gitlab-create" ? "Provider erstellt ✓" : "Neuer Provider"}
+              </Button>
+            </div>
 
-              {gitLabProviderError && (
-                <div className="mb-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-                  {gitLabProviderError}
-                </div>
-              )}
+            {gitLabProviderError && (
+              <Alert variant="plain" tone="destructive">
+                <Alert.Icon />
+                <Alert.Title>{gitLabProviderError}</Alert.Title>
+              </Alert>
+            )}
 
-              <div className="mb-5 rounded-2xl border border-dashed border-border bg-surface-secondary/35 p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      Neuen Repository-Provider anlegen
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Der Formular-Dialog hält die Integrationsseite kompakt.
-                      Schlüssel, Typ und Token werden dort beim Erstellen
-                      festgelegt.
-                    </p>
-                  </div>
-                  <Button
-                    className="bg-primary text-white"
-                    onPress={() => setCreateProviderModalOpen(true)}
-                  >
-                    <Plus className="w-4 h-4" />
-                    {savedSection === "gitlab-create"
-                      ? "Provider erstellt ✓"
-                      : "Neuen Provider anlegen"}
-                  </Button>
-                </div>
-              </div>
-
-              {gitLabProviders.length === 0 ? (
-                <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-                  Es sind aktuell keine Repository-Provider in der Datenbank
-                  konfiguriert.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-5">
-                  {gitLabProviders.map((provider) => (
-                    <div
-                      key={provider.providerKey}
-                      className="rounded-2xl border border-border bg-surface p-5"
-                    >
-                      <div className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground">
-                              {provider.providerKey}
-                            </p>
-                            {provider.providerType && (
-                              <span className="inline-flex rounded-full border border-border bg-surface-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                {provider.providerType === "github"
-                                  ? "GitHub"
-                                  : provider.providerType === "gitlab"
-                                    ? "GitLab"
-                                    : provider.providerType}
-                              </span>
-                            )}
-                            {(provider.linkedAppsCount || 0) > 0 && (
-                              <span className="inline-flex rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
-                                {provider.linkedAppsCount} App-Verknüpfungen
-                              </span>
-                            )}
+            {gitLabProviders.length === 0 ? (
+              <Alert variant="plain" tone="warning">
+                <Alert.Icon />
+                <Alert.Title>Es sind aktuell keine Repository-Provider in der Datenbank konfiguriert.</Alert.Title>
+              </Alert>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {gitLabProviders.map((provider) => {
+                  const linked = provider.linkedAppsCount || 0;
+                  return (
+                    <Card key={provider.providerKey} className="@container">
+                      <Card.Header>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex min-w-0 flex-col gap-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Card.Title>{provider.label || provider.providerKey}</Card.Title>
+                              {provider.label && <code className="font-mono text-xs text-muted-foreground">{provider.providerKey}</code>}
+                              {provider.providerType && (
+                                <Badge variant="secondary" size="sm">
+                                  {provider.providerType === "github" ? "GitHub" : provider.providerType === "gitlab" ? "GitLab" : provider.providerType}
+                                </Badge>
+                              )}
+                              {linked > 0 && <Badge variant="warning" size="sm">{linked} {linked === 1 ? "App-Verknüpfung" : "App-Verknüpfungen"}</Badge>}
+                              <Badge variant={provider.enabled ? "success" : "secondary"} size="sm">{provider.enabled ? "Aktiv" : "Deaktiviert"}</Badge>
+                              <Badge variant={provider.autoSyncEnabled ? "info" : "secondary"} size="sm">{provider.autoSyncEnabled ? "Auto-Sync an" : "Auto-Sync aus"}</Badge>
+                            </div>
+                            <Card.Description>
+                              {provider.tokenConfigured ? "Token verschlüsselt in der Datenbank gespeichert" : "Kein Token gespeichert"}
+                              {provider.configured ? " · Provider aktiv konfiguriert" : " · Provider derzeit nicht vollständig nutzbar"}
+                            </Card.Description>
                           </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {provider.tokenConfigured
-                              ? "Token verschlüsselt in der Datenbank gespeichert"
-                              : "Kein Token gespeichert"}
-                            {provider.configured
-                              ? " · Provider aktiv konfiguriert"
-                              : " · Provider derzeit nicht vollständig nutzbar"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted-foreground"}`}
-                          >
-                            {provider.enabled ? "Aktiv" : "Deaktiviert"}
-                          </span>
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 font-semibold ${provider.autoSyncEnabled ? "border-primary/20 bg-primary/10 text-primary" : "border-border bg-surface-secondary text-muted-foreground"}`}
-                          >
-                            {provider.autoSyncEnabled
-                              ? "Auto-Sync an"
-                              : "Auto-Sync aus"}
-                          </span>
-                          <Tooltip delay={0}>
-                            <Tooltip.Trigger>
-                              <div>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-8 w-8 p-0 text-danger"
-                                  isDisabled={
-                                    saving ||
-                                    (provider.linkedAppsCount || 0) > 0
-                                  }
-                                  onPress={() => setProviderToDelete(provider)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
+                          <Tooltip>
+                            <Tooltip.Trigger render={<span tabIndex={linked > 0 ? 0 : -1} />}>
+                              <Button variant="ghost" size="icon-sm" aria-label={`${provider.providerKey} löschen`} disabled={saving || linked > 0} onClick={() => setProviderToDelete(provider)}>
+                                <Trash2 />
+                              </Button>
                             </Tooltip.Trigger>
-                            <Tooltip.Content>
-                              {(provider.linkedAppsCount || 0) > 0
-                                ? "Verknüpfte Apps zuerst lösen, bevor der Provider gelöscht werden kann."
-                                : "Provider löschen"}
-                            </Tooltip.Content>
+                            <Tooltip.Content>{linked > 0 ? "Verknüpfte Apps zuerst lösen, bevor der Provider gelöscht werden kann." : "Provider löschen"}</Tooltip.Content>
                           </Tooltip>
                         </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <TextField
-                          value={provider.label}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              label: val,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Bezeichnung
-                          </Label>
-                          <Input
-                            placeholder="z. B. interne Forge oder GitHub.com"
-                            className="bg-field-background"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={provider.baseUrl}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              baseUrl: val,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Base URL
-                          </Label>
-                          <Input
-                            placeholder="https://gitlab.example.org oder https://github.com"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={provider.defaultReadmePath || ""}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              defaultReadmePath: val,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Standard README-Pfad
-                          </Label>
-                          <Input
-                            placeholder="optional, z. B. docs/README.md"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={provider.defaultHelmValuesPath || ""}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              defaultHelmValuesPath: val,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Standard Helm Values
-                          </Label>
-                          <Input
-                            placeholder="chart/values.yaml"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={provider.defaultComposeFilePath || ""}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              defaultComposeFilePath: val,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Standard Compose-Datei
-                          </Label>
-                          <Input
-                            placeholder="docker-compose.yml"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={
-                            providerTokenDrafts[provider.providerKey] || ""
-                          }
-                          onChange={(val) =>
-                            updateProviderTokenDraft(provider.providerKey, val)
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Token ersetzen
-                          </Label>
-                          <Input
-                            placeholder={
-                              provider.tokenConfigured
-                                ? "Neuen Token eingeben, um den bestehenden zu ersetzen"
-                                : "Token eingeben"
-                            }
-                            className="bg-field-background font-mono text-sm"
-                            type="password"
-                          />
-                        </TextField>
-
-                        <TextField
-                          value={String(provider.syncIntervalMinutes)}
-                          onChange={(val) =>
-                            updateGitLabProvider(provider.providerKey, {
-                              syncIntervalMinutes:
-                                Number.parseInt(val || "15", 10) || 15,
-                            })
-                          }
-                        >
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Sync-Intervall (Minuten)
-                          </Label>
-                          <Input
-                            placeholder="15"
-                            className="bg-field-background font-mono text-sm"
-                          />
-                        </TextField>
-
-                        <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <div className="flex h-full flex-col justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                Token-Status
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
+                      </Card.Header>
+                      <Card.Content>
+                        <RepositoryProviderFields
+                          values={{
+                            label: provider.label,
+                            baseUrl: provider.baseUrl,
+                            token: providerTokenDrafts[provider.providerKey] || "",
+                            namespaceAllowlist: providerNamespaceAllowlistDrafts[provider.providerKey] ?? provider.namespaceAllowlist.join("\n"),
+                            enabled: provider.enabled,
+                            autoSyncEnabled: provider.autoSyncEnabled,
+                            syncIntervalMinutes: provider.syncIntervalMinutes,
+                            defaultReadmePath: provider.defaultReadmePath || "",
+                            defaultHelmValuesPath: provider.defaultHelmValuesPath || "",
+                            defaultComposeFilePath: provider.defaultComposeFilePath || "",
+                          }}
+                          onChange={(patch) => {
+                            const { token, namespaceAllowlist, ...rest } = patch;
+                            if (token !== undefined) updateProviderTokenDraft(provider.providerKey, token);
+                            if (namespaceAllowlist !== undefined) setProviderNamespaceAllowlistDrafts((prev) => ({ ...prev, [provider.providerKey]: namespaceAllowlist }));
+                            if (Object.keys(rest).length) updateGitLabProvider(provider.providerKey, rest);
+                          }}
+                          tokenLabel="Token ersetzen"
+                          tokenPlaceholder={provider.tokenConfigured ? "Neuen Token eingeben, um den bestehenden zu ersetzen" : "Token eingeben"}
+                          tokenStatus={
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs text-muted-foreground">
                                 {provider.tokenConfigured
                                   ? "Ein Token ist gespeichert. Beim Ersetzen wird der alte Token überschrieben."
-                                  : "Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für Sync nutzbar."}
+                                  : "Aktuell ist kein Token gespeichert. Ohne Token ist der Provider nicht für den Sync nutzbar."}
                               </p>
+                              {provider.tokenConfigured && (
+                                <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={() => void saveGitLabProvider(provider, { clearToken: true })}>
+                                  Token löschen
+                                </Button>
+                              )}
                             </div>
-                            <div className="flex justify-end">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="text-danger"
-                                isDisabled={saving || !provider.tokenConfigured}
-                                onPress={() =>
-                                  saveGitLabProvider(provider, {
-                                    clearToken: true,
-                                  })
-                                }
-                              >
-                                Token löschen
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                            Namespace-Allowlist
-                          </Label>
-                          <textarea
-                            value={
-                              providerNamespaceAllowlistDrafts[
-                                provider.providerKey
-                              ] ?? provider.namespaceAllowlist.join("\n")
-                            }
-                            onChange={(event) =>
-                              setProviderNamespaceAllowlistDrafts((prev) => ({
-                                ...prev,
-                                [provider.providerKey]: event.target.value,
-                              }))
-                            }
-                            className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                            placeholder={"gruppe\norganisation/team"}
-                          />
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            Leer lassen, um alle Namespaces zuzulassen. Ein
-                            Eintrag pro Zeile oder komma-getrennt.
-                          </p>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                Provider im UI aktiv
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Steuert, ob Apps diesen Provider auswählen
-                                dürfen.
-                              </p>
-                            </div>
-                            <Switch
-                              isSelected={provider.enabled}
-                              onChange={(val) =>
-                                updateGitLabProvider(provider.providerKey, {
-                                  enabled: val,
-                                })
-                              }
-                            >
-                              <Switch.Content>
-                                <Switch.Control>
-                                  <Switch.Thumb />
-                                </Switch.Control>
-                              </Switch.Content>
-                            </Switch>
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">
-                                Automatische Synchronisation
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Aktiviert den geplanten Hintergrund-Sync für
-                                verknüpfte Apps dieses Providers.
-                              </p>
-                            </div>
-                            <Switch
-                              isSelected={provider.autoSyncEnabled}
-                              onChange={(val) =>
-                                updateGitLabProvider(provider.providerKey, {
-                                  autoSyncEnabled: val,
-                                })
-                              }
-                            >
-                              <Switch.Content>
-                                <Switch.Control>
-                                  <Switch.Thumb />
-                                </Switch.Control>
-                              </Switch.Content>
-                            </Switch>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 flex justify-end border-t border-border pt-4">
-                        <Button
-                          className="bg-primary text-white"
-                          isDisabled={saving}
-                          onPress={() => saveGitLabProvider(provider)}
-                        >
-                          {savedSection === `gitlab-${provider.providerKey}`
-                            ? "Gespeichert ✓"
-                            : "Provider speichern"}
+                          }
+                        />
+                      </Card.Content>
+                      <Card.Footer className="justify-end">
+                        <Button loading={saving} onClick={() => void saveGitLabProvider(provider)}>
+                          {savedSection === `gitlab-${provider.providerKey}` ? "Gespeichert ✓" : "Provider speichern"}
                         </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Surface>
-          </div>
+                      </Card.Footer>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
         {visibleSections.has("ai-access") && (
-          <div className="flex flex-col gap-6">
-            <Surface className="p-6 border border-border/50 shadow-sm">
-              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
-                <Bot className="w-4 h-4 text-primary" /> AI-Zugriff
-              </h3>
-              <div className="flex flex-col gap-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">
-                      AI-Funktion aktivieren
-                    </span>
-                    <p className="text-xs text-muted-foreground max-w-xl">
-                      Schaltet den AI-Chat, das Floating-Widget und die
-                      zugehörigen API-Endpunkte global ein oder aus.
-                    </p>
-                  </div>
-                  <Switch
-                    isSelected={settings.aiEnabled}
-                    onChange={(val) => save({ aiEnabled: val }, "aiEnabled")}
-                  >
-                    <Switch.Content>
-                      <Switch.Control>
-                        <Switch.Thumb />
-                      </Switch.Control>
-                    </Switch.Content>
-                  </Switch>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">
-                      Anonymen AI-Zugriff erlauben
-                    </span>
-                    <p className="text-xs text-muted-foreground max-w-xl">
-                      Erlaubt nicht angemeldeten Besuchern den Zugriff auf den
-                      AI-Chat und das Floating-Widget. Der Verlauf bleibt nur
-                      lokal im Browser gespeichert.
-                    </p>
-                  </div>
-                  <Switch
-                    isDisabled={!settings.aiEnabled}
-                    isSelected={settings.allowAnonymousAI}
-                    onChange={(val) =>
-                      save({ allowAnonymousAI: val }, "anonymousAI")
-                    }
-                  >
-                    <Switch.Content>
-                      <Switch.Control>
-                        <Switch.Thumb />
-                      </Switch.Control>
-                    </Switch.Content>
-                  </Switch>
-                </div>
-
-                {!settings.aiEnabled && (
-                  <p className="text-xs text-muted-foreground">
-                    Die AI-Provider-Konfiguration bleibt erhalten und wird
-                    wieder verwendet, sobald die Funktion erneut aktiviert wird.
-                  </p>
-                )}
-              </div>
-            </Surface>
-          </div>
+          <SettingsCard icon={<Bot />} title="AI-Zugriff">
+            <div className="flex flex-col gap-3">
+              <ToggleRow
+                title="AI-Funktion aktivieren"
+                description="Schaltet den AI-Chat, das Floating-Widget und die zugehörigen API-Endpunkte global ein oder aus."
+                checked={settings.aiEnabled}
+                pending={saving}
+                onChange={(value) => void save({ aiEnabled: value }, "aiEnabled")}
+              />
+              <ToggleRow
+                title="Anonymen AI-Zugriff erlauben"
+                description="Erlaubt nicht angemeldeten Besuchern den Zugriff auf den AI-Chat und das Floating-Widget. Der Verlauf bleibt nur lokal im Browser gespeichert."
+                checked={settings.allowAnonymousAI}
+                disabled={!settings.aiEnabled}
+                pending={saving}
+                onChange={(value) => void save({ allowAnonymousAI: value }, "anonymousAI")}
+              />
+              {!settings.aiEnabled && (
+                <p className="text-xs text-muted-foreground">
+                  Die AI-Provider-Konfiguration bleibt erhalten und wird wieder verwendet, sobald die Funktion erneut aktiviert wird.
+                </p>
+              )}
+            </div>
+          </SettingsCard>
         )}
-        {visibleSections.has("ai") && (
-          <div className="flex flex-col gap-6">
-            <AIProviderSettingsPanel />
-          </div>
-        )}
+
+        {visibleSections.has("ai") && <AIProviderSettingsPanel />}
       </div>
 
-      <Modal.Backdrop
-        isOpen={createProviderModalOpen}
-        onOpenChange={(open) => {
-          if (!open) closeCreateProviderModal();
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-primary/10 text-primary">
-                <GitBranch className="w-5 h-5" />
-              </Modal.Icon>
-              <Modal.Heading>Neuen Repository-Provider anlegen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-sm text-muted-foreground">
-                Schlüssel und Typ werden beim Erstellen festgelegt und
-                anschließend nicht mehr geändert. Tokens werden verschlüsselt
-                gespeichert.
-              </p>
-
+      <Dialog open={createProviderModalOpen} onOpenChange={(open) => { if (!open && !saving) closeCreateProviderModal(); }}>
+        <Dialog.Content size="lg">
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void createGitLabProvider();
+            }}
+          >
+            <Dialog.Header
+              title="Neuen Repository-Provider anlegen"
+              description="Schlüssel und Typ werden beim Erstellen festgelegt und anschließend nicht mehr geändert. Tokens werden verschlüsselt gespeichert."
+            />
+            <Dialog.Body className="@container flex flex-col gap-4">
               {gitLabProviderError && (
-                <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-                  {gitLabProviderError}
-                </div>
+                <Alert variant="plain" tone="destructive">
+                  <Alert.Icon />
+                  <Alert.Title>{gitLabProviderError}</Alert.Title>
+                </Alert>
               )}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <TextField
-                  value={newProvider.providerKey}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({ ...prev, providerKey: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Provider-Schlüssel
-                  </Label>
-                  <Input
-                    placeholder="z. B. github-com"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <Select
-                  selectedKey={newProvider.providerType}
-                  onSelectionChange={(key) => {
-                    const providerType = String(
-                      key,
-                    ) as ProviderDraftState["providerType"];
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      providerType,
-                      baseUrl:
-                        prev.baseUrl.trim() === "" ||
-                        prev.baseUrl ===
-                          defaultBaseUrlForProviderType(prev.providerType)
-                          ? defaultBaseUrlForProviderType(providerType)
-                          : prev.baseUrl,
-                    }));
-                  }}
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Provider-Typ
-                  </Label>
-                  <Select.Trigger className="bg-field-background">
-                    <Select.Value />
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover>
-                    <ListBox>
-                      <ListBox.Item id="gitlab" textValue="GitLab">
-                        GitLab
-                        <ListBox.ItemIndicator />
-                      </ListBox.Item>
-                      <ListBox.Item id="github" textValue="GitHub">
-                        GitHub
-                        <ListBox.ItemIndicator />
-                      </ListBox.Item>
-                    </ListBox>
-                  </Select.Popover>
-                </Select>
-
-                <TextField
-                  value={newProvider.label}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({ ...prev, label: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Bezeichnung
-                  </Label>
-                  <Input
-                    placeholder="z. B. GitHub.com"
-                    className="bg-field-background"
-                  />
-                </TextField>
-
-                <TextField
-                  value={newProvider.baseUrl}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({ ...prev, baseUrl: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Base URL
-                  </Label>
-                  <Input
-                    placeholder="https://github.com"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={newProvider.token}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({ ...prev, token: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Token
-                  </Label>
-                  <Input
-                    placeholder="Personal Access Token"
-                    className="bg-field-background font-mono text-sm"
-                    type="password"
-                  />
-                </TextField>
-
-                <TextField
-                  value={String(newProvider.syncIntervalMinutes)}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      syncIntervalMinutes:
-                        Number.parseInt(val || "15", 10) || 15,
-                    }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Sync-Intervall (Minuten)
-                  </Label>
-                  <Input
-                    placeholder="15"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={newProvider.defaultReadmePath}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      defaultReadmePath: val,
-                    }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Standard README-Pfad
-                  </Label>
-                  <Input
-                    placeholder="optional, z. B. docs/README.md"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={newProvider.defaultHelmValuesPath}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      defaultHelmValuesPath: val,
-                    }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Standard Helm Values
-                  </Label>
-                  <Input
-                    placeholder="chart/values.yaml"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={newProvider.defaultComposeFilePath}
-                  onChange={(val) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      defaultComposeFilePath: val,
-                    }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Standard Compose-Datei
-                  </Label>
-                  <Input
-                    placeholder="docker-compose.yml"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <div className="rounded-xl border border-border bg-surface p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Provider aktiv
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Steuert, ob Apps diesen Provider auswählen dürfen.
-                      </p>
-                    </div>
-                    <Switch
-                      isSelected={newProvider.enabled}
-                      onChange={(val) =>
-                        setNewProvider((prev) => ({ ...prev, enabled: val }))
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-surface p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Automatische Synchronisation
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Aktiviert den geplanten Hintergrund-Sync für verknüpfte
-                        Apps dieses Providers.
-                      </p>
-                    </div>
-                    <Switch
-                      isSelected={newProvider.autoSyncEnabled}
-                      onChange={(val) =>
-                        setNewProvider((prev) => ({
-                          ...prev,
-                          autoSyncEnabled: val,
-                        }))
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2 rounded-xl border border-border bg-surface p-4">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">
-                    Namespace-Allowlist
-                  </Label>
-                  <textarea
-                    value={newProvider.namespaceAllowlist}
-                    onChange={(event) =>
+              <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
+                <Field>
+                  <Field.Label required>Provider-Schlüssel</Field.Label>
+                  <Input required className="font-mono text-sm" value={newProvider.providerKey} placeholder="z. B. github-com" onChange={(event) => setNewProvider((prev) => ({ ...prev, providerKey: event.target.value }))} />
+                </Field>
+                <Field>
+                  <Field.Label>Provider-Typ</Field.Label>
+                  <Select
+                    items={PROVIDER_TYPES}
+                    value={newProvider.providerType}
+                    onValueChange={(value) => {
+                      const providerType = String(value) as ProviderDraftState["providerType"];
                       setNewProvider((prev) => ({
                         ...prev,
-                        namespaceAllowlist: event.target.value,
-                      }))
-                    }
-                    className="min-h-[120px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                    placeholder={"gruppe\norganisation/team"}
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Leer lassen, um alle Namespaces zuzulassen. Ein Eintrag pro
-                    Zeile oder komma-getrennt.
-                  </p>
-                </div>
+                        providerType,
+                        baseUrl: prev.baseUrl.trim() === "" || prev.baseUrl === defaultBaseUrlForProviderType(prev.providerType) ? defaultBaseUrlForProviderType(providerType) : prev.baseUrl,
+                      }));
+                    }}
+                  >
+                    <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                    <Select.Content>{PROVIDER_TYPES.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+                  </Select>
+                </Field>
               </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onPress={closeCreateProviderModal}>
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-primary text-white"
-                isDisabled={
-                  saving ||
-                  !newProvider.providerKey.trim() ||
-                  !newProvider.baseUrl.trim() ||
-                  !newProvider.token.trim()
-                }
-                onPress={createGitLabProvider}
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
+              <RepositoryProviderFields
+                values={newProvider}
+                onChange={(patch) => setNewProvider((prev) => ({ ...prev, ...patch }))}
+                tokenLabel="Token"
+                tokenPlaceholder="Personal Access Token"
+              />
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button type="button" variant="secondary" disabled={saving} onClick={closeCreateProviderModal}>Abbrechen</Button>
+              <Button type="submit" loading={saving} disabled={!newProvider.providerKey.trim() || !newProvider.baseUrl.trim() || !newProvider.token.trim()}>
+                <Plus />
                 Provider anlegen
               </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
 
       <ConfirmDialog
         confirmLabel="Provider löschen"
-        description={
-          providerToDelete
-            ? `Der Provider ${providerToDelete.providerKey} wird dauerhaft entfernt. Verknüpfte Apps verhindern das Löschen automatisch.`
-            : ""
-        }
+        description={providerToDelete ? `Der Provider ${providerToDelete.providerKey} wird dauerhaft entfernt. Verknüpfte Apps verhindern das Löschen automatisch.` : ""}
         isDanger
         isLoading={saving}
         isOpen={providerToDelete !== null}

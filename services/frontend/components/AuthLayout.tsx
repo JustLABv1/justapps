@@ -8,22 +8,13 @@ import { Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-const SAMPLE_APPS = [
-  { icon: '📊', name: 'Analytics', category: 'Analyse', style: { top: '5%', left: '6%', animationName: 'float1', animationDuration: '6.5s', animationDelay: '0s' } },
-  { icon: '🗺️', name: 'GeoPortal', category: 'Geodaten', style: { top: '10%', right: '8%', animationName: 'float2', animationDuration: '8s', animationDelay: '-2.5s' } },
-  { icon: '🔒', name: 'IAM Service', category: 'Sicherheit', style: { top: '36%', left: '2%', animationName: 'float3', animationDuration: '7s', animationDelay: '-1s' } },
-  { icon: '📋', name: 'Formular-Manager', category: 'Formulare', style: { top: '50%', right: '5%', animationName: 'float1', animationDuration: '9s', animationDelay: '-4s' } },
-  { icon: '📨', name: 'Bescheid-Versand', category: 'Kommunikation', style: { bottom: '18%', left: '8%', animationName: 'float2', animationDuration: '7.5s', animationDelay: '-3s' } },
-  { icon: '🏛️', name: 'Bürger-Portal', category: 'E-Government', style: { bottom: '6%', right: '7%', animationName: 'float3', animationDuration: '8.5s', animationDelay: '-1.5s' } },
-  { icon: '🚀', name: 'Deploy Assistant', category: 'DevOps', style: { bottom: '30%', right: '3%', animationName: 'float1', animationDuration: '10s', animationDelay: '-5s' } },
-];
-
 interface AuthLayoutProps {
   children: React.ReactNode;
   title: string;
   subtitle: string;
 }
 
+/** The frame around sign-in and registration: the store's identity beside the form. */
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const { settings, loaded: settingsLoaded } = useSettings();
   const { resolvedTheme } = useTheme();
@@ -31,119 +22,61 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
   const storeName = settings.storeName || 'JustApps';
   const storeDescription = settings.storeDescription || 'Zentraler App Store für Softwarelösungen der öffentlichen Verwaltung.';
-  const logoSrc = isDark
-    ? (settings.logoDarkUrl || settings.logoUrl || null)
-    : (settings.logoUrl || null);
+  const logoSrc = isDark ? (settings.logoDarkUrl || settings.logoUrl || null) : (settings.logoUrl || null);
   const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
   const [appCount, setAppCount] = useState<number | null>(null);
   useEffect(() => {
-    if (!settingsLoaded || settings.requireAuthForAppStore) {
-      return;
-    }
-
+    if (!settingsLoaded || settings.requireAuthForAppStore) return;
     fetchApi('/apps')
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: unknown) => { if (Array.isArray(data)) setAppCount(data.length); })
       .catch(() => {});
   }, [settings.requireAuthForAppStore, settingsLoaded]);
 
+  const logo = resolvedLogoSrc ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={resolvedLogoSrc} alt={storeName} className="h-12 w-auto max-w-40 object-contain" />
+  ) : (
+    <JustAppsLogo className="size-14" />
+  );
+
   return (
-    <>
-      <div className="flex min-h-[calc(100vh-9rem)] rounded-3xl overflow-hidden border border-border shadow-2xl shadow-black/5">
-
-        {/* ── Left decorative panel ── */}
-        <div className="hidden lg:flex relative flex-1 bg-gradient-to-br from-primary/10 via-surface to-primary/5 flex-col items-center justify-center overflow-hidden">
-
-          {/* Subtle dot grid */}
-          <div
-            className="absolute inset-0 opacity-40"
-            style={{
-              backgroundImage: 'radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)',
-              backgroundSize: '28px 28px',
-            }}
-          />
-
-          {/* Edge fade */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-surface/60 pointer-events-none" />
-
-          {/* Floating mini app cards */}
-          {SAMPLE_APPS.map((app) => (
-            <div
-              key={app.name}
-              className="absolute flex items-center gap-2.5 bg-surface/85 backdrop-blur-md border border-border/60 rounded-xl px-3.5 py-2.5 shadow-md shadow-black/5 w-44 select-none"
-              style={{
-                ...(app.style as React.CSSProperties),
-                animationIterationCount: 'infinite',
-                animationTimingFunction: 'ease-in-out',
-                animationFillMode: 'both',
-              }}
-            >
-              <span className="text-xl leading-none">{app.icon}</span>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-foreground truncate">{app.name}</span>
-                <span className="text-[10px] text-muted-foreground truncate">{app.category}</span>
-              </div>
-            </div>
-          ))}
-
-          {/* Center branding */}
-          <div className="relative z-10 flex flex-col items-center text-center gap-5 px-14">
-            {resolvedLogoSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolvedLogoSrc} alt={storeName} className="h-14 w-auto object-contain max-w-[160px]" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/10">
-                <JustAppsLogo className="w-16 h-16" />
-              </div>
-            )}
+    <div className="mx-auto grid min-h-[calc(100vh-14rem)] w-full max-w-4xl overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/[0.07] lg:grid-cols-[minmax(0,1fr)_26rem]">
+      <aside className="hidden flex-col justify-between gap-10 bg-muted/40 p-10 lg:flex">
+        <div className="flex flex-col gap-5">
+          {logo}
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-semibold tracking-tight">{storeName}</h2>
+            <p className="max-w-xs text-pretty text-sm text-muted-foreground">{storeDescription}</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-6">
+          <dl className="flex gap-8">
             <div>
-              <h2 className="text-3xl font-bold text-foreground tracking-tight">{storeName}</h2>
-              <p className="text-sm text-muted-foreground mt-2 max-w-[260px] leading-relaxed">
-                {storeDescription}
-              </p>
+              <dd className="text-lg font-semibold">{appCount !== null ? appCount : '–'}</dd>
+              <dt className="text-xs text-muted-foreground">Apps</dt>
             </div>
-            <div className="flex items-center gap-6 mt-1">
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-lg font-bold text-foreground">
-                  {appCount !== null ? appCount : '—'}
-                </span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Apps</span>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-lg font-bold text-foreground">Offen</span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Open Source</span>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                  <span className="text-lg font-bold text-foreground">Aktiv</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Plattform</span>
-              </div>
+            <div>
+              <dd className="text-lg font-semibold">Offen</dd>
+              <dt className="text-xs text-muted-foreground">Open Source</dt>
             </div>
-          </div>
-
-          {/* Bottom attribution */}
-          <div className="absolute bottom-5 flex items-center gap-1.5 text-muted-foreground/50">
-            <Shield className="w-3 h-3" />
-            <span className="text-[10px]">Sicher. Transparent. Nachnutzbar.</span>
-          </div>
+          </dl>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Shield className="size-3.5" />
+            Sicher. Transparent. Nachnutzbar.
+          </p>
         </div>
+      </aside>
 
-        {/* ── Right form panel ── */}
-        <div className="w-full lg:w-[440px] shrink-0 flex flex-col justify-center bg-surface px-8 py-10 lg:px-12">
-
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
-            <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>
-          </div>
-
-          {children}
-        </div>
+      <div className="flex flex-col justify-center px-6 py-10 sm:px-10">
+        <div className="mb-6 lg:hidden">{logo}</div>
+        <header className="mb-7 flex flex-col gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        </header>
+        {children}
       </div>
-    </>
+    </div>
   );
 }

@@ -1,9 +1,13 @@
 'use client';
 
 import { AuthLayout } from '@/components/AuthLayout';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Field } from '@/components/panelui/field';
+import { Input } from '@/components/panelui/input';
 import { OIDCProviderSummary } from '@/config/apps';
-import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
+import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +39,25 @@ function readOIDCResult() {
   return {
     error: params.get('oidc_error'),
   };
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <Alert variant="plain" tone="destructive">
+      <Alert.Icon />
+      <Alert.Title>{message}</Alert.Title>
+    </Alert>
+  );
+}
+
+function RegisterHint() {
+  return (
+    <p className="mt-6 text-center text-sm text-muted-foreground">
+      Noch keinen Account?{' '}
+      <NextLink href="/register" className="font-medium text-foreground underline underline-offset-4">Registrieren</NextLink>
+    </p>
+  );
 }
 
 export default function LoginPage() {
@@ -134,7 +157,7 @@ export default function LoginPage() {
 
     if (!hasDynamicProviders) {
       return (
-        <Button onPress={() => handleOIDCLogin()} className="w-full" isDisabled={oidcLoading}>
+        <Button size="lg" onClick={() => handleOIDCLogin()} className="w-full" disabled={oidcLoading}>
           Mit Single Sign-On anmelden
         </Button>
       );
@@ -143,7 +166,7 @@ export default function LoginPage() {
     return (
       <div className="flex flex-col gap-2">
         {oidcProviders.map((provider) => (
-          <Button key={provider.key} onPress={() => handleOIDCLogin(provider.key)} className="w-full">
+          <Button key={provider.key} size="lg" onClick={() => handleOIDCLogin(provider.key)} className="w-full">
             {provider.label || 'Single Sign-On'}
           </Button>
         ))}
@@ -151,32 +174,29 @@ export default function LoginPage() {
     );
   };
 
+  const renderLocalForm = (primary: boolean) => (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field>
+        <Field.Label>E-Mail oder Benutzername</Field.Label>
+        <Input required autoComplete="username" placeholder="E-Mail eingeben" value={email} onChange={(event) => setEmail(event.target.value)} />
+      </Field>
+      <Field>
+        <Field.Label>Passwort</Field.Label>
+        <Input required type="password" autoComplete="current-password" placeholder="Passwort eingeben" value={password} onChange={(event) => setPassword(event.target.value)} />
+      </Field>
+      <ErrorMessage message={error} />
+      <Button type="submit" size="lg" variant={primary ? 'default' : 'secondary'} loading={loading} className="mt-1 w-full">
+        Anmelden
+      </Button>
+    </form>
+  );
+
   // Mode 1: OIDC disabled, only local auth
   if (!showOIDC && showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihren Zugangsdaten an.">
-        <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <TextField isRequired className="w-full" onChange={setEmail}>
-            <Label className="text-sm font-medium text-foreground mb-1">E-Mail oder Benutzername</Label>
-            <Input placeholder="E-Mail eingeben" className="w-full" value={email} />
-          </TextField>
-          <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-            <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
-            <Input placeholder="Passwort eingeben" className="w-full" value={password} />
-          </TextField>
-          {error && <p className="text-danger text-sm">{error}</p>}
-          <Button type="submit" isPending={loading} className="w-full mt-2">
-            {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
-          </Button>
-        </Form>
-        {!settings.disableRegistration && (
-          <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">
-              Noch keinen Account?{' '}
-              <Link href="/register" className="text-primary font-medium">Registrieren</Link>
-            </p>
-          </div>
-        )}
+        {renderLocalForm(true)}
+        {!settings.disableRegistration && <RegisterHint />}
       </AuthLayout>
     );
   }
@@ -185,8 +205,10 @@ export default function LoginPage() {
   if (!showLocalAuth) {
     return (
       <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich über Ihr Organisationskonto an.">
-        {renderOIDCButtons()}
-        {error && <p className="mt-3 text-danger text-sm text-center">{error}</p>}
+        <div className="flex flex-col gap-3">
+          {renderOIDCButtons()}
+          <ErrorMessage message={error} />
+        </div>
       </AuthLayout>
     );
   }
@@ -194,53 +216,30 @@ export default function LoginPage() {
   // Mode 3: OIDC configured + local auth available → OIDC primary, local auth behind toggle
   return (
     <AuthLayout title="Willkommen zurück" subtitle="Melden Sie sich mit Ihrem Konto an.">
-      {/* Primary: OIDC */}
-      {renderOIDCButtons()}
-      {error && <p className="mt-3 text-danger text-sm text-center">{error}</p>}
-
-      {/* Toggle for local auth */}
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => setShowEmailForm((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto"
-        >
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showEmailForm ? 'rotate-180' : ''}`} />
-          {showEmailForm ? 'E-Mail-Anmeldung ausblenden' : 'Stattdessen mit E-Mail anmelden'}
-        </button>
+      <div className="flex flex-col gap-3">
+        {renderOIDCButtons()}
+        {!showEmailForm && <ErrorMessage message={error} />}
       </div>
+
+      <button
+        type="button"
+        aria-expanded={showEmailForm}
+        onClick={() => setShowEmailForm((v) => !v)}
+        className="mx-auto mt-4 flex items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <ChevronDown className={`size-3.5 transition-transform ${showEmailForm ? 'rotate-180' : ''}`} />
+        {showEmailForm ? 'E-Mail-Anmeldung ausblenden' : 'Stattdessen mit E-Mail anmelden'}
+      </button>
 
       {showEmailForm && (
         <>
-          <div className="my-5 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground font-medium uppercase">E-Mail & Passwort</span>
-            <Separator className="flex-1" />
+          <div className="my-5 flex items-center gap-3" role="separator">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium uppercase text-muted-foreground">E-Mail &amp; Passwort</span>
+            <span className="h-px flex-1 bg-border" />
           </div>
-
-          <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <TextField isRequired className="w-full" onChange={setEmail}>
-              <Label className="text-sm font-medium text-foreground mb-1">E-Mail oder Benutzername</Label>
-              <Input placeholder="E-Mail eingeben" className="w-full" value={email} />
-            </TextField>
-            <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-              <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
-              <Input placeholder="Passwort eingeben" className="w-full" value={password} />
-            </TextField>
-            {error && <p className="text-danger text-sm">{error}</p>}
-            <Button type="submit" isPending={loading} variant="outline" className="w-full mt-2">
-              {({ isPending }) => isPending ? 'Lädt...' : 'Anmelden'}
-            </Button>
-          </Form>
-
-          {!settings.disableRegistration && (
-            <div className="mt-5 text-center text-sm">
-              <p className="text-muted-foreground">
-                Noch keinen Account?{' '}
-                <Link href="/register" className="text-primary font-medium">Registrieren</Link>
-              </p>
-            </div>
-          )}
+          {renderLocalForm(false)}
+          {!settings.disableRegistration && <RegisterHint />}
         </>
       )}
     </AuthLayout>

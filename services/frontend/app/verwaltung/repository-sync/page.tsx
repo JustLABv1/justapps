@@ -1,38 +1,31 @@
 'use client';
 
+import { Alert } from '@/components/panelui/alert';
+import { Badge, type BadgeVariant } from '@/components/panelui/badge';
+import { Button } from '@/components/panelui/button';
+import { Card } from '@/components/panelui/card';
+import { Input } from '@/components/panelui/input';
+import { Stat } from '@/components/panelui/stat';
+import { Table } from '@/components/panelui/table';
+import { Tabs } from '@/components/panelui/tabs';
+import { Tooltip } from '@/components/panelui/tooltip';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { getImageAssetUrl } from '@/lib/assets';
-import { Button, Chip, EmptyState, Input, Table, TextField } from '@heroui/react';
-import {
-    AlertCircle,
-    CheckCircle2,
-    Clock,
-    ExternalLink,
-    GitBranch,
-    Link2,
-    Loader2,
-    Pencil,
-    RefreshCw,
-    Search,
-    XCircle,
-} from 'lucide-react';
+import { toast } from '@/lib/toast';
+import { ExternalLink, GitBranch, Pencil, RefreshCw, Search } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import NextLink from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 type SyncStatusKey = 'success' | 'warning' | 'pending_approval' | 'error' | 'never';
 
-const SYNC_META: Record<SyncStatusKey | string, {
-  label: string;
-  color: 'success' | 'warning' | 'danger' | 'default';
-  icon: React.ReactNode;
-}> = {
-  success:          { label: 'Synchronisiert',           color: 'success', icon: <CheckCircle2 className="w-3 h-3" /> },
-  warning:          { label: 'Mit Hinweisen',             color: 'warning', icon: <AlertCircle  className="w-3 h-3" /> },
-  pending_approval: { label: 'Wartet auf Freigabe',       color: 'warning', icon: <Clock        className="w-3 h-3" /> },
-  error:            { label: 'Fehler',                    color: 'danger',  icon: <XCircle      className="w-3 h-3" /> },
-  never:            { label: 'Noch nicht synchronisiert', color: 'default', icon: <RefreshCw    className="w-3 h-3" /> },
+const SYNC_META: Record<SyncStatusKey | string, { label: string; variant: BadgeVariant }> = {
+  success: { label: 'Synchronisiert', variant: 'success' },
+  warning: { label: 'Mit Hinweisen', variant: 'warning' },
+  pending_approval: { label: 'Wartet auf Freigabe', variant: 'warning' },
+  error: { label: 'Fehler', variant: 'destructive' },
+  never: { label: 'Noch nicht synchronisiert', variant: 'secondary' },
 };
 
 function getSyncMeta(status?: string | null) {
@@ -52,31 +45,18 @@ function relativeTime(dateStr?: string | null): string {
   return `vor ${days} Tag${days !== 1 ? 'en' : ''}`;
 }
 
-const STATUS_FILTERS = [
-  { value: '', label: 'Alle' },
-  { value: 'success', label: 'Synchronisiert' },
-  { value: 'pending_approval', label: 'Wartet auf Freigabe' },
-  { value: 'warning', label: 'Mit Hinweisen' },
-  { value: 'error', label: 'Fehler' },
-  { value: 'never', label: 'Noch nicht synchronisiert' },
-];
-
-const PROVIDER_TYPE_LABEL: Record<string, string> = {
-  gitlab: 'GitLab',
-  github: 'GitHub',
-};
+const PROVIDER_TYPE_LABEL: Record<string, string> = { gitlab: 'GitLab', github: 'GitHub' };
 
 function providerTypeLabel(type?: string | null): string {
-  if (!type) return '—';
+  if (!type) return '';
   return PROVIDER_TYPE_LABEL[type] || type;
 }
 
 export default function RepositorySyncPage() {
-  const router = useRouter();
   const [apps, setApps] = useState<AppConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
 
@@ -87,7 +67,12 @@ export default function RepositorySyncPage() {
       if (res.ok) {
         const refreshed = await fetchApi('/apps');
         if (refreshed.ok) setApps(await refreshed.json());
+        toast.success('Synchronisierung abgeschlossen.');
+      } else {
+        toast.danger('Die Synchronisierung ist fehlgeschlagen.');
       }
+    } catch {
+      toast.danger('Die Synchronisierung ist fehlgeschlagen.');
     } finally {
       setSyncingIds((prev) => { const next = new Set(prev); next.delete(appId); return next; });
     }
@@ -95,325 +80,218 @@ export default function RepositorySyncPage() {
 
   useEffect(() => {
     fetchApi('/apps')
-      .then((res) => (res.ok ? res.json() : Promise.reject('Fehler beim Laden')))
+      .then((res) => (res.ok ? res.json() : Promise.reject('Die Apps konnten nicht geladen werden.')))
       .then((data: AppConfig[]) => setApps(data))
       .catch((err) => setError(String(err)))
       .finally(() => setLoading(false));
   }, []);
 
-  const linkedApps = useMemo(
-    () => apps.filter((a) => a.gitLabSync?.linked),
-    [apps],
-  );
+  const linkedApps = useMemo(() => apps.filter((a) => a.gitLabSync?.linked), [apps]);
 
   const stats = useMemo(() => ({
-    total:   linkedApps.length,
+    total: linkedApps.length,
     success: linkedApps.filter((a) => a.gitLabSync?.lastSyncStatus === 'success').length,
     pending: linkedApps.filter((a) => a.gitLabSync?.lastSyncStatus === 'pending_approval').length,
     warning: linkedApps.filter((a) => a.gitLabSync?.lastSyncStatus === 'warning').length,
-    error:   linkedApps.filter((a) => a.gitLabSync?.lastSyncStatus === 'error').length,
-    never:   linkedApps.filter(
-      (a) => !a.gitLabSync?.lastSyncStatus || a.gitLabSync.lastSyncStatus === 'never',
-    ).length,
+    error: linkedApps.filter((a) => a.gitLabSync?.lastSyncStatus === 'error').length,
+    never: linkedApps.filter((a) => !a.gitLabSync?.lastSyncStatus || a.gitLabSync.lastSyncStatus === 'never').length,
   }), [linkedApps]);
 
   const filteredApps = useMemo(() => {
     let result = linkedApps;
-
-    if (statusFilter) {
+    if (statusFilter !== 'all') {
       result = result.filter((a) => {
         const s = a.gitLabSync?.lastSyncStatus;
         if (statusFilter === 'never') return !s || s === 'never';
         return s === statusFilter;
       });
     }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (a) =>
-          a.name.toLowerCase().includes(q) ||
-          a.gitLabSync?.projectPath?.toLowerCase().includes(q) ||
-          a.gitLabSync?.providerKey?.toLowerCase().includes(q),
-      );
+    const q = search.trim().toLowerCase();
+    if (q) {
+      result = result.filter((a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.gitLabSync?.projectPath?.toLowerCase().includes(q) ||
+        a.gitLabSync?.providerKey?.toLowerCase().includes(q));
     }
-
     return result;
   }, [linkedApps, statusFilter, search]);
 
-  const statCards = [
-    {
-      label: 'Verknüpft gesamt',
-      value: stats.total,
-      icon: <Link2 className="w-4 h-4 text-muted-foreground" />,
-      bg: 'bg-surface-secondary',
-      text: 'text-foreground',
-      filter: '',
-    },
-    {
-      label: 'Synchronisiert',
-      value: stats.success,
-      icon: <CheckCircle2 className="w-4 h-4 text-success" />,
-      bg: 'bg-success/10',
-      text: 'text-success',
-      filter: 'success',
-    },
-    {
-      label: 'Wartet auf Freigabe',
-      value: stats.pending,
-      icon: <Clock className="w-4 h-4 text-warning" />,
-      bg: 'bg-warning/10',
-      text: 'text-warning',
-      filter: 'pending_approval',
-    },
-    {
-      label: 'Fehler',
-      value: stats.error,
-      icon: <XCircle className="w-4 h-4 text-danger" />,
-      bg: 'bg-danger/10',
-      text: 'text-danger',
-      filter: 'error',
-    },
+  const figures = [
+    { label: 'Verknüpft gesamt', value: stats.total, filter: 'all' },
+    { label: 'Synchronisiert', value: stats.success, filter: 'success' },
+    { label: 'Wartet auf Freigabe', value: stats.pending, filter: 'pending_approval' },
+    { label: 'Fehler', value: stats.error, filter: 'error' },
   ];
 
-  if (loading) {
-    return (
-      <div className="space-y-8 animate-pulse">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="h-3 w-24 bg-surface-secondary rounded" />
-                <div className="w-8 h-8 rounded-xl bg-surface-secondary" />
-              </div>
-              <div className="h-8 w-14 bg-surface-secondary rounded" />
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <p className="text-sm text-danger">{error}</p>;
-  }
+  const filters = [
+    { value: 'all', label: 'Alle', count: stats.total },
+    { value: 'success', label: 'Synchronisiert', count: stats.success },
+    { value: 'pending_approval', label: 'Wartet auf Freigabe', count: stats.pending },
+    { value: 'warning', label: 'Mit Hinweisen', count: stats.warning },
+    { value: 'error', label: 'Fehler', count: stats.error },
+    { value: 'never', label: 'Noch nicht synchronisiert', count: stats.never },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {statCards.map(({ label, value, icon, bg, text, filter }) => (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Repository-Sync</h1>
+        <p className="max-w-2xl text-pretty text-muted-foreground">
+          Der Synchronisierungsstand aller Apps, die mit einem GitLab- oder GitHub-Repository verknüpft sind.
+        </p>
+      </header>
+
+      {error && (
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {figures.map((figure) => (
           <button
-            key={label}
+            key={figure.label}
             type="button"
-            onClick={() => setStatusFilter(statusFilter === filter ? '' : filter)}
-            className={`rounded-2xl border bg-surface p-5 flex flex-col gap-3 shadow-sm text-left transition-all hover:shadow-md ${
-              statusFilter === filter && filter !== ''
-                ? 'border-primary ring-1 ring-primary/30'
-                : 'border-border hover:border-primary/40'
-            }`}
+            aria-pressed={statusFilter === figure.filter && figure.filter !== 'all'}
+            onClick={() => setStatusFilter(statusFilter === figure.filter ? 'all' : figure.filter)}
+            className="rounded-xl text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-              <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
-                {icon}
-              </div>
-            </div>
-            <span className={`text-3xl font-bold ${text}`}>{value}</span>
+            <Card size="sm" className={`transition-colors hover:bg-muted/40 ${statusFilter === figure.filter && figure.filter !== 'all' ? 'ring-2 ring-primary/40' : ''}`}>
+              <Card.Content>
+                <Stat className="flex-col items-start gap-1">
+                  <Stat.Content>
+                    <Stat.Label>{figure.label}</Stat.Label>
+                    <Stat.Value size="md">{loading ? '–' : figure.value}</Stat.Value>
+                  </Stat.Content>
+                </Stat>
+              </Card.Content>
+            </Card>
           </button>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          {STATUS_FILTERS.map((f) => (
-            <Button
-              key={f.value}
-              size="sm"
-              variant={statusFilter === f.value ? 'primary' : 'secondary'}
-              onPress={() => setStatusFilter(f.value)}
-              className={`rounded-full text-xs h-8 px-3 ${statusFilter === f.value ? 'text-background' : ''}`}
-            >
-              {f.label}
-            </Button>
-          ))}
-        </div>
-
-        <div className="relative shrink-0">
-          <TextField value={search} onChange={setSearch}>
-            <Input
-              placeholder="App oder Pfad suchen…"
-              className="bg-field-background h-9 rounded-xl pl-9 text-sm w-56"
-            />
-          </TextField>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(String(value))}>
+          <Tabs.List aria-label="Status filtern">
+            {filters.map((item) => (
+              <Tabs.Trigger key={item.value} value={item.value}>{item.label} <Tabs.Badge>{item.count}</Tabs.Badge></Tabs.Trigger>
+            ))}
+          </Tabs.List>
+        </Tabs>
+        <Input.Group size="sm" className="min-w-0 flex-1 basis-56 xl:ms-auto xl:max-w-xs">
+          <Input.Addon><Search /></Input.Addon>
+          <Input aria-label="Apps durchsuchen" placeholder="App oder Pfad suchen …" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </Input.Group>
       </div>
 
-      {/* Table */}
-      <Table variant="secondary">
-        <Table.ScrollContainer>
-          <Table.Content aria-label="Repository Sync Status" className="min-w-[860px]">
-            <Table.Header>
-              <Table.Column isRowHeader>App</Table.Column>
-              <Table.Column>Provider · Pfad</Table.Column>
-              <Table.Column>Status</Table.Column>
-              <Table.Column>Letzte Synchronisierung</Table.Column>
-              <Table.Column>Fehlerdetails</Table.Column>
-              <Table.Column className="text-right">Aktionen</Table.Column>
-            </Table.Header>
-            <Table.Body
-              items={filteredApps}
-              renderEmptyState={() => (
-                <EmptyState className="flex flex-col items-center justify-center py-12 gap-2">
-                  <GitBranch className="w-8 h-8 text-muted-foreground opacity-40" />
-                  <span className="text-muted-foreground">
-                    {linkedApps.length === 0
-                      ? 'Keine Apps mit Repository-Verknüpfung gefunden'
-                      : 'Keine Apps für diesen Filter gefunden'}
-                  </span>
-                </EmptyState>
-              )}
-            >
-              {(app) => {
+      <Card className="gap-0 overflow-hidden py-0">
+        <Table aria-label="Repository-Sync-Status" framed>
+          <Table.Header>
+            <Table.Row>
+              <Table.Head>App</Table.Head>
+              <Table.Head>Provider · Pfad</Table.Head>
+              <Table.Head>Status</Table.Head>
+              <Table.Head>Letzte Synchronisierung</Table.Head>
+              <Table.Head className="hidden xl:table-cell">Fehlerdetails</Table.Head>
+              <Table.Head align="end"><span className="sr-only">Aktionen</span></Table.Head>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {loading ? (
+              Array.from({ length: 4 }, (_, index) => (
+                <Table.Row key={index}>
+                  {[0, 1, 2, 3, 4, 5].map((cell) => <Table.Cell key={cell} className={cell === 4 ? 'hidden xl:table-cell' : undefined}><span className="block h-4 w-24 animate-pulse rounded bg-muted" /></Table.Cell>)}
+                </Table.Row>
+              ))
+            ) : filteredApps.length === 0 ? (
+              <Table.Row>
+                <Table.Cell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <GitBranch className="mx-auto mb-2 size-7 opacity-40" />
+                  {linkedApps.length === 0 ? 'Keine Apps mit Repository-Verknüpfung gefunden.' : 'Keine Apps für diesen Filter gefunden.'}
+                </Table.Cell>
+              </Table.Row>
+            ) : (
+              filteredApps.map((app) => {
                 const sync = app.gitLabSync!;
                 const meta = getSyncMeta(sync.lastSyncStatus);
                 const iconSrc = getImageAssetUrl(app.icon);
+                const syncing = syncingIds.has(app.id);
                 return (
                   <Table.Row key={app.id}>
-                    {/* App */}
                     <Table.Cell>
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-9 h-9 rounded-lg bg-surface-secondary border border-border flex items-center justify-center text-lg overflow-hidden shrink-0 shadow-sm">
-                          {iconSrc ? (
-                            <Image src={iconSrc} alt={app.name} fill className="object-contain p-1" sizes="36px" unoptimized />
-                          ) : (
-                            app.icon || '🏛️'
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground">{app.name}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground">{app.id}</span>
-                        </div>
-                      </div>
+                      <span className="flex items-center gap-3">
+                        <span className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-lg">
+                          {iconSrc ? <Image src={iconSrc} alt="" fill className="object-contain p-1" sizes="36px" unoptimized /> : app.icon || '🏛️'}
+                        </span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium">{app.name}</span>
+                          <span className="truncate font-mono text-xs text-muted-foreground">{app.id}</span>
+                        </span>
+                      </span>
                     </Table.Cell>
-
-                    {/* Provider · path */}
                     <Table.Cell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-semibold text-foreground">
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-sm">
                           {sync.providerKey || '—'}
-                          {sync.providerType && (
-                            <span className="ml-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                              ({providerTypeLabel(sync.providerType)})
-                            </span>
-                          )}
+                          {sync.providerType && <span className="ms-1 text-xs text-muted-foreground">({providerTypeLabel(sync.providerType)})</span>}
                         </span>
-                        <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[200px]">
-                          {sync.projectPath || '—'}
-                        </span>
-                      </div>
+                        <span className="max-w-52 truncate font-mono text-xs text-muted-foreground" title={sync.projectPath}>{sync.projectPath || '—'}</span>
+                      </span>
                     </Table.Cell>
-
-                    {/* Sync status */}
                     <Table.Cell>
-                      <div className="flex flex-col gap-1.5">
-                        <Chip
-                          size="sm"
-                          color={meta.color}
-                          variant="soft"
-                          className="text-[10px] font-bold uppercase tracking-wider gap-1 pl-1.5"
-                        >
-                          {meta.icon}
-                          {meta.label}
-                        </Chip>
-                        {sync.approvalRequired && (
-                          <Chip size="sm" color="warning" variant="soft" className="text-[9px] font-bold uppercase tracking-wider">
-                            Manuelle Änderungen
-                          </Chip>
-                        )}
-                      </div>
+                      <span className="flex flex-wrap gap-1">
+                        <Badge variant={meta.variant} size="sm">{meta.label}</Badge>
+                        {sync.approvalRequired && <Badge variant="warning" size="sm">Manuelle Änderungen</Badge>}
+                      </span>
                     </Table.Cell>
-
-                    {/* Last synced */}
-                    <Table.Cell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs text-foreground font-medium">
-                          {relativeTime(sync.lastSyncedAt)}
-                        </span>
+                    <Table.Cell className="whitespace-nowrap">
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-sm">{relativeTime(sync.lastSyncedAt)}</span>
                         {sync.lastSyncedAt && (
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {new Date(sync.lastSyncedAt).toLocaleString('de-DE', {
-                              day: '2-digit', month: '2-digit', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit',
-                            })}
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {new Date(sync.lastSyncedAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
-                      </div>
+                      </span>
                     </Table.Cell>
-
-                    {/* Error */}
-                    <Table.Cell>
-                      {sync.lastSyncError ? (
-                        <span className="text-xs text-danger font-mono truncate max-w-[220px] block" title={sync.lastSyncError}>
-                          {sync.lastSyncError}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic">—</span>
-                      )}
+                    <Table.Cell className="hidden max-w-60 xl:table-cell">
+                      {sync.lastSyncError
+                        ? <span className="block truncate font-mono text-xs text-destructive" title={sync.lastSyncError}>{sync.lastSyncError}</span>
+                        : <span className="text-muted-foreground">—</span>}
                     </Table.Cell>
-
-                    {/* Actions */}
-                    <Table.Cell>
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="tertiary"
-                          onPress={() => handleSyncNow(app.id)}
-                          isDisabled={syncingIds.has(app.id)}
-                          aria-label="Jetzt synchronisieren"
-                        >
-                          {syncingIds.has(app.id)
-                            ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            : <RefreshCw className="w-4 h-4 text-muted-foreground" />}
-                        </Button>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="tertiary"
-                          onPress={() => router.push(`/apps/${app.id}`)}
-                          aria-label="App ansehen"
-                        >
-                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="tertiary"
-                          onPress={() => router.push(`/verwaltung/katalog/apps/${app.id}/edit`)}
-                          aria-label="App bearbeiten"
-                        >
-                          <Pencil className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </div>
+                    <Table.Cell align="end">
+                      <span className="flex items-center justify-end gap-0.5">
+                        <Tooltip>
+                          <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" loading={syncing} aria-label={`${app.name} jetzt synchronisieren`} onClick={() => void handleSyncNow(app.id)} />}>
+                            <RefreshCw />
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>Jetzt synchronisieren</Tooltip.Content>
+                        </Tooltip>
+                        <Tooltip>
+                          <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={`${app.name} ansehen`} render={<NextLink href={`/apps/${app.id}`} />} />}>
+                            <ExternalLink />
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>App ansehen</Tooltip.Content>
+                        </Tooltip>
+                        <Tooltip>
+                          <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={`${app.name} bearbeiten`} render={<NextLink href={`/verwaltung/katalog/apps/${app.id}/edit`} />} />}>
+                            <Pencil />
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>Bearbeiten</Tooltip.Content>
+                        </Tooltip>
+                      </span>
                     </Table.Cell>
                   </Table.Row>
                 );
-              }}
-            </Table.Body>
-          </Table.Content>
-        </Table.ScrollContainer>
-      </Table>
+              })
+            )}
+          </Table.Body>
+        </Table>
+      </Card>
 
-      {filteredApps.length > 0 && (
-        <p className="text-xs text-muted-foreground text-right">
-          {filteredApps.length} von {linkedApps.length} verknüpften Apps
-        </p>
+      {!loading && filteredApps.length > 0 && (
+        <p className="text-end text-xs text-muted-foreground">{filteredApps.length} von {linkedApps.length} verknüpften Apps</p>
       )}
     </div>
   );

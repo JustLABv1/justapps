@@ -2,7 +2,11 @@
 
 import { AuthLayout } from '@/components/AuthLayout';
 import { OIDCProviderSummary } from '@/config/apps';
-import { Button, Form, Input, Label, Link, Separator, TextField } from '@heroui/react';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Field } from '@/components/panelui/field';
+import { Input } from '@/components/panelui/input';
+import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -85,72 +89,50 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout title="Konto erstellen" subtitle="Registrieren Sie sich für einen neuen Account.">
-      <Form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <TextField isRequired className="w-full" onChange={setEmail}>
-          <Label className="text-sm font-medium text-foreground mb-1">E-Mail</Label>
-          <Input
-            placeholder="E-Mail eingeben"
-            type="email"
-            className="w-full"
-            value={email}
-          />
-        </TextField>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field>
+          <Field.Label>E-Mail</Field.Label>
+          <Input required type="email" autoComplete="email" placeholder="E-Mail eingeben" value={email} onChange={(event) => setEmail(event.target.value)} />
+        </Field>
+        <Field>
+          <Field.Label>Benutzername</Field.Label>
+          <Input required autoComplete="username" placeholder="Benutzername wählen" value={username} onChange={(event) => setUsername(event.target.value)} />
+        </Field>
+        <Field>
+          <Field.Label>Passwort</Field.Label>
+          <Input required type="password" autoComplete="new-password" placeholder="Passwort wählen" value={password} onChange={(event) => setPassword(event.target.value)} />
+        </Field>
 
-        <TextField isRequired className="w-full" onChange={setUsername}>
-          <Label className="text-sm font-medium text-foreground mb-1">Benutzername</Label>
-          <Input
-            placeholder="Benutzername wählen"
-            className="w-full"
-            value={username}
-          />
-        </TextField>
+        {error && (
+          <Alert variant="plain" tone="destructive">
+            <Alert.Icon />
+            <Alert.Title>{error}</Alert.Title>
+          </Alert>
+        )}
 
-        <TextField isRequired className="w-full" type="password" onChange={setPassword}>
-          <Label className="text-sm font-medium text-foreground mb-1">Passwort</Label>
-          <Input
-            placeholder="Passwort wählen"
-            className="w-full"
-            value={password}
-          />
-        </TextField>
-
-        {error && <p className="text-danger text-sm">{error}</p>}
-
-        <Button
-          type="submit"
-          isPending={loading}
-          className="w-full mt-2"
-        >
-          {({ isPending }) => isPending ? 'Lädt...' : 'Registrieren'}
+        <Button type="submit" size="lg" loading={loading} className="mt-1 w-full">
+          Registrieren
         </Button>
-      </Form>
+      </form>
 
       {showOidcLogin && (
         <>
-          <div className="my-5 flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground font-medium uppercase">Oder</span>
-            <Separator className="flex-1" />
+          <div className="my-5 flex items-center gap-3" role="separator">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium uppercase text-muted-foreground">Oder</span>
+            <span className="h-px flex-1 bg-border" />
           </div>
 
-          <Button
-            onPress={handleOIDCLogin}
-            variant="outline"
-            className="w-full"
-          >
+          <Button type="button" onClick={handleOIDCLogin} variant="secondary" size="lg" className="w-full">
             {oidcProviders[0]?.label ? `Mit ${oidcProviders[0].label} anmelden` : 'Mit Single Sign-On anmelden'}
           </Button>
         </>
       )}
 
-      <div className="mt-6 text-center text-sm">
-        <p className="text-muted-foreground">
-          Haben Sie bereits ein Konto?{' '}
-          <Link href="/login" className="text-primary font-medium">
-            Anmelden
-          </Link>
-        </p>
-      </div>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Haben Sie bereits ein Konto?{' '}
+        <NextLink href="/login" className="font-medium text-foreground underline underline-offset-4">Anmelden</NextLink>
+      </p>
     </AuthLayout>
   );
 }
