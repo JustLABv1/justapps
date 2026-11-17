@@ -224,6 +224,8 @@ export function Navigation() {
         className="mx-auto max-w-7xl"
         barClassName="gap-3 ps-2 pe-2"
       >
+        {/* Brand and actions take equal room, so the links sit in the true centre. */}
+        <div className="flex shrink-0 xl:flex-1 xl:basis-0">
         <NextLink
           href="/"
           aria-label={`${storeName} – Startseite`}
@@ -241,8 +243,9 @@ export function Navigation() {
             <span className="tracking-tight">{storeName}</span>
           </NavigationMenu.Brand>
         </NextLink>
+        </div>
 
-        <NavigationMenu.List className="hidden flex-1 xl:flex">
+        <NavigationMenu.List className="hidden xl:flex xl:flex-initial">
           {desktopNavLinks.map((link) => {
             const Icon = link.icon;
             return (
@@ -303,7 +306,7 @@ export function Navigation() {
         <span aria-hidden="true" className="flex-1 xl:hidden" />
 
         {/* Right side */}
-        <NavigationMenu.Actions className="gap-1 sm:gap-1.5">
+        <NavigationMenu.Actions className="gap-1 sm:gap-1.5 xl:flex-1 xl:basis-0 xl:justify-end">
           {/* Guests keep direct access because they do not have a profile menu. */}
           {(!user || loading) && (
             <Button
