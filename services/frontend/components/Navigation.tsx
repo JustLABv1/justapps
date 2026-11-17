@@ -4,7 +4,6 @@ import { resolveAssetUrl } from "@/lib/assets";
 import { Avatar } from "@/components/panelui/avatar";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
-import { Input } from "@/components/panelui/input";
 import { Menu } from "@/components/panelui/menu";
 import { NavigationMenu } from "@/components/panelui/navigation-menu";
 import { Sheet } from "@/components/panelui/sheet";
@@ -25,13 +24,12 @@ import {
   Moon,
   Sun,
   UserRound,
-  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSettings } from "../context/SettingsContext";
 import { useUpdates } from "../context/UpdatesContext";
@@ -39,6 +37,7 @@ import { adminNavGroups, adminNavLinks } from "../lib/admin-navigation";
 import { fetchApi } from "../lib/api";
 import { JustAppsLogo } from "./JustAppsLogo";
 import { UserAvatar, displayNameOf } from "./profile/UserAvatar";
+import { SiteSearch, type SiteSearchPage } from "./SiteSearch";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
@@ -47,9 +46,7 @@ export function Navigation() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [openFAQCount, setOpenFAQCount] = useState(0);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const { settings } = useSettings();
   const { totalUnread } = useUpdates();
   const { resolvedTheme, setTheme } = useTheme();
@@ -84,35 +81,22 @@ export function Navigation() {
   useEffect(() => {
     startTransition(() => {
       setSearchOpen(false);
-      setSearchQuery("");
       setMobileOpen(false);
     });
   }, [pathname]);
 
-  // Cmd+K / Ctrl+K opens search; Escape closes
+  // ⌘K / Ctrl+K opens the search. In the Verwaltung it searches the settings instead.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // In the Verwaltung, ⌘K searches the settings instead.
       if (pathname.startsWith("/verwaltung")) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setSearchOpen(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      } else if (e.key === "Escape" && searchOpen) {
-        setSearchOpen(false);
-        setSearchQuery("");
+        setSearchOpen((open) => !open);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [pathname, searchOpen]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
+  }, [pathname]);
   const isDark = resolvedTheme === "dark";
 
   const storeName = settings.storeName || "JustApps";
@@ -196,6 +180,16 @@ export function Navigation() {
           },
         ]
       : []),
+  ];
+  const searchPages: SiteSearchPage[] = [
+    ...regularNavLinks.map((link) => ({
+      href: link.href,
+      label: link.label,
+      icon: link.icon,
+      external: link.href === documentationLink.href,
+    })),
+    ...(user ? [{ href: "/profil", label: "Mein Profil", icon: UserRound }] : []),
+    ...(user?.role === "admin" ? [{ href: "/verwaltung", label: "Verwaltung", icon: LayoutDashboard }] : []),
   ];
   const desktopNavLinks = regularNavLinks.filter(
     (link) => link.href !== documentationLink.href,
@@ -324,67 +318,28 @@ export function Navigation() {
           )}
 
           {/* Global search */}
-          <div className="hidden items-center sm:flex">
-            {searchOpen ? (
-              <form onSubmit={handleSearchSubmit} role="search">
-                <Input.Group size="sm" className="w-60">
-                  <Input.Addon>
-                    <Search />
-                  </Input.Addon>
-                  <Input
-                    ref={searchInputRef}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onBlur={() => {
-                      if (!searchQuery) setSearchOpen(false);
-                    }}
-                    placeholder="Apps suchen..."
-                    aria-label="Apps suchen"
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <Input.Addon align="end">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Suche leeren"
-                        className="size-6"
-                        onClick={() => {
-                          setSearchQuery("");
-                          searchInputRef.current?.focus();
-                        }}
-                      >
-                        <X />
-                      </Button>
-                    </Input.Addon>
-                  )}
-                </Input.Group>
-              </form>
-            ) : (
-              <Tooltip>
-                <Tooltip.Trigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Suche öffnen"
-                      aria-keyshortcuts="Meta+K Control+K"
-                      onClick={() => {
-                        setSearchOpen(true);
-                        setTimeout(() => searchInputRef.current?.focus(), 50);
-                      }}
-                    />
-                  }
-                >
-                  <Search />
-                </Tooltip.Trigger>
-                <Tooltip.Content variant="shortcut">
-                  Apps suchen
-                  <Tooltip.Shortcut keys={["⌘", "K"]} />
-                </Tooltip.Content>
-              </Tooltip>
-            )}
-          </div>
+          <Tooltip>
+            <Tooltip.Trigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="hidden sm:inline-flex"
+                  aria-label="Suche öffnen"
+                  aria-keyshortcuts="Meta+K Control+K"
+                  aria-haspopup="dialog"
+                  onClick={() => setSearchOpen(true)}
+                />
+              }
+            >
+              <Search />
+            </Tooltip.Trigger>
+            <Tooltip.Content variant="shortcut">
+              Suchen
+              <Tooltip.Shortcut keys={["⌘", "K"]} />
+            </Tooltip.Content>
+          </Tooltip>
+          <SiteSearch open={searchOpen} onOpenChange={setSearchOpen} pages={searchPages} />
 
           {(!user || loading) && <ThemeSwitcher />}
 
@@ -458,26 +413,17 @@ export function Navigation() {
               <Sheet.Header title={storeName} />
               <Sheet.Body>
                 <nav aria-label="Mobile Navigation" className="flex flex-col gap-1 px-4 pb-6">
-                  <form
-                    role="search"
-                    className="mb-3"
-                    onSubmit={(e) => {
-                      handleSearchSubmit(e);
+                  <Button
+                    variant="secondary"
+                    className="mb-3 justify-start text-muted-foreground"
+                    onClick={() => {
                       setMobileOpen(false);
+                      setSearchOpen(true);
                     }}
                   >
-                    <Input.Group>
-                      <Input.Addon>
-                        <Search />
-                      </Input.Addon>
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Apps suchen..."
-                        aria-label="Apps suchen"
-                      />
-                    </Input.Group>
-                  </form>
+                    <Search />
+                    Apps, Gruppen oder Seiten suchen …
+                  </Button>
 
                   {mobileNavLinks.map((link) => {
                     const Icon = link.icon;
