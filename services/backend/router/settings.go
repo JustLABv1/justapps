@@ -9,6 +9,9 @@ import (
 )
 
 func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
+	// The weekly summary of the public catalog ("Wochenrückblick").
+	group.GET("/digest", middlewares.OptionalAuth(db), func(c *gin.Context) { platform.GetDigest(c, db) })
+
 	settings := group.Group("/settings")
 	{
 		// Public: branding and store config is needed by all visitors
@@ -81,6 +84,15 @@ func RegisterSettings(group *gin.RouterGroup, db *bun.DB) {
 			aiProviders.POST("/:key/test", func(c *gin.Context) {
 				platform.TestAIProvider(c, db)
 			})
+		}
+
+		mail := settings.Group("/mail")
+		mail.Use(middlewares.Admin(db))
+		{
+			mail.GET("", func(c *gin.Context) { platform.GetMailSettings(c, db) })
+			mail.PUT("", func(c *gin.Context) { platform.UpdateMailSettings(c, db) })
+			mail.POST("/test", func(c *gin.Context) { platform.SendTestMail(c, db) })
+			mail.POST("/digest", func(c *gin.Context) { platform.SendDigestNow(c, db) })
 		}
 
 		oidcProviders := settings.Group("/oidc-providers")

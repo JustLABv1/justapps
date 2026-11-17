@@ -1,14 +1,13 @@
 "use client";
 
-import {
-  Button,
-  Dropdown,
-  Input,
-  Label,
-  Modal,
-  TextField,
-} from "@heroui/react";
-import { ChevronDown, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Alert } from "@/components/panelui/alert";
+import { Button } from "@/components/panelui/button";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Select } from "@/components/panelui/select";
+import { Tooltip } from "@/components/panelui/tooltip";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 
@@ -92,193 +91,105 @@ export function SpaceGroupMappingsModal({
       setSaving(false);
     }
   };
+  const providerItems = providers.map((provider) => ({ value: provider.key, label: provider.label }));
+  const claim = providers.find((provider) => provider.key === providerKey)?.groupsClaim || "groups";
+
   return (
-    <Modal.Backdrop
-      isOpen
-      onOpenChange={(open) => {
-        if (!saving) onOpenChange(open);
-      }}
-    >
-      <Modal.Container>
-        <Modal.Dialog className="max-w-2xl">
-          <Modal.CloseTrigger />
-          <Modal.Header>
-            <Modal.Icon className="bg-accent-soft text-accent">
-              <ShieldCheck className="h-5 w-5" />
-            </Modal.Icon>
-            <Modal.Heading>Gruppenzugriff</Modal.Heading>
-          </Modal.Header>
-          <Modal.Body className="space-y-5">
-            <p className="text-sm leading-relaxed text-muted">
-              Mitglieder der zugeordneten OIDC-Gruppen erhalten beim Anmelden
-              automatisch Zugriff auf{" "}
-              <strong className="text-foreground">{space.name}</strong>. Eine
-              Einladung ist dafür nicht erforderlich.
-            </p>
-            {loading ? (
-              <p role="status" className="py-6 text-sm text-muted">
-                Gruppenzuordnungen werden geladen …
-              </p>
-            ) : (
-              <>
-                <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
-                  {mappings.length ? (
-                    mappings.map((mapping) => (
-                      <div
-                        key={mapping.id}
-                        className="flex items-center gap-3 p-4"
-                      >
-                        <ShieldCheck className="h-4 w-4 shrink-0 text-muted" />
-                        <div className="min-w-0 flex-1">
-                          <p className="break-all text-sm font-medium">
-                            {mapping.groupName}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-muted">
-                            {providers.find(
-                              (provider) =>
-                                provider.key === mapping.providerKey,
-                            )?.label || mapping.providerKey}{" "}
-                            · {mapping.issuer}
-                          </p>
-                        </div>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="ghost"
-                          aria-label={`Zuordnung ${mapping.groupName} entfernen`}
-                          isDisabled={saving}
-                          onPress={() =>
-                            void mutate(async () => {
-                              await request(
-                                `/spaces/${space.id}/group-mappings/${mapping.id}`,
-                                "DELETE",
-                              );
-                            })
+    <Dialog open onOpenChange={(open) => { if (!saving) onOpenChange(open); }}>
+      <Dialog.Content size="lg">
+        <Dialog.Header
+          title="Gruppenzugriff"
+          description={<>Mitglieder der zugeordneten OIDC-Gruppen bekommen bei der Anmeldung automatisch Zugriff auf <strong className="font-medium text-foreground">{space.name}</strong>, ohne Einladung.</>}
+        />
+        <Dialog.Body className="flex flex-col gap-4">
+          {error && (
+            <Alert variant="plain" tone="destructive">
+              <Alert.Icon />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert>
+          )}
+          {loading ? (
+            <p role="status" className="py-6 text-center text-sm text-muted-foreground">Gruppenzuordnungen werden geladen …</p>
+          ) : (
+            <>
+              <ul className="divide-y overflow-hidden rounded-xl border">
+                {mappings.length ? (
+                  mappings.map((mapping) => (
+                    <li key={mapping.id} className="flex items-center gap-3 px-4 py-3">
+                      <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="break-all text-sm font-medium">{mapping.groupName}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {providers.find((provider) => provider.key === mapping.providerKey)?.label || mapping.providerKey} · {mapping.issuer}
+                        </span>
+                      </span>
+                      <Tooltip>
+                        <Tooltip.Trigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={saving}
+                              aria-label={`Zuordnung ${mapping.groupName} entfernen`}
+                              onClick={() => void mutate(async () => { await request(`/spaces/${space.id}/group-mappings/${mapping.id}`, "DELETE"); })}
+                            />
                           }
                         >
-                          <Trash2 className="h-4 w-4 text-danger" />
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="p-5 text-sm text-muted">
-                      Noch keine Gruppen zugeordnet. Manuelle Einladungen
-                      funktionieren weiterhin.
-                    </p>
-                  )}
-                </div>
-                {providers.length ? (
-                  <form
-                    className="space-y-4"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void mutate(async () => {
-                        await request(
-                          `/spaces/${space.id}/group-mappings`,
-                          "POST",
-                          { providerKey, groupName },
-                        );
-                        setGroupName("");
-                      });
-                    }}
-                  >
-                    <div className="grid items-end gap-3 sm:grid-cols-[minmax(120px,0.8fr)_minmax(0,1fr)_auto]">
-                      <div className="space-y-2">
-                        <Label>OIDC-Provider</Label>
-                        <Dropdown>
-                          <Button
-                            variant="secondary"
-                            className="w-full justify-between"
-                            isDisabled={saving}
-                            aria-label="OIDC-Provider auswählen"
-                          >
-                            {providers.find(
-                              (provider) => provider.key === providerKey,
-                            )?.label || "Provider wählen"}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Dropdown.Popover>
-                            <Dropdown.Menu
-                              aria-label="OIDC-Provider"
-                              onAction={(key) => setProviderKey(String(key))}
-                            >
-                              {providers.map((provider) => (
-                                <Dropdown.Item
-                                  key={provider.key}
-                                  id={provider.key}
-                                  textValue={provider.label}
-                                >
-                                  <Label>{provider.label}</Label>
-                                </Dropdown.Item>
-                              ))}
-                            </Dropdown.Menu>
-                          </Dropdown.Popover>
-                        </Dropdown>
-                      </div>
-                      <TextField
-                        isRequired
-                        value={groupName}
-                        onChange={setGroupName}
-                      >
-                        <Label>Exakter Gruppenname oder Pfad</Label>
-                        <Input
-                          placeholder="/teams/digitalisierung"
-                          maxLength={512}
-                        />
-                      </TextField>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        isPending={saving}
-                        isDisabled={!providerKey || !groupName.trim()}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Zuordnen
-                      </Button>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted">
-                      Verwendeter Claim-Pfad im ID-Token:{" "}
-                      <code>
-                        {providers.find(
-                          (provider) => provider.key === providerKey,
-                        )?.groupsClaim || "groups"}
-                      </code>
-                      . Er wird am OIDC-Provider konfiguriert. Der Gruppenname
-                      beziehungsweise Gruppenpfad muss exakt dem Wert in dieser
-                      Liste entsprechen.
-                    </p>
-                  </form>
+                          <Trash2 />
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Zuordnung entfernen</Tooltip.Content>
+                      </Tooltip>
+                    </li>
+                  ))
                 ) : (
-                  <p className="text-sm text-muted">
-                    Zuerst muss in der Verwaltung ein aktiver OIDC-Provider
-                    eingerichtet werden.
-                  </p>
+                  <li className="px-4 py-5 text-sm text-muted-foreground">Noch keine Gruppe zugeordnet. Einladungen funktionieren weiterhin.</li>
                 )}
-                <p className="rounded-xl bg-surface-secondary p-4 text-xs leading-relaxed text-muted">
-                  Gruppenänderungen werden bei der nächsten OIDC-Anmeldung des
-                  Nutzers synchronisiert. Das Entfernen einer Zuordnung entzieht
-                  den darüber erteilten Zugriff sofort. Andere Gruppenzugriffe
-                  und manuelle Berechtigungen bleiben bestehen.
-                </p>
-              </>
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-danger">
-                {error}
+              </ul>
+              {providers.length ? (
+                <form
+                  className="flex flex-col gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void mutate(async () => {
+                      await request(`/spaces/${space.id}/group-mappings`, "POST", { providerKey, groupName });
+                      setGroupName("");
+                    });
+                  }}
+                >
+                  <div className="grid items-end gap-3 sm:grid-cols-[11rem_minmax(0,1fr)_auto]">
+                    <Field>
+                      <Field.Label>OIDC-Provider</Field.Label>
+                      <Select items={providerItems} value={providerKey} onValueChange={(value) => setProviderKey(String(value ?? ""))}>
+                        <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                        <Select.Content>{providerItems.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+                      </Select>
+                    </Field>
+                    <Field>
+                      <Field.Label required>Gruppenname oder Pfad</Field.Label>
+                      <Input required value={groupName} maxLength={512} placeholder="/teams/digitalisierung" onChange={(event) => setGroupName(event.target.value)} />
+                    </Field>
+                    <Button type="submit" loading={saving} disabled={!providerKey || !groupName.trim()}>
+                      <Plus />
+                      Zuordnen
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Der Name muss exakt dem Eintrag im Claim <code className="font-mono">{claim}</code> des ID-Tokens entsprechen.
+                  </p>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">Zuerst muss ein aktiver OIDC-Provider eingerichtet sein.</p>
+              )}
+              <p className="rounded-xl bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
+                Gruppenänderungen gelten ab der nächsten Anmeldung der Person. Eine entfernte Zuordnung entzieht den Zugriff darüber sofort; andere Zugriffe bleiben bestehen.
               </p>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              isDisabled={saving}
-              onPress={() => onOpenChange(false)}
-            >
-              Fertig
-            </Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+            </>
+          )}
+        </Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.Close render={<Button variant="secondary" disabled={saving} />}>Fertig</Dialog.Close>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }

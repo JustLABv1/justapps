@@ -1,36 +1,43 @@
 'use client';
 
-import { Button } from "@heroui/react";
+import { Button } from "@/components/panelui/button";
+import { Tooltip } from "@/components/panelui/tooltip";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
+  // The theme is only known on the client: hold the space until then.
   if (!mounted) {
-    return (
-      <Button isIconOnly variant="secondary" size="sm" aria-label="Toggle theme" className="opacity-0">
-        <Sun className="w-4 h-4" />
-      </Button>
-    );
+    return <Button variant="ghost" size="icon-sm" aria-hidden="true" tabIndex={-1} className="invisible" />;
   }
 
+  const isDark = resolvedTheme === 'dark';
+  const label = isDark ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln';
+
   return (
-    <Button
-      isIconOnly
-      variant="secondary"
-      size="sm"
-      onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      aria-label={theme === 'dark' ? 'Zum hellen Modus wechseln' : 'Zum dunklen Modus wechseln'}
-    >
-      {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-    </Button>
+    <Tooltip>
+      <Tooltip.Trigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={label}
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          />
+        }
+      >
+        {isDark ? <Sun /> : <Moon />}
+      </Tooltip.Trigger>
+      <Tooltip.Content>{label}</Tooltip.Content>
+    </Tooltip>
   );
 }

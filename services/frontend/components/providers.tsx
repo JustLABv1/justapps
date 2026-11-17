@@ -1,19 +1,16 @@
 'use client';
 
-import { RouterProvider, Toast } from '@heroui/react';
+import { Toast } from '@/components/panelui/toast';
+import { toaster } from '@/lib/toast';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
-import { useRouter } from 'next/navigation';
 import { AuthProvider } from '../context/AuthContext';
 import { FavoritesProvider } from '../context/FavoritesContext';
 import { SettingsProvider } from '../context/SettingsContext';
 import { UpdatesProvider } from '../context/UpdatesContext';
-import { AIChatWidget } from './AIChatWidget';
 import { BackendHealthGate } from './BackendHealthGate';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
   return (
     <SessionProvider refetchInterval={60} refetchOnWindowFocus={true}>
       <NextThemesProvider
@@ -22,21 +19,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem={false}
         disableTransitionOnChange
       >
-        <RouterProvider navigate={router.push}>
+        <Toast.Provider toastManager={toaster} position="bottom-right">
           <BackendHealthGate>
             <AuthProvider>
               <FavoritesProvider>
                 <UpdatesProvider>
                   <SettingsProvider>
-                    <Toast.Provider placement="bottom end" />
                     {children}
-                    <AIChatWidget />
                   </SettingsProvider>
                 </UpdatesProvider>
               </FavoritesProvider>
             </AuthProvider>
           </BackendHealthGate>
-        </RouterProvider>
+        </Toast.Provider>
       </NextThemesProvider>
     </SessionProvider>
   );

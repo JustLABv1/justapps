@@ -36,6 +36,12 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 		user.PUT("/", func(c *gin.Context) {
 			users.ChangeUserDetails(c, db)
 		})
+		user.PUT("/profile", func(c *gin.Context) {
+			users.UpdateOwnProfile(c, db)
+		})
+		user.GET("/activity", func(c *gin.Context) {
+			users.GetOwnActivity(c, db)
+		})
 		user.PUT("/password", func(c *gin.Context) {
 			users.ChangeUserPassword(c, db)
 		})
@@ -59,6 +65,9 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 		user.POST("/recently-viewed", func(c *gin.Context) {
 			users.RecordRecentlyViewedApp(c, db)
 		})
+		user.GET("/request-notifications", func(c *gin.Context) { users.ListRequestNotifications(c, db) })
+		user.GET("/request-notifications/summary", func(c *gin.Context) { users.GetRequestNotificationSummary(c, db) })
+		user.POST("/request-notifications/:id/seen", func(c *gin.Context) { users.MarkRequestNotificationSeen(c, db) })
 		user.GET("/updates", func(c *gin.Context) {
 			users.ListReleaseUpdates(c, db)
 		})

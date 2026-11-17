@@ -27,9 +27,12 @@ type globalFAQQuestionRow struct {
 	AppIcon     *string   `bun:"app_icon"`
 	UserID      uuid.UUID `bun:"user_id"`
 	Username    string    `bun:"username"`
+	DisplayName string    `bun:"display_name"`
+	AvatarURL   string    `bun:"avatar_url"`
 	Question    string    `bun:"question"`
 	CreatedAt   time.Time `bun:"created_at"`
 	AnswerCount int       `bun:"answer_count"`
+	Solved      bool      `bun:"solved"`
 	Total       int       `bun:"total"`
 }
 
@@ -46,7 +49,10 @@ type globalFAQAnswerRow struct {
 	Username         string     `bun:"username"`
 	ReplyToAnswerID  *uuid.UUID `bun:"reply_to_answer_id"`
 	ReplyToUsername  string     `bun:"reply_to_username"`
+	ReplyToName      string     `bun:"reply_to_display_name"`
 	ReplyToText      string     `bun:"reply_to_text"`
+	DisplayName      string     `bun:"display_name"`
+	AvatarURL        string     `bun:"avatar_url"`
 	Answer           string     `bun:"answer"`
 	IsPinned         bool       `bun:"is_pinned"`
 	CreatorLiked     bool       `bun:"creator_liked"`
@@ -65,8 +71,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 	status := c.DefaultQuery("status", "all")
-	if status != "all" && status != "open" && status != "answered" {
-		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+	if status != "all" && status != "open" && status != "answered" && status != "solved" && status != "unsolved" {
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, answered, solved, or unsolved"))
 		return
 	}
 	scope := c.DefaultQuery("scope", "all")
@@ -75,6 +81,13 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 	appID := strings.TrimSpace(c.Query("appId"))
+	questionID := strings.TrimSpace(c.Query("questionId"))
+	if questionID != "" {
+		if _, err := uuid.Parse(questionID); err != nil {
+			httperror.StatusBadRequest(c, "Invalid FAQ question ID", err)
+			return
+		}
+	}
 	search := strings.TrimSpace(c.Query("q"))
 	owner := strings.TrimSpace(c.Query("owner"))
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
@@ -95,7 +108,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		WITH combined AS (
 			SELECT q.id, 'global'::text AS scope, NULL::text AS app_id, NULL::text AS app_name,
 				NULL::text AS app_icon, q.user_id, q.username, q.question, q.created_at,
-				(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+				(SELECT COUNT(*) FROM global_faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count,
+				EXISTS (SELECT 1 FROM global_faq_answers answer WHERE answer.question_id = q.id AND answer.accepted_by_author) AS solved
 			FROM global_faq_questions q
 			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
 				SELECT 1 FROM global_faq_answers answer WHERE answer.question_id = q.id AND (answer.answer ILIKE ? OR answer.username ILIKE ?)
@@ -103,7 +117,8 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 			UNION ALL
 			SELECT q.id, 'app'::text AS scope, q.app_id, app.name AS app_name, app.icon AS app_icon,
 				q.user_id, q.username, q.question, q.created_at,
-				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count
+				(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count,
+				EXISTS (SELECT 1 FROM faq_answers answer WHERE answer.question_id = q.id AND answer.accepted_by_author) AS solved
 			FROM faq_questions q
 			JOIN apps app ON app.id = q.app_id AND app.space_id IS NULL
 			WHERE (? = '' OR q.question ILIKE ? OR q.username ILIKE ? OR EXISTS (
@@ -118,12 +133,17 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
 				))))
 		)
-		SELECT *, COUNT(*) OVER()::int AS total
+		SELECT combined.*,
+			COALESCE((SELECT u.display_name FROM users u WHERE u.id = combined.user_id), '') AS display_name,
+			COALESCE((SELECT u.avatar_url FROM users u WHERE u.id = combined.user_id), '') AS avatar_url,
+			COUNT(*) OVER()::int AS total
 		FROM combined
 		WHERE (? = 'all' OR scope = ?)
 			AND (? = '' OR app_id = ?)
+			AND (? = '' OR id::text = ?)
 			AND (? = '' OR user_id = ?)
-			AND (? = 'all' OR (? = 'open' AND answer_count = 0) OR (? = 'answered' AND answer_count > 0))
+			AND (? = 'all' OR (? = 'open' AND answer_count = 0) OR (? = 'answered' AND answer_count > 0)
+				OR (? = 'solved' AND solved) OR (? = 'unsolved' AND NOT solved))
 		ORDER BY
 			CASE WHEN ? = 'most-answered' THEN answer_count END DESC,
 			created_at DESC, id DESC
@@ -132,11 +152,30 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 		search, pattern, pattern, pattern, pattern,
 		canViewAppDrafts, hasViewer, viewerID, viewerID,
 		canViewAppDrafts, hasViewer, viewerID, viewerID,
-		scope, scope, appID, appID, owner, viewerID,
-		status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
+		scope, scope, appID, appID, questionID, questionID, owner, viewerID,
+		status, status, status, status, status, c.Query("sort"), pageSize, (page-1)*pageSize,
 	).Scan(c.Request.Context(), &questions)
 	if err != nil {
 		httperror.InternalServerError(c, "Failed to load global FAQ questions", err)
+		return
+	}
+
+	var globalIDs, appIDs []uuid.UUID
+	for _, row := range questions {
+		if row.Scope == "global" {
+			globalIDs = append(globalIDs, row.ID)
+		} else {
+			appIDs = append(appIDs, row.ID)
+		}
+	}
+	_, globalTop, err := faqQuestionHighlights(c.Request.Context(), db, "global_faq_answers", "global_faq_answer_upvotes", globalIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
+		return
+	}
+	_, appTop, err := faqQuestionHighlights(c.Request.Context(), db, "faq_answers", "faq_answer_upvotes", appIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
 		return
 	}
 
@@ -144,7 +183,13 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	result := make([]gin.H, 0, len(questions))
 	for _, row := range questions {
 		total = row.Total
-		result = append(result, gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "answers": []models.GlobalFAQAnswer{}})
+		item := gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "displayName": row.DisplayName, "avatarUrl": row.AvatarURL, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "solved": row.Solved, "answers": []models.GlobalFAQAnswer{}}
+		if preview := globalTop[row.ID]; row.Scope == "global" && preview != nil {
+			item["topAnswer"] = preview
+		} else if preview := appTop[row.ID]; row.Scope != "global" && preview != nil {
+			item["topAnswer"] = preview
+		}
+		result = append(result, item)
 	}
 
 	apps := make([]globalFAQAppOption, 0)
@@ -189,11 +234,13 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 		ColumnExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
 		ColumnExpr("a.reply_to_answer_id, COALESCE(parent.username, '') AS reply_to_username, COALESCE(parent.answer, '') AS reply_to_text").
 		Join("LEFT JOIN global_faq_answers AS parent ON parent.id = a.reply_to_answer_id").
+		ColumnExpr(replyToNameSQL("parent.user_id")).
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN global_faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ?", questionID).
 		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at, parent.id")
+	query = withAuthorProfile(query, "a.user_id")
 	countQuery := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID)
 	threaded := c.Query("threaded") == "true"
 	pageQuery := query.Clone()
@@ -219,7 +266,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.GlobalFAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToText: row.ReplyToText, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToDisplayName: row.ReplyToName, ReplyToText: row.ReplyToText, DisplayName: row.DisplayName, AvatarURL: row.AvatarURL, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }

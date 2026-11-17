@@ -1,154 +1,207 @@
 'use client';
 
+import { CodeBlock } from '@/components/CodeBlock';
+import { CopyField, CreateTokenForm, TokenReveal, daysUntil, useUserTokens } from '@/components/profile/tokens';
+import { Badge } from '@/components/panelui/badge';
+import { Card } from '@/components/panelui/card';
+import { Tabs } from '@/components/panelui/tabs';
 import { useStoreName } from '@/context/SettingsContext';
 import { getApiUrl } from '@/lib/apiUrl';
-import { Button, Card, Chip, Link } from '@heroui/react';
-import { Bot, Check, Clipboard, ExternalLink, KeyRound, ShieldCheck, Terminal } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { toast } from '@/lib/toast';
+import { Check, EyeOff, Search, ShieldCheck, FileText } from 'lucide-react';
+import NextLink from 'next/link';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+
+const TOKEN_PLACEHOLDER = '<DEIN_TOKEN>';
+
+const TOOLS = [
+  { name: 'search_apps', icon: Search, description: 'Apps nach Freitext, Kategorie, Technologie oder Status finden.' },
+  { name: 'get_app', icon: FileText, description: 'Öffentliche Angaben, Links und Installationsanleitungen einer App lesen.' },
+];
+
+function slug(name: string) {
+  return name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'justapps';
+}
+
+function Step({ index, title, description, done, last, children }: {
+  index: number;
+  title: string;
+  description?: ReactNode;
+  done?: boolean;
+  last?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <li className="relative grid grid-cols-[2rem_minmax(0,1fr)] gap-x-4 pb-10 last:pb-0">
+      {!last && <span aria-hidden="true" className="absolute top-10 bottom-2 left-4 w-px bg-border" />}
+      <span
+        aria-hidden="true"
+        className={`flex size-8 items-center justify-center rounded-full text-sm font-medium tabular-nums transition-colors ${
+          done ? 'bg-success/15 text-success' : 'border bg-background'
+        }`}
+      >
+        {done ? <Check className="size-4" /> : index}
+      </span>
+      <div className="flex min-w-0 flex-col gap-4 pt-1">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-medium">
+            <span className="sr-only">Schritt {index}{done ? ', erledigt' : ''}: </span>
+            {title}
+          </h3>
+          {description && <p className="text-sm text-pretty text-muted-foreground">{description}</p>}
+        </div>
+        {children}
+      </div>
+    </li>
+  );
+}
 
 export default function ProfilMcpPage() {
-  const router = useRouter();
   const storeName = useStoreName();
+  const { tokens, create } = useUserTokens();
   const [endpoint, setEndpoint] = useState('/api/v1/mcp');
-  const [copied, setCopied] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [client, setClient] = useState('json');
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
+    const id = window.setTimeout(() => {
       const apiUrl = getApiUrl();
-      const absoluteApiUrl = apiUrl.startsWith('/')
-        ? `${window.location.origin}${apiUrl}`
-        : apiUrl;
-      setEndpoint(`${absoluteApiUrl.replace(/\/$/, '')}/mcp`);
+      const absolute = apiUrl.startsWith('/') ? `${window.location.origin}${apiUrl}` : apiUrl;
+      setEndpoint(`${absolute.replace(/\/$/, '')}/mcp`);
     }, 0);
-    return () => window.clearTimeout(timeoutId);
+    return () => window.clearTimeout(id);
   }, []);
 
-  const config = useMemo(() => JSON.stringify({
-    type: 'streamable-http',
-    url: endpoint,
-    headers: {
-      Authorization: 'Bearer <MCP_TOKEN>',
-    },
-  }, null, 2), [endpoint]);
+  const activeTokens = tokens.filter((item) => !item.disabled && (daysUntil(item.expires_at) ?? 1) > 0).length;
+  const serverName = slug(storeName);
+  const bearer = `Bearer ${token ?? TOKEN_PLACEHOLDER}`;
 
-  const copy = async (value: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(key);
-      window.setTimeout(() => setCopied((current) => current === key ? null : current), 2200);
-    } catch {
-      setCopied(null);
-    }
-  };
+  const configs = useMemo(() => ({
+    json: {
+      label: 'Allgemein',
+      filename: 'mcp.json',
+      language: 'json',
+      code: JSON.stringify({ type: 'streamable-http', url: endpoint, headers: { Authorization: bearer } }, null, 2),
+      hint: 'Für Agenten, die Streamable HTTP unterstützen. Wo der Block hingehört, steht in der Anleitung deines Agenten.',
+    },
+    claude: {
+      label: 'Claude Code',
+      filename: 'Terminal',
+      language: 'bash',
+      code: `claude mcp add --transport http ${serverName} ${endpoint} \\\n  --header "Authorization: ${bearer}"`,
+      hint: 'Einmal im Terminal ausführen. Danach steht der Server in jeder Sitzung zur Verfügung.',
+    },
+    vscode: {
+      label: 'VS Code',
+      filename: '.vscode/mcp.json',
+      language: 'json',
+      code: JSON.stringify({ servers: { [serverName]: { type: 'http', url: endpoint, headers: { Authorization: bearer } } } }, null, 2),
+      hint: 'In die Datei .vscode/mcp.json deines Projekts oder in die Benutzereinstellungen eintragen.',
+    },
+  }), [bearer, endpoint, serverName]);
+
+  const config = configs[client as keyof typeof configs];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-          <Bot className="h-5 w-5" />
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-semibold tracking-tight">MCP einrichten</h2>
+          <Badge variant="outline" size="sm">Streamable HTTP</Badge>
         </div>
-        <div>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">MCP für deinen Agenten</h1>
-            <Chip size="sm" color="success" variant="soft">Streamable HTTP</Chip>
-          </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted">
-            Verbinde deinen Agenten mit dem {storeName}-Katalog. Er kann veröffentlichte Apps suchen und öffentliche Details sowie Deployment-Anleitungen lesen.
-          </p>
-        </div>
-      </div>
+        <p className="max-w-2xl text-pretty text-muted-foreground">
+          Verbinde deinen KI-Agenten mit dem {storeName}-Katalog. Er findet dann passende Apps und liest ihre Anleitungen – nur lesend.
+        </p>
+      </header>
 
-      <Card variant="secondary" className="border border-accent/20 bg-accent/5">
-        <Card.Header>
-          <Card.Title className="text-base">1. Endpoint hinterlegen</Card.Title>
-          <Card.Description>Das ist die MCP-Adresse deiner {storeName}-Installation.</Card.Description>
-        </Card.Header>
-        <Card.Content>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-xl border border-border bg-surface px-3 py-3 text-sm text-foreground">
-              {endpoint}
-            </code>
-            <Button variant="secondary" onPress={() => void copy(endpoint, 'endpoint')}>
-              {copied === 'endpoint' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-              {copied === 'endpoint' ? 'Kopiert' : 'Kopieren'}
-            </Button>
-          </div>
-        </Card.Content>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <Card>
-          <Card.Header>
-            <Card.Title className="flex items-center gap-2 text-base">
-              <KeyRound className="h-4 w-4 text-accent" />
-              2. Zugriffstoken erstellen
-            </Card.Title>
-            <Card.Description>
-              Dein Agent braucht ein persönliches {storeName}-Token im Authorization-Header.
-            </Card.Description>
-          </Card.Header>
-          <Card.Content className="space-y-4">
-            <ol className="space-y-3 text-sm text-muted">
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">1</span><span>Öffne die <Link href="/profil/tokens" className="font-semibold">Tokenverwaltung</Link>.</span></li>
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">2</span><span>Erstelle ein Token mit einer passenden Bezeichnung und Laufzeit.</span></li>
-              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">3</span><span>Kopiere es direkt nach der Erstellung in die Konfiguration deines Agenten.</span></li>
+          <Card.Content className="py-2">
+            <ol>
+              <Step index={1} title="Adresse des Servers" description={`Unter dieser Adresse erreicht dein Agent ${storeName}.`}>
+                <CopyField value={endpoint} label="MCP-Adresse" />
+              </Step>
+
+              <Step
+                index={2}
+                done={!!token}
+                title="Token erstellen"
+                description={token
+                  ? 'Das Token ist unten in der Konfiguration schon eingesetzt.'
+                  : <>Dein Agent meldet sich mit einem persönlichen Token an.{activeTokens > 0 && <> Du hast schon {activeTokens} aktive{activeTokens === 1 ? 's' : ''} – den vollen Wert sehen wir aber nur direkt beim Erstellen. Verwalten kannst du sie unter <NextLink href="/profil/tokens" className="font-medium text-foreground underline underline-offset-4">API-Tokens</NextLink>.</>}</>}
+              >
+                {token ? (
+                  <TokenReveal token={token} />
+                ) : (
+                  <CreateTokenForm
+                    create={create}
+                    onCreated={(created) => {
+                      setToken(created);
+                      toast.success('Token erstellt und in die Konfiguration eingesetzt.');
+                    }}
+                  />
+                )}
+              </Step>
+
+              <Step index={3} last title="Agent konfigurieren" description={config.hint}>
+                <div className="flex flex-col gap-3">
+                  <Tabs value={client} onValueChange={(value) => setClient(String(value))}>
+                    <Tabs.List aria-label="Agent auswählen">
+                      {Object.entries(configs).map(([key, item]) => (
+                        <Tabs.Trigger key={key} value={key}>{item.label}</Tabs.Trigger>
+                      ))}
+                    </Tabs.List>
+                  </Tabs>
+                  <CodeBlock code={config.code} label={`Konfiguration für ${config.label}`} filename={config.filename} language={config.language} />
+                  {!token && (
+                    <p className="text-sm text-muted-foreground">
+                      Ersetze <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{TOKEN_PLACEHOLDER}</code> durch dein Token – oder erstelle es in Schritt 2, dann setzen wir es hier ein.
+                    </p>
+                  )}
+                </div>
+              </Step>
             </ol>
           </Card.Content>
-          <Card.Footer>
-            <Button onPress={() => router.push('/profil/tokens')}>
-              Tokenverwaltung öffnen
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </Card.Footer>
         </Card>
 
-        <Card>
-          <Card.Header>
-            <Card.Title className="flex items-center gap-2 text-base">
-              <Terminal className="h-4 w-4 text-accent" />
-              3. Agent konfigurieren
-            </Card.Title>
-            <Card.Description>Die genaue Bezeichnung des Konfigurationsblocks hängt vom Agenten ab.</Card.Description>
-          </Card.Header>
-          <Card.Content>
-            <div className="relative">
-              <pre className="overflow-x-auto rounded-xl border border-border bg-[oklch(0.18_0.01_250)] p-4 text-xs leading-relaxed text-[oklch(0.92_0_0)]"><code>{config}</code></pre>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="tertiary"
-                className="absolute right-2 top-2 bg-white/10 text-white hover:bg-white/20"
-                aria-label="MCP-Konfiguration kopieren"
-                onPress={() => void copy(config, 'config')}
-              >
-                {copied === 'config' ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-              </Button>
-            </div>
-          </Card.Content>
-        </Card>
+        <aside className="flex flex-col gap-4">
+          <Card size="sm">
+            <Card.Header>
+              <Card.Title>Was dein Agent kann</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <ul className="flex flex-col gap-4">
+                {TOOLS.map(({ name, icon: Icon, description }) => (
+                  <li key={name} className="flex gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <Icon className="size-4" />
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <code className="font-mono text-sm font-medium">{name}</code>
+                      <p className="text-sm text-muted-foreground">{description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card.Content>
+          </Card>
+          <Card size="sm">
+            <Card.Header>
+              <Card.Title className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-success" />
+                Nur lesend
+              </Card.Title>
+              <Card.Description>Der Agent sieht nur veröffentlichte Katalogdaten und kann nichts ändern.</Card.Description>
+            </Card.Header>
+            <Card.Content>
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <EyeOff className="mt-0.5 size-4 shrink-0" />
+                Verantwortliche, Zugangsdaten, Berechtigungen und interne Synchronisationsdaten bekommt er nicht.
+              </p>
+            </Card.Content>
+          </Card>
+        </aside>
       </div>
-
-      <Card>
-        <Card.Header>
-          <Card.Title className="text-base">Was dein Agent nutzen kann</Card.Title>
-          <Card.Description>Der MCP ist bewusst schreibgeschützt und stellt nur veröffentlichte Katalogdaten bereit.</Card.Description>
-        </Card.Header>
-        <Card.Content className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-surface-secondary p-4">
-            <p className="font-mono text-sm font-semibold text-foreground">search_apps</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Apps nach Freitext, Kategorie, Technologie oder Status finden.</p>
-          </div>
-          <div className="rounded-xl border border-border bg-surface-secondary p-4">
-            <p className="font-mono text-sm font-semibold text-foreground">get_app</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">Öffentliche Metadaten, Links und Deployment-Anleitungen zu einer App lesen.</p>
-          </div>
-        </Card.Content>
-        <Card.Footer className="flex items-start gap-3 border-t border-border/60 pt-4">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-          <p className="text-xs leading-relaxed text-muted">Owner-Daten, Provider-Credentials, Berechtigungen und interne Synchronisationsdaten werden nicht an den Agenten ausgeliefert.</p>
-        </Card.Footer>
-      </Card>
     </div>
   );
 }

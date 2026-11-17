@@ -67,7 +67,6 @@ func GetSettings(c *gin.Context, db *bun.DB) {
 			FAQEnabled:             true,
 			AllowAppSubmissions:    true,
 			RequireAuthForAppStore: false,
-			AllowAnonymousAI:       false,
 			ShowFlagBar:            true,
 			TopBarPreset:           defaultBrandPreset,
 			HeroTitlePreset:        defaultBrandPreset,
@@ -151,7 +150,7 @@ func UpdateSettings(c *gin.Context, db *bun.DB) {
 	_, err := db.NewUpdate().
 		Model(&req).
 		Column(
-			"ai_enabled", "faq_enabled", "allow_app_submissions", "require_auth_for_app_store", "allow_anonymous_ai", "show_top_banner", "top_banner_text", "top_banner_type",
+			"ai_enabled", "faq_enabled", "allow_app_submissions", "require_auth_for_app_store", "show_top_banner", "top_banner_text", "top_banner_type",
 			"detail_fields",
 			"store_name", "store_description", "logo_url", "logo_dark_url",
 			"favicon_url", "accent_color", "hero_badge", "hero_title", "hero_title_preset", "hero_title_colors", "hero_subtitle",

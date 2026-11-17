@@ -43,10 +43,10 @@ func StartRouter(db *bun.DB, port int, config *config.RestfulConf) *http.Server 
 		Health(v1, db)
 		Admin(v1, db)
 		RegisterBackups(v1, db, config.DataPath)
+		RegisterAI(v1, db)
 		RegisterApps(v1, db)
 		RegisterFAQ(v1, db)
 		RegisterSettings(v1, db)
-		RegisterAI(v1, db)
 		RegisterUploads(v1, db, config.DataPath)
 		RegisterMCP(v1, db)
 	}

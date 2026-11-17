@@ -2,25 +2,42 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useStoreName } from '@/context/SettingsContext';
-import { PageFilters } from '@/components/PageHeader';
 import { fetchApi } from '@/lib/api';
 import { groupFAQThreads } from '@/lib/faqThreads';
-import { AlertDialog, Button, Card, Chip, Dropdown, Input, Label, ListBox, Select, TextArea, TextField, toast } from '@heroui/react';
-import { ArrowUp, ChevronDown, Heart, Loader2, MessageCircleQuestion, MoreHorizontal, Reply, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import { Alert } from '@/components/panelui/alert';
+import { AlertDialog } from '@/components/panelui/alert-dialog';
+import { UserAvatar, authorName, authorOf } from '@/components/profile/UserAvatar';
+import { Badge } from '@/components/panelui/badge';
+import { Button } from '@/components/panelui/button';
+import { Card } from '@/components/panelui/card';
+import { Field } from '@/components/panelui/field';
+import { Input } from '@/components/panelui/input';
+import { Menu } from '@/components/panelui/menu';
+import { Select } from '@/components/panelui/select';
+import { Spinner } from '@/components/panelui/spinner';
+import { Textarea } from '@/components/panelui/textarea';
+import { toast } from '@/lib/toast';
+import { ArrowUp, ArrowUpDown, ChevronDown, Heart, Link2, MessageCircleQuestion, MoreHorizontal, Reply, Pin, Plus, Search, Send, Trash2, UserRound, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { docComponents } from '@/components/app-detail/markdown';
 import Image from 'next/image';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { getImageAssetUrl } from '@/lib/assets';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface FAQAnswer {
   id: string;
   questionId: string;
   userId: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   answer: string;
   replyToAnswerId?: string;
   replyToUsername?: string;
+  replyToDisplayName?: string;
   replyToText?: string;
   isPinned: boolean;
   creatorLiked: boolean;
@@ -38,9 +55,13 @@ interface FAQQuestion {
   appIcon?: string | null;
   userId: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   question: string;
   createdAt: string;
   answerCount: number;
+  solved?: boolean;
+  topAnswer?: FAQAnswerPreview;
   answers: FAQAnswer[];
 }
 
@@ -51,9 +72,46 @@ interface FAQSectionProps {
   canPinAnswers: boolean;
   canRecommendAnswers: boolean;
   global?: boolean;
+  /** When the page shows its own search field, it holds the query and this section hides its field. */
+  query?: string;
+  onQueryChange?: (query: string) => void;
+  /** Lets the page set the status filter, e.g. from a "show open questions" link. */
+  status?: FAQStatusFilter;
+  onStatusChange?: (status: FAQStatusFilter) => void;
+  /** Increment to open the question composer from outside and scroll to it. */
+  askRequest?: number;
 }
 
-type FAQStatusFilter = 'all' | 'open' | 'answered';
+export type FAQStatusFilter = 'all' | 'open' | 'answered' | 'solved' | 'unsolved';
+type FAQAnswerPreview = { id: string; username: string; displayName?: string; avatarUrl?: string; answer: string; isPinned: boolean; creatorLiked: boolean; acceptedByAuthor: boolean; upvoteCount: number };
+
+/** Renderers for answers: the docs' copyable code blocks and notes, without repository links. */
+const ANSWER_MARKDOWN = docComponents({});
+
+/** Answers are Markdown; shown with the same code blocks and notes as the docs, in a compact style of their own. */
+function AnswerText({ text }: { text: string }) {
+  return (
+    <div className="flex max-w-3xl flex-col gap-2 text-sm leading-6 break-words [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-s-2 [&_blockquote]:ps-3 [&_blockquote]:text-muted-foreground [&_h1,&_h2,&_h3,&_h4]:font-semibold [&_li]:mt-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-1 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[0.8125rem]">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={ANSWER_MARKDOWN}>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+/** Markdown reduced to one line of plain text, for a preview. */
+const plainText = (markdown: string) => markdown
+  .replace(/```[\s\S]*?```/g, ' [Code] ')
+  .replace(/`([^`]*)`/g, '$1')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/[*_>#~]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const STOPWORDS = new Set(['aber', 'alle', 'auch', 'bitte', 'damit', 'dann', 'dass', 'diese', 'dieser', 'dieses', 'eine', 'einem', 'einen', 'einer', 'gibt', 'haben', 'kann', 'können', 'man', 'mich', 'oder', 'sich', 'sind', 'warum', 'welche', 'werden', 'wird', 'wie', 'wieso', 'with', 'what', 'about', 'there']);
+/** The few most telling words of a question, to look for similar ones. */
+const keywords = (text: string) => Array.from(new Set(text.toLowerCase().match(/[\p{L}\p{N}-]{4,}/gu) ?? []))
+  .filter((word) => !STOPWORDS.has(word))
+  .sort((a, b) => b.length - a.length)
+  .slice(0, 3);
 type FAQSort = 'newest' | 'most-answered';
 type FAQScopeFilter = 'all' | 'global' | 'app';
 type FAQAppOption = { id: string; name: string; icon?: string };
@@ -92,21 +150,16 @@ function FAQDeleteConfirmation({ title, description, isOpen, onOpenChange, onCon
   onConfirm: () => void;
 }) {
   return (
-    <AlertDialog.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialog.Container>
-        <AlertDialog.Dialog className="sm:max-w-[420px]">
-          <AlertDialog.Header>
-            <AlertDialog.Icon status="danger" />
-            <AlertDialog.Heading>{title}</AlertDialog.Heading>
-          </AlertDialog.Header>
-          <AlertDialog.Body>{description}</AlertDialog.Body>
-          <AlertDialog.Footer>
-            <Button slot="close" variant="tertiary">Abbrechen</Button>
-            <Button slot="close" variant="danger" onPress={onConfirm}>Löschen</Button>
-          </AlertDialog.Footer>
-        </AlertDialog.Dialog>
-      </AlertDialog.Container>
-    </AlertDialog.Backdrop>
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialog.Content tone="destructive">
+        <AlertDialog.Title>{title}</AlertDialog.Title>
+        <AlertDialog.Description>{description}</AlertDialog.Description>
+        <AlertDialog.Footer>
+          <AlertDialog.Cancel>Abbrechen</AlertDialog.Cancel>
+          <AlertDialog.Action onClick={onConfirm}>Löschen</AlertDialog.Action>
+        </AlertDialog.Footer>
+      </AlertDialog.Content>
+    </AlertDialog>
   );
 }
 
@@ -120,23 +173,30 @@ function FAQAnswerComposer({ recipient, value, onChange, onSubmit, onCancel, pen
   disabled: boolean;
 }) {
   return (
-    <div className="space-y-3">
-      <TextField value={value} onChange={onChange} className="flex flex-col gap-2">
-        <Label className="text-xs font-medium text-muted">{recipient ? `Antwort an ${recipient}` : 'Ihre Antwort auf die Frage'}</Label>
-        <TextArea autoComplete="off" placeholder={recipient ? 'Diskussion fortsetzen …' : 'Teilen Sie Ihre Erfahrung oder Empfehlung …'}
-          variant="secondary" className="min-h-24 w-full rounded-lg border border-border bg-surface text-sm leading-relaxed" rows={3} maxLength={5000} />
-      </TextField>
+    <div className="flex flex-col gap-3">
+      <Field>
+        <Field.Label>{recipient ? `Antwort an ${recipient}` : 'Deine Antwort'}</Field.Label>
+        <Textarea
+          autoComplete="off"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={recipient ? 'Diskussion fortsetzen …' : 'Teile deine Erfahrung oder Empfehlung …'}
+          rows={3}
+          maxLength={5000}
+        />
+        <Field.Description>Markdown wird unterstützt, z. B. `Befehl` oder Codeblöcke mit ```.</Field.Description>
+      </Field>
       <div className="flex justify-end gap-2">
-        {onCancel && <Button size="sm" variant="ghost" onPress={onCancel} isDisabled={pending}>Abbrechen</Button>}
-        <Button size="sm" variant="primary" onPress={onSubmit} isDisabled={!value.trim() || disabled} isPending={pending} className="gap-1.5">
-          <Send className="h-3.5 w-3.5" />{recipient ? 'Antwort senden' : 'Antwort veröffentlichen'}
+        {onCancel && <Button size="sm" variant="ghost" onClick={onCancel} disabled={pending}>Abbrechen</Button>}
+        <Button size="sm" onClick={onSubmit} disabled={!value.trim() || disabled} loading={pending}>
+          <Send />{recipient ? 'Antwort senden' : 'Antwort veröffentlichen'}
         </Button>
       </div>
     </div>
   );
 }
 
-export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPinAnswers, canRecommendAnswers, global = false }: FAQSectionProps) {
+export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPinAnswers, canRecommendAnswers, global = false, query, onQueryChange, status, onStatusChange, askRequest }: FAQSectionProps) {
   const { user } = useAuth();
   const storeName = useStoreName();
   const [questions, setQuestions] = useState<FAQQuestion[]>([]);
@@ -151,20 +211,40 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FAQStatusFilter>('all');
+  const [ownQuery, setOwnQuery] = useState('');
+  const [ownStatus, setOwnStatus] = useState<FAQStatusFilter>('all');
+  const externalSearch = query !== undefined;
+  const searchQuery = query ?? ownQuery;
+  const setSearchQuery = onQueryChange ?? setOwnQuery;
+  const statusFilter = status ?? ownStatus;
+  const setStatusFilter = onStatusChange ?? setOwnStatus;
   const [sort, setSort] = useState<FAQSort>('newest');
   const [mineOnly, setMineOnly] = useState(false);
   const [scopeFilter, setScopeFilter] = useState<FAQScopeFilter>('all');
   const [selectedAppId, setSelectedAppId] = useState('');
   const [faqApps, setFAQApps] = useState<FAQAppOption[]>([]);
   const [composerOpen, setComposerOpen] = useState(false);
+  // Opened from outside (a page-level "Frage stellen"), once per request.
+  const handledAsk = useRef(askRequest ?? 0);
+  useEffect(() => {
+    if (!askRequest || askRequest === handledAsk.current) return;
+    handledAsk.current = askRequest;
+    const timeout = window.setTimeout(() => {
+      setComposerOpen(true);
+      document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [askRequest]);
   const [questionPage, setQuestionPage] = useState(1);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [hasMoreQuestions, setHasMoreQuestions] = useState(false);
   const [loadingMoreQuestions, setLoadingMoreQuestions] = useState(false);
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [answerPages, setAnswerPages] = useState<Record<string, FAQAnswerPage>>({});
+  // A shared link (?frage=<id>) shows just that question, opened.
+  const [focusQuestionId, setFocusQuestionId] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('frage'));
+  const [similar, setSimilar] = useState<FAQQuestion[]>([]);
   const loadMoreQuestionsRef = useRef<HTMLDivElement>(null);
   const loadMoreAnswersRef = useRef<HTMLDivElement>(null);
   const endpoint = global ? '/faq' : `/apps/${appId}/faq`;
@@ -178,7 +258,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
   }, [replyTargets]);
 
-  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
+  const hasActiveFilters = !!focusQuestionId || searchQuery.trim() !== '' || statusFilter !== 'all' || sort !== 'newest' || mineOnly || scopeFilter !== 'all' || selectedAppId !== '';
 
   const loadFAQ = useCallback(async (page = 1, append = false) => {
     if (append) setLoadingMoreQuestions(true);
@@ -189,6 +269,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (mineOnly) params.set('owner', 'me');
       if (global) params.set('scope', scopeFilter);
       if (global && selectedAppId) params.set('appId', selectedAppId);
+      if (focusQuestionId) params.set('questionId', focusQuestionId);
       const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(await responseError(response, 'FAQ konnte nicht geladen werden.'));
@@ -217,7 +298,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
       if (append) setLoadingMoreQuestions(false);
       else setLoading(false);
     }
-  }, [endpoint, global, mineOnly, scopeFilter, searchQuery, selectedAppId, sort, statusFilter]);
+  }, [endpoint, focusQuestionId, global, mineOnly, scopeFilter, searchQuery, selectedAppId, sort, statusFilter]);
 
   const endpointForQuestion = useCallback((questionId: string) => {
     const question = questions.find((candidate) => candidate.id === questionId);
@@ -291,6 +372,71 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
     setExpandedQuestionId(questionId);
     if (!answerPages[questionId]) void loadAnswers(questionId);
+  };
+
+  // Open the linked question once it has loaded.
+  const openedFocus = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusQuestionId || openedFocus.current === focusQuestionId || !questions.some((question) => question.id === focusQuestionId)) return;
+    openedFocus.current = focusQuestionId;
+    const timeout = window.setTimeout(() => {
+      setExpandedQuestionId(focusQuestionId);
+      if (!answerPages[focusQuestionId]) void loadAnswers(focusQuestionId);
+      document.getElementById(`faq-question-${focusQuestionId}`)?.scrollIntoView({ block: 'center' });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [answerPages, focusQuestionId, loadAnswers, questions]);
+
+  const clearFocus = () => {
+    setFocusQuestionId(null);
+    openedFocus.current = null;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('frage');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  };
+
+  const copyQuestionLink = (questionId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('frage', questionId);
+    if (!global) url.hash = 'faq';
+    void navigator.clipboard.writeText(url.toString());
+    toast.success('Link zur Frage kopiert.');
+  };
+
+  // While a question is being written, look for ones that were asked already.
+  const draftKeywords = useMemo(() => (questionDraft.trim().length >= 12 ? keywords(questionDraft) : []), [questionDraft]);
+  useEffect(() => {
+    if (!composerOpen || draftKeywords.length === 0) {
+      const timeout = window.setTimeout(() => setSimilar([]), 0);
+      return () => window.clearTimeout(timeout);
+    }
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      const results = await Promise.all(draftKeywords.map(async (word) => {
+        const params = new URLSearchParams({ page: '1', pageSize: '5', status: 'all', sort: 'most-answered', q: word });
+        const response = await fetchApi(`${endpoint}?${params.toString()}`, { cache: 'no-store' }).catch(() => null);
+        if (!response?.ok) return [] as FAQQuestion[];
+        const data = await response.json() as { questions?: FAQQuestion[] };
+        return data.questions ?? [];
+      }));
+      if (cancelled) return;
+      const hits = new Map<string, { question: FAQQuestion; score: number }>();
+      results.flat().forEach((question) => {
+        const entry = hits.get(question.id);
+        hits.set(question.id, { question, score: (entry?.score ?? 0) + 1 });
+      });
+      setSimilar([...hits.values()].sort((a, b) => b.score - a.score || b.question.answerCount - a.question.answerCount).slice(0, 4).map((hit) => hit.question));
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [composerOpen, draftKeywords, endpoint]);
+
+  const openSimilar = (questionId: string) => {
+    setComposerOpen(false);
+    openedFocus.current = null;
+    setFocusQuestionId(questionId);
   };
 
   const handleAskQuestion = async () => {
@@ -492,186 +638,168 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
     }
   };
 
+  const scopeItems = [
+    { value: 'all', label: 'Alle Bereiche' },
+    { value: 'global', label: `${storeName} allgemein` },
+    { value: 'app', label: 'App-FAQs' },
+  ];
+  const appItems = [{ value: 'all', label: 'Alle Apps' }, ...faqApps.map((app) => ({ value: app.id, label: app.name }))];
+  const statusItems = [
+    { value: 'all', label: 'Alle Fragen' },
+    { value: 'unsolved', label: 'Ungelöst' },
+    { value: 'solved', label: 'Gelöst' },
+    { value: 'open', label: 'Ohne Antwort' },
+    { value: 'answered', label: 'Mit Antworten' },
+  ];
+  const sortItems = [
+    { value: 'newest', label: 'Neueste zuerst' },
+    { value: 'most-answered', label: 'Meiste Antworten' },
+  ];
+  const pillSelect = (label: string, items: { value: string; label: string }[], value: string, onChange: (value: string) => void) => (
+    <Select items={items} value={value} onValueChange={(next) => next && onChange(next)}>
+      <Select.Trigger variant="pill" size="sm" aria-label={label}>
+        <Select.Value />
+      </Select.Trigger>
+      <Select.Content alignItemWithTrigger={false}>
+        {items.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}
+      </Select.Content>
+    </Select>
+  );
+
   return (
-    <div className={`${global ? '' : 'mt-2'} space-y-5`}>
-      {(
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">{global ? 'Alle Fragen' : 'Häufige Fragen'}</h2>
-            {totalQuestions > 0 && (
-              <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold text-muted shadow-sm">
-                {totalQuestions}
-              </span>
-            )}
-            </div>
-            {user && <Button size="sm" variant="secondary" onPress={() => setComposerOpen(!composerOpen)} aria-expanded={composerOpen} aria-controls="faq-composer"><Plus className="h-4 w-4" />Frage stellen</Button>}
-          </div>
-        </>
-      )}
+    <div id="faq-section" className="flex scroll-mt-24 flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          {global ? 'Alle Fragen' : 'Fragen und Antworten'}
+          {totalQuestions > 0 && <Badge variant="secondary" size="sm">{totalQuestions}</Badge>}
+        </h2>
+        {user && (
+          <Button size="sm" variant={composerOpen ? 'secondary' : 'default'} onClick={() => setComposerOpen(!composerOpen)} aria-expanded={composerOpen} aria-controls="faq-composer">
+            <Plus />Frage stellen
+          </Button>
+        )}
+      </div>
 
-      {(
-        <div className="space-y-4">
-          <div className="space-y-4">
-            <PageFilters>
-              <div className="flex w-full flex-col gap-3">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="relative min-w-0 flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Fragen, Antworten oder Personen durchsuchen"
-                      aria-label="FAQ durchsuchen"
-                      className="h-12 w-full rounded-xl pl-10 pr-9"
-                      variant="secondary"
-                    />
-                    {searchQuery && (
-                      <Button isIconOnly size="sm" variant="ghost" aria-label="Suche löschen" onPress={() => setSearchQuery('')} className="absolute right-1 top-1/2 min-w-7 -translate-y-1/2">
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 items-center gap-2 border-t border-border/60 pt-3 sm:flex sm:flex-wrap" role="group" aria-label="Filter und Sortierung">
-                  {global && (
-                    <Select
-                      aria-label="FAQ-Bereich filtern"
-                      selectedKey={scopeFilter}
-                      onSelectionChange={(key) => {
-                        const value = String(key) as FAQScopeFilter;
-                        setScopeFilter(value);
-                        if (value !== 'app') setSelectedAppId('');
-                      }}
-                      variant="secondary"
-                      className="min-w-0 w-full sm:w-44"
-                    >
-                      <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          <ListBox.Item id="all" textValue="Alle Bereiche">Alle Bereiche<ListBox.ItemIndicator /></ListBox.Item>
-                          <ListBox.Item id="global" textValue={`${storeName} allgemein`}>{storeName} allgemein<ListBox.ItemIndicator /></ListBox.Item>
-                          <ListBox.Item id="app" textValue="App-FAQs">App-FAQs<ListBox.ItemIndicator /></ListBox.Item>
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
-                  )}
-                  {global && scopeFilter === 'app' && (
-                    <Select aria-label="Nach App filtern" selectedKey={selectedAppId || 'all'} onSelectionChange={(key) => setSelectedAppId(String(key) === 'all' ? '' : String(key))} variant="secondary" className="min-w-0 w-full sm:w-52">
-                      <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          <ListBox.Item id="all" textValue="Alle Apps">Alle Apps<ListBox.ItemIndicator /></ListBox.Item>
-                          {faqApps.map((app) => <ListBox.Item key={app.id} id={app.id} textValue={app.name}>{app.name}<ListBox.ItemIndicator /></ListBox.Item>)}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
-                  )}
-                  <Select aria-label="Antwortstatus filtern" selectedKey={statusFilter} onSelectionChange={(key) => setStatusFilter(String(key) as FAQStatusFilter)} variant="secondary" className="min-w-0 w-full sm:w-40">
-                    <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id="all" textValue="Alle Status">Alle Status<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="open" textValue="Offen">Offen<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="answered" textValue="Beantwortet">Beantwortet<ListBox.ItemIndicator /></ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  {user && (
-                    <Button size="sm" className="h-9" variant={mineOnly ? 'primary' : 'secondary'} aria-pressed={mineOnly} onPress={() => setMineOnly((current) => !current)}>
-                      <UserRound className="h-4 w-4" />Meine Fragen
-                    </Button>
-                  )}
-                  <Select aria-label="Fragen sortieren" selectedKey={sort} onSelectionChange={(key) => setSort(String(key) as FAQSort)} variant="secondary" className="min-w-0 w-full sm:ml-auto sm:w-48">
-                    <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id="newest" textValue="Neueste zuerst">Neueste zuerst<ListBox.ItemIndicator /></ListBox.Item>
-                        <ListBox.Item id="most-answered" textValue="Meiste Antworten">Meiste Antworten<ListBox.ItemIndicator /></ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                </div>
-              </div>
-            </PageFilters>
-            <div className="flex items-center justify-between gap-3 text-xs text-muted">
-              <span role="status">{loading ? 'Fragen werden geladen …' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
-              {hasActiveFilters && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onPress={() => { setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); setScopeFilter('all'); setSelectedAppId(''); }}
-                  className="h-auto px-0 py-0 text-xs"
-                >
-                  Filter zurücksetzen
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
-          {error}
-        </div>
-      )}
-
-      {user && composerOpen ? (
-        <Card id="faq-composer" className="rounded-2xl border border-border bg-surface shadow-none" variant="default">
-          <Card.Content className="flex flex-col gap-3 p-4 sm:p-5">
-            <TextField
-              value={questionDraft}
-              onChange={setQuestionDraft}
-              className="flex min-w-0 flex-1 flex-col gap-1.5"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <Label className="text-sm font-medium text-foreground">
-                  Eine Frage stellen
-                </Label>
-                <span className="text-[10px] text-muted">Max. 1.000 Zeichen</span>
-              </div>
-              <TextArea
+      {user && composerOpen && (
+        <Card id="faq-composer">
+          <Card.Content className="flex flex-col gap-3">
+            <Field>
+              <Field.Label>Deine Frage</Field.Label>
+              <Textarea
                 autoFocus
-                aria-label="Ihre Frage"
-                placeholder={global ? `Was möchten Sie über ${storeName} wissen?` : 'Was möchten Sie über diese App wissen?'}
-                variant="secondary"
-                className="min-h-20 w-full rounded-xl border border-border bg-surface-secondary text-sm"
+                value={questionDraft}
+                onChange={(event) => setQuestionDraft(event.target.value)}
+                placeholder={global ? `Was möchtest du über ${storeName} wissen?` : 'Was möchtest du über diese App wissen?'}
                 rows={2}
                 maxLength={1000}
               />
-            </TextField>
-            <div className="flex justify-end">
-              <Button variant="ghost" size="sm" className="mr-2" onPress={() => setComposerOpen(false)}>Abbrechen</Button>
-              <Button
-                size="sm"
-                onPress={handleAskQuestion}
-                isDisabled={!questionDraft.trim() || submitting !== null}
-                isPending={submitting === 'question'}
-                className="w-full gap-2 font-bold sm:w-auto"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Frage veröffentlichen
-              </Button>
-            </div>
+              <Field.Description>Höchstens 1.000 Zeichen.</Field.Description>
+            </Field>
+            {similar.length > 0 && (
+              <div className="flex flex-col gap-1.5" aria-live="polite">
+                <span className="text-sm font-medium">Wurde das schon gefragt?</span>
+                <ul className="-mx-2 flex flex-col">
+                  {similar.map((question) => (
+                    <li key={question.id}>
+                      <button
+                        type="button"
+                        onClick={() => openSimilar(question.id)}
+                        className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-start text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <MessageCircleQuestion className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate">{question.question}</span>
+                        {question.solved ? (
+                          <Badge variant="success" size="sm">Gelöst</Badge>
+                        ) : (
+                          <span className="shrink-0 text-xs text-muted-foreground">{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card.Content>
+          <Card.Footer variant="panel" className="justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setComposerOpen(false)}>Abbrechen</Button>
+            <Button size="sm" onClick={() => void handleAskQuestion()} disabled={!questionDraft.trim() || submitting !== null} loading={submitting === 'question'}>
+              <Send />Frage veröffentlichen
+            </Button>
+          </Card.Footer>
         </Card>
-      ) : null}
+      )}
+
+      <div className="flex flex-col gap-3">
+        {!externalSearch && <Input.Group>
+          <Input.Addon><Search /></Input.Addon>
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Fragen, Antworten oder Personen durchsuchen"
+            aria-label="FAQ durchsuchen"
+          />
+          {searchQuery && (
+            <Input.Addon align="end">
+              <Button size="icon-sm" variant="ghost" aria-label="Suche löschen" onClick={() => setSearchQuery('')}><X /></Button>
+            </Input.Addon>
+          )}
+        </Input.Group>}
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter und Sortierung">
+          {global && pillSelect('FAQ-Bereich filtern', scopeItems, scopeFilter, (value) => {
+            setScopeFilter(value as FAQScopeFilter);
+            if (value !== 'app') setSelectedAppId('');
+          })}
+          {global && scopeFilter === 'app' && pillSelect('Nach App filtern', appItems, selectedAppId || 'all', (value) => setSelectedAppId(value === 'all' ? '' : value))}
+          {pillSelect('Antwortstatus filtern', statusItems, statusFilter, (value) => setStatusFilter(value as FAQStatusFilter))}
+          {user && (
+            <Button size="sm" shape="pill" variant={mineOnly ? 'default' : 'outline'} aria-pressed={mineOnly} onClick={() => setMineOnly((current) => !current)}>
+              <UserRound />Meine Fragen
+            </Button>
+          )}
+          {hasActiveFilters && (
+            <Button size="sm" variant="ghost" onClick={() => { clearFocus(); setSearchQuery(''); setStatusFilter('all'); setSort('newest'); setMineOnly(false); setScopeFilter('all'); setSelectedAppId(''); }}>
+              Zurücksetzen
+            </Button>
+          )}
+          <Select items={sortItems} value={sort} onValueChange={(value) => value && setSort(value as FAQSort)}>
+            <Select.Trigger variant="ghost" size="sm" aria-label="Fragen sortieren" className="ms-auto">
+              <ArrowUpDown />
+              <Select.Value />
+            </Select.Trigger>
+            <Select.Content align="end">
+              {sortItems.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}
+            </Select.Content>
+          </Select>
+        </div>
+        {focusQuestionId && (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Link2 className="size-4" />
+            Es wird eine verlinkte Frage gezeigt.
+            <Button variant="link" size="sm" className="h-auto px-0" onClick={clearFocus}>Alle Fragen anzeigen</Button>
+          </div>
+        )}
+        <span role="status" className="sr-only">{loading ? 'Fragen werden geladen' : `${totalQuestions} ${totalQuestions === 1 ? 'Frage' : 'Fragen'}`}</span>
+      </div>
+
+      {error && (
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+        </Alert>
+      )}
 
       {loading && questions.length === 0 ? (
-        <div className="flex items-center justify-center gap-3 py-12 text-sm text-muted">
-          <Loader2 className="h-5 w-5 animate-spin text-accent" />
-          Fragen und Antworten werden geladen …
+        <div className="flex items-center justify-center gap-3 py-12 text-sm text-muted-foreground">
+          <Spinner />
+          Fragen werden geladen …
         </div>
       ) : questions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface-secondary/10 py-12 text-center text-muted">
-          <MessageCircleQuestion className="mx-auto mb-3 h-8 w-8 opacity-20" />
-          <p className="text-sm font-medium">
-            {hasActiveFilters ? 'Keine Fragen passen zu Ihrer Suche.' : 'Noch keine Fragen. Stellen Sie die erste Frage!'}
-          </p>
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center text-muted-foreground">
+          <MessageCircleQuestion className="size-6 opacity-40" />
+          <p className="text-sm">{hasActiveFilters ? 'Keine Fragen passen zu deiner Suche.' : 'Noch keine Fragen. Stell die erste!'}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <ul className="flex flex-col gap-3">
           {questions.map((question) => {
             const canDeleteQuestion = canDeleteQuestions || user?.id === question.userId;
             const replyTarget = replyTargets[question.id];
@@ -688,266 +816,285 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                 || busyAction === `isPinned:${answer.id}`
                 || busyAction === `creatorLiked:${answer.id}`
                 || busyAction === `delete-answer:${answer.id}`;
+              const author = authorOf(answer, user);
+              const name = authorName(author);
 
               return (
-                <div id={`faq-answer-${answer.id}`} key={answer.id}
-                  className="grid min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] items-start gap-x-2.5 py-3">
-                  <span aria-hidden="true" className="row-span-3 flex h-7 w-7 items-center justify-center rounded-full bg-surface-secondary text-[10px] font-semibold uppercase text-muted">
-                    {(answer.username || 'Anonymer Nutzer').split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('')}
-                  </span>
-                  <div className="flex min-h-7 min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="break-words text-sm font-semibold text-foreground">{answer.username || 'Anonymer Nutzer'}</span>
-                    <time dateTime={answer.createdAt} className="text-[11px] text-muted">{formatDate(answer.createdAt)}</time>
-                    {answer.isPinned && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-accent"><Pin className="h-3 w-3" />Angepinnt</span>
-                    )}
-                    {answer.creatorLiked && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-success"><Heart className="h-3 w-3" />Empfohlen</span>
-                    )}
-                    {answer.acceptedByAuthor && (
-                      <span title="Vom Fragensteller bestätigt" className="inline-flex items-center gap-1 text-[11px] text-success"><CheckCircle2 className="h-3 w-3" />Bestätigt</span>
-                    )}
-                  </div>
-                  {(canPinAnswers || canRecommendAnswers || canDeleteAnswer || user?.id === question.userId) ? (
-                    <Dropdown>
-                      <Button isIconOnly size="sm" variant="ghost" isDisabled={answerBusy}
-                        aria-label={`Weitere Aktionen für die Antwort von ${answer.username || 'Anonymer Nutzer'}`}
-                        className="h-7 min-h-7 w-7 min-w-7 text-muted">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                      <Dropdown.Popover placement="bottom end" className="min-w-56">
-                        <Dropdown.Menu aria-label="Antwort verwalten" onAction={(key) => {
-                          if (key === 'pin') void handleHighlight(answer, 'isPinned');
-                          if (key === 'recommend') void handleHighlight(answer, 'creatorLiked');
-                          if (key === 'accept') void handleAcceptance(answer);
-                          if (key === 'delete') setAnswerToDelete(answer);
-                        }}>
-                          {canPinAnswers && (
-                            <Dropdown.Item id="pin" textValue={answer.isPinned ? 'Anheftung entfernen' : 'Antwort anheften'}>
-                              <Pin className="h-4 w-4 text-muted" /><Label>{answer.isPinned ? 'Anheftung entfernen' : 'Antwort anheften'}</Label>
-                            </Dropdown.Item>
-                          )}
-                          {canRecommendAnswers && (
-                            <Dropdown.Item id="recommend" textValue={answer.creatorLiked ? 'Empfehlung entfernen' : 'Antwort empfehlen'}>
-                              <Heart className="h-4 w-4 text-muted" /><Label>{answer.creatorLiked ? 'Empfehlung entfernen' : 'Antwort empfehlen'}</Label>
-                            </Dropdown.Item>
-                          )}
-                          {user?.id === question.userId && (
-                            <Dropdown.Item id="accept" textValue={answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}>
-                              <CheckCircle2 className="h-4 w-4 text-muted" /><Label>{answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}</Label>
-                            </Dropdown.Item>
-                          )}
-                          {canDeleteAnswer && (
-                            <Dropdown.Item id="delete" textValue="Antwort löschen" variant="danger">
-                              <Trash2 className="h-4 w-4 text-danger" /><Label>Antwort löschen</Label>
-                            </Dropdown.Item>
-                          )}
-                        </Dropdown.Menu>
-                      </Dropdown.Popover>
-                    </Dropdown>
-                  ) : <span />}
-                  <div className="col-start-2 col-end-4 min-w-0">
+                <div id={`faq-answer-${answer.id}`} key={answer.id} className="flex min-w-0 gap-3 py-3">
+                  <UserAvatar user={author} size="xs" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-sm font-medium break-words">{name}</span>
+                      <time dateTime={answer.createdAt} className="text-xs text-muted-foreground">{formatDate(answer.createdAt)}</time>
+                      {answer.isPinned && <Badge variant="info" size="sm"><Pin />Angeheftet</Badge>}
+                      {answer.creatorLiked && <Badge variant="success" size="sm"><Heart />Empfohlen</Badge>}
+                      {answer.acceptedByAuthor && <Badge variant="success" size="sm" title="Vom Fragesteller bestätigt"><CheckCircle2 />Bestätigt</Badge>}
+                      {(canPinAnswers || canRecommendAnswers || canDeleteAnswer || user?.id === question.userId) && (
+                        <Menu>
+                          <Menu.Trigger
+                            render={<Button size="icon-sm" variant="ghost" disabled={answerBusy} className="ms-auto" aria-label={`Weitere Aktionen für die Antwort von ${name}`} />}
+                          >
+                            <MoreHorizontal />
+                          </Menu.Trigger>
+                          <Menu.Content align="end">
+                            {canPinAnswers && (
+                              <Menu.Item onClick={() => void handleHighlight(answer, 'isPinned')}>
+                                <Pin />{answer.isPinned ? 'Anheftung entfernen' : 'Antwort anheften'}
+                              </Menu.Item>
+                            )}
+                            {canRecommendAnswers && (
+                              <Menu.Item onClick={() => void handleHighlight(answer, 'creatorLiked')}>
+                                <Heart />{answer.creatorLiked ? 'Empfehlung entfernen' : 'Antwort empfehlen'}
+                              </Menu.Item>
+                            )}
+                            {user?.id === question.userId && (
+                              <Menu.Item onClick={() => void handleAcceptance(answer)}>
+                                <CheckCircle2 />{answer.acceptedByAuthor ? 'Bestätigung zurücknehmen' : 'Hat meine Frage beantwortet'}
+                              </Menu.Item>
+                            )}
+                            {canDeleteAnswer && (
+                              <Menu.Item variant="destructive" onClick={() => setAnswerToDelete(answer)}>
+                                <Trash2 />Antwort löschen
+                              </Menu.Item>
+                            )}
+                          </Menu.Content>
+                        </Menu>
+                      )}
+                    </div>
                     {isReply && answer.replyToAnswerId !== threadRootId && (
-                      <p className="mb-1 flex items-center gap-1 text-[11px] text-muted"><Reply className="h-3 w-3" />an {answer.replyToUsername || 'Anonymer Nutzer'}</p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground"><Reply className="size-3" />an {answer.replyToDisplayName || answer.replyToUsername || 'Anonymer Nutzer'}</p>
                     )}
-                    <p className="max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{answer.answer}</p>
-                  </div>
-                  <div className="col-start-2 col-end-4 mt-1 flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="ghost" isDisabled={!user || answerBusy}
-                      onPress={() => void handleUpvote(answer)}
-                      className={`h-7 min-h-7 gap-1 px-1 text-xs ${answer.userUpvoted ? 'text-accent' : 'text-muted'}`}
-                      aria-pressed={answer.userUpvoted} aria-label={user ? 'Antwort als hilfreich markieren' : 'Zum Abstimmen anmelden'}>
-                      <ArrowUp className="h-3.5 w-3.5" />{answer.upvoteCount}<span>Hilfreich</span>
-                    </Button>
-                    {user && (
-                      <Button size="sm" variant="ghost" className="h-7 min-h-7 gap-1 px-1 text-xs text-muted hover:text-foreground"
-                        aria-label={`Auf die Antwort von ${answer.username || 'Anonymer Nutzer'} antworten`}
-                        onPress={() => {
-                          setReplyTargets((previous) => ({ ...previous, [question.id]: answer }));
-                          setCollapsedThreads((previous) => ({ ...previous, [threadRootId]: false }));
-                        }}>
-                        <Reply className="h-3.5 w-3.5" />Antworten
+                    <AnswerText text={answer.answer} />
+                    <div className="-ms-2 flex flex-wrap items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={!user || answerBusy}
+                        onClick={() => void handleUpvote(answer)}
+                        className={answer.userUpvoted ? 'text-primary' : 'text-muted-foreground'}
+                        aria-pressed={answer.userUpvoted}
+                        aria-label={user ? `Hilfreich, ${answer.upvoteCount} Stimmen` : 'Zum Abstimmen anmelden'}
+                      >
+                        <ArrowUp />{answer.upvoteCount} Hilfreich
                       </Button>
-                    )}
+                      {user && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          aria-label={`Auf die Antwort von ${name} antworten`}
+                          onClick={() => {
+                            setReplyTargets((previous) => ({ ...previous, [question.id]: answer }));
+                            setCollapsedThreads((previous) => ({ ...previous, [threadRootId]: false }));
+                          }}
+                        >
+                          <Reply />Antworten
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             };
 
             return (
-              <article key={question.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
-                <div className="flex items-start gap-2 p-5 sm:p-6">
-                <button
-                  type="button"
-                  onClick={() => toggleQuestion(question.id)}
-                  aria-expanded={isExpanded}
-                  aria-controls={`faq-answer-panel-${question.id}`}
-                  className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-4 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <div className="min-w-0 space-y-2">
-                    {global && (
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${question.scope === 'app' ? 'bg-accent/10 text-accent' : 'bg-surface-secondary text-muted'}`}>
-                        {question.scope === 'app' && (
-                          <span className="relative flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded bg-surface text-[9px] font-bold">
-                            {appIconSrc ? <Image src={appIconSrc} alt="" fill sizes="16px" className="object-contain p-0.5" unoptimized /> : (question.appIcon || question.appName?.charAt(0) || 'A')}
+              <li key={question.id} id={`faq-question-${question.id}`} className="scroll-mt-32 overflow-hidden rounded-xl border bg-card">
+                <div className="flex items-start gap-2 p-4 sm:p-5">
+                  <button
+                    type="button"
+                    onClick={() => toggleQuestion(question.id)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`faq-answer-panel-${question.id}`}
+                    className="flex min-w-0 flex-1 cursor-pointer items-start justify-between gap-4 rounded-md text-start outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      {global && (
+                        <span className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground">
+                          {question.scope === 'app' && (
+                            <span className="relative flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-[10px]">
+                              {appIconSrc ? <Image src={appIconSrc} alt="" fill sizes="16px" className="object-contain" unoptimized /> : (question.appIcon || question.appName?.charAt(0) || 'A')}
+                            </span>
+                          )}
+                          {question.scope === 'app' ? question.appName : `${storeName} allgemein`}
+                        </span>
+                      )}
+                      <h3 className="text-base leading-snug font-semibold break-words">{question.question}</h3>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <UserAvatar user={authorOf(question, user)} size="xs" className="size-4 text-[8px]" />
+                          {authorName(authorOf(question, user))}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
+                        <span aria-hidden="true">·</span>
+                        <span>{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
+                        {question.solved ? (
+                          <Badge variant="success" size="sm"><CheckCircle2 />Gelöst</Badge>
+                        ) : question.answerCount === 0 ? (
+                          <Badge variant="warning" size="sm">Antwort gesucht</Badge>
+                        ) : null}
+                      </div>
+                      {!isExpanded && question.topAnswer && (
+                        <div className="mt-1.5 flex flex-col gap-0.5 border-s-2 ps-3">
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            {question.topAnswer.acceptedByAuthor ? (
+                              <><CheckCircle2 className="size-3 text-success" />Bestätigte Antwort</>
+                            ) : question.topAnswer.isPinned ? (
+                              <><Pin className="size-3" />Angeheftete Antwort</>
+                            ) : question.topAnswer.creatorLiked ? (
+                              <><Heart className="size-3" />Empfohlene Antwort</>
+                            ) : (
+                              'Beste Antwort'
+                            )}
+                            <span aria-hidden="true">·</span>
+                            {authorName(question.topAnswer)}
                           </span>
-                        )}
-                        {question.scope === 'app' ? question.appName : `${storeName} allgemein`}
-                      </span>
-                    )}
-                    <h3 className="break-words text-lg font-semibold leading-snug text-foreground">{question.question}</h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <span className="font-medium">{question.username || 'Anonymer Nutzer'}</span>
-                      <span aria-hidden="true">·</span>
-                      <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
-                      <span aria-hidden="true">·</span>
-                      <span className="text-accent">{question.answerCount} {question.answerCount === 1 ? 'Antwort' : 'Antworten'}</span>
-                      {question.answerCount === 0 && (
-                        <Chip size="sm" color="warning" variant="soft" className="text-[10px] font-bold">
-                          Antwort gesucht
-                        </Chip>
+                          <p className="line-clamp-2 text-sm text-foreground/90">{plainText(question.topAnswer.answer)}</p>
+                        </div>
                       )}
                     </div>
-                  </div>
-                  <ChevronDown className={`mt-1 h-5 w-5 shrink-0 text-muted ${isExpanded ? 'rotate-180' : ''}`} />
-                </button>
-                {canDeleteQuestion && (
-                  <Dropdown>
-                    <Button isIconOnly size="sm" variant="ghost"
-                      aria-label="Weitere Aktionen für diese Frage"
-                      isDisabled={busyAction === `delete-question:${question.id}`}
-                      className="h-7 min-h-7 w-7 min-w-7 shrink-0 text-muted">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                    <Dropdown.Popover placement="bottom end">
-                      <Dropdown.Menu aria-label="Frage verwalten" onAction={(key) => {
-                        if (key === 'delete') setQuestionToDelete(question);
-                      }}>
-                        <Dropdown.Item id="delete" textValue="Frage löschen" variant="danger">
-                          <Trash2 className="h-4 w-4 text-danger" /><Label>Frage löschen</Label>
-                        </Dropdown.Item>
-                      </Dropdown.Menu>
-                    </Dropdown.Popover>
-                  </Dropdown>
-                )}
+                    <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center">
+                      <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </span>
+                  </button>
+                  <Menu>
+                    <Menu.Trigger
+                      render={<Button size="icon-sm" variant="ghost" aria-label="Weitere Aktionen für diese Frage" disabled={busyAction === `delete-question:${question.id}`} />}
+                    >
+                      <MoreHorizontal />
+                    </Menu.Trigger>
+                    <Menu.Content align="end">
+                      <Menu.Item onClick={() => copyQuestionLink(question.id)}>
+                        <Link2 />Link kopieren
+                      </Menu.Item>
+                      {canDeleteQuestion && (
+                        <Menu.Item variant="destructive" onClick={() => setQuestionToDelete(question)}>
+                          <Trash2 />Frage löschen
+                        </Menu.Item>
+                      )}
+                    </Menu.Content>
+                  </Menu>
                 </div>
 
                 {isExpanded && (
-                <div className="px-5 pb-6 sm:px-6">
-                  <div id={`faq-answer-panel-${question.id}`}>
-                  {global && question.scope === 'app' && question.appId && (
-                    <Link href={`/apps/${question.appId}`} className="mb-2 inline-block text-xs font-medium text-accent hover:underline">
-                      Zu {question.appName || 'dieser App'}
-                    </Link>
-                  )}
-                <div className="space-y-3">
-                  {answerPage?.loading && answerPage.answers.length === 0 ? (
-                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Antworten werden geladen …
-                    </div>
-                  ) : (answerPage?.answers.length ?? 0) > 0 ? threads.map(({ root, replies }) => {
-                    const targetInThread = replyTarget && (replyTarget.id === root.id || replies.some((reply) => reply.id === replyTarget.id));
-                    const expanded = !collapsedThreads[root.id];
-                    return (
-                      <section key={root.id} className="border-b border-border/60 pb-3 last:border-b-0" aria-label={`Antwort von ${root.username || 'Anonymer Nutzer'} mit Diskussion`}>
-                        {renderAnswer(root, false, root.id)}
-                        {(replies.length > 0 || targetInThread) && (
-                          <div className="ml-3.5 border-l border-border pl-4 sm:pl-6">
-                            {replies.length > 0 && (
-                              <Button size="sm" variant="ghost" className="my-1 gap-1.5 text-xs text-muted"
-                                aria-expanded={expanded} aria-controls={`faq-thread-${root.id}`}
-                                onPress={() => setCollapsedThreads((previous) => ({ ...previous, [root.id]: expanded }))}>
-                                <ChevronDown className={`h-3.5 w-3.5 ${expanded ? '' : '-rotate-90'}`} />
-                                {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'} in dieser Diskussion
-                              </Button>
-                            )}
-                            <div id={`faq-thread-${root.id}`} hidden={!expanded}>
-                              <div className="space-y-0.5">
-                                {replies.map((reply) => renderAnswer(reply, true, root.id))}
-                              </div>
-                            </div>
-                            {targetInThread && user && (
-                              <div id={`faq-reply-composer-${question.id}`} className="pb-4 pt-3">
-                                <FAQAnswerComposer
-                                  recipient={replyTarget.username || 'Anonymer Nutzer'}
-                                  value={replyDrafts[question.id] || ''}
-                                  onChange={(value) => setReplyDrafts((previous) => ({ ...previous, [question.id]: value }))}
-                                  onSubmit={() => void handleAnswer(question.id, true)}
-                                  onCancel={() => setReplyTargets((previous) => ({ ...previous, [question.id]: undefined }))}
-                                  pending={submitting === `answer:${question.id}`}
-                                  disabled={submitting !== null}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </section>
-                    );
-                  }) : (
-                    <p className="rounded-xl border border-dashed border-border bg-surface-secondary/20 px-4 py-5 text-center text-sm text-muted">
-                      Noch keine Antwort. Teilen Sie Ihr Wissen!
-                    </p>
-                  )}
-
-                  {answerPage?.hasMore && (
-                    <div ref={loadMoreAnswersRef} className="flex justify-center py-2" aria-live="polite">
-                      {answerPage.loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted" />
-                      ) : (
-                        <Button size="sm" variant="ghost" onPress={() => void loadAnswers(question.id, answerPage.page + 1, true)}>
-                          Weitere Antworten laden
-                        </Button>
-                      )}
-                    </div>
-                  )}
-
-                  {user && (
-                    <details id={`faq-composer-${question.id}`} className="group border-t border-border/60 pt-2">
-                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-medium text-accent outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"><Plus className="h-4 w-4 group-open:rotate-45" />Antwort auf Frage schreiben</summary>
-                      <div className="pb-3 pt-2">
-                        <FAQAnswerComposer
-                          value={answerDraft}
-                          onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
-                          onSubmit={() => void handleAnswer(question.id)}
-                          pending={submitting === `answer:${question.id}`}
-                          disabled={submitting !== null}
-                        />
+                  <div id={`faq-answer-panel-${question.id}`} className="border-t px-4 pb-4 sm:px-5">
+                    {global && question.scope === 'app' && question.appId && (
+                      <Link href={`/apps/${question.appId}`} className="mt-3 inline-block text-xs font-medium underline-offset-4 hover:underline">
+                        Zu {question.appName || 'dieser App'}
+                      </Link>
+                    )}
+                    {answerPage?.loading && answerPage.answers.length === 0 ? (
+                      <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                        <Spinner /> Antworten werden geladen …
                       </div>
-                    </details>
-                  )}
-                </div>
+                    ) : (answerPage?.answers.length ?? 0) > 0 ? (
+                      <div className="divide-y">
+                        {threads.map(({ root, replies }) => {
+                          const targetInThread = replyTarget && (replyTarget.id === root.id || replies.some((reply) => reply.id === replyTarget.id));
+                          const expanded = !collapsedThreads[root.id];
+                          return (
+                            <section key={root.id} className="py-1" aria-label={`Antwort von ${authorName(authorOf(root, user))} mit Diskussion`}>
+                              {renderAnswer(root, false, root.id)}
+                              {(replies.length > 0 || targetInThread) && (
+                                <div className="ms-3 border-s ps-4 sm:ps-6">
+                                  {replies.length > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="-ms-2 text-muted-foreground"
+                                      aria-expanded={expanded}
+                                      aria-controls={`faq-thread-${root.id}`}
+                                      onClick={() => setCollapsedThreads((previous) => ({ ...previous, [root.id]: expanded }))}
+                                    >
+                                      <ChevronDown className={expanded ? '' : '-rotate-90'} />
+                                      {replies.length} {replies.length === 1 ? 'Antwort' : 'Antworten'} in dieser Diskussion
+                                    </Button>
+                                  )}
+                                  <div id={`faq-thread-${root.id}`} hidden={!expanded}>
+                                    {replies.map((reply) => renderAnswer(reply, true, root.id))}
+                                  </div>
+                                  {targetInThread && user && (
+                                    <div id={`faq-reply-composer-${question.id}`} className="pt-2 pb-4">
+                                      <FAQAnswerComposer
+                                        recipient={authorName(authorOf(replyTarget, user))}
+                                        value={replyDrafts[question.id] || ''}
+                                        onChange={(value) => setReplyDrafts((previous) => ({ ...previous, [question.id]: value }))}
+                                        onSubmit={() => void handleAnswer(question.id, true)}
+                                        onCancel={() => setReplyTargets((previous) => ({ ...previous, [question.id]: undefined }))}
+                                        pending={submitting === `answer:${question.id}`}
+                                        disabled={submitting !== null}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </section>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="py-6 text-center text-sm text-muted-foreground">Noch keine Antwort. Teile dein Wissen!</p>
+                    )}
+
+                    {answerPage?.hasMore && (
+                      <div ref={loadMoreAnswersRef} className="flex justify-center py-2" aria-live="polite">
+                        {answerPage.loading ? <Spinner /> : (
+                          <Button size="sm" variant="ghost" onClick={() => void loadAnswers(question.id, answerPage.page + 1, true)}>Weitere Antworten laden</Button>
+                        )}
+                      </div>
+                    )}
+
+                    {user && (
+                      <details id={`faq-composer-${question.id}`} className="group border-t pt-2">
+                        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                          <Plus className="size-4 transition-transform group-open:rotate-45" />Antwort schreiben
+                        </summary>
+                        <div className="pt-2 pb-1">
+                          <FAQAnswerComposer
+                            value={answerDraft}
+                            onChange={(value) => setAnswerDrafts((previous) => ({ ...previous, [question.id]: value }))}
+                            onSubmit={() => void handleAnswer(question.id)}
+                            pending={submitting === `answer:${question.id}`}
+                            disabled={submitting !== null}
+                          />
+                        </div>
+                      </details>
+                    )}
                   </div>
-                </div>
                 )}
-              </article>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
       {hasMoreQuestions && (
         <div ref={loadMoreQuestionsRef} className="flex justify-center py-4" aria-live="polite">
           {loadingMoreQuestions ? (
-            <div className="flex items-center gap-2 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" />Weitere Fragen werden geladen …</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />Weitere Fragen werden geladen …</div>
           ) : (
-            <Button variant="secondary" onPress={() => void loadFAQ(questionPage + 1, true)}>Weitere Fragen laden</Button>
+            <Button variant="outline" onClick={() => void loadFAQ(questionPage + 1, true)}>Weitere Fragen laden</Button>
           )}
         </div>
       )}
       <FAQDeleteConfirmation
         title="Antwort löschen?"
-        description="Möchten Sie diese Antwort wirklich unwiderruflich löschen?"
+        description="Die Antwort wird unwiderruflich entfernt."
         isOpen={answerToDelete !== null}
         onOpenChange={(open) => { if (!open) setAnswerToDelete(null); }}
         onConfirm={() => { if (answerToDelete) void handleDeleteAnswer(answerToDelete.questionId, answerToDelete.id); }}
       />
       <FAQDeleteConfirmation
         title="Frage löschen?"
-        description="Möchten Sie diese Frage einschließlich aller Antworten wirklich löschen?"
+        description="Die Frage wird mit allen Antworten unwiderruflich entfernt."
         isOpen={questionToDelete !== null}
         onOpenChange={(open) => { if (!open) setQuestionToDelete(null); }}
         onConfirm={() => { if (questionToDelete) void handleDeleteQuestion(questionToDelete.id); }}
       />
-      {!user && <p className="text-center text-sm text-muted"><a href="/login" className="font-medium text-accent underline underline-offset-4">Anmelden</a>, um eigene Fragen zu stellen oder Antworten beizutragen.</p>}
+      {!user && (
+        <p className="text-center text-sm text-muted-foreground">
+          <a href="/login" className="font-medium text-foreground underline underline-offset-4">Anmelden</a>, um Fragen zu stellen oder zu beantworten.
+        </p>
+      )}
     </div>
   );
 }

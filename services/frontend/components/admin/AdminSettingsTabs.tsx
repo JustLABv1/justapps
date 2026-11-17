@@ -1,7 +1,10 @@
 "use client";
-import { Tabs } from "@heroui/react";
+
+import { Tabs } from "@/components/panelui/tabs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
+
+/** A settings page in sections, the chosen one kept in `?bereich=` so it can be linked to. */
 export function AdminSettingsTabs({
   title,
   description,
@@ -15,41 +18,33 @@ export function AdminSettingsTabs({
   const pathname = usePathname();
   const params = useSearchParams();
   const requested = params.get("bereich");
-  const selected =
-    tabs.find((tab) => tab.key === requested)?.key || tabs[0].key;
+  const selected = tabs.find((tab) => tab.key === requested)?.key || tabs[0].key;
+
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-          {description}
-        </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <p className="max-w-3xl text-pretty text-muted-foreground">{description}</p>
       </header>
       <Tabs
-        selectedKey={selected}
-        onSelectionChange={(key) => {
+        variant="underline"
+        value={selected}
+        onValueChange={(key) => {
           const query = new URLSearchParams(params.toString());
           if (key === tabs[0].key) query.delete("bereich");
           else query.set("bereich", String(key));
-          router.replace(`${pathname}${query.size ? `?${query}` : ""}`, {
-            scroll: false,
-          });
+          router.replace(`${pathname}${query.size ? `?${query}` : ""}`, { scroll: false });
         }}
       >
-        <Tabs.ListContainer className="mb-6 overflow-x-auto border-b border-border">
-          <Tabs.List aria-label={title}>
-            {tabs.map((tab) => (
-              <Tabs.Tab key={tab.key} id={tab.key}>
-                {tab.label}
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs.ListContainer>
+        <Tabs.List aria-label={title}>
+          {tabs.map((tab) => (
+            <Tabs.Trigger key={tab.key} value={tab.key}>{tab.label}</Tabs.Trigger>
+          ))}
+        </Tabs.List>
         {tabs.map((tab) => (
-          <Tabs.Panel key={tab.key} id={tab.key}>
+          <Tabs.Content key={tab.key} value={tab.key} className="pt-6">
             {tab.content}
-          </Tabs.Panel>
+          </Tabs.Content>
         ))}
       </Tabs>
     </div>

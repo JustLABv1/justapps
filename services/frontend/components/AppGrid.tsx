@@ -6,25 +6,68 @@ import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
-import { Button, Input, ListBox, Select, TextField, Tooltip } from "@heroui/react";
-import { ChevronDown, ChevronUp, Clock, Heart, Loader2, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Input } from "@/components/panelui/input";
+import { Select } from "@/components/panelui/select";
+import { Tooltip } from "@/components/panelui/tooltip";
+import { Activity, ArrowUpDown, Check, Heart, Layers2, Package, Search, SlidersHorizontal, Sparkles, Tag, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
 import { AppCardSkeleton } from "./AppCardSkeleton";
+import { RecentChanges } from "./RecentChanges";
 
 const PAGE_SIZE = 24;
+
+const SORT_OPTIONS = [
+  { value: 'default', label: 'Standard' },
+  { value: 'rating', label: 'Beste Bewertung' },
+  { value: 'updated', label: 'Zuletzt aktualisiert' },
+  { value: 'status', label: 'Status' },
+];
 
 interface AppGridProps {
   initialApps: AppConfig[];
   spaceId?: string;
   scopeControl?: ReactNode;
   catalogAction?: ReactNode;
+  /** The page's own heading, set above the search so the two read as one block. */
+  header?: ReactNode;
 }
 
-export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction }: AppGridProps) {
+const RECENT_HIDDEN_KEY = 'recently-viewed-hidden';
+const RECENT_HIDDEN_EVENT = 'recently-viewed-hidden:change';
+
+function readRecentHidden() {
+  try {
+    return localStorage.getItem(RECENT_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function subscribeToRecentHidden(onChange: () => void) {
+  window.addEventListener(RECENT_HIDDEN_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(RECENT_HIDDEN_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
+function hideRecent() {
+  try {
+    localStorage.setItem(RECENT_HIDDEN_KEY, '1');
+  } catch {
+    // Without storage the row simply comes back on the next visit.
+  }
+  window.dispatchEvent(new Event(RECENT_HIDDEN_EVENT));
+}
+
+export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction, header }: AppGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -36,6 +79,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
   const selectedSort = searchParams.get('sort') ?? '';
   const semanticSearch = searchParams.get('semantic') === 'true';
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(selectedCategory || selectedStatus || selectedType || searchParams.get('group')));
   const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch);
   const paginationKey = [
     spaceId,
@@ -49,7 +93,6 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     showFavoritesOnly ? 'favorites' : '',
   ].join('|');
 
-  const [showFilters, setShowFilters] = useState(false);
   const [serverResponse, setServerResponse] = useState<{ key: string; apps: AppConfig[]; page: number; total: number; hasMore: boolean } | null>(null);
   const [serverPageLoading, setServerPageLoading] = useState(false);
   const [visibleAppsState, setVisibleAppsState] = useState({ key: paginationKey, count: PAGE_SIZE });
@@ -58,6 +101,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
   const recentApps = useSyncExternalStore(subscribeToRecentlyViewed, getRecentlyViewed, () => emptyRecentlyViewed);
+  const recentHidden = useSyncExternalStore(subscribeToRecentHidden, readRecentHidden, () => false);
   const serverFilterKey = useMemo(() => JSON.stringify({
     spaceId,
     q: searchQuery,
@@ -190,6 +234,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
+  const activeFilterCount = [selectedCategory, selectedStatus, selectedType, selectedGroup].filter(Boolean).length;
   const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch;
 
   const visibleAppsKey = `${paginationKey}|${serverResults ? serverFilterKey : 'initial'}`;
@@ -280,432 +325,218 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     router.replace(spaceId ? `/?spaceId=${encodeURIComponent(spaceId)}` : '/', { scroll: false });
   };
 
-  const activeFilters = useMemo(() => {
-    const filters: Array<{ key: string; label: string; clear: () => void }> = [];
-
-    if (searchQuery) {
-      filters.push({
-        key: 'search',
-        label: `Suche: ${searchQuery}`,
-        clear: () => commitSearch(''),
-      });
-    }
-
-    if (selectedCategory) {
-      filters.push({
-        key: 'category',
-        label: `Kategorie: ${selectedCategory}`,
-        clear: () => setSelectedCategory(null),
-      });
-    }
-
-    if (selectedStatus) {
-      filters.push({
-        key: 'status',
-        label: `Status: ${getAppStatusLabel(selectedStatus) || selectedStatus}`,
-        clear: () => setSelectedStatus(null),
-      });
-    }
-
-    if (selectedType) {
-      filters.push({
-        key: 'type',
-        label: selectedType === 'install' ? 'Art: Selbst installieren' : 'Art: Nachnutzung',
-        clear: () => setSelectedType(null),
-      });
-    }
-
-    if (selectedGroup) {
-      const groupName = groups.find(group => group.id === selectedGroup)?.name ?? selectedGroup;
-      filters.push({
-        key: 'group',
-        label: `Gruppe: ${groupName}`,
-        clear: () => setSelectedGroup(null),
-      });
-    }
-
-    if (selectedSort) {
-      filters.push({
-        key: 'sort',
-        label: `Sortierung: ${selectedSort === 'rating' ? 'Beste Bewertung' : selectedSort === 'updated' ? 'Zuletzt aktualisiert' : selectedSort === 'status' ? 'Status' : 'Name'}`,
-        clear: () => setSelectedSort(null),
-      });
-    }
-
-    if (showFavoritesOnly) {
-      filters.push({
-        key: 'favorites',
-        label: 'Meine Favoriten',
-        clear: () => setShowFavoritesOnly(false),
-      });
-    }
-
-    if (semanticSearch) {
-      filters.push({
-        key: 'semantic',
-        label: 'Semantische Suche',
-        clear: () => setSemanticSearch(false),
-      });
-    }
-
-    return filters;
-  }, [commitSearch, groups, searchQuery, selectedCategory, selectedGroup, selectedSort, selectedStatus, selectedType, setSelectedCategory, setSelectedGroup, setSelectedSort, setSelectedStatus, setSelectedType, semanticSearch, setSemanticSearch, showFavoritesOnly]);
-
-  const filterSummary = useMemo(() => {
-    const summary = [];
-
-    if (categories.length > 0) {
-      summary.push(`${categories.length} Kategorien`);
-    }
-    if (statuses.length > 0) {
-      summary.push(`${statuses.length} Status`);
-    }
-    if (hasReuseApps) {
-      summary.push('Art');
-    }
-    if (groups.length > 0) {
-      summary.push(`${groups.length} Gruppen`);
-    }
-
-    return summary.join(' · ');
-  }, [categories.length, groups.length, hasReuseApps, statuses.length]);
-
   return (
     <div className="flex flex-col gap-8">
-      {/* Filter bar */}
-      <div className="flex flex-col gap-4 bg-surface p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row lg:flex-1">
-            <div className="relative min-w-0 flex-1">
-              <TextField value={searchQuery} onChange={commitSearch} className="w-full">
-                <Input
-                  aria-label="Apps suchen"
-                  placeholder={semanticSearch ? "Natürlich suchen, z. B. \"Werkzeuge für Karten\"" : "Apps suchen..."}
-                  className="h-11 w-full rounded-xl bg-field-background pl-10 pr-12"
-                />
-              </TextField>
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant={semanticSearch ? "primary" : "ghost"}
-                      onPress={() => setSemanticSearch(!semanticSearch)}
-                      aria-pressed={semanticSearch}
-                      aria-label={semanticSearch ? "Semantische KI-Suche deaktivieren" : "Semantische KI-Suche aktivieren"}
-                      className={`h-8 w-8 rounded-lg ${semanticSearch ? 'text-background' : 'text-muted hover:text-foreground'}`}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </Button>
+      <section aria-label="Apps suchen und filtern" className="flex flex-col gap-3">
+        {header}
+        <div className={header ? "mt-7 flex flex-col gap-3" : "flex flex-col gap-3"}>
+          <div className="flex gap-2">
+            <Input.Group size="lg" className="min-w-0 flex-1">
+              <Input.Addon>
+                <Search />
+              </Input.Addon>
+              <Input
+                aria-label="Apps suchen"
+                value={searchQuery}
+                onChange={(event) => commitSearch(event.target.value)}
+                placeholder={semanticSearch ? "Natürlich suchen, z. B. \"Werkzeuge für Karten\"" : "Apps suchen..."}
+              />
+              <Input.Addon align="end">
+                <Tooltip>
+                  <Tooltip.Trigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant={semanticSearch ? "default" : "ghost"}
+                        onClick={() => setSemanticSearch(!semanticSearch)}
+                        aria-pressed={semanticSearch}
+                        aria-label={semanticSearch ? "Semantische KI-Suche deaktivieren" : "Semantische KI-Suche aktivieren"}
+                      />
+                    }
+                  >
+                    <Sparkles />
                   </Tooltip.Trigger>
-                  <Tooltip.Content placement="top">{semanticSearch ? 'Semantische KI-Suche an' : 'Semantische KI-Suche'}</Tooltip.Content>
+                  <Tooltip.Content>{semanticSearch ? 'Semantische KI-Suche an' : 'Semantische KI-Suche'}</Tooltip.Content>
                 </Tooltip>
-              </div>
-            </div>
+              </Input.Addon>
+            </Input.Group>
+
+            <Button
+              size="lg"
+              variant={filtersOpen || activeFilterCount > 0 ? "secondary" : "outline"}
+              aria-expanded={filtersOpen}
+              aria-controls="app-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal />
+              Filter
+              {activeFilterCount > 0 && <Badge size="sm" variant="default">{activeFilterCount}</Badge>}
+            </Button>
+            {favoritesLoaded && (
+              <Tooltip>
+                <Tooltip.Trigger
+                  render={
+                    <Button
+                      size="icon-lg"
+                      variant={showFavoritesOnly ? "default" : "outline"}
+                      disabled={favorites.size === 0}
+                      onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      aria-pressed={showFavoritesOnly}
+                      aria-label={`Nur Favoriten zeigen (${favorites.size})`}
+                    />
+                  }
+                >
+                  <Heart />
+                </Tooltip.Trigger>
+                <Tooltip.Content>{favorites.size === 0 ? 'Noch keine Favoriten' : `Nur Favoriten (${favorites.size})`}</Tooltip.Content>
+              </Tooltip>
+            )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 self-start lg:self-auto">
-            {favoritesLoaded && (
-              <Button
-                variant={showFavoritesOnly ? "primary" : "secondary"}
-                isDisabled={favorites.size === 0}
-                onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                aria-pressed={showFavoritesOnly}
-                aria-label={`Meine Favoriten filtern (${favorites.size})`}
-                className={`h-11 rounded-xl px-4 gap-2 font-medium ${showFavoritesOnly ? 'text-background' : ''}`}
-              >
-                <Heart className={`h-4 w-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
-                Meine Favoriten
-                <span className="inline-flex min-w-5 justify-center rounded-full bg-background/20 px-1.5 py-0.5 text-[11px] font-semibold text-current">
-                  {favorites.size}
-                </span>
-              </Button>
+          {filtersOpen && (
+          <div id="app-filters" role="group" aria-label="Filter" className="flex flex-wrap items-center gap-2">
+            {categories.length > 0 && (
+              <FilterSelect
+                label="Kategorie"
+                allLabel="Alle Kategorien"
+                icon={<Tag />}
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categories.map((cat) => ({ value: cat, label: cat }))}
+              />
             )}
-            <Button
-              variant={showFilters || hasActiveFilters ? "primary" : "secondary"}
-              onPress={() => setShowFilters(!showFilters)}
-              className={`h-11 rounded-xl px-4 gap-2 font-medium ${showFilters || hasActiveFilters ? 'text-background' : ''}`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filter
-              {activeFilters.length > 0 && (
-                <span className="inline-flex min-w-5 justify-center rounded-full bg-background/20 px-1.5 py-0.5 text-[11px] font-semibold text-current">
-                  {activeFilters.length}
-                </span>
-              )}
-              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
+            {statuses.length > 0 && (
+              <FilterSelect
+                label="Status"
+                allLabel="Alle Status"
+                icon={<Activity />}
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={statuses.map((st) => ({ value: st, label: getAppStatusLabel(st) || st }))}
+              />
+            )}
+            {hasReuseApps && (
+              <FilterSelect
+                label="Art"
+                allLabel="Alle Arten"
+                icon={<Package />}
+                value={selectedType}
+                onChange={setSelectedType}
+                options={[
+                  { value: 'install', label: 'Selbst installieren' },
+                  { value: 'reuse', label: 'Nachnutzung' },
+                ]}
+              />
+            )}
+            {groups.length > 0 && (
+              <FilterSelect
+                label="Gruppe"
+                allLabel="Alle Gruppen"
+                icon={<Layers2 />}
+                value={selectedGroup}
+                onChange={setSelectedGroup}
+                options={groups.map((g) => ({ value: g.id, label: g.name }))}
+              />
+            )}
             {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-11 rounded-xl px-4 text-xs gap-1.5 text-muted hover:text-foreground"
-                onPress={clearAllFilters}
-              >
-                <X className="w-3.5 h-3.5" />
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                <X />
                 Zurücksetzen
               </Button>
             )}
           </div>
-        </div>
-
-        <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted">
-              {showFilters
-                ? 'Verfeinern Sie die Auswahl mit Kategorie, Status, Art, Gruppe und Sortierung.'
-                : 'Starten Sie direkt mit der Suche. Für weitere Auswahl öffnen Sie die Filter.'}
-            </p>
-            {!showFilters && filterSummary && (
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted/80">
-                {filterSummary}
-              </p>
-            )}
-          </div>
-
-          {activeFilters.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {activeFilters.map((filter) => (
-                <Button
-                  key={filter.key}
-                  size="sm"
-                  variant="secondary"
-                  onPress={filter.clear}
-                  className="h-8 rounded-full px-3 text-xs font-medium"
-                >
-                  {filter.label}
-                  <X className="w-3 h-3" />
-                </Button>
-              ))}
-            </div>
           )}
+
         </div>
-
-        {showFilters && (
-          <div className="grid gap-4 border-t border-border/50 pt-4 lg:grid-cols-2">
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted">Sortierung</span>
-              <Select
-                aria-label="Apps sortieren"
-                selectedKey={selectedSort || 'default'}
-                onSelectionChange={(key) => setSelectedSort(String(key))}
-                className="w-full"
-              >
-                <Select.Trigger className="bg-field-background">
-                  <Select.Value />
-                  <Select.Indicator />
-                </Select.Trigger>
-                <Select.Popover>
-                  <ListBox>
-                    <ListBox.Item id="default" textValue="Standard">
-                      Standard
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                    <ListBox.Item id="rating" textValue="Beste Bewertung">
-                      Beste Bewertung
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                    <ListBox.Item id="updated" textValue="Zuletzt aktualisiert">
-                      Zuletzt aktualisiert
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                    <ListBox.Item id="status" textValue="Status">
-                      Status
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                  </ListBox>
-                </Select.Popover>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted">Kategorien</span>
-                <Button
-                  variant={!selectedCategory ? "primary" : "secondary"}
-                  size="sm"
-                  onPress={() => setSelectedCategory(null)}
-                  className={`rounded-full text-[11px] h-7 px-3 ${!selectedCategory ? 'text-background' : ''}`}
-                >
-                  Alle Kategorien
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 min-w-0">
-                {categories.map((cat) => (
-                  <Button
-                    key={cat}
-                    variant={selectedCategory === cat ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                    className={`rounded-full text-xs h-8 px-3 font-medium ${selectedCategory === cat ? 'text-background' : ''}`}
-                  >
-                    {cat}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {hasReuseApps && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Art</span>
-                  <Button
-                    variant={!selectedType ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedType(null)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedType ? 'text-background' : ''}`}
-                  >
-                    Alle
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={selectedType === 'install' ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedType(selectedType === 'install' ? null : 'install')}
-                    className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'install' ? 'text-background' : ''}`}
-                  >
-                    Selbst installieren
-                  </Button>
-                  <Button
-                    variant={selectedType === 'reuse' ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedType(selectedType === 'reuse' ? null : 'reuse')}
-                    className={`rounded-full text-[11px] h-7 px-3 ${selectedType === 'reuse' ? 'text-background' : ''}`}
-                  >
-                    Nachnutzung
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {statuses.length > 0 && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Status</span>
-                  <Button
-                    variant={!selectedStatus ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedStatus(null)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedStatus ? 'text-background' : ''}`}
-                  >
-                    Alle
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {statuses.map((st) => (
-                    <Button
-                      key={st}
-                      variant={selectedStatus === st ? "primary" : "secondary"}
-                      size="sm"
-                      onPress={() => setSelectedStatus(selectedStatus === st ? null : st)}
-                      className={`rounded-full text-[11px] h-7 px-3 ${selectedStatus === st ? 'text-background' : ''}`}
-                    >
-                      {getAppStatusLabel(st) || st}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {groups.length > 0 && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-surface-secondary/40 p-4 lg:col-span-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted">Gruppe</span>
-                  <Button
-                    variant={!selectedGroup ? "primary" : "secondary"}
-                    size="sm"
-                    onPress={() => setSelectedGroup(null)}
-                    className={`rounded-full text-[11px] h-7 px-3 ${!selectedGroup ? 'text-background' : ''}`}
-                  >
-                    Alle
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {groups.map((g) => (
-                    <Button
-                      key={g.id}
-                      variant={selectedGroup === g.id ? "primary" : "secondary"}
-                      size="sm"
-                      onPress={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
-                      className={`rounded-full text-[11px] h-7 px-3 ${selectedGroup === g.id ? 'text-background' : ''}`}
-                    >
-                      {g.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      </section>
 
       {/* Recently viewed — only when no active filters */}
-      {!hasActiveFilters && recentApps.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-muted" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted">Zuletzt gesehen</span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {recentApps.map((app) => {
+      {!hasActiveFilters && !recentHidden && recentApps.length > 0 && (
+        <section className="flex items-center gap-3" aria-labelledby="recently-viewed">
+          <h2 id="recently-viewed" className="shrink-0 text-sm text-muted-foreground">
+            Zuletzt gesehen
+          </h2>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
+            {recentApps.slice(0, 5).map((app) => {
               const iconSrc = getImageAssetUrl(app.icon);
-
               return (
-                <NextLink
+                <Button
                   key={app.id}
-                  href={`/apps/${app.id}`}
-                  className="flex items-center gap-2 shrink-0 px-3 py-2 rounded-xl border border-border bg-surface hover:border-accent/40 hover:bg-accent/5 transition-all shadow-sm"
+                  variant="outline"
+                  size="sm"
+                  shape="pill"
+                  className="shrink-0"
+                  render={<NextLink href={`/apps/${app.id}`} />}
                 >
                   {iconSrc ? (
-                    <div className="relative w-5 h-5 shrink-0">
-                      <Image src={iconSrc} alt={app.name} fill className="object-contain rounded" sizes="20px" unoptimized />
-                    </div>
+                    <span className="relative size-4 shrink-0">
+                      <Image src={iconSrc} alt="" fill className="object-contain" sizes="16px" unoptimized />
+                    </span>
                   ) : (
                     <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
                   )}
-                  <span className="text-xs font-semibold text-foreground whitespace-nowrap">{app.name}</span>
-                </NextLink>
+                  {app.name}
+                </Button>
               );
             })}
           </div>
-        </div>
+          <Tooltip>
+            <Tooltip.Trigger
+              render={<Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground" aria-label="„Zuletzt gesehen“ ausblenden" onClick={hideRecent} />}
+            >
+              <X />
+            </Tooltip.Trigger>
+            <Tooltip.Content>Ausblenden – bleibt in der Suche (⌘K)</Tooltip.Content>
+          </Tooltip>
+        </section>
       )}
+
+      {!hasActiveFilters && !spaceId && <RecentChanges apps={initialApps} />}
 
       {(() => {
         const visibleApps = filteredApps.slice(0, visibleCount);
+        const total = hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length;
 
         return (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
-              {scopeControl}
-              {catalogAction}
-              {hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs gap-1.5 text-muted hover:text-foreground"
-                  onPress={clearAllFilters}
-                >
-                  <X className="w-3.5 h-3.5" />
-                  Filter zurücksetzen
-                </Button>
-              )}
+                {scopeControl}
+                {catalogAction}
               </div>
-              <p className="ml-auto text-right text-sm font-medium text-muted">
+              <div className="ms-auto flex items-center gap-3">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
                 {serverLoading ? (
-                  <span className="text-muted">Suche läuft...</span>
+                  'Suche läuft...'
                 ) : (
-                  <><span className="text-foreground font-bold">{visibleApps.length}</span> von <span className="text-foreground font-bold">{hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length}</span> {(hasServerFilter ? (serverResponse?.total ?? filteredApps.length) : filteredApps.length) === 1 ? 'App' : 'Apps'} &mdash; <span className="text-xs text-muted/60">Karte anklicken für Details</span></>
+                  <>
+                    <span className="font-medium text-foreground tabular-nums">{visibleApps.length}</span> von{' '}
+                    <span className="font-medium text-foreground tabular-nums">{total}</span> {total === 1 ? 'App' : 'Apps'}
+                  </>
                 )}
               </p>
+                <Select
+                items={SORT_OPTIONS}
+                value={selectedSort || 'default'}
+                onValueChange={(value) => setSelectedSort(value)}
+              >
+                <Select.Trigger variant="ghost" size="sm" aria-label="Apps sortieren" >
+                  <ArrowUpDown />
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content align="end">
+                  {SORT_OPTIONS.map((option) => (
+                    <Select.Item key={option.value} value={option.value}>
+                      {option.label}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              </div>
             </div>
 
             {/* Apps stay in row order when more results are appended */}
-            <section id="apps" className="grid grid-cols-1 items-start gap-5 pb-4 md:grid-cols-2 lg:grid-cols-3" aria-label="App-Liste">
+            <section id="apps" className="grid grid-cols-1 gap-4 pb-4 md:grid-cols-2 lg:grid-cols-3" aria-label="App-Liste">
               {serverLoading ? (
                 [...Array(6)].map((_, i) => (
                   <div key={`skeleton-${i}`} className="min-w-0">
@@ -722,19 +553,15 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
             </section>
 
             {!serverLoading && filteredApps.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                <div className="w-14 h-14 bg-default rounded-full flex items-center justify-center">
-                  <Search className="w-6 h-6 text-muted" />
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <Search className="size-5" />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-foreground">Keine Apps gefunden</p>
-                  <p className="text-sm text-muted mt-1">Versuchen Sie es mit anderen Suchbegriffen oder Kategorien.</p>
+                  <p className="font-medium text-foreground">Keine Apps gefunden</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Versuchen Sie es mit anderen Suchbegriffen oder Kategorien.</p>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onPress={clearAllFilters}
-                >
+                <Button variant="outline" size="sm" onClick={clearAllFilters}>
                   Filter zurücksetzen
                 </Button>
               </div>
@@ -742,20 +569,75 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
 
             {!serverLoading && hasMoreApps && (
               <div ref={loadMoreRef} className="flex flex-col items-center gap-3 pb-8 pt-2" aria-live="polite">
-                <span className="text-sm text-muted">Weitere Apps werden geladen, sobald Sie weiter scrollen.</span>
-                <Button variant="secondary" isPending={serverPageLoading} onPress={loadMoreApps}>
+                <span className="text-sm text-muted-foreground">Weitere Apps werden geladen, sobald Sie weiter scrollen.</span>
+                <Button variant="outline" loading={serverPageLoading} onClick={loadMoreApps}>
                   Weitere Apps laden
                 </Button>
               </div>
             )}
             {!serverLoading && filteredApps.length > 0 && !hasMoreApps && visibleApps.length > PAGE_SIZE && (
-              <div className="flex items-center justify-center gap-2 pb-8 pt-2 text-sm text-muted" aria-live="polite">
-                <Loader2 className="h-4 w-4 text-success" /> Alle {filteredApps.length} Apps geladen
+              <div className="flex items-center justify-center gap-2 pb-8 pt-2 text-sm text-muted-foreground" aria-live="polite">
+                <Check className="size-4 text-success" /> Alle {filteredApps.length} Apps geladen
               </div>
             )}
           </>
         );
       })()}
     </div>
+  );
+}
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * One filter in the bar: a pill that names the filter while nothing is
+ * chosen and shows "Filter: choice" once something is.
+ */
+function FilterSelect({
+  label,
+  allLabel,
+  icon,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  allLabel: string;
+  icon: ReactNode;
+  value: string | null;
+  options: FilterOption[];
+  onChange: (value: string | null) => void;
+}) {
+  const items: Array<{ value: string | null; label: string }> = [{ value: null, label: allLabel }, ...options];
+  return (
+    <Select items={items} value={value} onValueChange={(next) => onChange(next)}>
+      <Select.Trigger variant="pill" size="sm" aria-label={`${label} filtern`}>
+        {icon}
+        <Select.Value>
+          {(current: string | null) =>
+            current === null ? (
+              label
+            ) : (
+              <>
+                <span className="text-muted-foreground">{label}:</span>
+                {options.find((option) => option.value === current)?.label ?? current}
+              </>
+            )
+          }
+        </Select.Value>
+      </Select.Trigger>
+      <Select.Content alignItemWithTrigger={false}>
+        <Select.Item value={null}>{allLabel}</Select.Item>
+        <Select.Separator />
+        {options.map((option) => (
+          <Select.Item key={option.value} value={option.value}>
+            {option.label}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select>
   );
 }

@@ -2,19 +2,19 @@
 
 import { OIDCProviderAdminSettings } from "@/config/apps";
 import { fetchApi } from "@/lib/api";
-import {
-  Button,
-  Disclosure,
-  Input,
-  Label,
-  Modal,
-  Surface,
-  Switch,
-  TextField,
-  Tooltip,
-} from "@heroui/react";
-import { KeyRound, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { ClipboardEvent, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Switch } from "@/components/panelui/switch";
+import { Textarea } from "@/components/panelui/textarea";
+import { Tooltip } from "@/components/panelui/tooltip";
+import { ChevronDown, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type OIDCProviderDraft = {
   providerKey: string;
@@ -59,10 +59,115 @@ function scopesToText(scopes: string[]): string {
   return scopes.join("\n");
 }
 
-function readClipboardFromPasteEvent(
-  event: ClipboardEvent<HTMLInputElement>,
-): string {
-  return event.clipboardData.getData("text");
+type ProviderFieldValues = {
+  label: string;
+  issuer: string;
+  clientId: string;
+  groupsClaim: string;
+  adminGroup: string;
+  secret: string;
+  scopesText: string;
+  enabled: boolean;
+  insecure: boolean;
+  disableLocalAuth: boolean;
+};
+
+const mono = "font-mono text-sm";
+
+function SettingRow({
+  title,
+  description,
+  checked,
+  onChange,
+}: {
+  title: string;
+  description?: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 p-4">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-sm font-medium">{title}</span>
+        {description && <span className="text-xs text-muted-foreground">{description}</span>}
+      </div>
+      <Switch label={title} checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+/** The fields an OIDC provider has, shared by the editor of an existing provider and the dialog that creates one. */
+function ProviderFields({
+  values,
+  onChange,
+  secretLabel,
+  secretPlaceholder,
+  secretStatus,
+  explain,
+}: {
+  values: ProviderFieldValues;
+  onChange: (patch: Partial<ProviderFieldValues>) => void;
+  secretLabel: string;
+  secretPlaceholder: string;
+  secretStatus?: React.ReactNode;
+  explain: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
+      <Field>
+        <Field.Label>Bezeichnung</Field.Label>
+        <Input value={values.label} placeholder="z. B. Landes-SSO" onChange={(event) => onChange({ label: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>Issuer URL</Field.Label>
+        <Input className={mono} value={values.issuer} placeholder="https://id.example.org/realms/main" onChange={(event) => onChange({ issuer: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>Client ID</Field.Label>
+        <Input className={mono} value={values.clientId} placeholder="justapps-web" onChange={(event) => onChange({ clientId: event.target.value })} />
+      </Field>
+      <Field>
+        <Field.Label>Client Secret{secretLabel}</Field.Label>
+        <Input
+          className={mono}
+          type="password"
+          autoComplete="new-password"
+          value={values.secret}
+          placeholder={secretPlaceholder}
+          onChange={(event) => onChange({ secret: event.target.value })}
+        />
+        {secretStatus}
+      </Field>
+      <Field>
+        <Field.Label>Gruppen-Claim-Pfad</Field.Label>
+        <Input className={mono} maxLength={512} value={values.groupsClaim} placeholder="groups" onChange={(event) => onChange({ groupsClaim: event.target.value })} />
+        <Field.Description>
+          {explain
+            ? "Zum Beispiel groups, realm.groups oder /organization/acme/groups. Der Claim muss eine Liste von Gruppennamen enthalten."
+            : "groups, realm.groups oder ein JSON Pointer wie /organization/acme/groups."}
+        </Field.Description>
+      </Field>
+      <Field>
+        <Field.Label>Admin-Gruppe / Rolle</Field.Label>
+        <Input className={mono} value={values.adminGroup} placeholder="admin" onChange={(event) => onChange({ adminGroup: event.target.value })} />
+      </Field>
+      <Field className="@lg:col-span-2">
+        <Field.Label>Scopes</Field.Label>
+        <Textarea className={mono} rows={4} value={values.scopesText} placeholder={"openid\nprofile\nemail"} onChange={(event) => onChange({ scopesText: event.target.value })} />
+        <Field.Description>Ein Scope pro Zeile.</Field.Description>
+      </Field>
+      <SettingRow title="Provider aktiv" description="Steuert, ob dieser Provider auf der Login-Seite erscheint." checked={values.enabled} onChange={(enabled) => onChange({ enabled })} />
+      <SettingRow title="TLS-Prüfung deaktivieren" description="Nur für Entwicklungs- und Testumgebungen mit selbstsignierten Zertifikaten." checked={values.insecure} onChange={(insecure) => onChange({ insecure })} />
+      <div className="@lg:col-span-2">
+        <SettingRow
+          title="Lokale Anmeldung deaktivieren"
+          description="Blendet die Anmeldung mit E-Mail und Passwort auf der Login-Seite aus, sobald mindestens ein Provider das vorgibt."
+          checked={values.disableLocalAuth}
+          onChange={(disableLocalAuth) => onChange({ disableLocalAuth })}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function OIDCProviderSettingsPanel() {
@@ -73,6 +178,7 @@ export function OIDCProviderSettingsPanel() {
   const [expandedProviders, setExpandedProviders] = useState<
     Record<string, boolean>
   >({});
+  const [scopeDrafts, setScopeDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,28 +299,6 @@ export function OIDCProviderSettingsPanel() {
     );
   };
 
-  const pasteFromClipboard = async (onPaste: (value: string) => void) => {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
-      setError(
-        "Zwischenablage-Zugriff wird von diesem Browser nicht unterstuetzt.",
-      );
-      return;
-    }
-
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!text) {
-        return;
-      }
-      onPaste(text);
-      setError(null);
-    } catch {
-      setError(
-        "Zwischenablage konnte nicht gelesen werden. Bitte Browser-Berechtigung pruefen.",
-      );
-    }
-  };
-
   const saveProvider = async (
     provider: OIDCProviderAdminSettings,
     options?: { clearSecret?: boolean },
@@ -240,7 +324,9 @@ export function OIDCProviderSettingsPanel() {
             enabled: provider.enabled,
             insecure: provider.insecure,
             disableLocalAuth: provider.disableLocalAuth,
-            scopes: provider.scopes,
+            scopes: normalizeScopes(
+              scopeDrafts[provider.providerKey] ?? scopesToText(provider.scopes),
+            ),
           }),
         },
       );
@@ -255,6 +341,11 @@ export function OIDCProviderSettingsPanel() {
 
       await loadProviders();
       setProviderSecretDrafts((prev) => {
+        const next = { ...prev };
+        delete next[provider.providerKey];
+        return next;
+      });
+      setScopeDrafts((prev) => {
         const next = { ...prev };
         delete next[provider.providerKey];
         return next;
@@ -357,682 +448,175 @@ export function OIDCProviderSettingsPanel() {
   };
 
   if (loading) {
-    return (
-      <Surface className="p-6 border border-border/50 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          OIDC-Provider werden geladen...
-        </div>
-      </Surface>
-    );
+    return <p role="status" className="py-10 text-center text-sm text-muted-foreground">OIDC-Provider werden geladen …</p>;
   }
 
+  const closeCreate = () => {
+    setCreateModalOpen(false);
+    setCreateDraft(defaultProviderDraft());
+  };
+
   return (
-    <Surface className="p-6 border border-border/50 shadow-sm">
-      <h3 className="font-bold text-sm text-muted uppercase tracking-wider mb-1 flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-accent" /> OIDC-Provider
-      </h3>
-      <p className="text-xs text-muted mb-5">
-        Verwalten Sie mehrere OIDC-Provider zentral. Client-Secrets werden
-        verschlüsselt gespeichert und nach dem Speichern nicht angezeigt.
-      </p>
-
-      {error && (
-        <div className="mb-4 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
-          {error}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+            <ShieldCheck className="size-5 text-muted-foreground" />
+            Anmeldung &amp; SSO
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Verwalten Sie mehrere OIDC-Provider zentral. Client-Secrets werden verschlüsselt gespeichert und nach dem Speichern nicht angezeigt. Die Login-Seite zeigt alle aktiven Provider an.
+          </p>
         </div>
-      )}
-
-      <div className="mb-5 rounded-2xl border border-dashed border-border bg-surface-secondary/35 p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Neuen OIDC-Provider anlegen
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              Definieren Sie Issuer, Client-ID und Secret je Provider. Der Login
-              zeigt anschließend alle aktiven Provider an.
-            </p>
-          </div>
-          <Button
-            className="bg-accent text-white"
-            onPress={() => setCreateModalOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            {savedKey === "create"
-              ? "Provider erstellt ✓"
-              : "Neuen Provider anlegen"}
-          </Button>
-        </div>
+        <Button className="shrink-0" onClick={() => setCreateModalOpen(true)}>
+          <Plus />
+          {savedKey === "create" ? "Provider erstellt ✓" : "Neuer Provider"}
+        </Button>
       </div>
 
+      {error && (
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+        </Alert>
+      )}
+
       {providers.length === 0 ? (
-        <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 text-sm text-warning">
-          Es sind aktuell keine OIDC-Provider konfiguriert.
-        </div>
+        <Alert variant="plain" tone="warning">
+          <Alert.Icon />
+          <Alert.Title>Es sind aktuell keine OIDC-Provider konfiguriert.</Alert.Title>
+        </Alert>
       ) : (
-        <div className="flex flex-col gap-5">
-          {providers.map((provider) => (
-            <Disclosure
-              key={provider.providerKey}
-              className="rounded-2xl border border-border bg-surface"
-              isExpanded={expandedProviders[provider.providerKey] ?? false}
-              onExpandedChange={(isExpanded) => {
-                setExpandedProviders((prev) => ({
-                  ...prev,
-                  [provider.providerKey]: isExpanded,
-                }));
-              }}
-            >
-              <Disclosure.Heading className="flex items-start gap-3 p-5">
-                <Disclosure.Trigger className="flex flex-1 items-start justify-between rounded-xl border border-border/40 bg-surface-secondary/25 p-3 text-left">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">
-                        {provider.providerKey}
-                      </p>
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${provider.enabled ? "border-success/20 bg-success/10 text-success" : "border-border bg-surface-secondary text-muted"}`}
-                      >
-                        {provider.enabled ? "Aktiv" : "Deaktiviert"}
+        <div className="flex flex-col gap-4">
+          {providers.map((provider) => {
+            const expanded = expandedProviders[provider.providerKey] ?? false;
+            const panelId = `oidc-${provider.providerKey}`;
+            return (
+              <Card key={provider.providerKey} className="gap-0 py-0">
+                <div className="flex items-center gap-2 p-3 sm:p-4">
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={() => setExpandedProviders((prev) => ({ ...prev, [provider.providerKey]: !expanded }))}
+                    className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-lg p-1.5 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <span className="flex min-w-0 flex-col gap-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">{provider.label || provider.providerKey}</span>
+                        {provider.label && <code className="font-mono text-xs text-muted-foreground">{provider.providerKey}</code>}
+                        <Badge variant={provider.enabled ? "success" : "secondary"} size="sm">{provider.enabled ? "Aktiv" : "Deaktiviert"}</Badge>
                       </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted">
-                      {provider.secretConfigured
-                        ? "Client-Secret verschlüsselt gespeichert"
-                        : "Kein Secret gespeichert"}
-                      {provider.configured
-                        ? " · Vollständig konfiguriert"
-                        : " · Konfiguration unvollständig"}
-                    </p>
-                  </div>
-                  <Disclosure.Indicator className="mt-1 h-4 w-4 text-muted" />
-                </Disclosure.Trigger>
-                <Tooltip delay={0}>
-                  <Tooltip.Trigger>
-                    <div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 w-8 p-0 text-danger"
-                        isDisabled={saving}
-                        onPress={() => setProviderToDelete(provider)}
-                      >
-                        <Trash2 className="w-4 h-4" />
+                      <span className="text-xs text-muted-foreground">
+                        {provider.secretConfigured ? "Client-Secret verschlüsselt gespeichert" : "Kein Secret gespeichert"}
+                        {provider.configured ? " · Vollständig konfiguriert" : " · Konfiguration unvollständig"}
+                      </span>
+                    </span>
+                    <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+                  </button>
+                  <Tooltip>
+                    <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={`${provider.providerKey} löschen`} disabled={saving} onClick={() => setProviderToDelete(provider)} />}>
+                      <Trash2 />
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>Provider löschen</Tooltip.Content>
+                  </Tooltip>
+                </div>
+
+                {expanded && (
+                  <div id={panelId} className="@container flex flex-col gap-5 border-t p-4 sm:p-5">
+                    <ProviderFields
+                      explain
+                      values={{
+                        label: provider.label,
+                        issuer: provider.issuer,
+                        clientId: provider.clientId,
+                        groupsClaim: provider.groupsClaim || "groups",
+                        adminGroup: provider.adminGroup,
+                        secret: providerSecretDrafts[provider.providerKey] || "",
+                        scopesText: scopeDrafts[provider.providerKey] ?? scopesToText(provider.scopes),
+                        enabled: provider.enabled,
+                        insecure: provider.insecure,
+                        disableLocalAuth: provider.disableLocalAuth,
+                      }}
+                      onChange={(patch) => {
+                        const { secret, scopesText, ...rest } = patch;
+                        if (secret !== undefined) setProviderSecretDrafts((prev) => ({ ...prev, [provider.providerKey]: secret }));
+                        if (scopesText !== undefined) setScopeDrafts((prev) => ({ ...prev, [provider.providerKey]: scopesText }));
+                        if (Object.keys(rest).length) updateProvider(provider.providerKey, rest);
+                      }}
+                      secretLabel=" ersetzen"
+                      secretPlaceholder={provider.secretConfigured ? "Neues Secret eingeben, um das bestehende zu ersetzen" : "Secret eingeben"}
+                      secretStatus={
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${provider.secretConfigured ? "bg-success" : "bg-warning"}`} />
+                            {provider.secretConfigured ? "Secret hinterlegt" : "Kein Secret hinterlegt – Anmeldung nicht möglich"}
+                          </p>
+                          {provider.secretConfigured && (
+                            <Button type="button" size="sm" variant="ghost" aria-label="Client Secret löschen" disabled={saving} onClick={() => void saveProvider(provider, { clearSecret: true })}>
+                              Secret löschen
+                            </Button>
+                          )}
+                        </div>
+                      }
+                    />
+                    <div className="flex justify-end border-t pt-4">
+                      <Button loading={saving} onClick={() => void saveProvider(provider)}>
+                        {savedKey === provider.providerKey ? "Gespeichert ✓" : "Provider speichern"}
                       </Button>
                     </div>
-                  </Tooltip.Trigger>
-                  <Tooltip.Content>Provider löschen</Tooltip.Content>
-                </Tooltip>
-              </Disclosure.Heading>
-
-              <Disclosure.Content>
-                <Disclosure.Body className="border-t border-border p-5">
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <TextField
-                      value={provider.label}
-                      onChange={(val) =>
-                        updateProvider(provider.providerKey, { label: val })
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Bezeichnung
-                      </Label>
-                      <Input
-                        placeholder="z. B. Landes-SSO"
-                        className="bg-field-background"
-                      />
-                    </TextField>
-
-                    <TextField
-                      value={provider.issuer}
-                      onChange={(val) =>
-                        updateProvider(provider.providerKey, { issuer: val })
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Issuer URL
-                      </Label>
-                      <Input
-                        placeholder="https://id.example.org/realms/main"
-                        className="bg-field-background font-mono text-sm"
-                      />
-                    </TextField>
-
-                    <TextField
-                      value={provider.clientId}
-                      onChange={(val) =>
-                        updateProvider(provider.providerKey, { clientId: val })
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Client ID
-                      </Label>
-                      <Input
-                        placeholder="justapps-web"
-                        className="bg-field-background font-mono text-sm"
-                      />
-                    </TextField>
-
-                    <TextField
-                      value={provider.groupsClaim || "groups"}
-                      onChange={(value) =>
-                        updateProvider(provider.providerKey, {
-                          groupsClaim: value,
-                        })
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Gruppen-Claim-Pfad
-                      </Label>
-                      <Input
-                        placeholder="groups"
-                        className="bg-field-background font-mono text-sm"
-                        maxLength={512}
-                      />
-                      <p className="mt-1 text-xs leading-relaxed text-muted">
-                        Zum Beispiel groups, realm.groups oder
-                        /organization/acme/groups. Der Claim muss eine Liste von
-                        Gruppennamen enthalten.
-                      </p>
-                    </TextField>
-
-                    <TextField
-                      value={provider.adminGroup}
-                      onChange={(val) =>
-                        updateProvider(provider.providerKey, {
-                          adminGroup: val,
-                        })
-                      }
-                    >
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Admin-Gruppe / Rolle
-                      </Label>
-                      <Input
-                        placeholder="admin"
-                        className="bg-field-background font-mono text-sm"
-                      />
-                    </TextField>
-
-                    <div className="space-y-2">
-                    <TextField>
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Client Secret ersetzen
-                      </Label>
-                      <Input
-                        type="password"
-                        value={providerSecretDrafts[provider.providerKey] || ""}
-                        onChange={(event) =>
-                          setProviderSecretDrafts((prev) => ({
-                            ...prev,
-                            [provider.providerKey]: event.target.value,
-                          }))
-                        }
-                        placeholder={
-                          provider.secretConfigured
-                            ? "Neues Secret eingeben, um das bestehende zu ersetzen"
-                            : "Secret eingeben"
-                        }
-                        className="bg-field-background font-mono text-sm"
-                        autoComplete="new-password"
-                        onPaste={(event) => {
-                          const pasted = readClipboardFromPasteEvent(event);
-                          if (!pasted) {
-                            return;
-                          }
-                          setProviderSecretDrafts((prev) => ({
-                            ...prev,
-                            [provider.providerKey]: pasted,
-                          }));
-                        }}
-                        onKeyDown={(event) => {
-                          if (
-                            (event.metaKey || event.ctrlKey) &&
-                            event.key.toLowerCase() === "v"
-                          ) {
-                            void pasteFromClipboard((value) => {
-                              setProviderSecretDrafts((prev) => ({
-                                ...prev,
-                                [provider.providerKey]: value,
-                              }));
-                            });
-                          }
-                        }}
-                      />
-                    </TextField>
-                      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                        <p className="flex items-center gap-2 text-xs text-muted">
-                          <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${provider.secretConfigured ? 'bg-success' : 'bg-warning'}`} />
-                          {provider.secretConfigured ? 'Secret hinterlegt' : 'Kein Secret hinterlegt – Anmeldung nicht möglich'}
-                        </p>
-                        {provider.secretConfigured && <Button size="sm" variant="ghost" className="h-auto min-h-0 rounded-md px-2 py-1 text-xs text-danger" aria-label="Client Secret löschen" isDisabled={saving} onPress={() => saveProvider(provider, {clearSecret:true})}>Secret löschen</Button>}
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                        Scopes
-                      </Label>
-                      <textarea
-                        value={scopesToText(provider.scopes)}
-                        onChange={(event) =>
-                          updateProvider(provider.providerKey, {
-                            scopes: normalizeScopes(event.target.value),
-                          })
-                        }
-                        className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                        placeholder={"openid\nprofile\nemail"}
-                      />
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Provider aktiv
-                          </p>
-                          <p className="text-xs text-muted">
-                            Steuert, ob dieser Provider auf der Login-Seite
-                            erscheint.
-                          </p>
-                        </div>
-                        <Switch
-                          isSelected={provider.enabled}
-                          onChange={(val) =>
-                            updateProvider(provider.providerKey, {
-                              enabled: val,
-                            })
-                          }
-                        >
-                          <Switch.Content>
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                          </Switch.Content>
-                        </Switch>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            TLS-Prüfung deaktivieren
-                          </p>
-                          <p className="text-xs text-muted">
-                            Nur für Entwicklungs- oder Testumgebungen mit
-                            selbstsignierten Zertifikaten.
-                          </p>
-                        </div>
-                        <Switch
-                          isSelected={provider.insecure}
-                          onChange={(val) =>
-                            updateProvider(provider.providerKey, {
-                              insecure: val,
-                            })
-                          }
-                        >
-                          <Switch.Content>
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                          </Switch.Content>
-                        </Switch>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            Lokale Anmeldung deaktivieren
-                          </p>
-                          <p className="text-xs text-muted">
-                            Wenn aktiv, blendet die Login-Seite die
-                            E-Mail/Passwort-Anmeldung aus, sobald mindestens ein
-                            Provider das vorgibt.
-                          </p>
-                        </div>
-                        <Switch
-                          isSelected={provider.disableLocalAuth}
-                          onChange={(val) =>
-                            updateProvider(provider.providerKey, {
-                              disableLocalAuth: val,
-                            })
-                          }
-                        >
-                          <Switch.Content>
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                          </Switch.Content>
-                        </Switch>
-                      </div>
-                    </div>
                   </div>
-
-                  <div className="mt-5 flex justify-end border-t border-border pt-4">
-                    <Button
-                      className="bg-accent text-white"
-                      isDisabled={saving}
-                      onPress={() => saveProvider(provider)}
-                    >
-                      {savedKey === provider.providerKey
-                        ? "Gespeichert ✓"
-                        : "Provider speichern"}
-                    </Button>
-                  </div>
-                </Disclosure.Body>
-              </Disclosure.Content>
-            </Disclosure>
-          ))}
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      <Modal.Backdrop
-        isOpen={createModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCreateModalOpen(false);
-            setCreateDraft(defaultProviderDraft());
-          }
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-accent/10 text-accent">
-                <KeyRound className="w-5 h-5" />
-              </Modal.Icon>
-              <Modal.Heading>Neuen OIDC-Provider anlegen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-sm text-muted">
-                Provider-Schlüssel, Issuer, Client-ID und Secret werden für den
-                OIDC-Login benötigt.
-              </p>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <TextField
-                  value={createDraft.providerKey}
-                  onChange={(val) =>
-                    setCreateDraft((prev) => ({ ...prev, providerKey: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Provider-Schlüssel
-                  </Label>
-                  <Input
-                    placeholder="z. B. keycloak-main"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={createDraft.label}
-                  onChange={(val) =>
-                    setCreateDraft((prev) => ({ ...prev, label: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Bezeichnung
-                  </Label>
-                  <Input
-                    placeholder="z. B. Behörden-SSO"
-                    className="bg-field-background"
-                  />
-                </TextField>
-
-                <TextField
-                  value={createDraft.issuer}
-                  onChange={(val) =>
-                    setCreateDraft((prev) => ({ ...prev, issuer: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Issuer URL
-                  </Label>
-                  <Input
-                    placeholder="https://id.example.org/realms/main"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField
-                  value={createDraft.clientId}
-                  onChange={(val) =>
-                    setCreateDraft((prev) => ({ ...prev, clientId: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Client ID
-                  </Label>
-                  <Input
-                    placeholder="justapps-web"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <TextField>
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Client Secret
-                  </Label>
-                  <Input
-                    type="password"
-                    value={createDraft.clientSecret}
-                    onChange={(event) =>
-                      setCreateDraft((prev) => ({
-                        ...prev,
-                        clientSecret: event.target.value,
-                      }))
-                    }
-                    placeholder="Secret eingeben"
-                    className="bg-field-background font-mono text-sm"
-                    autoComplete="new-password"
-                    onPaste={(event) => {
-                      const pasted = readClipboardFromPasteEvent(event);
-                      if (!pasted) {
-                        return;
-                      }
-                      setCreateDraft((prev) => ({
-                        ...prev,
-                        clientSecret: pasted,
-                      }));
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        (event.metaKey || event.ctrlKey) &&
-                        event.key.toLowerCase() === "v"
-                      ) {
-                        void pasteFromClipboard((value) => {
-                          setCreateDraft((prev) => ({
-                            ...prev,
-                            clientSecret: value,
-                          }));
-                        });
-                      }
-                    }}
-                  />
-                </TextField>
-
-                <TextField
-                  value={createDraft.groupsClaim}
-                  onChange={(value) =>
-                    setCreateDraft((previous) => ({
-                      ...previous,
-                      groupsClaim: value,
-                    }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Gruppen-Claim-Pfad
-                  </Label>
-                  <Input
-                    placeholder="groups"
-                    className="bg-field-background font-mono text-sm"
-                    maxLength={512}
-                  />
-                  <p className="mt-1 text-xs leading-relaxed text-muted">
-                    groups, realm.groups oder ein JSON Pointer wie
-                    /organization/acme/groups.
-                  </p>
-                </TextField>
-
-                <TextField
-                  value={createDraft.adminGroup}
-                  onChange={(val) =>
-                    setCreateDraft((prev) => ({ ...prev, adminGroup: val }))
-                  }
-                >
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Admin-Gruppe / Rolle
-                  </Label>
-                  <Input
-                    placeholder="admin"
-                    className="bg-field-background font-mono text-sm"
-                  />
-                </TextField>
-
-                <div className="lg:col-span-2">
-                  <Label className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">
-                    Scopes
-                  </Label>
-                  <textarea
-                    value={createDraft.scopesText}
-                    onChange={(event) =>
-                      setCreateDraft((prev) => ({
-                        ...prev,
-                        scopesText: event.target.value,
-                      }))
-                    }
-                    className="min-h-[110px] w-full rounded-xl border border-border bg-field-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent"
-                    placeholder={"openid\nprofile\nemail"}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      Provider aktiv
-                    </p>
-                    <Switch
-                      isSelected={createDraft.enabled}
-                      onChange={(val) =>
-                        setCreateDraft((prev) => ({ ...prev, enabled: val }))
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-surface-secondary/40 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      TLS-Prüfung deaktivieren
-                    </p>
-                    <Switch
-                      isSelected={createDraft.insecure}
-                      onChange={(val) =>
-                        setCreateDraft((prev) => ({ ...prev, insecure: val }))
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2 rounded-xl border border-border bg-surface-secondary/40 p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      Lokale Anmeldung deaktivieren
-                    </p>
-                    <Switch
-                      isSelected={createDraft.disableLocalAuth}
-                      onChange={(val) =>
-                        setCreateDraft((prev) => ({
-                          ...prev,
-                          disableLocalAuth: val,
-                        }))
-                      }
-                    >
-                      <Switch.Content>
-                        <Switch.Control>
-                          <Switch.Thumb />
-                        </Switch.Control>
-                      </Switch.Content>
-                    </Switch>
-                  </div>
-                </div>
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onPress={() => {
-                  setCreateModalOpen(false);
-                  setCreateDraft(defaultProviderDraft());
+      <Dialog open={createModalOpen} onOpenChange={(open) => { if (!open && !saving) closeCreate(); }}>
+        <Dialog.Content size="lg">
+          <form
+            className="flex min-h-0 flex-col"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void createProvider();
+            }}
+          >
+            <Dialog.Header title="Neuen OIDC-Provider anlegen" description="Provider-Schlüssel, Issuer, Client-ID und Secret werden für den OIDC-Login benötigt." />
+            <Dialog.Body className="@container flex flex-col gap-4">
+              <Field>
+                <Field.Label required>Provider-Schlüssel</Field.Label>
+                <Input required className={mono} value={createDraft.providerKey} placeholder="z. B. keycloak-main" onChange={(event) => setCreateDraft((prev) => ({ ...prev, providerKey: event.target.value }))} />
+              </Field>
+              <ProviderFields
+                explain={false}
+                values={{ ...createDraft, secret: createDraft.clientSecret }}
+                onChange={(patch) => {
+                  const { secret, ...rest } = patch;
+                  setCreateDraft((prev) => ({ ...prev, ...rest, ...(secret !== undefined ? { clientSecret: secret } : {}) }));
                 }}
-              >
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-accent text-white"
-                isDisabled={saving}
-                onPress={createProvider}
-              >
-                Provider erstellen
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+                secretLabel=""
+                secretPlaceholder="Secret eingeben"
+              />
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Button type="button" variant="secondary" disabled={saving} onClick={closeCreate}>Abbrechen</Button>
+              <Button type="submit" loading={saving} disabled={!createDraft.providerKey.trim()}>Provider erstellen</Button>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
 
-      <Modal.Backdrop
+      <ConfirmDialog
         isOpen={providerToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setProviderToDelete(null);
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>OIDC-Provider löschen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-sm text-muted">
-                Soll der OIDC-Provider{" "}
-                <strong>{providerToDelete?.providerKey}</strong> wirklich
-                gelöscht werden?
-              </p>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onPress={() => setProviderToDelete(null)}
-              >
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-danger text-white"
-                isDisabled={saving}
-                onPress={deleteProvider}
-              >
-                Löschen
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Surface>
+        onOpenChange={(open) => { if (!open) setProviderToDelete(null); }}
+        title="OIDC-Provider löschen?"
+        description={`Soll „${providerToDelete?.providerKey ?? ""}“ wirklich gelöscht werden? Wer sich darüber anmeldet, kann das danach nicht mehr.`}
+        confirmLabel="Löschen"
+        isDanger
+        isLoading={saving}
+        onConfirm={deleteProvider}
+      />
+    </div>
   );
 }

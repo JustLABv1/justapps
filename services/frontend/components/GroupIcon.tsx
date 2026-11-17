@@ -14,7 +14,7 @@ interface GroupIconProps {
 export function GroupIcon({
   icon,
   name,
-  className = 'h-10 w-10 rounded-xl bg-accent/10 text-accent',
+  className = 'h-10 w-10 rounded-xl bg-primary/10 text-primary',
   fallback,
 }: GroupIconProps) {
   const iconSrc = getImageAssetUrl(icon);

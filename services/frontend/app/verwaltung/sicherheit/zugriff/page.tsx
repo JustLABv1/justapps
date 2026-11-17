@@ -16,12 +16,12 @@ export default function AccessSettingsPage() {
             label: "Globale Regeln",
             content: (
               <div className="space-y-5">
-                <p className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted">
+                <p className="rounded-xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                   Globale Regeln legen fest, wer die Plattform nutzen und
                   Inhalte erstellen darf. Individuelle Ausnahmen verwalten Sie
                   unter{" "}
                   <Link
-                    className="font-medium text-accent hover:underline"
+                    className="font-medium text-foreground underline underline-offset-4"
                     href="/verwaltung/sicherheit/benutzer"
                   >
                     Benutzer & Freigaben

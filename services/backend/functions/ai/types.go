@@ -2,8 +2,6 @@ package ai
 
 import (
 	"context"
-
-	"justapps-backend/pkg/models"
 )
 
 type ProviderRuntime struct {
@@ -62,21 +60,4 @@ type ProviderCapabilities struct {
 	Streaming  bool `json:"streaming"`
 	Embeddings bool `json:"embeddings"`
 	Local      bool `json:"local"`
-}
-
-type Viewer struct {
-	UserID  string
-	Role    string
-	HasUser bool
-}
-
-type RetrievalQuery struct {
-	Text  string
-	AppID string
-	Limit int
-}
-
-type RetrievedContext struct {
-	Chunks  []models.AIKnowledgeChunk
-	Sources []models.AIMessageSource
 }

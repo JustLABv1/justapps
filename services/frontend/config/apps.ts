@@ -180,6 +180,10 @@ export interface UpdatePreferences {
   notifyFavoritedApps: boolean;
   notifyRecentlyViewedApps: boolean;
   notifyOwnedManagedApps: boolean;
+  /** The weekly summary by mail ("Wochenrückblick"). */
+  weeklyDigest: boolean;
+  /** Whether the platform sends the weekly mail at all. */
+  weeklyDigestAvailable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -233,6 +237,8 @@ export interface SystemUser {
   id: string;
   username: string;
   email: string;
+  displayName?: string;
+  avatarUrl?: string;
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
@@ -246,6 +252,8 @@ export interface AppUserSummary {
   id: string;
   username: string;
   email: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface AppCatalogFilters {
@@ -353,3 +361,13 @@ export const getApps = (): AppConfig[] => {
 };
 
 export const apps: AppConfig[] = []; // Keep as fallback or for types if needed
+
+export interface RequestNotification {
+  id: string;
+  requestId: string;
+  title: string;
+  kind: 'response' | 'fulfilled';
+  response: string;
+  createdAt: string;
+  seenAt?: string | null;
+}

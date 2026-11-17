@@ -1,27 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Alert } from "@/components/panelui/alert";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { Menu } from "@/components/panelui/menu";
+import { Pagination } from "@/components/panelui/pagination";
+import { Spinner } from "@/components/panelui/spinner";
 import {
-  Button,
-  Dropdown,
-  Label,
-  Input,
-  Modal,
-  TextField,
-  Separator,
-} from "@heroui/react";
-import {
-  LockKeyhole,
-  Plus,
-  Users,
   ArrowUpRight,
+  FolderLock,
   MoreHorizontal,
   Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
   Trash2,
   UserPlus,
+  UserRoundCog,
+  Users,
 } from "lucide-react";
-import { PageContainer, PageHeader } from "@/components/PageHeader";
+import NextLink from "next/link";
 import { SpaceGroupMappingsModal } from "@/components/SpaceGroupMappingsModal";
 import { SpaceOwnerModal } from "@/components/SpaceOwnerModal";
 import { SpaceMembersModal } from "@/components/SpaceMembersModal";
@@ -59,7 +62,6 @@ async function request(path: string, method = "GET", body?: unknown) {
 }
 
 export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
-  const router = useRouter();
   const { user, loading: authLoading, profileReady } = useAuth();
   const [creationAccess, setCreationAccess] = useState<{
     userId: string;
@@ -171,350 +173,237 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
     setCreateOpen(true);
   };
 
+  const header = (actions?: React.ReactNode, description?: string) => (
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{adminMode ? "Private Spaces" : "Ihre Spaces"}</h1>
+        <p className="max-w-2xl text-pretty text-muted-foreground">{description}</p>
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">{actions}</div>}
+    </header>
+  );
+
   if (authLoading || (user && !profileReady))
-    return (
-      <PageContainer>
-        <p role="status">Profil wird geladen …</p>
-      </PageContainer>
-    );
+    return <div className="flex justify-center py-20"><Spinner /></div>;
   if (!user)
-    return (
-      <PageContainer>
-        <PageHeader
-          eyebrow="Arbeitsbereich"
-          title="Spaces verwalten"
-          description="Melden Sie sich an, um Ihre privaten Bereiche zu verwalten."
-        />
-      </PageContainer>
-    );
+    return <div className="flex flex-col gap-6">{header(undefined, "Melden Sie sich an, um Ihre privaten Bereiche zu verwalten.")}</div>;
   if (adminMode && !canOversee)
     return (
-      <PageContainer>
-        <p>Keine Berechtigung zur Space-Verwaltung.</p>
-      </PageContainer>
+      <Alert variant="plain" tone="destructive">
+        <Alert.Icon />
+        <Alert.Title>Keine Berechtigung zur Space-Verwaltung.</Alert.Title>
+      </Alert>
     );
-  const canCreate =
-    user.role === "admin" ||
-    (creationAccess?.userId === user.id && creationAccess.canCreate);
+
+  const canCreate = user.role === "admin" || (creationAccess?.userId === user.id && creationAccess.canCreate);
   const accepted = spaces.filter((space) => space.accepted);
   const invitations = spaces.filter((space) => !space.accepted);
+  const pageCount = Math.max(1, Math.ceil(total / 50));
+  const ownsOr = (space: Space, permission: Parameters<typeof hasPermission>[1]) => space.ownerId === user.id || permitted(permission);
+  const dialogOpen = !!memberSpace || createOpen || !!editSpace || !!deleteSpace;
+
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow="Arbeitsbereich"
-        title={adminMode ? "Spaces verwalten" : "Ihre Spaces"}
-        description={
-          adminMode
-            ? "Alle privaten Spaces, Eigentümer und Zugriffsrechte zentral verwalten."
-            : "Ihre privaten Bereiche und deren Mitglieder. Apps finden Sie im Katalog."
-        }
-        actions={
-          <>
-            {adminMode && user.role === "admin" && (
-              <Button
-                variant="secondary"
-                onPress={() => router.push("/verwaltung/sicherheit/zugriff")}
-              >
-                Zugriffsregeln
-              </Button>
-            )}
-            {!adminMode && canOversee && (
-              <Button
-                variant="secondary"
-                onPress={() =>
-                  router.push(
-                    user.role === "admin"
-                      ? "/verwaltung/katalog/spaces"
-                      : "/spaces/verwaltung",
-                  )
-                }
-              >
-                Alle Spaces verwalten
-              </Button>
-            )}
-            {canCreate && (
-              <Button onPress={openCreate}>
-                <Plus className="h-4 w-4" />
-                Space erstellen
-              </Button>
-            )}
-          </>
-        }
-      />
-      {error && !memberSpace && !createOpen && !editSpace && !deleteSpace && (
-        <p
-          role="alert"
-          className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger"
-        >
-          {error}
-        </p>
+    <div className="flex flex-col gap-6">
+      {header(
+        <>
+          {adminMode && user.role === "admin" && (
+            <Button variant="secondary" render={<NextLink href="/verwaltung/sicherheit/zugriff" />}>
+              <ShieldCheck />
+              Wer darf Spaces erstellen?
+            </Button>
+          )}
+          {!adminMode && canOversee && (
+            <Button variant="secondary" render={<NextLink href={user.role === "admin" ? "/verwaltung/katalog/spaces" : "/spaces/verwaltung"} />}>
+              Alle Spaces verwalten
+            </Button>
+          )}
+          {canCreate && (
+            <Button onClick={openCreate}>
+              <Plus />
+              Space erstellen
+            </Button>
+          )}
+        </>,
+        adminMode
+          ? "Alle privaten Bereiche der Plattform mit Eigentümern, Mitgliedern und Gruppenzugriff."
+          : "Private Bereiche für Apps, die nur ihre Mitglieder sehen. Die Apps selbst finden Sie im Katalog.",
       )}
+
+      {error && !dialogOpen && (
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+        </Alert>
+      )}
+
       {invitations.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Einladungen</h2>
-          {invitations.map((space) => (
-            <div
-              key={space.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/20 bg-accent/5 p-4"
-            >
-              <UserPlus className="h-5 w-5 text-accent" />
-              <p className="flex-1 text-sm">
-                Einladung zu <strong>{space.name}</strong>
-              </p>
-              <Button
-                size="sm"
-                variant="secondary"
-                isDisabled={pending}
-                onPress={() =>
-                  void act(async () => {
-                    await request(
-                      `/spaces/${space.id}/members/${user.id}`,
-                      "DELETE",
-                    );
-                    await loadSpaces();
-                  })
-                }
-              >
-                Ablehnen
-              </Button>
-              <Button
-                size="sm"
-                isDisabled={pending}
-                onPress={() =>
-                  void act(async () => {
-                    await request(`/spaces/${space.id}/accept`, "POST");
-                    await loadSpaces();
-                  })
-                }
-              >
-                Annehmen
-              </Button>
-            </div>
-          ))}
-        </section>
+        <Card className="gap-0 py-0" render={<section aria-label="Einladungen" />}>
+          <ul className="divide-y">
+            {invitations.map((space) => (
+              <li key={space.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-info/15 text-info"><UserPlus className="size-4" /></span>
+                <p className="min-w-0 flex-1 text-sm">Sie sind zu <strong className="font-medium">{space.name}</strong> eingeladen.</p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => void act(async () => { await request(`/spaces/${space.id}/members/${user.id}`, "DELETE"); await loadSpaces(); })}
+                >
+                  Ablehnen
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => void act(async () => { await request(`/spaces/${space.id}/accept`, "POST"); await loadSpaces(); })}
+                >
+                  Annehmen
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <h2 className="text-base font-semibold">
-            {adminMode ? "Alle Spaces" : "Ihre Spaces"}
+
+      <section aria-labelledby="spaces-heading" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 id="spaces-heading" className="text-sm font-medium text-muted-foreground">
+            {adminMode ? "Alle Spaces" : "Ihre Spaces"}{!loading && ` · ${adminMode ? total : accepted.length}`}
           </h2>
-          {!loading && (
-            <span className="text-sm text-muted">
-              {adminMode ? total : accepted.length}
-            </span>
+          {adminMode && (
+            <Input.Group size="sm" className="ms-auto w-full sm:w-72">
+              <Input.Addon><Search /></Input.Addon>
+              <Input
+                value={query}
+                onChange={(event) => { setQuery(event.target.value); setPage(1); }}
+                aria-label="Spaces durchsuchen"
+                placeholder="Space oder Eigentümer"
+              />
+            </Input.Group>
           )}
         </div>
-        {adminMode && (
-          <Input
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setPage(1);
-            }}
-            aria-label="Spaces durchsuchen"
-            placeholder="Space oder Eigentümer suchen…"
-            className="mb-4 max-w-md"
-          />
-        )}
         {!adminMode && !canCreate && (
-          <p className="mb-4 text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {creationAccess?.mode === "admins"
-              ? "Nur Administratoren dürfen neue Spaces erstellen."
+              ? "Neue Spaces erstellt nur die Administration."
               : creationAccess?.mode === "oidc_group"
-                ? "Neue Spaces dürfen nur Mitglieder der freigegebenen OIDC-Gruppe erstellen. Die Gruppenzugehörigkeit wird bei der OIDC-Anmeldung geprüft."
-                : "Neue Spaces dürfen nur ausdrücklich freigegebene Benutzer erstellen. Ihre bestehenden Spaces bleiben nutzbar."}
+                ? "Neue Spaces dürfen nur Mitglieder einer bestimmten OIDC-Gruppe erstellen. Geprüft wird bei der Anmeldung."
+                : "Neue Spaces dürfen nur freigegebene Nutzer erstellen. Ihre bestehenden Spaces bleiben nutzbar."}
           </p>
         )}
         {loading ? (
-          <p role="status" className="py-12 text-center text-sm text-muted">
-            Spaces werden geladen …
-          </p>
-        ) : accepted.length ? (
-          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-            {accepted.map((space) => (
-              <article
-                key={space.id}
-                className="flex flex-wrap items-center gap-4 p-5 sm:p-6"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-                  <LockKeyhole className="h-5 w-5 text-accent" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-semibold">{space.name}</h3>
-                  <p className="mt-1 text-sm text-muted">
-                    {adminMode
-                      ? `Eigentümer: ${space.ownerUsername || space.ownerId}`
-                      : `Privat · ${space.ownerId === user.id ? "Eigentümer" : "Mitglied"}`}
-                    {adminMode && space.ownerEmail && (
-                      <span className="ml-2 text-xs">{space.ownerEmail}</span>
-                    )}
-                  </p>
-                  {adminMode && (
-                    <p className="mt-1 text-xs text-muted">
-                      {space.appCount || 0} Apps · {space.memberCount || 1}{" "}
-                      Mitglieder · {space.invitationCount || 0} Einladungen ·{" "}
-                      {space.groupCount || 0} Gruppenzuordnungen
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {(!adminMode ||
-                    space.ownerId === user.id ||
-                    permitted(Permission.ManageSpaceMembers)) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label={`Mitglieder von ${space.name} ${permitted(Permission.ManageSpaceMembers) || space.ownerId === user.id ? "verwalten" : "ansehen"}`}
-                      onPress={() => void openMembers(space)}
-                    >
-                      <Users className="h-4 w-4" />
-                      Mitglieder
-                    </Button>
-                  )}
-                  {(!adminMode || space.canViewApps) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => router.push(`/?spaceId=${space.id}`)}
-                    >
-                      Apps öffnen
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {(space.ownerId === user.id ||
-                    [
-                      Permission.ManageSpaces,
-                      Permission.ManageSpaceGroups,
-                      Permission.TransferSpaceOwnership,
-                      Permission.DeleteSpaces,
-                    ].some(permitted)) && (
-                    <Dropdown>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`${space.name} verwalten`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                      <Dropdown.Popover placement="bottom end">
-                        <Dropdown.Menu
-                          aria-label={`${space.name} verwalten`}
-                          onAction={(key) => {
-                            setError("");
-                            if (key === "owner") setOwnerSpace(space);
-                            if (key === "groups") setGroupSpace(space);
-                            if (key === "rename") setEditSpace(space);
-                            if (key === "delete") setDeleteSpace(space);
-                          }}
-                        >
-                          {permitted(Permission.TransferSpaceOwnership) && (
-                            <Dropdown.Item
-                              id="owner"
-                              textValue="Eigentümer ändern"
-                            >
-                              <Users className="h-4 w-4 text-muted" />
-                              <Label>Eigentümer ändern</Label>
-                            </Dropdown.Item>
-                          )}
-                          {(space.ownerId === user.id ||
-                            permitted(Permission.ManageSpaces)) && (
-                            <Dropdown.Item id="rename" textValue="Umbenennen">
-                              <Pencil className="h-4 w-4 text-muted" />
-                              <Label>Umbenennen</Label>
-                            </Dropdown.Item>
-                          )}
-                          {(space.ownerId === user.id ||
-                            permitted(Permission.ManageSpaceGroups)) && (
-                            <Dropdown.Item
-                              id="groups"
-                              textValue="Gruppenzugriff"
-                            >
-                              <Users className="h-4 w-4 text-muted" />
-                              <Label>Gruppenzugriff</Label>
-                            </Dropdown.Item>
-                          )}
-                          {(space.ownerId === user.id ||
-                            permitted(Permission.DeleteSpaces)) && (
-                            <Separator />
-                          )}
-                          {(space.ownerId === user.id ||
-                            permitted(Permission.DeleteSpaces)) && (
-                            <Dropdown.Item
-                              id="delete"
-                              textValue="Space löschen"
-                              className="text-danger"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <Label>Space löschen</Label>
-                            </Dropdown.Item>
-                          )}
-                        </Dropdown.Menu>
-                      </Dropdown.Popover>
-                    </Dropdown>
-                  )}
-                </div>
-              </article>
+          <Card className="gap-0 py-0">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="flex items-center gap-4 border-b px-5 py-4 last:border-0">
+                <span className="size-10 animate-pulse rounded-xl bg-muted" />
+                <span className="flex flex-1 flex-col gap-2">
+                  <span className="h-4 w-40 animate-pulse rounded bg-muted" />
+                  <span className="h-3 w-64 animate-pulse rounded bg-muted" />
+                </span>
+              </div>
             ))}
-          </div>
+          </Card>
+        ) : accepted.length ? (
+          <Card className="gap-0 py-0">
+            <ul className="divide-y">
+              {accepted.map((space) => {
+                const owner = space.ownerId === user.id;
+                const showMenu = owner || [Permission.ManageSpaces, Permission.ManageSpaceGroups, Permission.TransferSpaceOwnership, Permission.DeleteSpaces].some(permitted);
+                return (
+                  <li key={space.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FolderLock className="size-5" /></span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">{space.name}</span>
+                        {!adminMode && <Badge variant={owner ? "info" : "secondary"} size="sm">{owner ? "Eigentümer" : "Mitglied"}</Badge>}
+                      </span>
+                      {adminMode ? (
+                        <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          <span title={space.ownerEmail}>Eigentümer: {space.ownerUsername || space.ownerId}</span>
+                          <span>{space.appCount || 0} {space.appCount === 1 ? "App" : "Apps"}</span>
+                          <span>{space.memberCount || 1} {(space.memberCount || 1) === 1 ? "Mitglied" : "Mitglieder"}</span>
+                          {(space.invitationCount || 0) > 0 && <span>{space.invitationCount} {space.invitationCount === 1 ? "offene Einladung" : "offene Einladungen"}</span>}
+                          {(space.groupCount || 0) > 0 && <span>{space.groupCount} {space.groupCount === 1 ? "OIDC-Gruppe" : "OIDC-Gruppen"}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Nur für Mitglieder sichtbar</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {(!adminMode || owner || permitted(Permission.ManageSpaceMembers)) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Mitglieder von ${space.name} ${permitted(Permission.ManageSpaceMembers) || owner ? "verwalten" : "ansehen"}`}
+                          onClick={() => openMembers(space)}
+                        >
+                          <Users />
+                          Mitglieder
+                        </Button>
+                      )}
+                      {(!adminMode || space.canViewApps) && (
+                        <Button variant="secondary" size="sm" render={<NextLink href={`/?spaceId=${space.id}`} />}>
+                          Apps öffnen
+                          <ArrowUpRight />
+                        </Button>
+                      )}
+                      {showMenu && (
+                        <Menu>
+                          <Menu.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={`${space.name} verwalten`} />}>
+                            <MoreHorizontal />
+                          </Menu.Trigger>
+                          <Menu.Content align="end" className="min-w-52">
+                            {ownsOr(space, Permission.ManageSpaces) && (
+                              <Menu.Item onClick={() => { setError(""); setEditSpace(space); }}><Pencil />Umbenennen</Menu.Item>
+                            )}
+                            {ownsOr(space, Permission.ManageSpaceGroups) && (
+                              <Menu.Item onClick={() => { setError(""); setGroupSpace(space); }}><ShieldCheck />Gruppenzugriff</Menu.Item>
+                            )}
+                            {permitted(Permission.TransferSpaceOwnership) && (
+                              <Menu.Item onClick={() => { setError(""); setOwnerSpace(space); }}><UserRoundCog />Eigentümer ändern</Menu.Item>
+                            )}
+                            {ownsOr(space, Permission.DeleteSpaces) && (
+                              <>
+                                <Menu.Separator />
+                                <Menu.Item variant="destructive" onClick={() => { setError(""); setDeleteSpace(space); }}><Trash2 />Space löschen</Menu.Item>
+                              </>
+                            )}
+                          </Menu.Content>
+                        </Menu>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
         ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-10 text-center">
-            <LockKeyhole className="mb-4 h-7 w-7 text-muted" />
-            <h3 className="font-semibold">Noch kein privater Space</h3>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
-              Ein Space hält Ihre Apps privat. Laden Sie bei Bedarf weitere
-              Mitglieder ein.
-            </p>
-            <Button
-              isDisabled={!canCreate}
-              variant="secondary"
-              className="mt-5"
-              onPress={openCreate}
-            >
-              <Plus className="h-4 w-4" />
-              Ersten Space erstellen
-            </Button>
-          </div>
+          <Card className="items-center gap-3 px-6 py-14 text-center">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><FolderLock className="size-5" /></span>
+            <div className="flex flex-col gap-1">
+              <h3 className="font-medium">{adminMode && query ? "Kein Space gefunden" : "Noch kein privater Space"}</h3>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                {adminMode && query ? "Versuchen Sie einen anderen Namen." : "Ein Space hält Apps privat. Mitglieder laden Sie anschließend ein."}
+              </p>
+            </div>
+            {canCreate && !(adminMode && query) && (
+              <Button variant="secondary" onClick={openCreate}><Plus />Ersten Space erstellen</Button>
+            )}
+          </Card>
         )}
       </section>
+
       {adminMode && total > 50 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="secondary"
-            isDisabled={page === 1 || loading}
-            onPress={() => setPage((current) => current - 1)}
-          >
-            Zurück
-          </Button>
-          <span className="text-sm text-muted">
-            Seite {page} von {Math.ceil(total / 50)}
-          </span>
-          <Button
-            variant="secondary"
-            isDisabled={page * 50 >= total || loading}
-            onPress={() => setPage((current) => current + 1)}
-          >
-            Weiter
-          </Button>
+        <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-sm text-muted-foreground">Seite {page} von {pageCount}</p>
+          <Pagination count={pageCount} page={page} onPageChange={setPage} disabled={loading} />
         </div>
       )}
+
       {ownerSpace && (
-        <SpaceOwnerModal
-          space={ownerSpace}
-          onOpenChange={(open) => {
-            if (!open) setOwnerSpace(null);
-          }}
-          onSaved={loadSpaces}
-        />
+        <SpaceOwnerModal space={ownerSpace} onOpenChange={(open) => { if (!open) setOwnerSpace(null); }} onSaved={loadSpaces} />
       )}
       {groupSpace && (
-        <SpaceGroupMappingsModal
-          key={groupSpace.id}
-          space={groupSpace}
-          onOpenChange={(open) => {
-            if (!open) setGroupSpace(null);
-          }}
-        />
+        <SpaceGroupMappingsModal key={groupSpace.id} space={groupSpace} onOpenChange={(open) => { if (!open) setGroupSpace(null); }} />
       )}
       {memberSpace && (
         <SpaceMembersModal
@@ -522,9 +411,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
           space={memberSpace}
           viewerId={user.id}
           canManage={permitted(Permission.ManageSpaceMembers)}
-          onOpenChange={(open) => {
-            if (!open) setMemberSpace(null);
-          }}
+          onOpenChange={(open) => { if (!open) setMemberSpace(null); }}
           onSaved={loadSpaces}
         />
       )}
@@ -532,7 +419,7 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
         isOpen={createOpen}
         onOpenChange={setCreateOpen}
         title="Space erstellen"
-        description="Ein privater Bereich für Ihre Apps. Mitglieder können Sie anschließend einladen."
+        description="Ein privater Bereich für Apps. Mitglieder laden Sie anschließend ein."
         label="Name"
         placeholder="z. B. Projektteam"
         value={name}
@@ -540,63 +427,42 @@ export function SpacesManager({ adminMode = false }: { adminMode?: boolean }) {
         pending={pending}
         error={error}
         submitLabel="Space erstellen"
-        onSubmit={() =>
-          void act(async () => {
-            await request("/spaces", "POST", { name });
-            await loadSpaces();
-            setCreateOpen(false);
-            setName("");
-          })
-        }
+        onSubmit={() => void act(async () => { await request("/spaces", "POST", { name }); await loadSpaces(); setCreateOpen(false); setName(""); })}
       />
       <SpaceFormDialog
         isOpen={!!editSpace}
-        onOpenChange={(open) => {
-          if (!open) setEditSpace(null);
-        }}
+        onOpenChange={(open) => { if (!open) setEditSpace(null); }}
         title="Space umbenennen"
-        description="Der neue Name wird für alle Mitglieder übernommen."
+        description="Der neue Name gilt für alle Mitglieder."
         label="Name"
         value={editSpace?.name || ""}
-        onChange={(value) =>
-          setEditSpace((current) =>
-            current ? { ...current, name: value } : null,
-          )
-        }
+        onChange={(value) => setEditSpace((current) => (current ? { ...current, name: value } : null))}
         pending={pending}
         error={error}
         submitLabel="Speichern"
-        onSubmit={() =>
-          void act(async () => {
-            if (!editSpace) return;
-            await request(`/spaces/${editSpace.id}`, "PATCH", {
-              name: editSpace.name,
-            });
-            await loadSpaces();
-            setEditSpace(null);
-          })
-        }
+        onSubmit={() => void act(async () => {
+          if (!editSpace) return;
+          await request(`/spaces/${editSpace.id}`, "PATCH", { name: editSpace.name });
+          await loadSpaces();
+          setEditSpace(null);
+        })}
       />
       <ConfirmDialog
         isOpen={!!deleteSpace}
-        onOpenChange={(open) => {
-          if (!open) setDeleteSpace(null);
-        }}
+        onOpenChange={(open) => { if (!open) setDeleteSpace(null); }}
         title="Space endgültig löschen?"
-        description={`„${deleteSpace?.name || ""}“ und alle enthaltenen privaten Apps werden unwiderruflich gelöscht. Dies betrifft auch Apps anderer Mitglieder. Bereits veröffentlichte Apps bleiben erhalten.${error ? ` ${error}` : ""}`}
+        description={`„${deleteSpace?.name || ""}“ und alle privaten Apps darin werden gelöscht, auch die anderer Mitglieder. Bereits veröffentlichte Apps bleiben erhalten.${error ? ` ${error}` : ""}`}
         confirmLabel="Space und Apps löschen"
         isDanger
         isLoading={pending}
-        onConfirm={() =>
-          void act(async () => {
-            if (!deleteSpace) return;
-            await request(`/spaces/${deleteSpace.id}`, "DELETE");
-            await loadSpaces();
-            setDeleteSpace(null);
-          })
-        }
+        onConfirm={() => void act(async () => {
+          if (!deleteSpace) return;
+          await request(`/spaces/${deleteSpace.id}`, "DELETE");
+          await loadSpaces();
+          setDeleteSpace(null);
+        })}
       />
-    </PageContainer>
+    </div>
   );
 }
 
@@ -613,7 +479,6 @@ function SpaceFormDialog({
   error,
   submitLabel,
   onSubmit,
-  type = "text",
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -627,67 +492,30 @@ function SpaceFormDialog({
   error: string;
   submitLabel: string;
   onSubmit: () => void;
-  type?: "text" | "email";
 }) {
   return (
-    <Modal>
-      <Modal.Backdrop
-        isOpen={isOpen}
-        onOpenChange={(open) => {
-          if (!pending) onOpenChange(open);
-        }}
-      >
-        <Modal.Container>
-          <Modal.Dialog className="sm:max-w-md">
-            <Modal.CloseTrigger />
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                onSubmit();
-              }}
-            >
-              <Modal.Header>
-                <Modal.Heading>{title}</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className="space-y-5">
-                <p className="text-sm leading-relaxed text-muted">
-                  {description}
-                </p>
-                <TextField isRequired value={value} onChange={onChange}>
-                  <Label>{label}</Label>
-                  <Input
-                    autoFocus
-                    type={type}
-                    maxLength={type === "text" ? 100 : 254}
-                    placeholder={placeholder}
-                  />
-                </TextField>
-                {error && (
-                  <p role="alert" className="text-sm text-danger">
-                    {error}
-                  </p>
-                )}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button
-                  variant="secondary"
-                  isDisabled={pending}
-                  onPress={() => onOpenChange(false)}
-                >
-                  Abbrechen
-                </Button>
-                <Button
-                  type="submit"
-                  isPending={pending}
-                  isDisabled={!value.trim()}
-                >
-                  {submitLabel}
-                </Button>
-              </Modal.Footer>
-            </form>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!pending) onOpenChange(open); }}>
+      <Dialog.Content>
+        <Dialog.Header title={title} description={description} />
+        <Dialog.Body className="flex flex-col gap-4">
+          <form id="space-form" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+            <Field>
+              <Field.Label required>{label}</Field.Label>
+              <Input required autoFocus maxLength={100} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} />
+            </Field>
+          </form>
+          {error && (
+            <Alert variant="plain" tone="destructive">
+              <Alert.Icon />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert>
+          )}
+        </Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.Close render={<Button variant="secondary" disabled={pending} />}>Abbrechen</Dialog.Close>
+          <Button type="submit" form="space-form" loading={pending} disabled={!value.trim()}>{submitLabel}</Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }

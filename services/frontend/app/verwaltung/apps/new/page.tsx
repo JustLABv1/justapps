@@ -4,8 +4,9 @@ import { AppCreationFlow } from '@/components/AppCreationFlow';
 import { AppConfig } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { prepareAppCopyDraft } from '@/lib/appCopy';
-import { Button } from '@heroui/react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Spinner } from '@/components/panelui/spinner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
@@ -69,37 +70,33 @@ function NewAppContent() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto py-20 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+<div className="flex justify-center py-20">
+        <Spinner size="lg" label="Wird geladen" />
       </div>
     );
   }
 
   if (copyError) {
     return (
-      <div className="max-w-5xl mx-auto py-20 px-4">
-        <div className="rounded-2xl border border-danger/20 bg-danger/5 p-6">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-full bg-danger/10 p-2 text-danger">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-base font-semibold text-foreground mb-2">Kopie konnte nicht vorbereitet werden</p>
-              <p className="text-sm text-muted mb-4">{copyError}</p>
-              <Button variant="secondary" onPress={() => router.push('/verwaltung/katalog/apps')}>Zurück zur App-Verwaltung</Button>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto max-w-2xl px-4 py-20">
+        <Alert tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>Kopie konnte nicht vorbereitet werden</Alert.Title>
+          <Alert.Description>{copyError}</Alert.Description>
+          <Alert.Actions>
+            <Button variant="outline" size="sm" onClick={() => router.push('/verwaltung/katalog/apps')}>Zurück zur App-Verwaltung</Button>
+          </Alert.Actions>
+        </Alert>
       </div>
     );
   }
 
-  return <AppCreationFlow initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} />;
+  return <AppCreationFlow initialFormData={initialFormData} copySource={copySource} existingApps={existingApps} editHref={(id) => `/verwaltung/apps/${encodeURIComponent(id)}/edit`} />;
 }
 
 export default function NewAppPage() {
   return (
-    <Suspense fallback={<div className="max-w-5xl mx-auto py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
+    <Suspense fallback={<div className="flex justify-center py-20"><Spinner size="lg" label="Wird geladen" /></div>}>
       <NewAppContent />
     </Suspense>
   );

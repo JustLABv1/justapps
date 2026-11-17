@@ -1,15 +1,9 @@
 ---
 title: AI assistant
-description: Configure JustApps AI providers, knowledge retrieval, privacy, and backups.
+description: Configure JustApps AI providers, the search index, privacy, and backups.
 ---
 
-JustApps includes an authenticated AI Chat that answers questions about catalog apps, deployment options, repository-synced README content, Helm values, Compose files, tags and descriptions.
-
-The chat is available as:
-
-- a global floating widget for signed-in users
-- a dedicated `/chat` page
-- contextual app detail entry points that scope retrieval to the current app
+JustApps can use AI providers for assistive features: app suggestions in the creation flow, changelog drafts, plain-language explanations of health findings, the catalog review, and optional semantic search.
 
 ## Providers
 
@@ -38,8 +32,7 @@ The **AI access** section controls the feature independently from the provider r
 
 | Setting                          | Effect                                                                                                                                                                        |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AI-Funktion aktivieren**       | Enables or disables the AI chat, floating widget and related API endpoints globally. Provider records remain stored when this is off.                                         |
-| **Anonymen AI-Zugriff erlauben** | Allows visitors without a login to use chat and the floating widget. Their conversation history is kept only in the browser. This option is disabled when AI is globally off. |
+| **KI-Funktionen aktivieren**     | Enables or disables all AI features globally. Provider records remain stored when this is off.                                                                                |
 
 For each provider, the admin form supports:
 
@@ -47,7 +40,7 @@ For each provider, the admin form supports:
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **Provider-Schlüssel** | Stable internal identifier; use a short name such as `openai-main` or `ollama-local`.                                      |
 | **Provider-Typ**       | Selects the adapter and request format.                                                                                    |
-| **Bezeichnung**        | Human-readable name shown to chat users.                                                                                   |
+| **Bezeichnung**        | Human-readable name of the provider.                                                                                   |
 | **Base URL**           | Provider or model-server endpoint. In containers, use a reachable service hostname instead of the container's `localhost`. |
 | **API-Pfad**           | Optional path override for compatible endpoints.                                                                           |
 | **Chat-Modell**        | Model identifier sent to the provider.                                                                                     |
@@ -56,7 +49,7 @@ For each provider, the admin form supports:
 | **API-Key**            | Secret token; it is write-only after saving and can be replaced or cleared.                                                |
 | **Temperatur**         | Response variability. Use a low value such as `0.1–0.3` for catalog and documentation questions.                           |
 | **Aktiv**              | Makes the provider selectable.                                                                                             |
-| **Standard**           | Uses the provider as the default for new chats.                                                                            |
+| **Standard**           | Uses the provider as the default for AI features.                                                                            |
 
 Use **Test** after saving a provider. A successful connection only proves that the endpoint and credentials work; it does not validate model quality, data residency or legal suitability.
 
@@ -86,9 +79,9 @@ Configure a provider with:
 
 When JustApps runs in Docker or Kubernetes, `localhost` is the backend container or pod. Use a reachable service DNS name or host gateway address for local model servers.
 
-## Knowledge Index
+## Search index
 
-JustApps builds AI knowledge chunks from app metadata and synced repository content. The index includes:
+JustApps builds search chunks from app metadata and synced repository content. The index includes:
 
 - app names, summaries, categories, tags and custom fields
 - README markdown from repository sync
@@ -97,19 +90,12 @@ JustApps builds AI knowledge chunks from app metadata and synced repository cont
 
 The index is refreshed automatically when apps are created, updated, deleted, or when repository sync applies a new snapshot. Admins can manually rebuild it from [**Verwaltung → Integrationen → AI**](/verwaltung/integrationen/ai).
 
-Knowledge chunks are derived data and are not exported in backups. After a restore, use the manual reindex action if apps were restored from a backup.
+Search chunks are derived data and are not exported in backups. After a restore, use the manual reindex action if apps were restored from a backup.
 
 ## Privacy and Access
 
-AI Chat requires a signed-in user. Retrieval respects app visibility: draft apps are only included for admins or their owners. Provider API keys are never returned to the frontend after saving.
+Provider API keys are never returned to the frontend after saving.
 
 ## Backups
 
-Backup exports include two AI sections:
-
-| Section           | Contents                                       |
-| ----------------- | ---------------------------------------------- |
-| `aiProviders`     | Provider settings and encrypted token material |
-| `aiConversations` | Chat conversations and stored messages         |
-
-The `aiConversations` section can contain user prompts and assistant responses, so treat backup files as sensitive even though `.jabackup` exports are encrypted with a passphrase.
+Backup exports include the `aiProviders` section: provider settings and encrypted token material. Backups made before the AI chat was removed may still contain an `aiConversations` section; it is ignored on import.

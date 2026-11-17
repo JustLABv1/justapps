@@ -1,8 +1,9 @@
 "use client";
 
-import { Button, Dropdown, Label, Separator } from "@heroui/react";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Menu } from "@/components/panelui/menu";
 import {
-  Check,
   ChevronDown,
   Globe2,
   LockKeyhole,
@@ -29,80 +30,74 @@ export function SpaceSwitcher({
 }: SpaceSwitcherProps) {
   const router = useRouter();
   const active = spaces.find((space) => space.id === spaceId);
+  const go = (value: string) => {
+    if (value === "manage" || value === "invitations") router.push("/spaces");
+    else if (value === "create")
+      router.push(`/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}`);
+  };
   return (
-    <Dropdown>
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-label={invitationCount > 0 ? `Space wechseln, ${invitationCount} offene Einladungen` : "Space wechseln"}
-        className="max-w-full justify-between gap-2 sm:max-w-64"
+    <Menu>
+      <Menu.Trigger
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={invitationCount > 0 ? `Space wechseln, ${invitationCount} offene Einladungen` : "Space wechseln"}
+            className="max-w-full sm:max-w-64"
+          />
+        }
       >
-        {spaceId ? (
-          <LockKeyhole className="h-4 w-4 shrink-0 text-muted" />
-        ) : (
-          <Globe2 className="h-4 w-4 shrink-0 text-muted" />
-        )}
+        {spaceId ? <LockKeyhole /> : <Globe2 />}
         <span className="truncate">
           {spaceId ? active?.name || "Privater Space" : "Öffentlicher Katalog"}
         </span>
         {invitationCount > 0 && (
-          <span className="rounded-full bg-accent/10 px-2 text-xs font-semibold text-accent">
+          <Badge size="sm" variant="info">
             {invitationCount}
-          </span>
+          </Badge>
         )}
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted" />
-      </Button>
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu
-          aria-label="Space auswählen"
-          className="min-w-64"
-          onAction={(key) => {
-            const value = String(key);
-            if (value === "manage" || value === "invitations") router.push("/spaces");
-            else if (value === "create")
-              router.push(
-                `/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}`,
-              );
-            else onChange(value === "public" ? "" : value.slice(6));
-          }}
-        >
-          <Dropdown.Item id="public" textValue="Öffentlicher Katalog">
-            <Globe2 className="h-4 w-4 text-muted" />
-            <Label>Öffentlicher Katalog</Label>
-            {!spaceId && <Check className="ml-auto h-4 w-4 text-accent" />}
-          </Dropdown.Item>
-          {spaces.map((space) => (
-            <Dropdown.Item
-              key={space.id}
-              id={`space:${space.id}`}
-              textValue={space.name}
-            >
-              <LockKeyhole className="h-4 w-4 text-muted" />
-              <Label className="max-w-52 truncate">{space.name}</Label>
-              {space.id === spaceId && (
-                <Check className="ml-auto h-4 w-4 text-accent" />
-              )}
-            </Dropdown.Item>
-          ))}
-          <Separator />
-          {invitationCount > 0 && (
-            <Dropdown.Item id="invitations" textValue={`Einladungen (${invitationCount})`}>
-              <UserPlus className="h-4 w-4 text-accent" />
-              <Label>Einladungen ({invitationCount})</Label>
-            </Dropdown.Item>
-          )}
-          {spaceId && canCreate && (
-            <Dropdown.Item id="create" textValue="Private App erstellen">
-              <Plus className="h-4 w-4 text-muted" />
-              <Label>Private App erstellen</Label>
-            </Dropdown.Item>
-          )}
-          <Dropdown.Item id="manage" textValue="Spaces verwalten">
-            <Settings2 className="h-4 w-4 text-muted" />
-            <Label>Spaces verwalten</Label>
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
+        <ChevronDown />
+      </Menu.Trigger>
+      <Menu.Content aria-label="Space auswählen" className="min-w-64">
+        <Menu.Group>
+          <Menu.GroupLabel>Katalog</Menu.GroupLabel>
+          <Menu.RadioGroup
+            value={spaceId}
+            onValueChange={(value: string) => {
+              if (value !== spaceId) onChange(value);
+            }}
+          >
+            <Menu.RadioItem value="">
+              <Globe2 />
+              Öffentlicher Katalog
+            </Menu.RadioItem>
+            {spaces.map((space) => (
+              <Menu.RadioItem key={space.id} value={space.id}>
+                <LockKeyhole />
+                <span className="truncate">{space.name}</span>
+              </Menu.RadioItem>
+            ))}
+          </Menu.RadioGroup>
+        </Menu.Group>
+        <Menu.Separator />
+        {invitationCount > 0 && (
+          <Menu.Item onClick={() => go("invitations")}>
+            <UserPlus />
+            Einladungen
+            <Menu.Badge>{invitationCount}</Menu.Badge>
+          </Menu.Item>
+        )}
+        {spaceId && canCreate && (
+          <Menu.Item onClick={() => go("create")}>
+            <Plus />
+            Private App erstellen
+          </Menu.Item>
+        )}
+        <Menu.Item onClick={() => go("manage")}>
+          <Settings2 />
+          Spaces verwalten
+        </Menu.Item>
+      </Menu.Content>
+    </Menu>
   );
 }

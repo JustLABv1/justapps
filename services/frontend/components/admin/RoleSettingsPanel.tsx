@@ -2,17 +2,14 @@
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { fetchApi } from "@/lib/api";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  Input,
-  Label,
-  Modal,
-  TextField,
-  toast,
-} from "@heroui/react";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Checkbox } from "@/components/panelui/checkbox";
+import { Dialog } from "@/components/panelui/dialog";
+import { Field } from "@/components/panelui/field";
+import { Input } from "@/components/panelui/input";
+import { toast } from "@/lib/toast";
 import {
   LockKeyhole,
   Pencil,
@@ -196,105 +193,85 @@ export function RoleSettingsPanel() {
   }, {});
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-            Zugriffssteuerung
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-foreground">
-            Rollen & Rechte
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
+          <h2 className="text-xl font-semibold tracking-tight">Rollen & Rechte</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Erstellen Sie Rollen, kombinieren Sie einzelne Rechte und weisen Sie
             die Rollen anschließend Benutzern zu.
           </p>
         </div>
-        <Button onPress={openCreate}>
-          <Plus className="h-4 w-4" />
+        <Button onClick={openCreate} className="shrink-0">
+          <Plus />
           Neue Rolle
         </Button>
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted">
+        <p role="status" className="py-10 text-center text-sm text-muted-foreground">
           Rollen werden geladen …
-        </div>
+        </p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {roles.map((role) => {
             const protectedRole = role.key === "admin" || role.key === "user";
             return (
-              <Card key={role.key} className="border border-border bg-surface">
-                <Card.Header className="flex-row items-start justify-between gap-4">
-                  <div className="flex gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                      <ShieldCheck className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Card.Title>{role.name}</Card.Title>
-                        {role.isSystem && (
-                          <Chip size="sm" variant="soft">
-                            <LockKeyhole className="h-3 w-3" />
-                            Systemrolle
-                          </Chip>
-                        )}
+              <Card key={role.key}>
+                <Card.Header>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <ShieldCheck className="size-5" />
                       </div>
-                      <Card.Description>
-                        {role.description || "Keine Beschreibung hinterlegt."}
-                      </Card.Description>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Card.Title>{role.name}</Card.Title>
+                          {role.isSystem && (
+                            <Badge variant="secondary" size="sm">
+                              <LockKeyhole />
+                              Systemrolle
+                            </Badge>
+                          )}
+                        </div>
+                        <Card.Description>
+                          {role.description || "Keine Beschreibung hinterlegt."}
+                        </Card.Description>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {!protectedRole && (
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="tertiary"
-                        aria-label={`${role.name} bearbeiten`}
-                        onPress={() => openEdit(role)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {!role.isSystem && (
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="tertiary"
-                        aria-label={`${role.name} löschen`}
-                        onPress={() => setDeleteRole(role)}
-                      >
-                        <Trash2 className="h-4 w-4 text-danger" />
-                      </Button>
-                    )}
+                    <div className="flex shrink-0 gap-1">
+                      {!protectedRole && (
+                        <Button variant="ghost" size="icon-sm" aria-label={`${role.name} bearbeiten`} onClick={() => openEdit(role)}>
+                          <Pencil />
+                        </Button>
+                      )}
+                      {!role.isSystem && (
+                        <Button variant="ghost" size="icon-sm" aria-label={`${role.name} löschen`} onClick={() => setDeleteRole(role)}>
+                          <Trash2 />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card.Header>
-                <Card.Content className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted">
-                    <Users className="h-4 w-4" />
-                    {role.userCount}{" "}
-                    {role.userCount === 1 ? "Benutzer" : "Benutzer"}
+                <Card.Content className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="size-4" />
+                    {role.userCount} {role.userCount === 1 ? "Benutzer" : "Benutzer"}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {role.key === "admin" ? (
-                      <Chip color="accent" variant="soft">
-                        Alle Rechte
-                      </Chip>
+                      <Badge variant="default">Alle Rechte</Badge>
                     ) : (role.permissions || []).length > 0 ? (
                       (role.permissions || []).map((permission) => {
-                        const definition = permissionDefinitions.find(
-                          (item) => item.key === permission,
-                        );
+                        const definition = permissionDefinitions.find((item) => item.key === permission);
                         return (
-                          <Chip key={permission} variant="soft">
+                          <Badge key={permission} variant="secondary">
                             {definition?.name || permission}
-                          </Chip>
+                          </Badge>
                         );
                       })
                     ) : (
-                      <span className="text-sm text-muted">
+                      <span className="text-sm text-muted-foreground">
                         Keine zusätzlichen Rechte
                       </span>
                     )}
@@ -306,126 +283,74 @@ export function RoleSettingsPanel() {
         </div>
       )}
 
-      <Modal>
-        <Modal.Backdrop isOpen={isOpen} onOpenChange={setIsOpen}>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-xl">
-              <form onSubmit={saveRole}>
-                <Modal.CloseTrigger />
-                <Modal.Header>
-                  <Modal.Heading>
-                    {editingRole ? "Rolle bearbeiten" : "Neue Rolle"}
-                  </Modal.Heading>
-                </Modal.Header>
-                <Modal.Body className="space-y-5">
-                  <TextField
-                    isRequired
-                    onChange={(name) =>
-                      setForm((current) => ({
-                        ...current,
-                        name,
-                        key: editingRole ? current.key : slugify(name),
-                      }))
-                    }
-                  >
-                    <Label>Name</Label>
-                    <Input
-                      value={form.name}
-                      variant="secondary"
-                      placeholder="Zum Beispiel App-Redaktion"
-                    />
-                  </TextField>
-                  {!editingRole && (
-                    <TextField
-                      isRequired
-                      onChange={(key) =>
-                        setForm((current) => ({
-                          ...current,
-                          key: slugify(key),
-                        }))
-                      }
-                    >
-                      <Label>Technischer Schlüssel</Label>
-                      <Input
-                        value={form.key}
-                        variant="secondary"
-                        placeholder="app-redaktion"
-                      />
-                    </TextField>
-                  )}
-                  <TextField
-                    onChange={(description) =>
-                      setForm((current) => ({ ...current, description }))
-                    }
-                  >
-                    <Label>Beschreibung</Label>
-                    <Input
-                      value={form.description}
-                      variant="secondary"
-                      placeholder="Wofür wird diese Rolle eingesetzt?"
-                    />
-                  </TextField>
-                  <div>
-                    <Label className="mb-2 block">Berechtigungen</Label>
-                    <div className="space-y-5">
-                      {Object.entries(permissionGroups).map(
-                        ([group, groupPermissions]) => (
-                          <section
-                            key={group}
-                            className="rounded-xl border border-border bg-surface-secondary/40 p-4"
-                          >
-                            <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted">
-                              {group}
-                            </h3>
-                            <div className="space-y-3">
-                              {groupPermissions.map((permission) => (
-                                <Checkbox
-                                  key={permission.key}
-                                  isSelected={form.permissions.includes(
-                                    permission.key,
-                                  )}
-                                  onChange={(selected) =>
-                                    togglePermission(permission.key, selected)
-                                  }
-                                >
-                                  <Checkbox.Content>
-                                    <Checkbox.Control>
-                                      <Checkbox.Indicator />
-                                    </Checkbox.Control>
-                                    <span>
-                                      <span className="block text-sm font-medium">
-                                        {permission.name}
-                                      </span>
-                                      <span className="block text-xs text-muted">
-                                        {permission.description}
-                                      </span>
-                                    </span>
-                                  </Checkbox.Content>
-                                </Checkbox>
-                              ))}
-                            </div>
-                          </section>
-                        ),
-                      )}
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!saving) setIsOpen(open); }}>
+        <Dialog.Content size="lg">
+          <form onSubmit={saveRole} className="flex min-h-0 flex-col">
+            <Dialog.Header title={editingRole ? "Rolle bearbeiten" : "Neue Rolle"} />
+            <Dialog.Body className="flex flex-col gap-5">
+              <Field>
+                <Field.Label required>Name</Field.Label>
+                <Input
+                  required
+                  value={form.name}
+                  placeholder="Zum Beispiel App-Redaktion"
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    setForm((current) => ({ ...current, name, key: editingRole ? current.key : slugify(name) }));
+                  }}
+                />
+              </Field>
+              {!editingRole && (
+                <Field>
+                  <Field.Label required>Technischer Schlüssel</Field.Label>
+                  <Input
+                    required
+                    value={form.key}
+                    placeholder="app-redaktion"
+                    onChange={(event) => setForm((current) => ({ ...current, key: slugify(event.target.value) }))}
+                  />
+                </Field>
+              )}
+              <Field>
+                <Field.Label>Beschreibung</Field.Label>
+                <Input
+                  value={form.description}
+                  placeholder="Wofür wird diese Rolle eingesetzt?"
+                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                />
+              </Field>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">Berechtigungen</p>
+                {Object.entries(permissionGroups).map(([group, groupPermissions]) => (
+                  <section key={group} className="rounded-xl bg-muted/40 p-4">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group}</h3>
+                    <div className="flex flex-col gap-3">
+                      {groupPermissions.map((permission) => (
+                        <label key={permission.key} className="flex cursor-pointer items-start gap-3">
+                          <Checkbox
+                            className="mt-0.5"
+                            label={permission.name}
+                            checked={form.permissions.includes(permission.key)}
+                            onCheckedChange={(selected) => togglePermission(permission.key, selected === true)}
+                          />
+                          <span>
+                            <span className="block text-sm font-medium">{permission.name}</span>
+                            <span className="block text-xs text-muted-foreground">{permission.description}</span>
+                          </span>
+                        </label>
+                      ))}
                     </div>
-                  </div>
-                </Modal.Body>
-                <Modal.Footer>
-                  <Button variant="tertiary" slot="close">
-                    Abbrechen
-                  </Button>
-                  <Button
-                    type="submit"
-                    isDisabled={saving || !form.name || !form.key}
-                  >
-                    {saving ? "Speichert …" : "Speichern"}
-                  </Button>
-                </Modal.Footer>
-              </form>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+                  </section>
+                ))}
+              </div>
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.Close render={<Button type="button" variant="secondary" disabled={saving} />}>Abbrechen</Dialog.Close>
+              <Button type="submit" loading={saving} disabled={!form.name || !form.key}>Speichern</Button>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog>
 
       <ConfirmDialog
         isOpen={!!deleteRole}

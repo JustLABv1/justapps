@@ -61,6 +61,7 @@ function splitMarkdownHref(href: string): { path: string; suffix: string } {
 function buildRepositoryFileUrl(
   filePath: string,
   context: RepositoryMarkdownContext,
+  view: "blob" | "raw" = "blob",
 ): string | null {
   const projectWebUrl = context.projectWebUrl?.trim();
   const branch = context.branch?.trim() || "HEAD";
@@ -85,7 +86,7 @@ function buildRepositoryFileUrl(
   const providerType = context.providerType?.toLowerCase() === "github"
     ? "github"
     : "gitlab";
-  const fileRoute = providerType === "github" ? "blob" : "-/blob";
+  const fileRoute = providerType === "github" ? view : `-/${view}`;
 
   return `${projectPath}/${fileRoute}/${branchPath}/${repositoryFilePath}`;
 }
@@ -98,6 +99,7 @@ function buildRepositoryFileUrl(
 export function resolveRepositoryMarkdownLink(
   href: string | undefined,
   context: RepositoryMarkdownContext,
+  view: "blob" | "raw" = "blob",
 ): string | undefined {
   if (!href) return href;
 
@@ -116,6 +118,18 @@ export function resolveRepositoryMarkdownLink(
     context.readmePath?.trim() || "README.md",
     targetPath,
   );
-  const repositoryUrl = buildRepositoryFileUrl(filePath, context);
+  const repositoryUrl = buildRepositoryFileUrl(filePath, context, view);
   return repositoryUrl ? `${repositoryUrl}${suffix}` : href;
+}
+
+/**
+ * Resolve a relative Markdown image against the repository, pointing at the
+ * raw file so the browser can load it. Absolute sources are left untouched.
+ */
+export function resolveRepositoryMarkdownImage(
+  src: string | undefined,
+  context: RepositoryMarkdownContext,
+): string | undefined {
+  if (src?.trim().startsWith("data:")) return src;
+  return resolveRepositoryMarkdownLink(src, context, "raw");
 }

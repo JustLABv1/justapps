@@ -32,6 +32,8 @@ type faqQuestionRow struct {
 	AppID       string    `bun:"app_id"`
 	UserID      uuid.UUID `bun:"user_id"`
 	Username    string    `bun:"username"`
+	DisplayName string    `bun:"display_name"`
+	AvatarURL   string    `bun:"avatar_url"`
 	Question    string    `bun:"question"`
 	CreatedAt   time.Time `bun:"created_at"`
 	AnswerCount int       `bun:"answer_count"`
@@ -45,7 +47,10 @@ type faqAnswerRow struct {
 	Username         string     `bun:"username"`
 	ReplyToAnswerID  *uuid.UUID `bun:"reply_to_answer_id"`
 	ReplyToUsername  string     `bun:"reply_to_username"`
+	ReplyToName      string     `bun:"reply_to_display_name"`
 	ReplyToText      string     `bun:"reply_to_text"`
+	DisplayName      string     `bun:"display_name"`
+	AvatarURL        string     `bun:"avatar_url"`
 	Answer           string     `bun:"answer"`
 	IsPinned         bool       `bun:"is_pinned"`
 	CreatorLiked     bool       `bun:"creator_liked"`
@@ -84,6 +89,15 @@ func parseFAQPagination(c *gin.Context) (int, int, bool) {
 }
 
 func applyFAQQuestionFilters(query *bun.SelectQuery, c *gin.Context, answerTable string) (*bun.SelectQuery, bool) {
+	// A shared link to one question asks for just that question.
+	if questionID := strings.TrimSpace(c.Query("questionId")); questionID != "" {
+		id, err := uuid.Parse(questionID)
+		if err != nil {
+			httperror.StatusBadRequest(c, "Invalid FAQ question ID", err)
+			return nil, false
+		}
+		query = query.Where("q.id = ?", id)
+	}
 	search := strings.TrimSpace(c.Query("q"))
 	if search != "" {
 		pattern := "%" + search + "%"
@@ -100,8 +114,12 @@ func applyFAQQuestionFilters(query *bun.SelectQuery, c *gin.Context, answerTable
 		query = query.Where(fmt.Sprintf("NOT EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
 	case "answered":
 		query = query.Where(fmt.Sprintf("EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id)", answerTable))
+	case "solved":
+		query = query.Where(fmt.Sprintf("EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id AND status_answer.accepted_by_author)", answerTable))
+	case "unsolved":
+		query = query.Where(fmt.Sprintf("NOT EXISTS (SELECT 1 FROM %s status_answer WHERE status_answer.question_id = q.id AND status_answer.accepted_by_author)", answerTable))
 	default:
-		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, or answered"))
+		httperror.StatusBadRequest(c, "Invalid FAQ status", errors.New("status must be all, open, answered, solved, or unsolved"))
 		return nil, false
 	}
 
@@ -143,7 +161,7 @@ func loadVisibleFAQApp(c *gin.Context, db *bun.DB, appID string) (models.Apps, b
 	}
 
 	var app models.Apps
-	err := db.NewSelect().Model(&app).Where("a.id = ?", appID).Relation("Owner").Scan(c.Request.Context())
+	err := db.NewSelect().Model(&app).Where("a.id = ?", appID).Relation("Owner", ownerColumns).Scan(c.Request.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			httperror.StatusNotFound(c, "App not found", err)
@@ -190,11 +208,55 @@ func faqQuestionResponse(row faqQuestionRow) models.FAQQuestion {
 		AppID:       row.AppID,
 		UserID:      row.UserID,
 		Username:    row.Username,
+		DisplayName: row.DisplayName,
+		AvatarURL:   row.AvatarURL,
 		Question:    row.Question,
 		CreatedAt:   row.CreatedAt,
 		AnswerCount: row.AnswerCount,
 		Answers:     make([]models.FAQAnswer, 0),
 	}
+}
+
+// faqQuestionHighlights loads, for a page of questions, whether each is solved
+// (an answer was confirmed by the asker) and its leading answer, ordered the
+// same way the answers list orders them. Table names are fixed by the callers.
+func faqQuestionHighlights(ctx context.Context, db *bun.DB, answerTable, upvoteTable string, questionIDs []uuid.UUID) (map[uuid.UUID]bool, map[uuid.UUID]*models.FAQAnswerPreview, error) {
+	solved := make(map[uuid.UUID]bool)
+	top := make(map[uuid.UUID]*models.FAQAnswerPreview)
+	if len(questionIDs) == 0 {
+		return solved, top, nil
+	}
+	var solvedIDs []uuid.UUID
+	if err := db.NewSelect().
+		TableExpr(answerTable+" AS a").
+		ColumnExpr("DISTINCT a.question_id").
+		Where("a.question_id IN (?)", bun.In(questionIDs)).
+		Where("a.accepted_by_author").
+		Scan(ctx, &solvedIDs); err != nil {
+		return nil, nil, err
+	}
+	for _, id := range solvedIDs {
+		solved[id] = true
+	}
+	var previews []models.FAQAnswerPreview
+	previewQuery := db.NewSelect().
+		TableExpr(answerTable + " AS a").
+		ColumnExpr("DISTINCT ON (a.question_id) a.question_id, a.id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author").
+		ColumnExpr("COUNT(v.user_id)::int AS upvote_count")
+	previewQuery = withAuthorProfile(previewQuery, "a.user_id")
+	if err := previewQuery.
+		Join("LEFT JOIN "+upvoteTable+" AS v ON v.answer_id = a.id").
+		Where("a.question_id IN (?)", bun.In(questionIDs)).
+		Where("a.reply_to_answer_id IS NULL").
+		GroupExpr("a.id").
+		OrderExpr("a.question_id, a.is_pinned DESC, a.accepted_by_author DESC, a.creator_liked DESC, COUNT(v.user_id) DESC, a.created_at ASC, a.id ASC").
+		Scan(ctx, &previews); err != nil {
+		return nil, nil, err
+	}
+	for i := range previews {
+		top[previews[i].QuestionID] = &previews[i]
+	}
+	return solved, top, nil
 }
 
 // GetFAQ returns a filtered page of questions. Answers are loaded lazily through
@@ -215,6 +277,7 @@ func GetFAQ(c *gin.Context, db *bun.DB) {
 		ColumnExpr("q.id, q.app_id, q.user_id, q.username, q.question, q.created_at").
 		ColumnExpr("(SELECT COUNT(*) FROM faq_answers answer WHERE answer.question_id = q.id)::int AS answer_count").
 		Where("q.app_id = ?", appID)
+	query = withAuthorProfile(query, "q.user_id")
 	if owner := strings.TrimSpace(c.Query("owner")); owner != "" {
 		if owner != "me" {
 			httperror.StatusBadRequest(c, "Invalid FAQ owner", errors.New("owner must be me"))
@@ -239,9 +302,21 @@ func GetFAQ(c *gin.Context, db *bun.DB) {
 		return
 	}
 
+	questionIDs := make([]uuid.UUID, len(questionRows))
+	for i, row := range questionRows {
+		questionIDs[i] = row.ID
+	}
+	solved, top, err := faqQuestionHighlights(ctx, db, "faq_answers", "faq_answer_upvotes", questionIDs)
+	if err != nil {
+		httperror.InternalServerError(c, "Failed to load FAQ answer previews", err)
+		return
+	}
 	questions := make([]models.FAQQuestion, 0, len(questionRows))
 	for _, row := range questionRows {
-		questions = append(questions, faqQuestionResponse(row))
+		question := faqQuestionResponse(row)
+		question.Solved = solved[row.ID]
+		question.TopAnswer = top[row.ID]
+		questions = append(questions, question)
 	}
 	c.JSON(http.StatusOK, gin.H{"questions": questions, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }
@@ -265,11 +340,13 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 		ColumnExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
 		ColumnExpr("a.reply_to_answer_id, COALESCE(parent.username, '') AS reply_to_username, COALESCE(parent.answer, '') AS reply_to_text").
 		Join("LEFT JOIN faq_answers AS parent ON parent.id = a.reply_to_answer_id").
+		ColumnExpr(replyToNameSQL("parent.user_id")).
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID).
 		GroupExpr("a.id, a.question_id, a.app_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at, parent.id")
+	query = withAuthorProfile(query, "a.user_id")
 	countQuery := db.NewSelect().TableExpr("faq_answers AS a").Where("a.question_id = ? AND a.app_id = ?", questionID, app.ID)
 	threaded := c.Query("threaded") == "true"
 	pageQuery := query.Clone()
@@ -295,7 +372,7 @@ func GetFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.FAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToText: row.ReplyToText, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.FAQAnswer{ID: row.ID, QuestionID: row.QuestionID, AppID: row.AppID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToDisplayName: row.ReplyToName, ReplyToText: row.ReplyToText, DisplayName: row.DisplayName, AvatarURL: row.AvatarURL, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }

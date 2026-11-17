@@ -3,12 +3,18 @@
 import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppTable } from '@/components/AppTable';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { CatalogStewardPanel } from '@/components/admin/CatalogStewardPanel';
+import { CatalogSteward } from '@/components/admin/CatalogSteward';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Dialog } from '@/components/panelui/dialog';
+import { Input } from '@/components/panelui/input';
+import { Spinner } from '@/components/panelui/spinner';
+import { UserAvatar, authorName } from '@/components/profile/UserAvatar';
 import { AppCatalogFilters, AppConfig, AppUserSummary, SystemUser } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
 import { APP_STATUS_OPTIONS, isDraftStatus, sortAppStatuses } from '@/lib/appStatus';
-import { Button, Modal, toast } from '@heroui/react';
-import { Check, Loader2, Plus, ShieldCheck, UserRoundCog } from 'lucide-react';
+import { toast } from '@/lib/toast';
+import { Check, Plus, Search } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -60,6 +66,7 @@ function AppsContent() {
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [transferUserId, setTransferUserId] = useState('');
+  const [transferSearch, setTransferSearch] = useState('');
   const [transferring, setTransferring] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -80,14 +87,14 @@ function AppsContent() {
   const ownerOptions = useMemo(() => {
     const owners = new Map<string, AppUserSummary>();
     users.forEach((user) => {
-      owners.set(user.id, { id: user.id, username: user.username, email: user.email });
+      owners.set(user.id, { id: user.id, username: user.username, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl });
     });
     apps.forEach((app) => {
       if (app.owner) {
         owners.set(app.owner.id, app.owner);
       }
     });
-    return Array.from(owners.values()).sort((left, right) => left.username.localeCompare(right.username, 'de'));
+    return Array.from(owners.values()).sort((left, right) => authorName(left).localeCompare(authorName(right), 'de'));
   }, [apps, users]);
 
   const updateFilters = useCallback((updates: Partial<AppCatalogFilters>) => {
@@ -254,6 +261,7 @@ function AppsContent() {
   const handleOpenTransfer = (app: AppConfig) => {
     setTransferApp(app);
     setTransferUserId('');
+    setTransferSearch('');
   };
 
   const handleOpenEditors = (app: AppConfig) => {
@@ -291,35 +299,40 @@ function AppsContent() {
     }
   }, [searchParams, router]);
 
+  const transferCandidates = users
+    .filter((user) => user.id !== transferApp?.ownerId)
+    .filter((user) => {
+      const query = transferSearch.trim().toLocaleLowerCase('de');
+      return !query || [user.username, user.email, user.displayName ?? ''].some((value) => value.toLocaleLowerCase('de').includes(query));
+    });
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted">
-          {apps.length} App{apps.length !== 1 ? 's' : ''} im Store
-          {draftCount > 0 ? `, davon ${draftCount} Entwurf${draftCount !== 1 ? 'e' : ''}` : ''}
-        </p>
-        <div className="flex gap-2">
-          <Button
-            className="bg-accent text-white gap-2 shadow-sm font-medium"
-            size="sm"
-            onPress={handleCreateApp}
-          >
-            <Plus className="w-4 h-4" /> App hinzufügen
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Apps verwalten</h1>
+          <p className="text-muted-foreground">
+            {loading ? 'Apps werden geladen …' : `${apps.length} ${apps.length === 1 ? 'App' : 'Apps'}${draftCount > 0 ? `, davon ${draftCount} ${draftCount === 1 ? 'Entwurf' : 'Entwürfe'}` : ''}`}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <CatalogSteward />
+          <Button onClick={handleCreateApp}>
+            <Plus />
+            Neue App
           </Button>
         </div>
-      </div>
+      </header>
 
       {error && (
-        <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div className="flex-grow">{error}</div>
-          <Button size="sm" variant="secondary" onPress={loadApps} className="h-8">Wiederholen</Button>
-        </div>
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+          <Alert.Actions>
+            <Button size="sm" variant="secondary" onClick={() => void loadApps()}>Erneut versuchen</Button>
+          </Alert.Actions>
+        </Alert>
       )}
-
-      <CatalogStewardPanel />
 
       <AppTable
         apps={apps}
@@ -348,67 +361,47 @@ function AppsContent() {
         onSaved={loadApps}
       />
 
-      {/* Transfer ownership modal */}
-      <Modal.Backdrop isOpen={!!transferApp} onOpenChange={(open) => { if (!open) setTransferApp(null); }}>
-        <Modal.Container>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Icon className="bg-accent-soft text-accent">
-                <UserRoundCog className="w-5 h-5" />
-              </Modal.Icon>
-              <Modal.Heading>Besitzer übertragen</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-sm text-muted mb-4">
-                Übertragen Sie die Eigentümerschaft von <strong className="text-foreground">{transferApp?.name}</strong> auf einen anderen Benutzer.
-              </p>
-              <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Neuer Besitzer</p>
-              <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-surface divide-y divide-border/60">
-                {users.filter(u => u.id !== transferApp?.ownerId).map(u => (
+      <Dialog open={!!transferApp} onOpenChange={(open) => { if (!open && !transferring) setTransferApp(null); }}>
+        <Dialog.Content>
+          <Dialog.Header
+            title="Eigentümer übertragen"
+            description={<>Wer soll künftig für <strong className="font-medium text-foreground">{transferApp?.name}</strong> verantwortlich sein?</>}
+          />
+          <Dialog.Body className="flex flex-col gap-3">
+            <Input.Group size="sm">
+              <Input.Addon><Search /></Input.Addon>
+              <Input aria-label="Benutzer suchen" placeholder="Name oder E-Mail" value={transferSearch} onChange={(event) => setTransferSearch(event.target.value)} />
+            </Input.Group>
+            <div role="radiogroup" aria-label="Neuer Eigentümer" className="max-h-72 divide-y overflow-y-auto rounded-xl border">
+              {transferCandidates.map((user) => {
+                const chosen = transferUserId === user.id;
+                return (
                   <button
-                    key={u.id}
+                    key={user.id}
                     type="button"
-                    onClick={() => setTransferUserId(u.id)}
-                    className={`w-full flex items-center gap-3 p-3 transition-colors text-left ${
-                      transferUserId === u.id
-                        ? 'bg-accent/10 text-accent'
-                        : 'hover:bg-surface-secondary'
-                    }`}
+                    role="radio"
+                    aria-checked={chosen}
+                    onClick={() => setTransferUserId(user.id)}
+                    className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-start outline-none transition-colors focus-visible:bg-muted ${chosen ? 'bg-muted' : 'hover:bg-muted/60'}`}
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                      transferUserId === u.id ? 'bg-accent text-white' : 'bg-surface-secondary text-muted'
-                    }`}>
-                      {u.username[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{u.username}</p>
-                      <p className="text-xs text-muted truncate">{u.email}</p>
-                    </div>
-                    {transferUserId === u.id && <Check className="w-4 h-4 ml-auto text-accent shrink-0" />}
+                    <UserAvatar user={user} size="sm" />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-medium">{authorName(user)}</span>
+                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    </span>
+                    {chosen && <Check className="size-4 shrink-0 text-success" />}
                   </button>
-                ))}
-                {users.filter(u => u.id !== transferApp?.ownerId).length === 0 && (
-                  <p className="p-4 text-sm text-muted text-center">Keine weiteren Benutzer vorhanden</p>
-                )}
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onPress={() => setTransferApp(null)}>
-                Abbrechen
-              </Button>
-              <Button
-                className="bg-accent text-white"
-                isDisabled={!transferUserId || transferring}
-                onPress={handleSubmitTransfer}
-              >
-                {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Übertragen
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+                );
+              })}
+              {transferCandidates.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Niemand gefunden.</p>}
+            </div>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Close render={<Button variant="secondary" disabled={transferring} />}>Abbrechen</Dialog.Close>
+            <Button disabled={!transferUserId} loading={transferring} onClick={() => void handleSubmitTransfer()}>Übertragen</Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
 
       <ConfirmDialog
         confirmLabel="App löschen"
@@ -439,7 +432,7 @@ function AppsContent() {
 
 export default function AppsPage() {
   return (
-    <Suspense fallback={<div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
+    <Suspense fallback={<div className="flex justify-center py-20"><Spinner /></div>}>
       <AppsContent />
     </Suspense>
   );

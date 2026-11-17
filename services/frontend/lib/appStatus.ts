@@ -18,6 +18,14 @@ type AppStatusMeta = {
   sortOrder: number;
 };
 
+/** The Badge variant each status colour is drawn in. */
+export const STATUS_BADGE_VARIANT: Record<AppStatusColor, 'secondary' | 'info' | 'success' | 'warning'> = {
+  default: 'secondary',
+  accent: 'info',
+  success: 'success',
+  warning: 'warning',
+};
+
 const STATUS_META: Record<string, AppStatusMeta> = {
   entwurf: { label: DRAFT_STATUS, color: 'default', isDraft: true, sortOrder: 0 },
   poc: { label: 'POC', color: 'default', isDraft: false, sortOrder: 1 },
@@ -78,3 +86,12 @@ export function sortAppStatuses(statuses: string[]) {
     return (leftMeta?.label ?? left).localeCompare(rightMeta?.label ?? right, 'de');
   });
 }
+
+/** What each maturity level means, for pickers and the detail page. */
+export const APP_MATURITY_DESCRIPTIONS: Record<string, string> = {
+  POC: "Machbarkeitsnachweis, noch nicht für den Einsatz gedacht.",
+  MVP: "Erste nutzbare Version mit den wichtigsten Funktionen.",
+  Sandbox: "Zum Ausprobieren in einer Testumgebung, nicht produktiv.",
+  "In Erprobung": "Im Pilotbetrieb bei ersten Stellen.",
+  Etabliert: "Im produktiven Einsatz und gepflegt.",
+};

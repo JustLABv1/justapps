@@ -1,8 +1,8 @@
 'use client';
 
-import type { FAQAnswerNotification, FAQNotification, ReleaseInboxItem, UpdatePreferences } from '@/config/apps';
+import type { FAQAnswerNotification, FAQNotification, RequestNotification, ReleaseInboxItem, UpdatePreferences } from '@/config/apps';
 import { fetchApi } from '@/lib/api';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 interface UpdatesContextType {
@@ -12,11 +12,13 @@ interface UpdatesContextType {
   loaded: boolean;
   refreshSummary: () => Promise<void>;
   refreshPreferences: () => Promise<void>;
-  updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => Promise<boolean>;
+  updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps' | 'weeklyDigest'>) => Promise<boolean>;
   markAsSeen: (itemId: string) => Promise<boolean>;
   markAllAsSeen: () => Promise<boolean>;
   markFAQAsSeen: (notificationId: string) => Promise<boolean>;
   markFAQAnswerAsSeen: (notificationId: string) => Promise<boolean>;
+  markRequestAsSeen: (notificationId: string) => Promise<boolean>;
+  loadRequestNotifications: (status?: 'all' | 'unread', page?: number, pageSize?: number) => Promise<NotificationPage<RequestNotification>>;
   loadInboxItems: (status?: 'all' | 'unread', page?: number, pageSize?: number) => Promise<NotificationPage<ReleaseInboxItem>>;
   loadFAQNotifications: (status?: 'all' | 'unread', page?: number, pageSize?: number) => Promise<NotificationPage<FAQNotification>>;
   loadFAQAnswerNotifications: (status?: 'all' | 'unread', page?: number, pageSize?: number) => Promise<NotificationPage<FAQAnswerNotification>>;
@@ -43,6 +45,8 @@ const UpdatesContext = createContext<UpdatesContextType>({
   markAllAsSeen: async () => false,
   markFAQAsSeen: async () => false,
   markFAQAnswerAsSeen: async () => false,
+  markRequestAsSeen: async () => false,
+  loadRequestNotifications: async () => emptyPage(),
   loadInboxItems: async () => emptyPage(),
   loadFAQNotifications: async () => emptyPage(),
   loadFAQAnswerNotifications: async () => emptyPage(),
@@ -65,9 +69,10 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
   const refreshSummary = async () => {
     if (!user) return;
     try {
-      const [releaseResponse, faqResponse] = await Promise.all([
+      const [releaseResponse, faqResponse, requestResponse] = await Promise.all([
         fetchApi('/user/updates/summary', { cache: 'no-store' }).catch(() => null),
         fetchApi('/user/faq-notifications/summary', { cache: 'no-store' }).catch(() => null),
+        fetchApi('/user/request-notifications/summary', { cache: 'no-store' }).catch(() => null),
       ]);
       const releaseData = releaseResponse?.ok
         ? await releaseResponse.json() as { totalUnread?: number; appUnreadCounts?: Record<string, number> }
@@ -75,11 +80,14 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
       const faqData = faqResponse?.ok
         ? await faqResponse.json() as { totalUnread?: number; appUnreadCounts?: Record<string, number> }
         : {};
+      const requestData = requestResponse?.ok
+        ? await requestResponse.json() as { totalUnread?: number }
+        : {};
       const appCounts = { ...(releaseData.appUnreadCounts ?? {}) };
       Object.entries(faqData.appUnreadCounts ?? {}).forEach(([appId, count]) => {
         appCounts[appId] = (appCounts[appId] ?? 0) + count;
       });
-      setTotalUnread((releaseData.totalUnread ?? 0) + (faqData.totalUnread ?? 0));
+      setTotalUnread((releaseData.totalUnread ?? 0) + (faqData.totalUnread ?? 0) + (requestData.totalUnread ?? 0));
       setAppUnreadCounts(appCounts);
     } finally {
       setLoaded(true);
@@ -108,13 +116,22 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
       void Promise.all([refreshSummary(), refreshPreferences()]);
     }, 0);
 
+    const refreshVisible = () => {
+      if (document.visibilityState === 'visible') void refreshSummary();
+    };
+    const intervalId = window.setInterval(refreshVisible, 60_000);
+    window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => {
+  const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps' | 'weeklyDigest'>) => {
     const previousPreferences = preferences;
 
     if (previousPreferences) {
@@ -189,7 +206,23 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadInboxItems = async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
+  const markRequestAsSeen = async (notificationId: string) => {
+    try {
+      const response = await fetchApi(`/user/request-notifications/${notificationId}/seen`, { method: 'POST' });
+      if (!response.ok) return false;
+      await refreshSummary().catch(() => {});
+      return true;
+    } catch { return false; }
+  };
+
+  const loadRequestNotifications = useCallback(async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
+    const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), status });
+    const response = await fetchApi(`/user/request-notifications?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Bedarfsbenachrichtigungen konnten nicht geladen werden.');
+    return await response.json() as NotificationPage<RequestNotification>;
+  }, []);
+
+  const loadInboxItems = useCallback(async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (status === 'unread') query.set('status', 'unread');
     const response = await fetchApi(`/user/updates?${query}`, { cache: 'no-store' });
@@ -198,9 +231,9 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await response.json() as Partial<NotificationPage<ReleaseInboxItem>> | null;
     return { items: Array.isArray(data?.items) ? data.items : [], page: data?.page ?? page, total: data?.total ?? 0, hasMore: data?.hasMore === true };
-  };
+  }, []);
 
-  const loadFAQNotifications = async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
+  const loadFAQNotifications = useCallback(async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (status === 'unread') query.set('status', 'unread');
     try {
@@ -213,9 +246,9 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return emptyPage<FAQNotification>(page);
     }
-  };
+  }, []);
 
-  const loadFAQAnswerNotifications = async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
+  const loadFAQAnswerNotifications = useCallback(async (status: 'all' | 'unread' = 'all', page = 1, pageSize = 15) => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (status === 'unread') query.set('status', 'unread');
     try {
@@ -226,7 +259,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     } catch {
       return emptyPage<FAQAnswerNotification>(page);
     }
-  };
+  }, []);
 
   return (
     <UpdatesContext.Provider
@@ -242,6 +275,8 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
         markAllAsSeen,
         markFAQAsSeen,
         markFAQAnswerAsSeen,
+        markRequestAsSeen,
+        loadRequestNotifications,
         loadInboxItems,
         loadFAQNotifications,
         loadFAQAnswerNotifications,

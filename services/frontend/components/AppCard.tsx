@@ -6,7 +6,10 @@ import { useUpdates } from "@/context/UpdatesContext";
 import { getAppFreshness } from "@/lib/appFreshness";
 import { getAppStatusMeta } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
-import { Button, Card, Chip, Dropdown, Link, Tooltip } from "@heroui/react";
+import { Badge, type BadgeVariant } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Card } from "@/components/panelui/card";
+import { Menu } from "@/components/panelui/menu";
 import { BookOpen, Clock, ExternalLink, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -14,6 +17,13 @@ import { useState } from "react";
 import { FavoriteButton } from "./FavoriteButton";
 import { GitHubIcon } from "./GitHubIcon";
 import { LinkStatusDot } from "./LinkStatusDot";
+
+const BADGE_VARIANT: Record<'default' | 'accent' | 'success' | 'warning', BadgeVariant> = {
+  default: 'secondary',
+  accent: 'info',
+  success: 'success',
+  warning: 'warning',
+};
 
 export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
@@ -37,10 +47,10 @@ export function AppCard({ app }: { app: AppConfig }) {
     : (app.repoUrl ? [{ label: 'Quellcode', url: app.repoUrl }] : []);
   const customLinks = app.customLinks || [];
   const resourceItems = [
-    ...allDemos.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'demo' })),
-    ...repositories.map((link) => ({ ...link, icon: <GitHubIcon className="w-3 h-3" />, kind: 'repository' })),
-    ...customLinks.map((link) => ({ ...link, icon: <ExternalLink className="w-3 h-3" />, kind: 'link' })),
-    ...(app.docsUrl ? [{ label: 'Dokumentation', url: app.docsUrl, icon: <BookOpen className="w-3 h-3" />, kind: 'docs' }] : []),
+    ...allDemos.map((link) => ({ ...link, icon: <ExternalLink />, kind: 'demo' })),
+    ...repositories.map((link) => ({ ...link, icon: <GitHubIcon />, kind: 'repository' })),
+    ...customLinks.map((link) => ({ ...link, icon: <ExternalLink />, kind: 'link' })),
+    ...(app.docsUrl ? [{ label: 'Dokumentation', url: app.docsUrl, icon: <BookOpen />, kind: 'docs' }] : []),
   ];
   const spotlightBadge = freshness.badgeLabel;
   const spotlightBadgeColor = freshness.badgeColor;
@@ -48,170 +58,130 @@ export function AppCard({ app }: { app: AppConfig }) {
 
   return (
     <Card
-      className={`relative w-full flex flex-col group transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none hover:shadow-lg bg-surface overflow-visible p-0 cursor-pointer
-        ${isFeatured
-          ? 'border-accent/45 shadow-lg shadow-accent/10 bg-gradient-to-br from-surface via-surface to-accent/[0.04] z-10'
-          : 'hover:border-accent/40 border-border'
-        }`}
-      variant="default"
+      as="article"
+      className="relative h-full cursor-pointer transition-shadow hover:shadow-md"
       onClick={() => router.push(`/apps/${app.id}`)}
     >
-      {isFeatured && (
-        <div className="absolute -top-3 -right-3 z-20 flex items-center justify-center rounded-full bg-gov-gold p-2 shadow-lg shadow-gov-gold/20">
-          <Star className="w-3.5 h-3.5 text-white fill-white" />
-        </div>
-      )}
-      {/* ── Header: icon, name, metadata ── */}
-      <Card.Header className="p-6 pb-2 flex flex-row items-start gap-4 ring-offset-background">
-        <div className={`relative w-14 h-14 rounded-2xl border flex items-center justify-center text-2xl shrink-0
-          ${isFeatured 
-            ? 'bg-gradient-to-br from-accent/30 to-accent/5 border-accent/40 shadow-inner' 
-            : 'bg-gradient-to-br from-surface-secondary to-surface border-border'
-          }`}>
-          {iconSrc ? (
-            <Image 
-              src={iconSrc} 
-              alt={app.name} 
-              fill
-              className="object-contain p-2"
-              sizes="56px"
-              unoptimized
-            />
-          ) : (
-            app.icon || "🏛️"
-          )}
-        </div>
-        <div className="flex flex-col min-w-0 flex-1 pt-1">
-          <div className="mb-1.5 min-w-0">
-            <Card.Title className={`block text-lg font-bold leading-tight truncate transition-colors ${isFeatured ? 'text-accent' : 'text-foreground group-hover:text-accent'}`}>
-              {app.name}
-            </Card.Title>
+      <Card.Header>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted text-xl">
+            {iconSrc ? (
+              <Image src={iconSrc} alt="" fill className="object-contain p-1.5" sizes="44px" unoptimized />
+            ) : (
+              app.icon || "🏛️"
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-muted">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wider line-clamp-1">
-              {app.categories?.join(', ')}
-            </span>
-            {hasRating && (
-              <>
-                <span className="text-muted/30 text-[10px]">|</span>
-                <div className="flex items-center gap-1 bg-gov-gold/10 px-1.5 py-0.5 rounded text-gov-gold">
-                  <Star className="w-3 h-3 fill-current" />
-                  <span className="text-[11px] font-bold">
-                    {(app.ratingAvg || 0).toFixed(1)}
-                  </span>
-                </div>
-              </>
+          <div className="flex min-w-0 flex-col gap-1">
+            <Card.Title className="truncate">{app.name}</Card.Title>
+            {app.categories && app.categories.length > 0 && (
+              <Card.Description className="truncate">{app.categories.join(", ")}</Card.Description>
             )}
           </div>
         </div>
+        {isFeatured && (
+          <Card.Action>
+            <Badge variant="warning" size="sm">
+              <Star className="fill-current" />
+              Empfohlen
+            </Badge>
+          </Card.Action>
+        )}
       </Card.Header>
 
-      {/* ── Body: description + tags ── */}
-      <Card.Content className="px-6 pt-3 pb-5 flex-grow flex flex-col">
-        <p className="text-sm text-muted leading-relaxed line-clamp-3 mb-4">
-          {app.description}
-        </p>
+      <Card.Content className="flex flex-1 flex-col gap-4">
+        <p className="line-clamp-3 text-sm text-muted-foreground">{app.description}</p>
 
         <div className="mt-auto flex flex-col gap-3">
-          {(statusInfo || spotlightBadge) && (
-            <div className="flex items-center gap-2">
+          {(statusInfo || spotlightBadge || unreadCount > 0 || hasRating) && (
+            <div className="flex flex-wrap items-center gap-1.5">
               {statusInfo && (
-                <Chip 
-                  size="sm" 
-                  color={statusInfo.color} 
-                  variant="soft" 
-                  className="text-[10px] font-bold uppercase h-5"
-                >
+                <Badge size="sm" variant={BADGE_VARIANT[statusInfo.color]}>
                   {statusInfo.label}
-                </Chip>
+                </Badge>
               )}
               {spotlightBadge && (
-                <Chip size="sm" color={spotlightBadgeColor} variant="soft" className="text-[10px] font-bold uppercase h-5">
+                <Badge size="sm" variant={BADGE_VARIANT[spotlightBadgeColor]}>
                   {spotlightBadge}
-                </Chip>
+                </Badge>
               )}
               {unreadCount > 0 && (
-                <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase h-5">
+                <Badge size="sm" variant="info" dot>
                   {unreadCount} neu
-                </Chip>
+                </Badge>
+              )}
+              {hasRating && (
+                <Badge size="sm" variant="outline" aria-label={`Bewertung ${(app.ratingAvg || 0).toFixed(1)} von 5`}>
+                  <Star className="fill-current" />
+                  {(app.ratingAvg || 0).toFixed(1)}
+                </Badge>
               )}
             </div>
           )}
           {app.authority && (
-            <div className="flex items-center gap-2 text-muted">
-              <Landmark className="w-3.5 h-3.5" />
-              <span className="text-xs line-clamp-1">{app.authority}</span>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Landmark className="size-3.5 shrink-0" />
+              <span className="line-clamp-1">{app.authority}</span>
             </div>
           )}
         </div>
       </Card.Content>
 
-      {/* ── Footer: primary action + quick-links ── */}
-      <Card.Footer className="mt-auto overflow-hidden border-t border-border/50 bg-surface-secondary/30 p-0 transition-colors group-hover:bg-accent/5">
-        <div className="flex items-center justify-between w-full px-6 py-4">
-          {/* Favorite + timestamp */}
-          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            <FavoriteButton appId={app.id} />
-            {relativeTime && (
-              <div className="flex items-center gap-1.5 text-muted/60">
-                <Clock className="w-3 h-3" />
-                <span className="text-[11px]">{relativeTime.label}</span>
-              </div>
-            )}
-          </div>
+      <Card.Footer variant="panel" className="justify-between">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <FavoriteButton appId={app.id} />
+          {relativeTime && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="size-3" />
+              {relativeTime.label}
+            </span>
+          )}
+        </div>
 
-          {/* Quick-links */}
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {resourceItems.length === 1 && (
-              <Tooltip delay={0}>
-                <Tooltip.Trigger>
-                  <Link
-                    href={resourceItems[0].url}
-                    target="_blank"
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm transition-all hover:border-accent/30 hover:bg-accent/10 hover:text-accent"
-                    aria-label={`${resourceItems[0].label} öffnen`}
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {resourceItems.length === 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              shape="pill"
+              render={
+                <a
+                  href={resourceItems[0].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${resourceItems[0].label} öffnen`}
+                />
+              }
+            >
+              {resourceItems[0].icon}
+              {resourceItems[0].label}
+              {probeEnabled && resourceItems[0].kind === 'demo' && (
+                <LinkStatusDot status={probeStatus} />
+              )}
+            </Button>
+          )}
+
+          {resourceItems.length > 1 && (
+            <Menu>
+              <Menu.Trigger render={<Button variant="outline" size="sm" shape="pill" />}>
+                <MoreHorizontal />
+                Schnellzugriff
+              </Menu.Trigger>
+              <Menu.Content align="end" aria-label="Ressourcen">
+                {resourceItems.map((resource, index) => (
+                  <Menu.Item
+                    key={`${resource.kind}-${index}`}
+                    onClick={() => window.open(resource.url, '_blank', 'noopener,noreferrer')}
                   >
-                    {resourceItems[0].icon}
-                    {resourceItems[0].label}
-                    {probeEnabled && resourceItems[0].kind === 'demo' && (
+                    {resource.icon}
+                    {resource.label}
+                    {probeEnabled && resource.kind === 'demo' && (
                       <LinkStatusDot status={probeStatus} />
                     )}
-                  </Link>
-                </Tooltip.Trigger>
-                <Tooltip.Content placement="bottom">Direktzugriff</Tooltip.Content>
-              </Tooltip>
-            )}
-
-            {resourceItems.length > 1 && (
-              <Dropdown>
-                <Button size="sm" variant="secondary" className="gap-2 rounded-full px-3 text-xs font-semibold">
-                  <MoreHorizontal className="w-3.5 h-3.5" />
-                  Schnellzugriff
-                </Button>
-                <Dropdown.Popover>
-                  <Dropdown.Menu
-                    aria-label="Ressourcen"
-                    onAction={(key) => {
-                      const index = parseInt(key.toString().replace('resource-', ''), 10);
-                      if (!Number.isNaN(index)) window.open(resourceItems[index].url, '_blank');
-                    }}
-                  >
-                    {resourceItems.map((resource, index) => (
-                      <Dropdown.Item key={`${resource.kind}-${index}`} id={`resource-${index}`} textValue={resource.label}>
-                        <div className="flex items-center gap-2">
-                          {resource.icon}
-                          <span>{resource.label}</span>
-                          {probeEnabled && resource.kind === 'demo' && (
-                            <LinkStatusDot status={probeStatus} />
-                          )}
-                        </div>
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown>
-            )}
-          </div>
+                  </Menu.Item>
+                ))}
+              </Menu.Content>
+            </Menu>
+          )}
         </div>
       </Card.Footer>
     </Card>

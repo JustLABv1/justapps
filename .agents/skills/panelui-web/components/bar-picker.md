@@ -1,0 +1,133 @@
+# Bar Picker
+
+A short run of values as columns of lights, one column picked.
+
+```tsx
+import { BarPicker, type BarPickerBar } from "@/components/panelui/bar-picker"
+```
+
+From npm the path is `panelui-web/bar-picker`. Install with `npx shadcn@latest add @panelui/bar-picker`.
+
+## When to use it
+
+Use it for a handful of values where one is in focus: a week with one day picked, six sprints with the latest picked. Each value is a column of lights, lit from the bottom up to the value. Pressing a column picks it, and you show that column's figure beside the row.
+
+It behaves as a row of radio buttons, so exactly one column is always picked.
+
+A column of eight lights shows a value to the nearest eighth. For values someone has to read precisely, for more than about twelve of them, or for more than one series, use a chart with an axis.
+
+## Usage
+
+```tsx
+const week: BarPickerBar[] = [
+  { label: 'Mon', name: 'Monday', value: 9 },
+  { label: 'Tue', name: 'Tuesday', value: 14 },
+  { label: 'Wed', name: 'Wednesday', value: 11 },
+]
+
+<BarPicker data={week} value={day} onValueChange={setDay} />
+```
+
+## Props
+
+Every part also takes the props of the element it renders, and a `className`.
+
+#### `BarPickerProps`
+
+| Prop | Type | Default | What it does |
+| --- | --- | --- | --- |
+| `data` | `BarPickerBar[]` | **required** | The columns, left to right. |
+| `max` | `number` | — | The value a fully lit column stands for. Defaults to the largest in `data`. |
+| `value` | `number` | — | The index of the picked column, when the caller holds it. |
+| `defaultValue` | `number` | `0` | The index picked to begin with, when the caller does not hold it. |
+| `onValueChange` | `(index: number) => void` | — | Called with the index of a column when it is picked. |
+| `segments` | `number` | `8` | How many lights a column is made of. |
+| `color` | `BarPickerColor` | `'primary'` | Which of the theme's roles the lights are drawn in. |
+| `formatValue` | `(value: number) => string` | `(bar) => String(bar)` | Writes a value for a screen reader: "17 deploys". |
+| `label` | `string` | `'Values'` | What a screen reader calls the row. |
+
+## Notes
+
+#### Scale
+
+A column lights the share of its segments that its value is of `max`, rounded to the nearest segment. Leave `max` out to scale to the largest value in `data`, or set it when the values share a known ceiling.
+
+Any value above zero lights at least one segment. A value of zero lights none, and a value above `max` lights them all.
+
+#### Segments
+
+A column has 8 segments unless `segments` says otherwise. More segments show a value more finely and need more height to stay readable. The stack is 7rem tall.
+
+#### Picking
+
+The whole column is the target, so an empty column can still be picked. The picked column is half as wide again as the others, lit at full strength, and its highest light glows. The others are lit at about a quarter of the same colour.
+
+#### Labels
+
+`label` is drawn under the column and should be a few characters. `name` is the long form a screen reader is given with the value: "Thursday: 17 deploys". Use `formatValue` to say the unit.
+
+#### Keyboard
+
+The row is one Tab stop. Left and right move the pick and wrap at the ends, and Home and End go to the first and last column.
+
+#### Motion
+
+The columns light from the bottom when the component mounts, and the picked column widens as the pick moves. With reduced motion on, both happen at once.
+
+## Example
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { BarPicker, type BarPickerBar } from '@/components/panelui/bar-picker';
+import { Frame } from '@/components/panelui/frame';
+import { Stat } from '@/components/panelui/stat';
+
+/** Deploys to production on each day of one week. */
+const WEEK: BarPickerBar[] = [
+  { label: 'Mon', name: 'Monday', value: 9 },
+  { label: 'Tue', name: 'Tuesday', value: 14 },
+  { label: 'Wed', name: 'Wednesday', value: 11 },
+  { label: 'Thu', name: 'Thursday', value: 17 },
+  { label: 'Fri', name: 'Friday', value: 6 },
+  { label: 'Sat', name: 'Saturday', value: 0 },
+  { label: 'Sun', name: 'Sunday', value: 2 },
+];
+
+const TOTAL = WEEK.reduce((sum, day) => sum + day.value, 0);
+
+export default function BarPickerDeploys() {
+  const [day, setDay] = useState(3);
+  const picked = WEEK[day];
+  const share = Math.round((picked.value / TOTAL) * 100);
+
+  return (
+    <Frame variant="band" className="w-full max-w-sm">
+      <Frame.Header>
+        <Frame.Title>Deploys</Frame.Title>
+        <Frame.Action>This week · {TOTAL}</Frame.Action>
+      </Frame.Header>
+
+      <Frame.Panel className="gap-6 p-5">
+        <Stat aria-live="polite">
+          <Stat.Content>
+            <Stat.Label>{picked.name}</Stat.Label>
+            <Stat.Value>{picked.value}</Stat.Value>
+          </Stat.Content>
+          <Stat.Badge>{share}% of the week</Stat.Badge>
+        </Stat>
+
+        <BarPicker
+          data={WEEK}
+          value={day}
+          onValueChange={setDay}
+          color="info"
+          label="Deploys by day"
+          formatValue={(value) => `${value} deploys`}
+        />
+      </Frame.Panel>
+    </Frame>
+  );
+}
+```
