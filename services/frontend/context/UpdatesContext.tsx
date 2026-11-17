@@ -12,7 +12,7 @@ interface UpdatesContextType {
   loaded: boolean;
   refreshSummary: () => Promise<void>;
   refreshPreferences: () => Promise<void>;
-  updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => Promise<boolean>;
+  updatePreferences: (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps' | 'weeklyDigest'>) => Promise<boolean>;
   markAsSeen: (itemId: string) => Promise<boolean>;
   markAllAsSeen: () => Promise<boolean>;
   markFAQAsSeen: (notificationId: string) => Promise<boolean>;
@@ -114,7 +114,7 @@ export function UpdatesProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps'>) => {
+  const updatePreferences = async (patch: Pick<UpdatePreferences, 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps' | 'weeklyDigest'>) => {
     const previousPreferences = preferences;
 
     if (previousPreferences) {

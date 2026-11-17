@@ -23,6 +23,7 @@ import {
   Search,
   Moon,
   Sun,
+  Newspaper,
   UserRound,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -188,6 +189,7 @@ export function Navigation() {
       icon: link.icon,
       external: link.href === documentationLink.href,
     })),
+    { href: "/neuigkeiten", label: "Neuigkeiten der Woche", icon: Newspaper },
     ...(user ? [{ href: "/profil", label: "Mein Profil", icon: UserRound }] : []),
     ...(user?.role === "admin" ? [{ href: "/verwaltung", label: "Verwaltung", icon: LayoutDashboard }] : []),
   ];

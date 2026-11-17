@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"justapps-backend/functions/digest"
 	"os"
 	"os/signal"
 	"strings"
@@ -80,6 +81,7 @@ func main() {
 	defer backgroundCancel()
 	gitlabsync.StartScheduler(backgroundCtx, db, cfg)
 	linkprober.StartScheduler(backgroundCtx, db)
+	digest.StartScheduler(backgroundCtx, db, cfg)
 
 	// Set up signal handling for graceful shutdown
 	server := router.StartRouter(db, cfg.Port, cfg)

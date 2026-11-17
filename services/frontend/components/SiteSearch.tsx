@@ -31,6 +31,7 @@ const TONES: Record<string, string> = {
   '/meine-apps': 'bg-emerald-500',
   '/updates': 'bg-rose-500',
   '/profil': 'bg-sky-500',
+  '/neuigkeiten': 'bg-orange-500',
   '/verwaltung': 'bg-neutral-700',
 };
 

@@ -5,26 +5,30 @@ import { Switch } from '@/components/panelui/switch';
 import { useUpdates } from '@/context/UpdatesContext';
 import { toast } from '@/lib/toast';
 import { Bell } from 'lucide-react';
+import NextLink from 'next/link';
 import { useState } from 'react';
 
-const RULES = [
+type RuleKey = 'notifyFavoritedApps' | 'notifyRecentlyViewedApps' | 'notifyOwnedManagedApps' | 'weeklyDigest';
+
+const RULES: { key: RuleKey; title: string; description: string }[] = [
   { key: 'notifyFavoritedApps', title: 'Favorisierte Apps', description: 'Neue Versionen von Apps, die du mit einem Herz markiert hast.' },
   { key: 'notifyRecentlyViewedApps', title: 'Kürzlich angesehene Apps', description: 'Neue Versionen von Apps, die du dir in letzter Zeit angesehen hast.' },
   { key: 'notifyOwnedManagedApps', title: 'Eigene und betreute Apps', description: 'Neue Versionen und Fragen zu Apps, die dir gehören oder die du bearbeitest.' },
-] as const;
+];
 
 /** What shows up in the Updates inbox. Each switch saves on its own. */
 export function NotificationSettings() {
   const { preferences, updatePreferences } = useUpdates();
   const [saving, setSaving] = useState<string | null>(null);
 
-  const change = async (key: (typeof RULES)[number]['key'], value: boolean) => {
+  const change = async (key: RuleKey, value: boolean) => {
     if (!preferences) return;
     setSaving(key);
     const ok = await updatePreferences({
       notifyFavoritedApps: preferences.notifyFavoritedApps,
       notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
       notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
+      weeklyDigest: preferences.weeklyDigest ?? false,
       [key]: value,
     });
     setSaving(null);
@@ -57,6 +61,23 @@ export function NotificationSettings() {
               />
             </div>
           ))}
+          {preferences?.weeklyDigestAvailable && (
+            <div className="flex items-start justify-between gap-4 border-t pt-4">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-sm font-medium">Wochenrückblick per E-Mail</span>
+                <span className="text-xs text-muted-foreground">
+                  Einmal pro Woche eine Mail mit neuen und aktualisierten Apps. Auch jederzeit unter{' '}
+                  <NextLink href="/neuigkeiten" className="underline underline-offset-2 hover:text-foreground">Neuigkeiten</NextLink> zu lesen.
+                </span>
+              </div>
+              <Switch
+                label="Wochenrückblick per E-Mail"
+                checked={preferences.weeklyDigest ?? false}
+                pending={saving === 'weeklyDigest'}
+                onCheckedChange={(value) => void change('weeklyDigest', value)}
+              />
+            </div>
+          )}
         </div>
       </Card.Content>
     </Card>

@@ -29,7 +29,19 @@ func GetUpdatePreferences(context *gin.Context, db *bun.DB) {
 		return
 	}
 
-	context.JSON(http.StatusOK, preferences)
+	respondWithPreferences(context, db, preferences)
+}
+
+// preferencesResponse adds whether the weekly mail can be subscribed to at all.
+type preferencesResponse struct {
+	models.UserUpdatePreferences
+	WeeklyDigestAvailable bool `json:"weeklyDigestAvailable"`
+}
+
+func respondWithPreferences(context *gin.Context, db *bun.DB, preferences models.UserUpdatePreferences) {
+	var available bool
+	_ = db.NewRaw(`SELECT COALESCE((SELECT enabled AND digest_enabled FROM mail_settings WHERE id = 'default'), false)`).Scan(context.Request.Context(), &available)
+	context.JSON(http.StatusOK, preferencesResponse{UserUpdatePreferences: preferences, WeeklyDigestAvailable: available})
 }
 
 func UpdateUpdatePreferences(context *gin.Context, db *bun.DB) {
@@ -42,6 +54,7 @@ func UpdateUpdatePreferences(context *gin.Context, db *bun.DB) {
 		NotifyFavoritedApps    bool `json:"notifyFavoritedApps"`
 		NotifyRecentlyViewed   bool `json:"notifyRecentlyViewedApps"`
 		NotifyOwnedManagedApps bool `json:"notifyOwnedManagedApps"`
+		WeeklyDigest           bool `json:"weeklyDigest"`
 	}
 	if err := context.ShouldBindJSON(&req); err != nil {
 		httperror.StatusBadRequest(context, "Ungültige Benachrichtigungseinstellungen", err)
@@ -54,6 +67,7 @@ func UpdateUpdatePreferences(context *gin.Context, db *bun.DB) {
 		NotifyFavoritedApps:    req.NotifyFavoritedApps,
 		NotifyRecentlyViewed:   req.NotifyRecentlyViewed,
 		NotifyOwnedManagedApps: req.NotifyOwnedManagedApps,
+		WeeklyDigest:           req.WeeklyDigest,
 		UpdatedAt:              now,
 	}
 	if _, err := db.NewInsert().
@@ -62,6 +76,7 @@ func UpdateUpdatePreferences(context *gin.Context, db *bun.DB) {
 		Set("notify_favorited_apps = EXCLUDED.notify_favorited_apps").
 		Set("notify_recently_viewed_apps = EXCLUDED.notify_recently_viewed_apps").
 		Set("notify_owned_managed_apps = EXCLUDED.notify_owned_managed_apps").
+		Set("weekly_digest = EXCLUDED.weekly_digest").
 		Set("updated_at = EXCLUDED.updated_at").
 		Exec(context.Request.Context()); err != nil {
 		httperror.InternalServerError(context, "Benachrichtigungseinstellungen konnten nicht gespeichert werden", err)
@@ -74,7 +89,7 @@ func UpdateUpdatePreferences(context *gin.Context, db *bun.DB) {
 		return
 	}
 
-	context.JSON(http.StatusOK, preferences)
+	respondWithPreferences(context, db, preferences)
 }
 
 func RecordRecentlyViewedApp(context *gin.Context, db *bun.DB) {

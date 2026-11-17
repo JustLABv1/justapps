@@ -18,6 +18,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
 import { AppCardSkeleton } from "./AppCardSkeleton";
+import { RecentChanges } from "./RecentChanges";
 
 const PAGE_SIZE = 24;
 
@@ -489,6 +490,8 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
           </Tooltip>
         </section>
       )}
+
+      {!hasActiveFilters && !spaceId && <RecentChanges apps={initialApps} />}
 
       {(() => {
         const visibleApps = filteredApps.slice(0, visibleCount);

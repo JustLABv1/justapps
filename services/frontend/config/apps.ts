@@ -180,6 +180,10 @@ export interface UpdatePreferences {
   notifyFavoritedApps: boolean;
   notifyRecentlyViewedApps: boolean;
   notifyOwnedManagedApps: boolean;
+  /** The weekly summary by mail ("Wochenrückblick"). */
+  weeklyDigest: boolean;
+  /** Whether the platform sends the weekly mail at all. */
+  weeklyDigestAvailable?: boolean;
   createdAt: string;
   updatedAt: string;
 }

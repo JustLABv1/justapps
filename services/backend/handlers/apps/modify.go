@@ -1,12 +1,15 @@
 package apps
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"justapps-backend/pkg/appaccess"
+	"strings"
 	"time"
 
 	aifunc "justapps-backend/functions/ai"
+	"justapps-backend/functions/appupdates"
 	"justapps-backend/functions/httperror"
 	"justapps-backend/pkg/audit"
 	"justapps-backend/pkg/models"
@@ -262,6 +265,7 @@ func UpdateApp(c *gin.Context, db *bun.DB) {
 	}
 
 	audit.WriteAudit(c.Request.Context(), db, userID.String(), "app.update", fmt.Sprintf("updated app %s (%s)", app.Name, app.ID))
+	recordAppChange(c.Request.Context(), db, existingApp, app, userID)
 	if err := aifunc.ReindexApp(c.Request.Context(), db, app.ID); err != nil {
 		log.WithError(err).WithField("appID", id).Warn("Failed to refresh AI knowledge index after app update")
 	}
@@ -455,4 +459,29 @@ func TransferApp(c *gin.Context, db *bun.DB) {
 		Exec(c.Request.Context())
 
 	c.JSON(200, gin.H{"message": "App transferred successfully"})
+}
+
+// recordAppChange keeps what a save changed, for the weekly summary. A save
+// that only touched platform settings is not recorded. Failing to record it
+// never fails the save.
+func recordAppChange(ctx context.Context, db *bun.DB, before, after models.Apps, userID uuid.UUID) {
+	fields := appupdates.ChangedFields(before, after)
+	note := strings.TrimSpace(after.ChangeNote)
+	if runes := []rune(note); len(runes) > 500 {
+		note = string(runes[:500])
+	}
+	if len(fields) == 0 && note == "" {
+		return
+	}
+	change := models.AppChange{
+		AppID:         after.ID,
+		UserID:        &userID,
+		Fields:        fields,
+		VersionBefore: strings.TrimSpace(before.Version),
+		VersionAfter:  strings.TrimSpace(after.Version),
+		Note:          note,
+	}
+	if _, err := db.NewInsert().Model(&change).Exec(ctx); err != nil {
+		log.WithError(err).WithField("appID", after.ID).Warn("Failed to record what changed in an app")
+	}
 }

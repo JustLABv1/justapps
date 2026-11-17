@@ -43,6 +43,7 @@ type UserUpdatePreferences struct {
 	NotifyFavoritedApps    bool      `bun:"notify_favorited_apps,notnull" json:"notifyFavoritedApps"`
 	NotifyRecentlyViewed   bool      `bun:"notify_recently_viewed_apps,notnull" json:"notifyRecentlyViewedApps"`
 	NotifyOwnedManagedApps bool      `bun:"notify_owned_managed_apps,notnull" json:"notifyOwnedManagedApps"`
+	WeeklyDigest           bool      `bun:"weekly_digest,notnull" json:"weeklyDigest"`
 	CreatedAt              time.Time `bun:"created_at,notnull,default:current_timestamp" json:"createdAt"`
 	UpdatedAt              time.Time `bun:"updated_at,notnull,default:current_timestamp" json:"updatedAt"`
 }

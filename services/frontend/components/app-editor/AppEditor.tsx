@@ -4,6 +4,7 @@ import { Alert } from "@/components/panelui/alert";
 import { AlertDialog } from "@/components/panelui/alert-dialog";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
+import { Input } from "@/components/panelui/input";
 import { NavRail } from "@/components/panelui/nav-rail";
 import { Select } from "@/components/panelui/select";
 import { Tooltip } from "@/components/panelui/tooltip";
@@ -12,9 +13,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi as apiFetch } from "@/lib/api";
 import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from "@/lib/appStatus";
+import { suggestChangelog } from "@/lib/ai";
 import { toast } from "@/lib/toast";
 import {
-  ArrowLeft, BookOpen, Check, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags,
+  ArrowLeft, BookOpen, Check, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags, Sparkles
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -138,6 +140,9 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const skipUnsavedWarning = useRef(false);
   const saveInFlight = useRef(false);
+  // An optional "what's new" line for the weekly summary, sent with the next save.
+  const [changeNote, setChangeNote] = useState("");
+  const [suggestingNote, setSuggestingNote] = useState(false);
 
   const update: UpdateApp = useCallback((patch) => {
     setApp((previous) => (typeof patch === "function" ? patch(previous) : { ...previous, ...patch }));
@@ -293,12 +298,14 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
           customLinks: sanitizeLinks(next.customLinks),
           liveDemos: sanitizeLinks(next.liveDemos),
           status: next.status?.trim() || DRAFT_STATUS,
+          changeNote: changeNote.trim() || undefined,
         }),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({})) as { message?: string };
         throw new Error(error.message || "Speichern fehlgeschlagen.");
       }
+      setChangeNote("");
       completed++;
 
       // Each step advances its own baseline, so a retry after a partial
@@ -373,6 +380,32 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     } finally {
       saveInFlight.current = false;
       setSaving(false);
+    }
+  };
+
+  // The AI changelog draft compares the edit with the saved app; its summary is a good "what's new".
+  const suggestNote = async () => {
+    setSuggestingNote(true);
+    try {
+      const links = (app.repositories || []).filter((link) => link.url?.trim()).map((link) => ({ label: link.label || "Link", url: link.url! }));
+      const suggestion = await suggestChangelog({
+        appId,
+        name: app.name || "",
+        version: app.version || "",
+        currentChangelog: app.changelog || "",
+        description: app.description || "",
+        license: app.license || "",
+        markdownContent: app.markdownContent || "",
+        customHelmValues: app.customHelmValues || "",
+        customComposeCommand: app.customComposeCommand || "",
+        tags: app.tags || [],
+        repositories: links,
+      });
+      setChangeNote((suggestion.summary || suggestion.title || "").slice(0, 500));
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : "Es konnte kein Vorschlag erzeugt werden.");
+    } finally {
+      setSuggestingNote(false);
     }
   };
 
@@ -657,6 +690,29 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
           )}
         </div>
       </header>
+
+      {!draft && hasUnsavedChanges && (
+        <div className="mb-6 flex flex-col gap-2 rounded-xl bg-muted/40 p-3 sm:flex-row sm:items-center sm:gap-3">
+          <label htmlFor="change-note" className="flex shrink-0 items-center gap-2 text-sm font-medium">
+            <Sparkles className="size-4 text-muted-foreground" />
+            Was ist neu?
+          </label>
+          <Input
+            id="change-note"
+            size="sm"
+            maxLength={500}
+            value={changeNote}
+            onChange={(event) => setChangeNote(event.target.value)}
+            placeholder="Optional, z. B. „OIDC-Login für Teams ergänzt“ – erscheint im Wochenrückblick"
+            className="min-w-0 flex-1"
+          />
+          {settings.aiEnabled !== false && (
+            <Button variant="ghost" size="sm" className="shrink-0" loading={suggestingNote} onClick={() => void suggestNote()}>
+              Vorschlag
+            </Button>
+          )}
+        </div>
+      )}
 
       {saveError && (
         <Alert variant="plain" tone="destructive" className="mb-6" aria-live="assertive">

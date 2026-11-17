@@ -34,6 +34,7 @@ function Subscription({ appId, isOwner }: { appId: string; isOwner: boolean }) {
           notifyFavoritedApps: true,
           notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
           notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
+          weeklyDigest: preferences.weeklyDigest ?? false,
         });
       }
       toast.success("Du wirst über neue Versionen informiert.");

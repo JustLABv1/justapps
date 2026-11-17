@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/panelui/badge';
 import { resolveAssetUrl } from '@/lib/assets';
-import { ArrowUpRight, BookOpen, Code2, Layers, Layers2, MessageCircleQuestion } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Code2, Layers, Layers2, MessageCircleQuestion, Newspaper } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import NextLink from 'next/link';
 import type { ReactNode } from 'react';
@@ -95,6 +95,7 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
           <Column title="Entdecken">
             <li><FooterLink href="/" icon={<Layers />}>Alle Apps</FooterLink></li>
             <li><FooterLink href="/gruppen" icon={<Layers2 />}>Gruppen</FooterLink></li>
+            <li><FooterLink href="/neuigkeiten" icon={<Newspaper />}>Neuigkeiten</FooterLink></li>
             {settings.faqEnabled && (
               <li><FooterLink href="/faq" icon={<MessageCircleQuestion />}>FAQ</FooterLink></li>
             )}
