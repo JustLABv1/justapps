@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { BrandedTitle } from "@/components/BrandedTitle";
 import { AIProviderSettingsPanel } from "@/components/admin/AIProviderSettingsPanel";
 import { SpaceCreationPolicyPanel } from "@/components/SpaceCreationPolicyPanel";
 import { GitLabProviderAdminSettings } from "@/config/apps";
@@ -1010,11 +1011,8 @@ export function AdminSettingsWorkspace({
                     <div className="flex flex-col gap-2">
                       <span className="text-sm font-medium">Vorschau</span>
                       <div className="rounded-lg bg-card px-4 py-2.5 ring-1 ring-foreground/10">
-                        <p
-                          className="truncate bg-clip-text text-lg font-extrabold tracking-tight text-transparent"
-                          style={{ backgroundImage: `linear-gradient(90deg, ${heroTitlePreviewColors.join(", ")})` }}
-                        >
-                          {settings.heroTitle || "Der App Store für alle."}
+                        <p className="truncate text-lg font-extrabold tracking-tight">
+                          <BrandedTitle text={settings.heroTitle || "Der App Store für alle."} colors={heroTitlePreviewColors} />
                         </p>
                       </div>
                     </div>

@@ -8,11 +8,10 @@ import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
-import { Card } from "@/components/panelui/card";
 import { Input } from "@/components/panelui/input";
 import { Select } from "@/components/panelui/select";
 import { Tooltip } from "@/components/panelui/tooltip";
-import { Activity, ArrowUpDown, Check, Clock, Heart, Layers2, Package, Search, Sparkles, Tag, X } from "lucide-react";
+import { Activity, ArrowUpDown, Check, Heart, Layers2, Package, Search, SlidersHorizontal, Sparkles, Tag, X } from "lucide-react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -34,9 +33,40 @@ interface AppGridProps {
   spaceId?: string;
   scopeControl?: ReactNode;
   catalogAction?: ReactNode;
+  /** The page's own heading, set above the search so the two read as one block. */
+  header?: ReactNode;
 }
 
-export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction }: AppGridProps) {
+const RECENT_HIDDEN_KEY = 'recently-viewed-hidden';
+const RECENT_HIDDEN_EVENT = 'recently-viewed-hidden:change';
+
+function readRecentHidden() {
+  try {
+    return localStorage.getItem(RECENT_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function subscribeToRecentHidden(onChange: () => void) {
+  window.addEventListener(RECENT_HIDDEN_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(RECENT_HIDDEN_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
+function hideRecent() {
+  try {
+    localStorage.setItem(RECENT_HIDDEN_KEY, '1');
+  } catch {
+    // Without storage the row simply comes back on the next visit.
+  }
+  window.dispatchEvent(new Event(RECENT_HIDDEN_EVENT));
+}
+
+export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction, header }: AppGridProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -48,6 +78,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
   const selectedSort = searchParams.get('sort') ?? '';
   const semanticSearch = searchParams.get('semantic') === 'true';
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(selectedCategory || selectedStatus || selectedType || searchParams.get('group')));
   const hasServerFilter = Boolean(searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch);
   const paginationKey = [
     spaceId,
@@ -69,6 +100,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
 
   const { favorites, isLoaded: favoritesLoaded } = useFavorites();
   const recentApps = useSyncExternalStore(subscribeToRecentlyViewed, getRecentlyViewed, () => emptyRecentlyViewed);
+  const recentHidden = useSyncExternalStore(subscribeToRecentHidden, readRecentHidden, () => false);
   const serverFilterKey = useMemo(() => JSON.stringify({
     spaceId,
     q: searchQuery,
@@ -201,6 +233,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
     });
   }, [sourceApps, serverResults, searchQuery, selectedCategory, selectedStatus, selectedType, selectedGroup, showFavoritesOnly, favorites]);
 
+  const activeFilterCount = [selectedCategory, selectedStatus, selectedType, selectedGroup].filter(Boolean).length;
   const hasActiveFilters = searchQuery || selectedCategory || selectedStatus || selectedType || selectedGroup || selectedSort || showFavoritesOnly || semanticSearch;
 
   const visibleAppsKey = `${paginationKey}|${serverResults ? serverFilterKey : 'initial'}`;
@@ -293,9 +326,10 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
 
   return (
     <div className="flex flex-col gap-8">
-      <Card as="section" aria-label="Apps suchen und filtern">
-        <Card.Content className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
+      <section aria-label="Apps suchen und filtern" className="flex flex-col gap-3">
+        {header}
+        <div className={header ? "mt-7 flex flex-col gap-3" : "flex flex-col gap-3"}>
+          <div className="flex gap-2">
             <Input.Group size="lg" className="min-w-0 flex-1">
               <Input.Addon>
                 <Search />
@@ -326,23 +360,40 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
               </Input.Addon>
             </Input.Group>
 
+            <Button
+              size="lg"
+              variant={filtersOpen || activeFilterCount > 0 ? "secondary" : "outline"}
+              aria-expanded={filtersOpen}
+              aria-controls="app-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal />
+              Filter
+              {activeFilterCount > 0 && <Badge size="sm" variant="default">{activeFilterCount}</Badge>}
+            </Button>
             {favoritesLoaded && (
-              <Button
-                size="lg"
-                variant={showFavoritesOnly ? "default" : "outline"}
-                disabled={favorites.size === 0}
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                aria-pressed={showFavoritesOnly}
-                aria-label={`Nur Favoriten zeigen (${favorites.size})`}
-              >
-                <Heart />
-                Favoriten
-                <Badge size="sm" variant="secondary">{favorites.size}</Badge>
-              </Button>
+              <Tooltip>
+                <Tooltip.Trigger
+                  render={
+                    <Button
+                      size="icon-lg"
+                      variant={showFavoritesOnly ? "default" : "outline"}
+                      disabled={favorites.size === 0}
+                      onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      aria-pressed={showFavoritesOnly}
+                      aria-label={`Nur Favoriten zeigen (${favorites.size})`}
+                    />
+                  }
+                >
+                  <Heart />
+                </Tooltip.Trigger>
+                <Tooltip.Content>{favorites.size === 0 ? 'Noch keine Favoriten' : `Nur Favoriten (${favorites.size})`}</Tooltip.Content>
+              </Tooltip>
             )}
           </div>
 
-          <div role="group" aria-label="Filter" className="flex flex-wrap items-center gap-2">
+          {filtersOpen && (
+          <div id="app-filters" role="group" aria-label="Filter" className="flex flex-wrap items-center gap-2">
             {categories.length > 0 && (
               <FilterSelect
                 label="Kategorie"
@@ -392,37 +443,20 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
                 Zurücksetzen
               </Button>
             )}
-
-            <Select
-              items={SORT_OPTIONS}
-              value={selectedSort || 'default'}
-              onValueChange={(value) => setSelectedSort(value)}
-            >
-              <Select.Trigger variant="ghost" size="sm" aria-label="Apps sortieren" className="ms-auto">
-                <ArrowUpDown />
-                <Select.Value />
-              </Select.Trigger>
-              <Select.Content align="end">
-                {SORT_OPTIONS.map((option) => (
-                  <Select.Item key={option.value} value={option.value}>
-                    {option.label}
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select>
           </div>
-        </Card.Content>
-      </Card>
+          )}
+
+        </div>
+      </section>
 
       {/* Recently viewed — only when no active filters */}
-      {!hasActiveFilters && recentApps.length > 0 && (
-        <section className="flex flex-col gap-3" aria-labelledby="recently-viewed">
-          <h2 id="recently-viewed" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Clock className="size-3.5" />
+      {!hasActiveFilters && !recentHidden && recentApps.length > 0 && (
+        <section className="flex items-center gap-3" aria-labelledby="recently-viewed">
+          <h2 id="recently-viewed" className="shrink-0 text-sm text-muted-foreground">
             Zuletzt gesehen
           </h2>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {recentApps.map((app) => {
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
+            {recentApps.slice(0, 5).map((app) => {
               const iconSrc = getImageAssetUrl(app.icon);
               return (
                 <Button
@@ -430,6 +464,7 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
                   variant="outline"
                   size="sm"
                   shape="pill"
+                  className="shrink-0"
                   render={<NextLink href={`/apps/${app.id}`} />}
                 >
                   {iconSrc ? (
@@ -437,13 +472,21 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
                       <Image src={iconSrc} alt="" fill className="object-contain" sizes="16px" unoptimized />
                     </span>
                   ) : (
-                    <span className="leading-none">{app.icon || '🏛️'}</span>
+                    <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
                   )}
                   {app.name}
                 </Button>
               );
             })}
           </div>
+          <Tooltip>
+            <Tooltip.Trigger
+              render={<Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground" aria-label="„Zuletzt gesehen“ ausblenden" onClick={hideRecent} />}
+            >
+              <X />
+            </Tooltip.Trigger>
+            <Tooltip.Content>Ausblenden – bleibt in der Suche (⌘K)</Tooltip.Content>
+          </Tooltip>
         </section>
       )}
 
@@ -458,7 +501,8 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
                 {scopeControl}
                 {catalogAction}
               </div>
-              <p className="ml-auto text-sm text-muted-foreground" aria-live="polite">
+              <div className="ms-auto flex items-center gap-3">
+              <p className="text-sm text-muted-foreground" aria-live="polite">
                 {serverLoading ? (
                   'Suche läuft...'
                 ) : (
@@ -468,6 +512,24 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
                   </>
                 )}
               </p>
+                <Select
+                items={SORT_OPTIONS}
+                value={selectedSort || 'default'}
+                onValueChange={(value) => setSelectedSort(value)}
+              >
+                <Select.Trigger variant="ghost" size="sm" aria-label="Apps sortieren" >
+                  <ArrowUpDown />
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content align="end">
+                  {SORT_OPTIONS.map((option) => (
+                    <Select.Item key={option.value} value={option.value}>
+                      {option.label}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              </div>
             </div>
 
             {/* Apps stay in row order when more results are appended */}

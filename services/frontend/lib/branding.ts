@@ -39,8 +39,8 @@ export const HERO_TITLE_PRESET_OPTIONS: BrandingPresetOption[] = [
   {
     id: 'deutschland',
     label: 'Deutschland',
-    description: 'Entspricht dem bisherigen Hero-Verlauf.',
-    colors: ['var(--primary)', '#CC0000', '#DDAA00'],
+    description: 'Schwarz, Rot und Gold wie die Bundesflagge.',
+    colors: ['#000000', '#CC0000', '#DDAA00'],
   },
   {
     id: 'justapps',
