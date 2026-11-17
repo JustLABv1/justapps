@@ -23,6 +23,7 @@ import {
   Search,
   Moon,
   Sun,
+  Lightbulb,
   Newspaper,
   UserRound,
 } from "lucide-react";
@@ -160,6 +161,12 @@ export function Navigation() {
           active: pathname === "/faq",
         }]
       : []),
+    {
+      href: "/bedarf",
+      label: "Bedarfsmeldungen",
+      icon: Lightbulb,
+      active: pathname === "/bedarf" || pathname.startsWith("/bedarf/"),
+    },
     documentationLink,
     ...(user
       ? [
