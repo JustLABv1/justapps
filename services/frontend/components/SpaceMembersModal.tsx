@@ -2,9 +2,10 @@
 
 import { SystemUser } from "@/config/apps";
 import { fetchApi } from "@/lib/api";
-import { Button, Modal } from "@heroui/react";
+import { Alert } from "@/components/panelui/alert";
+import { Button } from "@/components/panelui/button";
+import { Dialog } from "@/components/panelui/dialog";
 import { toast } from "@/lib/toast";
-import { UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { UserAccessPicker } from "./UserAccessPicker";
 
@@ -143,139 +144,75 @@ export function SpaceMembersModal({
     ? users
     : users.filter((user) => selectedIds.has(user.id));
 
+  const ownerName =
+    users.find((user) => user.id === space.ownerId)?.username ||
+    (isOwner ? "Sie" : space.ownerUsername || "Space-Eigentümer");
+  const leaveSpace = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await request(`/spaces/${space.id}/members/${viewerId}`, "DELETE");
+      await onSaved();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verlassen fehlgeschlagen.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Modal.Backdrop
-      isOpen
-      onOpenChange={(open) => {
-        if (!saving) onOpenChange(open);
-      }}
-    >
-      <Modal.Container>
-        <Modal.Dialog className="max-w-2xl">
-          <Modal.CloseTrigger />
-          <Modal.Header>
-            <Modal.Icon className="bg-primary/10 text-primary">
-              <UsersRound className="h-5 w-5" />
-            </Modal.Icon>
-            <Modal.Heading>
-              {canManage ? "Mitglieder verwalten" : "Mitglieder ansehen"}
-            </Modal.Heading>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="space-y-5">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">{space.name}</strong> ist
-                  nur für ausgewählte Mitglieder sichtbar. Neue Mitglieder
-                  erhalten eine Einladung und müssen diese annehmen.
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Besitzer:{" "}
-                  <span className="font-medium text-foreground">
-                    {users.find((user) => user.id === space.ownerId)
-                      ?.username ||
-                      (isOwner
-                        ? "Sie"
-                        : space.ownerUsername || "Space-Eigentümer")}
-                  </span>
-                </p>
-              </div>
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger"
-                >
-                  {error}
-                </div>
-              )}
-              {members.some((member) => member.groupManaged) && (
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Gruppenverwaltete Mitglieder werden über OIDC berechtigt.
-                  Ändern Sie deren Zugriff über die Gruppe oder die
-                  Gruppenzuordnung des Spaces.
-                </p>
-              )}
-              <UserAccessPicker
-                users={visibleUsers}
-                ownerId={space.ownerId}
-                lockedIds={
-                  new Set(
-                    members
-                      .filter((member) => member.groupManaged)
-                      .map((member) => member.id),
-                  )
-                }
-                selectedIds={selectedIds}
-                onChange={setSelectedIds}
-                onUserSelected={(user) =>
-                  setUsers((current) => [
-                    ...current.filter((entry) => entry.id !== user.id),
-                    user,
-                  ])
-                }
-                loading={loading}
-                disabled={saving}
-                readOnly={!canManage}
-                statusById={statusById}
-                loadingLabel="Mitglieder werden geladen..."
-              />
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            {!canManage && (
-              <Button
-                variant="ghost"
-                isDisabled={
-                  saving ||
-                  loading ||
-                  members.some(
-                    (member) => member.id === viewerId && member.groupManaged,
-                  )
-                }
-                onPress={async () => {
-                  setSaving(true);
-                  setError("");
-                  try {
-                    await request(
-                      `/spaces/${space.id}/members/${viewerId}`,
-                      "DELETE",
-                    );
-                    await onSaved();
-                    onOpenChange(false);
-                  } catch (err) {
-                    setError(
-                      err instanceof Error
-                        ? err.message
-                        : "Verlassen fehlgeschlagen.",
-                    );
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              >
-                Space verlassen
-              </Button>
-            )}
+    <Dialog open onOpenChange={(open) => { if (!saving) onOpenChange(open); }}>
+      <Dialog.Content size="lg">
+        <Dialog.Header
+          title={canManage ? "Mitglieder verwalten" : "Mitglieder"}
+          description={<>Nur Mitglieder sehen „<strong className="font-medium text-foreground">{space.name}</strong>“. Neue Mitglieder bekommen eine Einladung, die sie annehmen müssen. Eigentümer: {ownerName}.</>}
+        />
+        <Dialog.Body className="flex flex-col gap-4">
+          {error && (
+            <Alert variant="plain" tone="destructive">
+              <Alert.Icon />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert>
+          )}
+          {members.some((member) => member.groupManaged) && (
+            <p className="text-xs text-muted-foreground">
+              Einige Mitglieder kommen über eine OIDC-Gruppe. Ihren Zugriff ändern Sie über die Gruppe oder den Gruppenzugriff des Spaces.
+            </p>
+          )}
+          <UserAccessPicker
+            users={visibleUsers}
+            ownerId={space.ownerId}
+            lockedIds={new Set(members.filter((member) => member.groupManaged).map((member) => member.id))}
+            selectedIds={selectedIds}
+            onChange={setSelectedIds}
+            onUserSelected={(user) => setUsers((current) => [...current.filter((entry) => entry.id !== user.id), user])}
+            loading={loading}
+            disabled={saving}
+            readOnly={!canManage}
+            statusById={statusById}
+            loadingLabel="Mitglieder werden geladen …"
+          />
+        </Dialog.Body>
+        <Dialog.Footer>
+          {!canManage && (
             <Button
-              variant="secondary"
-              isDisabled={saving}
-              onPress={() => onOpenChange(false)}
+              variant="ghost"
+              className="me-auto"
+              disabled={saving || loading || members.some((member) => member.id === viewerId && member.groupManaged)}
+              onClick={() => void leaveSpace()}
             >
-              {canManage ? "Abbrechen" : "Schließen"}
+              Space verlassen
             </Button>
-            {canManage && (
-              <Button
-                className="bg-primary text-white"
-                isPending={saving}
-                isDisabled={loading || (!!error && users.length === 0)}
-                onPress={save}
-              >
-                Speichern
-              </Button>
-            )}
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+          )}
+          <Dialog.Close render={<Button variant="secondary" disabled={saving} />}>{canManage ? "Abbrechen" : "Schließen"}</Dialog.Close>
+          {canManage && (
+            <Button loading={saving} disabled={loading || (!!error && users.length === 0)} onClick={() => void save()}>
+              Speichern
+            </Button>
+          )}
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
-import { Button, Modal } from "@heroui/react";
+import { Alert } from "@/components/panelui/alert";
+import { Button } from "@/components/panelui/button";
+import { Dialog } from "@/components/panelui/dialog";
 import { useState } from "react";
 import { UserAccessPicker } from "./UserAccessPicker";
 import { fetchApi } from "@/lib/api";
@@ -43,59 +45,37 @@ export function SpaceOwnerModal({
     }
   };
   return (
-    <Modal.Backdrop
-      isOpen
-      onOpenChange={(open) => {
-        if (!saving) onOpenChange(open);
-      }}
-    >
-      <Modal.Container>
-        <Modal.Dialog className="max-w-2xl">
-          <Modal.CloseTrigger />
-          <Modal.Header>
-            <Modal.Heading>Eigentümer ändern</Modal.Heading>
-          </Modal.Header>
-          <Modal.Body className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Wählen Sie einen neuen Eigentümer für{" "}
-              <strong className="text-foreground">{space.name}</strong>. Er
-              erhält sofort die Kontrolle über den Space. Die enthaltenen Apps
-              behalten ihre bisherigen Eigentümer.
-            </p>
-            <UserAccessPicker
-              users={[]}
-              ownerId={space.ownerId}
-              selectedIds={selectedIds}
-              disabled={saving}
-              onChange={(ids) => {
-                const next = Array.from(ids).find((id) => !selectedIds.has(id));
-                setSelectedIds(new Set(next ? [next] : []));
-              }}
-            />
-            {error && (
-              <p role="alert" className="text-sm text-danger">
-                {error}
-              </p>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              isDisabled={saving}
-              onPress={() => onOpenChange(false)}
-            >
-              Abbrechen
-            </Button>
-            <Button
-              isPending={saving}
-              isDisabled={selectedIds.size !== 1}
-              onPress={save}
-            >
-              Eigentümer übertragen
-            </Button>
-          </Modal.Footer>
-        </Modal.Dialog>
-      </Modal.Container>
-    </Modal.Backdrop>
+    <Dialog open onOpenChange={(open) => { if (!saving) onOpenChange(open); }}>
+      <Dialog.Content size="lg">
+        <Dialog.Header
+          title="Eigentümer ändern"
+          description={<>Wer soll <strong className="font-medium text-foreground">{space.name}</strong> künftig gehören? Die Person erhält sofort die Kontrolle über den Space. Die enthaltenen Apps behalten ihre Eigentümer.</>}
+        />
+        <Dialog.Body className="flex flex-col gap-4">
+          <UserAccessPicker
+            users={[]}
+            ownerId={space.ownerId}
+            selectedIds={selectedIds}
+            disabled={saving}
+            onChange={(ids) => {
+              const next = Array.from(ids).find((id) => !selectedIds.has(id));
+              setSelectedIds(new Set(next ? [next] : []));
+            }}
+          />
+          {error && (
+            <Alert variant="plain" tone="destructive">
+              <Alert.Icon />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert>
+          )}
+        </Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.Close render={<Button variant="secondary" disabled={saving} />}>Abbrechen</Dialog.Close>
+          <Button loading={saving} disabled={selectedIds.size !== 1} onClick={() => void save()}>
+            Eigentümer übertragen
+          </Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
   );
 }
