@@ -18,9 +18,11 @@ type AppLink struct {
 }
 
 type AppUserSummary struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
-	Email    string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	Username    string    `json:"username"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"displayName,omitempty"`
+	AvatarURL   string    `json:"avatarUrl,omitempty"`
 }
 
 // DeploymentVariant defines a named deployment flavor for an app

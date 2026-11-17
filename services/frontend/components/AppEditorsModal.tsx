@@ -1,6 +1,7 @@
 "use client";
 
 import { AppConfig, AppEditorUser, SystemUser } from "@/config/apps";
+import { authorName } from "@/components/profile/UserAvatar";
 import { UserAccessPicker } from "./UserAccessPicker";
 import { fetchApi } from "@/lib/api";
 import { Alert } from "@/components/panelui/alert";
@@ -108,7 +109,7 @@ export function AppEditorsModal({
           description={
             <>
               <strong className="font-medium text-foreground">{app?.name}</strong> kann von ausgewählten Personen bearbeitet werden, ohne dass sich die Eigentümerschaft ändert.
-              {app?.owner && <> Eigentümer: <span className="font-medium text-foreground">{app.owner.username}</span>.</>}
+              {app?.owner && <> Eigentümer: <span className="font-medium text-foreground">{authorName(app.owner)}</span>.</>}
             </>
           }
         />

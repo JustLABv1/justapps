@@ -35,6 +35,8 @@ type BackupUser struct {
 	ID              uuid.UUID  `json:"id"`
 	Username        string     `json:"username"`
 	Email           string     `json:"email"`
+	DisplayName     string     `json:"displayName,omitempty"`
+	AvatarURL       string     `json:"avatarUrl,omitempty"`
 	Password        string     `json:"password,omitempty"`
 	Role            string     `json:"role"`
 	AuthType        string     `json:"authType"`

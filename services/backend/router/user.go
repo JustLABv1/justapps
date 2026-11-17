@@ -36,6 +36,12 @@ func User(router *gin.RouterGroup, db *bun.DB) {
 		user.PUT("/", func(c *gin.Context) {
 			users.ChangeUserDetails(c, db)
 		})
+		user.PUT("/profile", func(c *gin.Context) {
+			users.UpdateOwnProfile(c, db)
+		})
+		user.GET("/activity", func(c *gin.Context) {
+			users.GetOwnActivity(c, db)
+		})
 		user.PUT("/password", func(c *gin.Context) {
 			users.ChangeUserPassword(c, db)
 		})

@@ -27,6 +27,8 @@ type globalFAQQuestionRow struct {
 	AppIcon     *string   `bun:"app_icon"`
 	UserID      uuid.UUID `bun:"user_id"`
 	Username    string    `bun:"username"`
+	DisplayName string    `bun:"display_name"`
+	AvatarURL   string    `bun:"avatar_url"`
 	Question    string    `bun:"question"`
 	CreatedAt   time.Time `bun:"created_at"`
 	AnswerCount int       `bun:"answer_count"`
@@ -47,7 +49,10 @@ type globalFAQAnswerRow struct {
 	Username         string     `bun:"username"`
 	ReplyToAnswerID  *uuid.UUID `bun:"reply_to_answer_id"`
 	ReplyToUsername  string     `bun:"reply_to_username"`
+	ReplyToName      string     `bun:"reply_to_display_name"`
 	ReplyToText      string     `bun:"reply_to_text"`
+	DisplayName      string     `bun:"display_name"`
+	AvatarURL        string     `bun:"avatar_url"`
 	Answer           string     `bun:"answer"`
 	IsPinned         bool       `bun:"is_pinned"`
 	CreatorLiked     bool       `bun:"creator_liked"`
@@ -128,7 +133,10 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 					SELECT 1 FROM app_editors editor WHERE editor.app_id = app.id AND editor.user_id = ?
 				))))
 		)
-		SELECT *, COUNT(*) OVER()::int AS total
+		SELECT combined.*,
+			COALESCE((SELECT u.display_name FROM users u WHERE u.id = combined.user_id), '') AS display_name,
+			COALESCE((SELECT u.avatar_url FROM users u WHERE u.id = combined.user_id), '') AS avatar_url,
+			COUNT(*) OVER()::int AS total
 		FROM combined
 		WHERE (? = 'all' OR scope = ?)
 			AND (? = '' OR app_id = ?)
@@ -175,7 +183,7 @@ func GetGlobalFAQ(c *gin.Context, db *bun.DB) {
 	result := make([]gin.H, 0, len(questions))
 	for _, row := range questions {
 		total = row.Total
-		item := gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "solved": row.Solved, "answers": []models.GlobalFAQAnswer{}}
+		item := gin.H{"id": row.ID, "scope": row.Scope, "appId": row.AppID, "appName": row.AppName, "appIcon": row.AppIcon, "userId": row.UserID, "username": row.Username, "displayName": row.DisplayName, "avatarUrl": row.AvatarURL, "question": row.Question, "createdAt": row.CreatedAt, "answerCount": row.AnswerCount, "solved": row.Solved, "answers": []models.GlobalFAQAnswer{}}
 		if preview := globalTop[row.ID]; row.Scope == "global" && preview != nil {
 			item["topAnswer"] = preview
 		} else if preview := appTop[row.ID]; row.Scope != "global" && preview != nil {
@@ -226,11 +234,13 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 		ColumnExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at").
 		ColumnExpr("a.reply_to_answer_id, COALESCE(parent.username, '') AS reply_to_username, COALESCE(parent.answer, '') AS reply_to_text").
 		Join("LEFT JOIN global_faq_answers AS parent ON parent.id = a.reply_to_answer_id").
+		ColumnExpr(replyToNameSQL("parent.user_id")).
 		ColumnExpr("COUNT(v.user_id)::int AS upvote_count").
 		ColumnExpr("COALESCE(BOOL_OR(v.user_id = ?), FALSE) AS user_upvoted", viewerID).
 		Join("LEFT JOIN global_faq_answer_upvotes AS v ON v.answer_id = a.id").
 		Where("a.question_id = ?", questionID).
 		GroupExpr("a.id, a.question_id, a.user_id, a.username, a.answer, a.is_pinned, a.creator_liked, a.accepted_by_author, a.created_at, parent.id")
+	query = withAuthorProfile(query, "a.user_id")
 	countQuery := db.NewSelect().TableExpr("global_faq_answers AS a").Where("a.question_id = ?", questionID)
 	threaded := c.Query("threaded") == "true"
 	pageQuery := query.Clone()
@@ -256,7 +266,7 @@ func GetGlobalFAQAnswers(c *gin.Context, db *bun.DB) {
 	}
 	answers := make([]models.GlobalFAQAnswer, 0, len(rows))
 	for _, row := range rows {
-		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToText: row.ReplyToText, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
+		answers = append(answers, models.GlobalFAQAnswer{ID: row.ID, QuestionID: row.QuestionID, UserID: row.UserID, Username: row.Username, Answer: row.Answer, ReplyToAnswerID: row.ReplyToAnswerID, ReplyToUsername: row.ReplyToUsername, ReplyToDisplayName: row.ReplyToName, ReplyToText: row.ReplyToText, DisplayName: row.DisplayName, AvatarURL: row.AvatarURL, IsPinned: row.IsPinned, CreatorLiked: row.CreatorLiked, AcceptedByAuthor: row.AcceptedByAuthor, CreatedAt: row.CreatedAt, UpvoteCount: row.UpvoteCount, UserUpvoted: row.UserUpvoted})
 	}
 	c.JSON(http.StatusOK, gin.H{"answers": answers, "page": page, "pageSize": pageSize, "total": total, "hasMore": int64(page)*int64(pageSize) < total})
 }

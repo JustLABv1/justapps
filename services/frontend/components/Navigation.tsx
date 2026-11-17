@@ -25,6 +25,7 @@ import {
   Search,
   Moon,
   Sun,
+  UserRound,
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -39,6 +40,7 @@ import { adminNavGroups, adminNavLinks } from "../lib/admin-navigation";
 import { canAccessAI } from "../lib/ai-access";
 import { fetchApi } from "../lib/api";
 import { JustAppsLogo } from "./JustAppsLogo";
+import { UserAvatar, displayNameOf } from "./profile/UserAvatar";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Navigation() {
@@ -403,12 +405,12 @@ export function Navigation() {
               <Menu.Trigger
                 render={<Button variant="ghost" size="icon" shape="pill" aria-label="Benutzermenü" />}
               >
-                <Avatar size="sm" name={user.username} />
+                <UserAvatar size="sm" user={user} />
               </Menu.Trigger>
               <Menu.Content align="end" className="w-64">
                 <Menu.Group>
                   <Menu.GroupLabel>
-                    <span className="block text-foreground">Angemeldet als</span>
+                    <span className="block truncate text-foreground">{displayNameOf(user)}</span>
                     <span className="block truncate font-normal">{user.email}</span>
                     {user.authType === "oidc" && (
                       <Badge size="sm" variant="info" className="mt-1.5">
@@ -418,6 +420,10 @@ export function Navigation() {
                   </Menu.GroupLabel>
                 </Menu.Group>
                 <Menu.Separator />
+                <Menu.Item onClick={() => router.push("/profil")}>
+                  <UserRound />
+                  Mein Profil
+                </Menu.Item>
                 <Menu.Item onClick={() => window.open(documentationLink.href, "_blank", "noopener,noreferrer")}>
                   <BookOpen />
                   Dokumentation
@@ -525,6 +531,15 @@ export function Navigation() {
 
                   {user && (
                     <MobileSection title="Mein Konto">
+                      <Button
+                        variant={pathname === "/profil" ? "secondary" : "ghost"}
+                        className="justify-start"
+                        onClick={() => setMobileOpen(false)}
+                        render={<NextLink href="/profil" />}
+                      >
+                        <UserRound />
+                        Mein Profil
+                      </Button>
                       <Button
                         variant={pathname.startsWith("/profil/tokens") ? "secondary" : "ghost"}
                         className="justify-start"

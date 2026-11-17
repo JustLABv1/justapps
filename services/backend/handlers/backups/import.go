@@ -526,6 +526,8 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 			ID:              backupUser.ID,
 			Username:        backupUser.Username,
 			Email:           backupUser.Email,
+			DisplayName:     backupUser.DisplayName,
+			AvatarURL:       canonicalUploadReference(backupUser.AvatarURL),
 			Password:        password,
 			Role:            strings.ToLower(strings.TrimSpace(backupUser.Role)),
 			AuthType:        authType,
@@ -547,7 +549,7 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		if exists {
 			_, err = tx.NewUpdate().Model(&user).
 				Where("id = ?", user.ID).
-				Column("username", "email", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "updated_at", "last_login_at").
+				Column("username", "email", "display_name", "avatar_url", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "updated_at", "last_login_at").
 				Exec(ctx)
 			if err != nil {
 				return stats, warnings, err
@@ -557,7 +559,7 @@ func importUsers(ctx context.Context, tx bun.Tx, backupUsers []models.BackupUser
 		}
 
 		_, err = tx.NewInsert().Model(&user).
-			Column("id", "username", "email", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "created_at", "updated_at", "last_login_at").
+			Column("id", "username", "email", "display_name", "avatar_url", "password", "role", "auth_type", "can_submit_apps", "can_create_spaces", "disabled", "disabled_reason", "created_at", "updated_at", "last_login_at").
 			Exec(ctx)
 		if err != nil {
 			return stats, warnings, err

@@ -6,7 +6,7 @@ import { fetchApi } from '@/lib/api';
 import { groupFAQThreads } from '@/lib/faqThreads';
 import { Alert } from '@/components/panelui/alert';
 import { AlertDialog } from '@/components/panelui/alert-dialog';
-import { Avatar } from '@/components/panelui/avatar';
+import { UserAvatar, authorName, authorOf } from '@/components/profile/UserAvatar';
 import { Badge } from '@/components/panelui/badge';
 import { Button } from '@/components/panelui/button';
 import { Card } from '@/components/panelui/card';
@@ -32,9 +32,12 @@ interface FAQAnswer {
   questionId: string;
   userId: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   answer: string;
   replyToAnswerId?: string;
   replyToUsername?: string;
+  replyToDisplayName?: string;
   replyToText?: string;
   isPinned: boolean;
   creatorLiked: boolean;
@@ -52,6 +55,8 @@ interface FAQQuestion {
   appIcon?: string | null;
   userId: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   question: string;
   createdAt: string;
   answerCount: number;
@@ -78,7 +83,7 @@ interface FAQSectionProps {
 }
 
 export type FAQStatusFilter = 'all' | 'open' | 'answered' | 'solved' | 'unsolved';
-type FAQAnswerPreview = { id: string; username: string; answer: string; isPinned: boolean; creatorLiked: boolean; acceptedByAuthor: boolean; upvoteCount: number };
+type FAQAnswerPreview = { id: string; username: string; displayName?: string; avatarUrl?: string; answer: string; isPinned: boolean; creatorLiked: boolean; acceptedByAuthor: boolean; upvoteCount: number };
 
 /** Renderers for answers: the docs' copyable code blocks and notes, without repository links. */
 const ANSWER_MARKDOWN = docComponents({});
@@ -811,11 +816,12 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                 || busyAction === `isPinned:${answer.id}`
                 || busyAction === `creatorLiked:${answer.id}`
                 || busyAction === `delete-answer:${answer.id}`;
-              const name = answer.username || 'Anonymer Nutzer';
+              const author = authorOf(answer, user);
+              const name = authorName(author);
 
               return (
                 <div id={`faq-answer-${answer.id}`} key={answer.id} className="flex min-w-0 gap-3 py-3">
-                  <Avatar name={name} size="xs" />
+                  <UserAvatar user={author} size="xs" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm font-medium break-words">{name}</span>
@@ -856,7 +862,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                       )}
                     </div>
                     {isReply && answer.replyToAnswerId !== threadRootId && (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground"><Reply className="size-3" />an {answer.replyToUsername || 'Anonymer Nutzer'}</p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground"><Reply className="size-3" />an {answer.replyToDisplayName || answer.replyToUsername || 'Anonymer Nutzer'}</p>
                     )}
                     <AnswerText text={answer.answer} />
                     <div className="-ms-2 flex flex-wrap items-center gap-1">
@@ -914,7 +920,10 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                       )}
                       <h3 className="text-base leading-snug font-semibold break-words">{question.question}</h3>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span>{question.username || 'Anonymer Nutzer'}</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <UserAvatar user={authorOf(question, user)} size="xs" className="size-4 text-[8px]" />
+                          {authorName(authorOf(question, user))}
+                        </span>
                         <span aria-hidden="true">·</span>
                         <time dateTime={question.createdAt}>{formatDate(question.createdAt)}</time>
                         <span aria-hidden="true">·</span>
@@ -938,7 +947,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                               'Beste Antwort'
                             )}
                             <span aria-hidden="true">·</span>
-                            {question.topAnswer.username || 'Anonymer Nutzer'}
+                            {authorName(question.topAnswer)}
                           </span>
                           <p className="line-clamp-2 text-sm text-foreground/90">{plainText(question.topAnswer.answer)}</p>
                         </div>
@@ -984,7 +993,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                           const targetInThread = replyTarget && (replyTarget.id === root.id || replies.some((reply) => reply.id === replyTarget.id));
                           const expanded = !collapsedThreads[root.id];
                           return (
-                            <section key={root.id} className="py-1" aria-label={`Antwort von ${root.username || 'Anonymer Nutzer'} mit Diskussion`}>
+                            <section key={root.id} className="py-1" aria-label={`Antwort von ${authorName(authorOf(root, user))} mit Diskussion`}>
                               {renderAnswer(root, false, root.id)}
                               {(replies.length > 0 || targetInThread) && (
                                 <div className="ms-3 border-s ps-4 sm:ps-6">
@@ -1007,7 +1016,7 @@ export function FAQSection({ appId, canDeleteQuestions, canDeleteAnswers, canPin
                                   {targetInThread && user && (
                                     <div id={`faq-reply-composer-${question.id}`} className="pt-2 pb-4">
                                       <FAQAnswerComposer
-                                        recipient={replyTarget.username || 'Anonymer Nutzer'}
+                                        recipient={authorName(authorOf(replyTarget, user))}
                                         value={replyDrafts[question.id] || ''}
                                         onChange={(value) => setReplyDrafts((previous) => ({ ...previous, [question.id]: value }))}
                                         onSubmit={() => void handleAnswer(question.id, true)}

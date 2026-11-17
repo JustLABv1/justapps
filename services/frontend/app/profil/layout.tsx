@@ -1,12 +1,15 @@
 'use client';
 
+import { Spinner } from '@/components/panelui/spinner';
+import { Tabs } from '@/components/panelui/tabs';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { useAuth } from '@/context/AuthContext';
-import { Link, Surface } from '@heroui/react';
-import { Bot, KeyRound, Loader2 } from 'lucide-react';
+import { Bot, KeyRound, UserRound } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 const profileLinks = [
+  { href: '/profil', label: 'Übersicht', icon: UserRound },
   { href: '/profil/tokens', label: 'API-Tokens', icon: KeyRound },
   { href: '/profil/mcp', label: 'MCP einrichten', icon: Bot },
 ];
@@ -22,41 +25,34 @@ export default function ProfilLayout({ children }: { children: ReactNode }) {
     }
   }, [loading, pathname, router, user]);
 
-  if (loading) {
-    return (
+  // Only the first load waits here; a later refresh keeps the page, and what was typed in it.
+  if (!user) {
+    return loading ? (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner />
       </div>
-    );
+    ) : null;
   }
 
-  if (!user) return null;
+  const active = pathname === '/profil'
+    ? '/profil'
+    : profileLinks.find(({ href }) => href !== '/profil' && pathname.startsWith(href))?.href;
 
   return (
-    <div className="space-y-6">
-      <Surface className="border border-border/60 bg-surface/80 p-2 shadow-sm">
-        <nav className="flex flex-wrap gap-2" aria-label="Mein Konto">
-          {profileLinks.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold no-underline transition-colors ${
-                  active
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-muted-foreground hover:bg-surface-secondary hover:text-foreground'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
+        <ProfileHeader user={user} />
+        <Tabs variant="underline" value={active} onValueChange={(href) => router.push(String(href))}>
+          <Tabs.List aria-label="Mein Profil">
+            {profileLinks.map(({ href, label, icon: Icon }) => (
+              <Tabs.Trigger key={href} value={href}>
+                <Icon />
                 {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </Surface>
-
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+        </Tabs>
+      </div>
       <div className="pb-6">{children}</div>
     </div>
   );

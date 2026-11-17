@@ -117,6 +117,18 @@ func AddRating(c *gin.Context, db *bun.DB) {
 	c.JSON(200, gin.H{"status": "success"})
 }
 
+type ratingResponse struct {
+	ID          uuid.UUID `bun:"id" json:"id"`
+	AppID       string    `bun:"app_id" json:"appId"`
+	UserID      string    `bun:"user_id" json:"userId"`
+	Username    string    `bun:"username" json:"username"`
+	DisplayName string    `bun:"display_name" json:"displayName,omitempty"`
+	AvatarURL   string    `bun:"avatar_url" json:"avatarUrl,omitempty"`
+	Rating      int       `bun:"rating" json:"rating"`
+	Comment     string    `bun:"comment" json:"comment"`
+	CreatedAt   time.Time `bun:"created_at" json:"createdAt"`
+}
+
 func GetRatings(c *gin.Context, db *bun.DB) {
 	if !ensurePrivateAppIDAccess(c, db) {
 		return
@@ -126,12 +138,17 @@ func GetRatings(c *gin.Context, db *bun.DB) {
 	}
 
 	appID := c.Param("id")
-	ratings := make([]models.Rating, 0)
+	// The rating plus its author's display name and picture. ratings.user_id is
+	// text, so the author is matched by the id's text form.
+	ratings := make([]ratingResponse, 0)
 	err := db.NewSelect().
-		Model(&ratings).
-		Where("app_id = ?", appID).
-		Order("created_at DESC").
-		Scan(c)
+		TableExpr("ratings AS r").
+		ColumnExpr("r.id, r.app_id, r.user_id, COALESCE(r.username, '') AS username, r.rating, COALESCE(r.comment, '') AS comment, r.created_at").
+		ColumnExpr("COALESCE(u.display_name, '') AS display_name, COALESCE(u.avatar_url, '') AS avatar_url").
+		Join("LEFT JOIN users AS u ON u.id::text = r.user_id").
+		Where("r.app_id = ?", appID).
+		OrderExpr("r.created_at DESC").
+		Scan(c, &ratings)
 
 	if err != nil {
 		httperror.InternalServerError(c, "Error fetching ratings", err)

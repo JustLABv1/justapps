@@ -2,7 +2,7 @@
 
 import { fetchApi } from "@/lib/api";
 import { SystemUser } from "@/config/apps";
-import { Avatar } from "@/components/panelui/avatar";
+import { UserAvatar, authorName } from "@/components/profile/UserAvatar";
 import { Badge } from "@/components/panelui/badge";
 import { Input } from "@/components/panelui/input";
 import { Spinner } from "@/components/panelui/spinner";
@@ -92,7 +92,7 @@ export function UserAccessPicker({
   const searching = !readOnly && query.length >= 2 && !currentResult;
   const filtered = readOnly
     ? selectedUsers.filter((user) =>
-        [user.username, user.email].some((value) =>
+        [user.username, user.email, user.displayName ?? ""].some((value) =>
           value.toLowerCase().includes(query.toLowerCase()),
         ),
       )
@@ -117,13 +117,14 @@ export function UserAccessPicker({
       {selectedUsers.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedUsers.map((user) => (
-            <Badge key={user.id} variant="secondary" size="lg" className="gap-1.5 pe-1.5">
-              {user.username}
+            <Badge key={user.id} variant="secondary" size="lg" className="gap-1.5 ps-1 pe-1.5">
+              <UserAvatar user={user} size="xs" className="size-5 text-[9px]" />
+              {authorName(user)}
               {!readOnly && !lockedIds?.has(user.id) && (
                 <button
                   type="button"
                   disabled={disabled || loading}
-                  aria-label={`${user.username} aus Auswahl entfernen`}
+                  aria-label={`${authorName(user)} aus Auswahl entfernen`}
                   onClick={() => toggle(user.id)}
                   className="cursor-pointer rounded-full p-0.5 opacity-70 hover:bg-foreground/10 hover:opacity-100"
                 >
@@ -164,10 +165,13 @@ export function UserAccessPicker({
                 onClick={() => toggle(user.id)}
                 className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-start transition-colors disabled:cursor-default ${selected ? "bg-muted" : "hover:bg-muted/60"}`}
               >
-                <Avatar name={user.username} size="sm" />
+                <UserAvatar user={user} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{user.username}</p>
-                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                  <p className="truncate text-sm font-medium">{authorName(user)}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {user.displayName?.trim() && user.displayName.trim() !== user.username ? `@${user.username} · ` : ""}
+                    {user.email}
+                  </p>
                 </div>
                 <Badge variant="outline" size="sm">{statusById?.[user.id] || user.authType || user.role}</Badge>
                 {selected ? (

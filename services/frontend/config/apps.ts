@@ -233,6 +233,8 @@ export interface SystemUser {
   id: string;
   username: string;
   email: string;
+  displayName?: string;
+  avatarUrl?: string;
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
@@ -246,6 +248,8 @@ export interface AppUserSummary {
   id: string;
   username: string;
   email: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface AppCatalogFilters {

@@ -4,9 +4,7 @@ import { AREAS, RELEASE_TYPE } from "@/components/app-detail/ReleaseList";
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
-import { Dialog } from "@/components/panelui/dialog";
 import { Spinner } from "@/components/panelui/spinner";
-import { Switch } from "@/components/panelui/switch";
 import { Tabs } from "@/components/panelui/tabs";
 import { Tooltip } from "@/components/panelui/tooltip";
 import type { FAQAnswerNotification, FAQNotification, ReleaseInboxItem } from "@/config/apps";
@@ -170,60 +168,6 @@ function EntryRow({ entry, onOpen, onMarkSeen, pending }: { entry: Entry; onOpen
         </Button>
       </div>
     </li>
-  );
-}
-
-function PreferencesDialog() {
-  const { preferences, updatePreferences } = useUpdates();
-  const [saving, setSaving] = useState<string | null>(null);
-  const rules = [
-    { key: "notifyFavoritedApps", title: "Favorisierte Apps", description: "Neue Versionen von Apps, die du mit einem Herz markiert hast." },
-    { key: "notifyRecentlyViewedApps", title: "Kürzlich angesehene Apps", description: "Neue Versionen von Apps, die du dir in letzter Zeit angesehen hast." },
-    { key: "notifyOwnedManagedApps", title: "Eigene und betreute Apps", description: "Neue Versionen und Fragen zu Apps, die dir gehören oder die du bearbeitest." },
-  ] as const;
-
-  const change = async (key: (typeof rules)[number]["key"], value: boolean) => {
-    if (!preferences) return;
-    setSaving(key);
-    const ok = await updatePreferences({
-      notifyFavoritedApps: preferences.notifyFavoritedApps,
-      notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
-      notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
-      [key]: value,
-    });
-    setSaving(null);
-    if (!ok) toast.danger("Die Einstellung konnte nicht gespeichert werden.");
-  };
-
-  return (
-    <Dialog>
-      <Dialog.Trigger render={<Button variant="outline" />}>
-        <Settings2 />
-        Einstellungen
-      </Dialog.Trigger>
-      <Dialog.Content>
-        <Dialog.Header title="Worüber du informiert wirst" description="Antworten auf deine eigenen Fragen bekommst du immer." />
-        <Dialog.Body>
-          <div className="flex flex-col gap-5">
-            {rules.map((rule) => (
-              <div key={rule.key} className="flex items-start justify-between gap-6">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium">{rule.title}</span>
-                  <span className="text-sm text-muted-foreground">{rule.description}</span>
-                </div>
-                <Switch
-                  label={rule.title}
-                  checked={preferences?.[rule.key] ?? true}
-                  disabled={!preferences}
-                  pending={saving === rule.key}
-                  onCheckedChange={(value) => void change(rule.key, value)}
-                />
-              </div>
-            ))}
-          </div>
-        </Dialog.Body>
-      </Dialog.Content>
-    </Dialog>
   );
 }
 
@@ -395,7 +339,10 @@ export default function UpdatesPage() {
             Neue Versionen deiner Apps und Neuigkeiten zu Fragen.
           </p>
         </div>
-        <PreferencesDialog />
+        <Button variant="outline" render={<NextLink href="/profil#benachrichtigungen" />}>
+          <Settings2 />
+          Einstellungen
+        </Button>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">

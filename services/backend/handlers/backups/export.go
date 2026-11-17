@@ -377,6 +377,8 @@ func exportUsers(c *gin.Context, db *bun.DB, mode models.BackupMode) ([]models.B
 			ID:              user.ID,
 			Username:        user.Username,
 			Email:           user.Email,
+			DisplayName:     user.DisplayName,
+			AvatarURL:       canonicalUploadReference(user.AvatarURL),
 			Role:            user.Role,
 			AuthType:        user.AuthType,
 			CanCreateSpaces: user.CanCreateSpaces,
@@ -577,6 +579,14 @@ func collectReferencedUploadPaths(c *gin.Context, db *bun.DB) ([]string, error) 
 	}
 	for _, group := range groups {
 		references = append(references, group.Icon)
+	}
+
+	var users []models.Users
+	if err := db.NewSelect().Model(&users).Column("avatar_url").Where("avatar_url <> ''").Scan(ctx); err != nil {
+		return nil, err
+	}
+	for _, user := range users {
+		references = append(references, user.AvatarURL)
 	}
 
 	return references, nil

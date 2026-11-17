@@ -16,6 +16,8 @@ type Users struct {
 	ID              uuid.UUID  `bun:",pk,type:uuid,default:gen_random_uuid()" json:"id"`
 	Username        string     `bun:"username,type:text,notnull" json:"username"`
 	Email           string     `bun:"email,type:text,notnull" json:"email"`
+	DisplayName     string     `bun:"display_name,type:text,notnull,default:''" json:"displayName"`
+	AvatarURL       string     `bun:"avatar_url,type:text,notnull,default:''" json:"avatarUrl"`
 	Password        string     `bun:"password,type:text,notnull" json:"password"`
 	Role            string     `bun:"role,type:text,notnull,default:'user'" json:"role"`
 	AuthType        string     `bun:"auth_type,type:text,default:'local'" json:"authType"`

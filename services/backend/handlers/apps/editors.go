@@ -21,6 +21,8 @@ type appEditorUserResponse struct {
 	ID            uuid.UUID `json:"id"`
 	Username      string    `json:"username"`
 	Email         string    `json:"email"`
+	DisplayName   string    `json:"displayName,omitempty"`
+	AvatarURL     string    `json:"avatarUrl,omitempty"`
 	Role          string    `json:"role"`
 	AuthType      string    `json:"authType"`
 	CanSubmitApps bool      `json:"canSubmitApps"`
@@ -188,6 +190,8 @@ func loadEditorUsers(ctx context.Context, db *bun.DB, appID string) ([]appEditor
 		ID            uuid.UUID `bun:"id"`
 		Username      string    `bun:"username"`
 		Email         string    `bun:"email"`
+		DisplayName   string    `bun:"display_name"`
+		AvatarURL     string    `bun:"avatar_url"`
 		Role          string    `bun:"role"`
 		AuthType      string    `bun:"auth_type"`
 		CanSubmitApps bool      `bun:"can_submit_apps"`
@@ -195,7 +199,7 @@ func loadEditorUsers(ctx context.Context, db *bun.DB, appID string) ([]appEditor
 	}
 
 	err := db.NewSelect().TableExpr("app_editors AS ae").
-		ColumnExpr("u.id, u.username, u.email, u.role, u.auth_type, u.can_submit_apps, u.disabled").
+		ColumnExpr("u.id, u.username, u.email, u.display_name, u.avatar_url, u.role, u.auth_type, u.can_submit_apps, u.disabled").
 		Join("JOIN users AS u ON u.id = ae.user_id").
 		Where("ae.app_id = ?", appID).
 		OrderExpr("LOWER(u.username) ASC, LOWER(u.email) ASC").
@@ -210,6 +214,8 @@ func loadEditorUsers(ctx context.Context, db *bun.DB, appID string) ([]appEditor
 			ID:            row.ID,
 			Username:      row.Username,
 			Email:         row.Email,
+			DisplayName:   row.DisplayName,
+			AvatarURL:     row.AvatarURL,
 			Role:          row.Role,
 			AuthType:      row.AuthType,
 			CanSubmitApps: row.CanSubmitApps,

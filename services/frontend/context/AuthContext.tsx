@@ -6,10 +6,16 @@ import { toast } from '@/lib/toast';
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, useSession } from 'next-auth/react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-interface User {
+export interface User {
   id: string;
   username: string;
   email: string;
+  /** What others see in place of the username; empty when not set. */
+  displayName?: string;
+  /** An uploaded picture, as `/uploads/…`; empty when not set. */
+  avatarUrl?: string;
+  created_at?: string;
+  lastLoginAt?: string | null;
   role: string;
   authType?: string;
   canSubmitApps?: boolean;
@@ -28,6 +34,8 @@ interface AuthContextType {
   logout: (options?: LogoutOptions) => void;
   oidcLogin: (providerKey?: string, callbackUrl?: string) => void;
   refreshUser: () => Promise<boolean>;
+  /** Merges changed profile fields into the signed-in user without reloading the session. */
+  patchUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -292,6 +300,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nextAuthSignIn('oidc', { callbackUrl: callbackUrl || '/' });
   }, []);
 
+  const patchUser = useCallback((patch: Partial<User>) => {
+    setCookieUser((current) => (current ? { ...current, ...patch } : current));
+    setFetchedUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
+
   const user = status === 'authenticated' ? (fetchedUser || oidcUser) : cookieUser;
   const profileReady = status === 'authenticated' ? authenticatedProfileReady : status === 'unauthenticated' && cookieProfileReady;
   const isLoading = status === 'loading' || !profileReady && !profileError;
@@ -307,6 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       oidcLogin,
       refreshUser,
+      patchUser,
     }}>
       {children}
     </AuthContext.Provider>

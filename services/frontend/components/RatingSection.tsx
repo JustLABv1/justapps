@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertDialog } from "@/components/panelui/alert-dialog";
-import { Avatar } from "@/components/panelui/avatar";
+import { UserAvatar, authorName, authorOf } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/panelui/button";
 import { Dialog } from "@/components/panelui/dialog";
 import { Field } from "@/components/panelui/field";
@@ -18,6 +18,8 @@ interface Rating {
   id: string;
   userId: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -187,16 +189,18 @@ export function RatingSection({ appId, appName, onChange }: { appId: string; app
     </AlertDialog>
   );
 
-  const review = (rating: Rating, isOwn = false) => (
+  const review = (rating: Rating, isOwn = false) => {
+    const author = authorOf(rating, user);
+    return (
     <article
       key={rating.id}
-      aria-label={isOwn ? "Deine Bewertung" : `Bewertung von ${rating.username || "Anonymer Nutzer"}`}
+      aria-label={isOwn ? "Deine Bewertung" : `Bewertung von ${authorName(author)}`}
       className={isOwn ? "flex gap-3 rounded-xl border bg-muted/40 p-4" : "flex gap-3 py-5"}
     >
-      <Avatar name={rating.username || "Anonym"} size="sm" />
+      <UserAvatar user={author} size="sm" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-sm font-medium">{isOwn ? "Deine Bewertung" : rating.username || "Anonymer Nutzer"}</span>
+          <span className="text-sm font-medium">{isOwn ? "Deine Bewertung" : authorName(author)}</span>
           <Stars value={rating.rating} size="size-3.5" />
           <time dateTime={rating.createdAt} title={fullDate(rating.createdAt)} className="text-xs text-muted-foreground">{timeAgo(rating.createdAt)}</time>
           <span className="ms-auto flex items-center gap-1">
@@ -212,7 +216,8 @@ export function RatingSection({ appId, appName, onChange }: { appId: string; app
         {rating.comment ? <Comment text={rating.comment} /> : !isOwn && <p className="text-sm text-muted-foreground/70 italic">Ohne Kommentar</p>}
       </div>
     </article>
-  );
+    );
+  };
 
   if (!loaded) {
     return (

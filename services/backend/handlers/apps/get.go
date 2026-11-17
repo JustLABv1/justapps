@@ -109,6 +109,8 @@ type appEditorSummaryRow struct {
 	UserID   uuid.UUID `bun:"id"`
 	Username string    `bun:"username"`
 	Email    string    `bun:"email"`
+	Name     string    `bun:"display_name"`
+	Avatar   string    `bun:"avatar_url"`
 }
 
 func normalizeFilterValue(value string) string {
@@ -213,6 +215,8 @@ func loadAppEditorSummaries(ctx context.Context, db *bun.DB, appIDs []string) (m
 		ColumnExpr("u.id").
 		ColumnExpr("u.username").
 		ColumnExpr("u.email").
+		ColumnExpr("u.display_name").
+		ColumnExpr("u.avatar_url").
 		Join("JOIN users AS u ON u.id = ae.user_id").
 		Where("ae.app_id IN (?)", bun.In(appIDs)).
 		OrderExpr("ae.app_id ASC").
@@ -226,9 +230,11 @@ func loadAppEditorSummaries(ctx context.Context, db *bun.DB, appIDs []string) (m
 	editorsByAppID := make(map[string][]models.AppUserSummary, len(appIDs))
 	for _, row := range rows {
 		editorsByAppID[row.AppID] = append(editorsByAppID[row.AppID], models.AppUserSummary{
-			ID:       row.UserID,
-			Username: row.Username,
-			Email:    row.Email,
+			ID:          row.UserID,
+			Username:    row.Username,
+			Email:       row.Email,
+			DisplayName: row.Name,
+			AvatarURL:   row.Avatar,
 		})
 	}
 
@@ -323,7 +329,7 @@ func GetApps(c *gin.Context, db *bun.DB) {
 
 	query := db.NewSelect().
 		Model(&apps).
-		Relation("Owner").
+		Relation("Owner", ownerColumns).
 		OrderExpr("is_featured DESC").
 		OrderExpr(fmt.Sprintf("a.%s %s", sortField, sortDir)).
 		OrderExpr("a.id ASC")
@@ -624,7 +630,7 @@ func GetApp(c *gin.Context, db *bun.DB) {
 	id := c.Param("id")
 	viewerID, viewerRole, hasViewer := getViewerContext(c)
 	var app models.Apps
-	err := db.NewSelect().Model(&app).Where("a.id = ?", id).Relation("Owner").Scan(c)
+	err := db.NewSelect().Model(&app).Where("a.id = ?", id).Relation("Owner", ownerColumns).Scan(c)
 	if err != nil {
 		httperror.StatusNotFound(c, "App not found", err)
 		return
