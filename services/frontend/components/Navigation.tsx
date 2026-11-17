@@ -178,16 +178,6 @@ export function Navigation() {
           },
         ]
       : []),
-    ...(user
-      ? [
-          {
-            href: "/updates",
-            label: "Updates",
-            icon: Bell,
-            active: pathname === "/updates",
-          },
-        ]
-      : []),
   ];
   const searchPages: SiteSearchPage[] = [
     ...regularNavLinks.map((link) => ({
@@ -196,8 +186,11 @@ export function Navigation() {
       icon: link.icon,
       external: link.href === documentationLink.href,
     })),
-    { href: "/neuigkeiten", label: "Neuigkeiten der Woche", icon: Newspaper },
-    ...(user ? [{ href: "/profil", label: "Mein Profil", icon: UserRound }] : []),
+    { href: "/neuigkeiten", label: "Wochenrückblick", icon: Newspaper },
+    ...(user ? [
+      { href: "/profil", label: "Mein Profil", icon: UserRound },
+      { href: "/profil/benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
+    ] : []),
     ...(user?.role === "admin" ? [{ href: "/verwaltung", label: "Verwaltung", icon: LayoutDashboard }] : []),
   ];
   const desktopNavLinks = regularNavLinks.filter(
@@ -208,13 +201,6 @@ export function Navigation() {
     : regularNavLinks;
 
   const countBadge = (href: string) => {
-    if (href === "/updates" && totalUnread > 0) {
-      return (
-        <Badge size="sm" variant="info" aria-label={`${totalUnread} ungelesene Updates`}>
-          {totalUnread > 99 ? "99+" : totalUnread}
-        </Badge>
-      );
-    }
     if (href === "/faq" && openFAQCount > 0) {
       return (
         <Badge size="sm" variant="info" aria-label={`${openFAQCount} unbeantwortete FAQ-Fragen`}>
@@ -352,6 +338,25 @@ export function Navigation() {
             </Tooltip.Content>
           </Tooltip>
           <SiteSearch open={searchOpen} onOpenChange={setSearchOpen} pages={searchPages} />
+
+          {user && !loading && (
+            <Tooltip>
+              <Tooltip.Trigger render={
+                <Button
+                  variant={pathname === "/profil/benachrichtigungen" ? "secondary" : "ghost"}
+                  size="icon-sm"
+                  className="relative"
+                  aria-label={totalUnread > 0 ? `Benachrichtigungen: ${totalUnread} ungelesen` : "Benachrichtigungen"}
+                  aria-current={pathname === "/profil/benachrichtigungen" ? "page" : undefined}
+                  render={<NextLink href="/profil/benachrichtigungen" />}
+                />
+              }>
+                <Bell />
+                {totalUnread > 0 && <span aria-hidden="true" className="absolute end-0.5 top-0.5 size-2 rounded-full bg-info ring-2 ring-background" />}
+              </Tooltip.Trigger>
+              <Tooltip.Content>{totalUnread > 0 ? `${totalUnread} ungelesene Benachrichtigungen` : "Benachrichtigungen"}</Tooltip.Content>
+            </Tooltip>
+          )}
 
           {(!user || loading) && <ThemeSwitcher />}
 

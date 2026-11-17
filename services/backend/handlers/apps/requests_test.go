@@ -1,6 +1,7 @@
 package apps
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -96,6 +97,60 @@ func TestLoadRequestIncludesVoterProfiles(t *testing.T) {
 		if profiles != "[]" && (len(row.Voters) != 1 || row.Voters[0].ID != viewer || row.Voters[0].DisplayName != "Alex" || row.Voters[0].AvatarURL != "/avatar.png") {
 			t.Fatalf("unexpected voters: %+v", row.Voters)
 		}
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRequestNotificationKind(t *testing.T) {
+	ptr := func(s string) *string { return &s }
+	for _, test := range []struct {
+		name    string
+		current requestRow
+		body    updateRequestBody
+		want    string
+	}{
+		{"new response", requestRow{}, updateRequestBody{Response: ptr(" Answer ")}, "response"},
+		{"unchanged response", requestRow{Response: "Answer"}, updateRequestBody{Response: ptr(" Answer ")}, ""},
+		{"cleared response", requestRow{Response: "Answer"}, updateRequestBody{Response: ptr(" ")}, ""},
+		{"fulfillment", requestRow{Status: requestOpen}, updateRequestBody{Status: ptr(requestFulfilled)}, "fulfilled"},
+		{"already fulfilled", requestRow{Status: requestFulfilled}, updateRequestBody{Status: ptr(requestFulfilled)}, ""},
+		{"combined edit", requestRow{Status: requestOpen}, updateRequestBody{Status: ptr(requestFulfilled), Response: ptr("Answer")}, "fulfilled"},
+		{"title edit", requestRow{}, updateRequestBody{Title: ptr("New title")}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := requestNotificationKind(test.current, test.body); got != test.want {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRequestUpdateRollsBackIfNotificationDeliveryFails(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	sqlDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := bun.NewDB(sqlDB, pgdialect.New())
+	defer db.Close()
+	viewer, id := uuid.New(), uuid.New()
+	mock.ExpectQuery("SELECT r.id").WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "status", "title"}).AddRow(id, viewer, requestOpen, "Original"))
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE .*app_requests.*status").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO user_request_notifications.*SELECT recipient.user_id.*UNION SELECT user_id FROM app_request_votes.*recipient.user_id <>").WillReturnError(errors.New("delivery failed"))
+	mock.ExpectRollback()
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPatch, "/requests/"+id.String(), strings.NewReader(`{"status":"fulfilled"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Params = gin.Params{{Key: "id", Value: id.String()}}
+	c.Set("user_id", viewer)
+	c.Set("role", "admin")
+	UpdateRequest(c, db)
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("status %d: %s", recorder.Code, recorder.Body.String())
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)

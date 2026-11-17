@@ -26,6 +26,7 @@ import { toast } from '@/lib/toast';
 import { ArrowUp, CheckCircle2, CircleDashed, Lightbulb, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import NextLink from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useId, useMemo, useState } from 'react';
 
 type Status = 'open' | 'planned' | 'fulfilled' | 'closed';
@@ -344,7 +345,7 @@ function RequestCard({
   const hasMenu = canEdit || item.canRespond || item.mine || item.canModerate;
 
   return (
-    <li className="flex gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/[0.07] sm:gap-4 sm:p-5">
+    <li id={`bedarf-${item.id}`} className="scroll-mt-28 target:ring-2 target:ring-primary/40 flex gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/[0.07] sm:gap-4 sm:p-5">
       {signedIn ? (
         <VoteButton item={item} disabled={busy} onVote={onVote} />
       ) : (
@@ -416,10 +417,12 @@ function RequestCard({
 }
 
 function RequestsContent() {
+  const searchParams = useSearchParams();
+  const selectedId = searchParams.get("meldung");
   const { user } = useAuth();
   const [items, setItems] = useState<Request[] | null>(null);
   const [apps, setApps] = useState<AppConfig[]>([]);
-  const [tab, setTab] = useState('active');
+  const [tab, setTab] = useState(selectedId ? 'all' : 'active');
   const [sort, setSort] = useState('votes');
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -432,18 +435,33 @@ function RequestsContent() {
   useEffect(() => {
     let active = true;
     const id = window.setTimeout(() => {
-      request<Request[]>(`/requests?sort=${sort}`)
-        .then((data) => { if (active) { setItems(data); setError(''); } })
+      Promise.all([
+        request<Request[]>(`/requests?sort=${sort}`),
+        selectedId ? request<Request>(`/requests/${encodeURIComponent(selectedId)}`) : Promise.resolve(null),
+      ])
+        .then(([data, selected]) => {
+          if (active) {
+            setItems(selected && !data.some((item) => item.id === selected.id) ? [selected, ...data] : data);
+            if (selected) setTab('all');
+            setError('');
+          }
+        })
         .catch((err: Error) => { if (active) setError(err.message); });
     }, 0);
     return () => { active = false; window.clearTimeout(id); };
-  }, [sort, user?.id]);
+  }, [sort, user?.id, selectedId]);
 
   useEffect(() => {
     let active = true;
     void loadApps().then((loaded) => { if (active) setApps(loaded.sort((a, b) => a.name.localeCompare(b.name, 'de'))); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!selectedId || !items) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(`bedarf-${selectedId}`)?.scrollIntoView({ block: 'center' }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedId, items]);
 
   const replace = (saved: Request) => setItems((current) => (current ?? []).map((entry) => (entry.id === saved.id ? saved : entry)));
   const insert = (saved: Request) => setItems((current) => [saved, ...(current ?? [])]);

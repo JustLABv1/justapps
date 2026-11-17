@@ -399,7 +399,24 @@ func UpdateRequest(c *gin.Context, db *bun.DB) {
 		httperror.StatusBadRequest(c, "Nichts zu ändern", errors.New("no changes"))
 		return
 	}
-	if _, err := set.Set("updated_at = now()").Exec(ctx); err != nil {
+	kind := requestNotificationKind(current, body)
+	err = db.RunInTx(ctx, nil, func(txCtx context.Context, tx bun.Tx) error {
+		if _, err := set.Conn(tx).Set("updated_at = now()").Exec(txCtx); err != nil {
+			return err
+		}
+		if kind == "" {
+			return nil
+		}
+		// UNION deduplicates authors who also voted. The person making the change
+		// does not need a notification about their own action.
+		_, err := tx.NewRaw(`INSERT INTO user_request_notifications (user_id, request_id, kind, response)
+   SELECT recipient.user_id, r.id, ?, r.response FROM app_requests r
+   JOIN (SELECT user_id FROM app_requests WHERE id = ?
+         UNION SELECT user_id FROM app_request_votes WHERE request_id = ?) recipient ON true
+   WHERE r.id = ? AND recipient.user_id <> ?`, kind, id, id, id, viewer).Exec(txCtx)
+		return err
+	})
+	if err != nil {
 		httperror.InternalServerError(c, "Bedarfsmeldung konnte nicht gespeichert werden", err)
 		return
 	}
@@ -443,4 +460,40 @@ func DeleteRequest(c *gin.Context, db *bun.DB) {
 	}
 	audit.WriteAudit(c.Request.Context(), db, viewer.String(), "request.delete", "deleted request "+current.Title)
 	c.Status(http.StatusNoContent)
+}
+
+// A single edit produces one notification, with fulfillment taking precedence.
+func requestNotificationKind(current requestRow, body updateRequestBody) string {
+	if body.Status != nil && *body.Status == requestFulfilled && current.Status != requestFulfilled {
+		return "fulfilled"
+	}
+	if body.Response != nil {
+		response := strings.TrimSpace(*body.Response)
+		if response != "" && response != current.Response {
+			return "response"
+		}
+	}
+	return ""
+}
+
+// GetRequest resolves notification links even when the request is outside the first list page.
+func GetRequest(c *gin.Context, db *bun.DB) {
+	if !ensureAppStoreAccess(c, db) {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httperror.StatusNotFound(c, "Bedarfsmeldung nicht gefunden", err)
+		return
+	}
+	viewer, role, hasViewer := getViewerContext(c)
+	row, err := loadRequest(c, db, id, viewer)
+	if err != nil {
+		httperror.StatusNotFound(c, "Bedarfsmeldung nicht gefunden", err)
+		return
+	}
+	row.decorate(viewer, hasViewer, role)
+	rows := []requestRow{row}
+	markResponders(c, db, rows, viewer, hasViewer)
+	c.JSON(http.StatusOK, rows[0])
 }

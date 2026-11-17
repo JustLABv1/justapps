@@ -361,3 +361,13 @@ export const getApps = (): AppConfig[] => {
 };
 
 export const apps: AppConfig[] = []; // Keep as fallback or for types if needed
+
+export interface RequestNotification {
+  id: string;
+  requestId: string;
+  title: string;
+  kind: 'response' | 'fulfilled';
+  response: string;
+  createdAt: string;
+  seenAt?: string | null;
+}

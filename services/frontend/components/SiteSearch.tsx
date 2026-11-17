@@ -29,7 +29,7 @@ const TONES: Record<string, string> = {
   '/faq': 'bg-amber-500',
   '/docs': 'bg-teal-500',
   '/meine-apps': 'bg-emerald-500',
-  '/updates': 'bg-rose-500',
+  '/profil/benachrichtigungen': 'bg-rose-500',
   '/profil': 'bg-sky-500',
   '/neuigkeiten': 'bg-orange-500',
   '/bedarf': 'bg-yellow-500',
@@ -166,8 +166,8 @@ export function SiteSearch({
                 value="updates"
                 icon={<Tile tone="bg-rose-500"><Sparkles /></Tile>}
                 subtitle={totalUnread > 0 ? `${totalUnread} ungelesen` : 'Alles gelesen'}
-                kind="Updates"
-                onSelect={() => go('/updates')}
+                kind="Benachrichtigungen"
+                onSelect={() => go('/profil/benachrichtigungen')}
               >
                 Was ist neu
               </Command.Item>
@@ -274,9 +274,9 @@ export function SiteSearch({
                 value="action:updates"
                 icon={<Tile tone="bg-rose-500"><Bell /></Tile>}
                 kind="Aktion"
-                onSelect={() => go('/updates')}
+                onSelect={() => go('/profil/benachrichtigungen')}
               >
-                Updates lesen
+                Benachrichtigungen lesen
               </Command.Item>
             )}
             {user ? (

@@ -301,6 +301,10 @@ func MarkAllReleaseUpdatesSeen(context *gin.Context, db *bun.DB) {
 		return
 	}
 
+	if _, err := db.NewRaw(`UPDATE user_request_notifications SET seen_at = now() WHERE user_id = ? AND seen_at IS NULL`, userID).Exec(context.Request.Context()); err != nil {
+		httperror.InternalServerError(context, "Bedarfsbenachrichtigungen konnten nicht als gelesen markiert werden", err)
+		return
+	}
 	context.Status(http.StatusNoContent)
 }
 

@@ -215,7 +215,7 @@ export default function MailSettingsPage() {
           <Card.Title>Wochenrückblick</Card.Title>
           <Card.Description>
             Eine Mail mit den neuen und aktualisierten Apps der vergangenen Woche an alle, die sie im Profil abonniert haben. Die gleiche Zusammenfassung steht jederzeit unter{' '}
-            <NextLink href="/neuigkeiten" className="underline underline-offset-2 hover:text-foreground">Neuigkeiten</NextLink>.
+            <NextLink href="/neuigkeiten" className="underline underline-offset-2 hover:text-foreground">Wochenrückblick</NextLink>.
           </Card.Description>
         </Card.Header>
         <Card.Content className="flex flex-col gap-4">

@@ -271,7 +271,7 @@ function DigestContent() {
             <Sparkles className="size-4" />
             Wochenrückblick{digest?.current ? ' · diese Woche bisher' : ''}
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{digest?.label ?? 'Neuigkeiten'}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{digest?.label ?? 'Wochenrückblick'}</h1>
           <p className="text-base text-pretty text-muted-foreground sm:text-lg">
             {digest
               ? summary
@@ -280,7 +280,8 @@ function DigestContent() {
               : 'Was im Katalog neu ist und was sich geändert hat.'}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {user && <Button variant="ghost" size="sm" render={<NextLink href="/profil/benachrichtigungen" />}>Meine Benachrichtigungen</Button>}
           <Button variant="outline" size="icon" aria-label="Vorherige Woche" disabled={!digest} onClick={() => digest && goTo(digest.previous)}>
             <ChevronLeft />
           </Button>

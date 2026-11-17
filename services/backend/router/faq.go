@@ -13,6 +13,7 @@ func RegisterFAQ(router *gin.RouterGroup, db *bun.DB) {
 	// Bedarfsmeldungen: what people are looking for.
 	requests := router.Group("/requests")
 	requests.GET("", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.ListRequests(c, db) })
+	requests.GET("/:id", middlewares.OptionalAuth(db), func(c *gin.Context) { apps.GetRequest(c, db) })
 	requests.POST("", middlewares.Auth(db), func(c *gin.Context) { apps.CreateRequest(c, db) })
 	requests.PATCH("/:id", middlewares.Auth(db), func(c *gin.Context) { apps.UpdateRequest(c, db) })
 	requests.DELETE("/:id", middlewares.Auth(db), func(c *gin.Context) { apps.DeleteRequest(c, db) })

@@ -42,7 +42,7 @@ export function NotificationSettings() {
           <Bell className="size-4 text-muted-foreground" />
           Benachrichtigungen
         </Card.Title>
-        <Card.Description>Worüber dich die Updates informieren. Antworten auf deine eigenen Fragen bekommst du immer.</Card.Description>
+        <Card.Description>Wähle, zu welchen Apps du Benachrichtigungen erhältst. Antworten auf deine Fragen sowie Antworten und Erfüllungen deiner eigenen oder unterstützten Bedarfsmeldungen bekommst du immer.</Card.Description>
       </Card.Header>
       <Card.Content>
         <div className="flex flex-col gap-4">
@@ -67,7 +67,7 @@ export function NotificationSettings() {
                 <span className="text-sm font-medium">Wochenrückblick per E-Mail</span>
                 <span className="text-xs text-muted-foreground">
                   Einmal pro Woche eine Mail mit neuen und aktualisierten Apps. Auch jederzeit unter{' '}
-                  <NextLink href="/neuigkeiten" className="underline underline-offset-2 hover:text-foreground">Neuigkeiten</NextLink> zu lesen.
+                  <NextLink href="/neuigkeiten" className="underline underline-offset-2 hover:text-foreground">Wochenrückblick</NextLink> zu lesen.
                 </span>
               </div>
               <Switch
