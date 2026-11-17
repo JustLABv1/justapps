@@ -1,776 +1,462 @@
 "use client";
 
+import { AREAS, RELEASE_TYPE } from "@/components/app-detail/ReleaseList";
 import { ReleaseDiffViewer } from "@/components/ReleaseDiffViewer";
-import { PageContainer, PageFilters, PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/panelui/badge";
+import { Button } from "@/components/panelui/button";
+import { Dialog } from "@/components/panelui/dialog";
+import { Spinner } from "@/components/panelui/spinner";
+import { Switch } from "@/components/panelui/switch";
+import { Tabs } from "@/components/panelui/tabs";
+import { Tooltip } from "@/components/panelui/tooltip";
 import type { FAQAnswerNotification, FAQNotification, ReleaseInboxItem } from "@/config/apps";
 import { useAuth } from "@/context/AuthContext";
 import { useUpdates } from "@/context/UpdatesContext";
-import {
-  Accordion,
-  Button,
-  Card,
-  Chip,
-  Disclosure,
-  Spinner,
-  Switch,
-} from "@heroui/react";
+import { getImageAssetUrl } from "@/lib/assets";
 import { toast } from "@/lib/toast";
-import {
-  Bell,
-  CheckCheck,
-  CheckCircle2,
-  ExternalLink,
-  MessageCircleReply,
-  MessageCircleQuestion,
-  RefreshCw,
-  Settings2,
-} from "lucide-react";
+import { Bell, Check, CheckCheck, ChevronDown, MessageCircleQuestion, MessageCircleReply, Settings2 } from "lucide-react";
 import Image from "next/image";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getImageAssetUrl } from "../../lib/assets";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const UPDATES_PAGE_SIZE = 15;
-type NotificationTypeFilter = "all" | "release" | "question" | "answer";
+const PAGE_SIZE = 15;
+type Kind = "release" | "question" | "answer";
+type Filter = "all" | Kind;
 
-function reasonLabel(reason: string) {
-  switch (reason) {
-    case "favorite":
-      return "Favorit";
-    case "recently_viewed":
-      return "Zuletzt angesehen";
-    case "owned":
-      return "Eigene App";
-    default:
-      return reason;
+/** One inbox entry, whatever it is about, so the three kinds share one timeline. */
+type Entry =
+  | { kind: "release"; id: string; at: string; seen: boolean; item: ReleaseInboxItem }
+  | { kind: "question"; id: string; at: string; seen: boolean; item: FAQNotification }
+  | { kind: "answer"; id: string; at: string; seen: boolean; item: FAQAnswerNotification };
+
+const REASONS: Record<string, string> = {
+  favorite: "weil sie in deinen Favoriten ist",
+  recently_viewed: "weil du sie kürzlich angesehen hast",
+  owned: "weil du sie betreust",
+};
+
+const relative = new Intl.RelativeTimeFormat("de", { numeric: "auto" });
+function timeAgo(value: string) {
+  const seconds = (new Date(value).getTime() - Date.now()) / 1000;
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60]];
+  for (const [unit, size] of steps) if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit);
+  return "gerade eben";
+}
+
+/** Heute, Gestern, Diese Woche, Diesen Monat, Älter */
+function dayGroup(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.floor((today.getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / 86400000);
+  if (days <= 0) return "Heute";
+  if (days === 1) return "Gestern";
+  if (days < 7) return "Diese Woche";
+  if (days < 31) return "Diesen Monat";
+  return "Älter";
+}
+
+const hrefOf = (entry: Entry) => {
+  if (entry.kind === "release") return `/apps/${entry.item.appId}#changelog`;
+  if (entry.kind === "question") return `/apps/${entry.item.appId}?frage=${entry.item.questionId}#faq`;
+  return entry.item.scope === "global" ? `/faq?frage=${entry.item.questionId}` : `/apps/${entry.item.appId}?frage=${entry.item.questionId}#faq`;
+};
+
+function EntryIcon({ entry }: { entry: Entry }) {
+  if (entry.kind === "release") {
+    const src = getImageAssetUrl(entry.item.appIcon);
+    return (
+      <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted/40 text-lg">
+        {src ? <Image src={src} alt="" fill sizes="40px" className="object-contain p-1.5" unoptimized /> : entry.item.appIcon || entry.item.appName.charAt(0)}
+      </span>
+    );
   }
+  const Icon = entry.kind === "question" ? MessageCircleQuestion : MessageCircleReply;
+  return (
+    <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${entry.kind === "answer" ? "bg-success/12 text-success" : "bg-info/12 text-info"}`}>
+      <Icon className="size-5" />
+    </span>
+  );
+}
+
+function ReleaseDetails({ item }: { item: ReleaseInboxItem }) {
+  const [open, setOpen] = useState(false);
+  if (item.changeDetails.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <Button variant="ghost" size="sm" className="-ms-3 w-fit" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <ChevronDown className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        {open ? "Änderungen ausblenden" : `Geändert: ${item.changeDetails.map((detail) => detail.label).join(", ")}`}
+      </Button>
+      {open && item.changeDetails.map((detail) => <ReleaseDiffViewer key={`${detail.area}-${detail.field}`} detail={detail} />)}
+    </div>
+  );
+}
+
+function EntryRow({ entry, onOpen, onMarkSeen, pending }: { entry: Entry; onOpen: () => void; onMarkSeen: () => void; pending: boolean }) {
+  let title: ReactNode;
+  let body: ReactNode;
+  let meta: ReactNode;
+  if (entry.kind === "release") {
+    const { item } = entry;
+    const type = RELEASE_TYPE[item.releaseType] ?? { label: item.releaseType, variant: "secondary" as const };
+    title = (
+      <>
+        <span className="font-medium">{item.appName}</span>
+        <span className="font-mono text-xs text-muted-foreground">v{item.version}</span>
+        <Badge variant={type.variant} size="sm">{type.label}</Badge>
+      </>
+    );
+    body = (
+      <>
+        <p className="text-sm">{item.title}</p>
+        {item.summary && <p className="text-sm text-muted-foreground">{item.summary}</p>}
+        {item.changedAreas.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {item.changedAreas.map((area) => <Badge key={area} variant="outline" size="sm">{AREAS[area]?.icon}{AREAS[area]?.label ?? area}</Badge>)}
+          </div>
+        )}
+      </>
+    );
+    meta = REASONS[item.reason] ? `Du siehst das, ${REASONS[item.reason]}.` : null;
+  } else if (entry.kind === "question") {
+    const { item } = entry;
+    title = (
+      <>
+        <span className="font-medium">Neue Frage zu {item.appName}</span>
+        {item.answerCount === 0 ? <Badge variant="warning" size="sm">Antwort gesucht</Badge> : <span className="text-xs text-muted-foreground">{item.answerCount} {item.answerCount === 1 ? "Antwort" : "Antworten"}</span>}
+      </>
+    );
+    body = <p className="line-clamp-2 text-sm text-muted-foreground"><span className="text-foreground">{item.questioner || "Jemand"}</span> fragt: „{item.question}“</p>;
+  } else {
+    const { item } = entry;
+    title = <span className="font-medium">{item.answerer || "Jemand"} hat deine Frage beantwortet</span>;
+    body = (
+      <>
+        <p className="line-clamp-1 text-sm text-muted-foreground">„{item.question}“ · {item.scope === "global" ? "Allgemein" : item.appName}</p>
+        <p className="line-clamp-2 border-s-2 ps-3 text-sm">{item.answer}</p>
+      </>
+    );
+  }
+
+  return (
+    <li className={`group relative flex gap-3 px-4 py-4 transition-colors hover:bg-muted/30 sm:px-5 ${entry.seen ? "" : "bg-info/[0.04]"}`}>
+      <span aria-hidden="true" className={`mt-4 size-2 shrink-0 rounded-full ${entry.seen ? "bg-transparent" : "bg-info"}`} />
+      <EntryIcon entry={entry} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {title}
+          {!entry.seen && <span className="sr-only">(ungelesen)</span>}
+        </div>
+        {body}
+        <p className="pt-0.5 text-xs text-muted-foreground">
+          <time dateTime={entry.at} title={new Date(entry.at).toLocaleString("de-DE")}>{timeAgo(entry.at)}</time>
+          {meta && <> · {meta}</>}
+        </p>
+        {entry.kind === "release" && <ReleaseDetails item={entry.item} />}
+      </div>
+      <div className="flex shrink-0 items-start gap-1">
+        {!entry.seen && (
+          <Tooltip>
+            <Tooltip.Trigger render={<Button variant="ghost" size="icon-sm" loading={pending} aria-label="Als gelesen markieren" onClick={onMarkSeen} />}>
+              <Check />
+            </Tooltip.Trigger>
+            <Tooltip.Content>Als gelesen markieren</Tooltip.Content>
+          </Tooltip>
+        )}
+        <Button variant="outline" size="sm" render={<NextLink href={hrefOf(entry)} onClick={onOpen} />}>
+          Öffnen
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function PreferencesDialog() {
+  const { preferences, updatePreferences } = useUpdates();
+  const [saving, setSaving] = useState<string | null>(null);
+  const rules = [
+    { key: "notifyFavoritedApps", title: "Favorisierte Apps", description: "Neue Versionen von Apps, die du mit einem Herz markiert hast." },
+    { key: "notifyRecentlyViewedApps", title: "Kürzlich angesehene Apps", description: "Neue Versionen von Apps, die du dir in letzter Zeit angesehen hast." },
+    { key: "notifyOwnedManagedApps", title: "Eigene und betreute Apps", description: "Neue Versionen und Fragen zu Apps, die dir gehören oder die du bearbeitest." },
+  ] as const;
+
+  const change = async (key: (typeof rules)[number]["key"], value: boolean) => {
+    if (!preferences) return;
+    setSaving(key);
+    const ok = await updatePreferences({
+      notifyFavoritedApps: preferences.notifyFavoritedApps,
+      notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
+      notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
+      [key]: value,
+    });
+    setSaving(null);
+    if (!ok) toast.danger("Die Einstellung konnte nicht gespeichert werden.");
+  };
+
+  return (
+    <Dialog>
+      <Dialog.Trigger render={<Button variant="outline" />}>
+        <Settings2 />
+        Einstellungen
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Header title="Worüber du informiert wirst" description="Antworten auf deine eigenen Fragen bekommst du immer." />
+        <Dialog.Body>
+          <div className="flex flex-col gap-5">
+            {rules.map((rule) => (
+              <div key={rule.key} className="flex items-start justify-between gap-6">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium">{rule.title}</span>
+                  <span className="text-sm text-muted-foreground">{rule.description}</span>
+                </div>
+                <Switch
+                  label={rule.title}
+                  checked={preferences?.[rule.key] ?? true}
+                  disabled={!preferences}
+                  pending={saving === rule.key}
+                  onCheckedChange={(value) => void change(rule.key, value)}
+                />
+              </div>
+            ))}
+          </div>
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog>
+  );
 }
 
 export default function UpdatesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const {
-    loadInboxItems,
-    loadFAQNotifications,
-    loadFAQAnswerNotifications,
-    markAsSeen,
-    markAllAsSeen,
-    markFAQAsSeen,
-    markFAQAnswerAsSeen,
-    refreshSummary,
-    preferences,
-    updatePreferences,
-    loaded,
+    loadInboxItems, loadFAQNotifications, loadFAQAnswerNotifications,
+    markAsSeen, markAllAsSeen, markFAQAsSeen, markFAQAnswerAsSeen, refreshSummary,
   } = useUpdates();
-  const [items, setItems] = useState<ReleaseInboxItem[]>([]);
-  const [faqNotifications, setFAQNotifications] = useState<FAQNotification[]>([]);
-  const [faqAnswerNotifications, setFAQAnswerNotifications] = useState<FAQAnswerNotification[]>([]);
-  const [pages, setPages] = useState({ releases: 1, questions: 1, answers: 1 });
-  const [hasMore, setHasMore] = useState({ releases: false, questions: false, answers: false });
-  const [pageLoading, setPageLoading] = useState(true);
+  const [releases, setReleases] = useState<ReleaseInboxItem[]>([]);
+  const [questions, setQuestions] = useState<FAQNotification[]>([]);
+  const [answers, setAnswers] = useState<FAQAnswerNotification[]>([]);
+  const [pages, setPages] = useState({ release: 1, question: 1, answer: 1 });
+  const [hasMore, setHasMore] = useState({ release: false, question: false, answer: false });
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
-  const [markingAllSeen, setMarkingAllSeen] = useState(false);
-  const [savingPreferences, setSavingPreferences] = useState(false);
-  const [preferencesExpanded, setPreferencesExpanded] = useState(false);
-  const [notificationType, setNotificationType] = useState<NotificationTypeFilter>("all");
-  const safeItems = Array.isArray(items) ? items : [];
-  const safeFAQNotifications = Array.isArray(faqNotifications)
-    ? faqNotifications
-    : [];
-  const safeFAQAnswerNotifications = Array.isArray(faqAnswerNotifications)
-    ? faqAnswerNotifications
-    : [];
-  const hasUnreadItems = safeItems.some((item) => !item.seenAt)
-    || safeFAQNotifications.some((item) => !item.seenAt)
-    || safeFAQAnswerNotifications.some((item) => !item.seenAt);
-  const showsReleases = notificationType === "all" || notificationType === "release";
-  const showsQuestions = notificationType === "all" || notificationType === "question";
-  const showsAnswers = notificationType === "all" || notificationType === "answer";
-  const hasVisibleNotifications = (showsReleases && safeItems.length > 0)
-    || (showsQuestions && safeFAQNotifications.length > 0)
-    || (showsAnswers && safeFAQAnswerNotifications.length > 0);
-  const hasMoreVisible = (showsReleases && hasMore.releases)
-    || (showsQuestions && hasMore.questions)
-    || (showsAnswers && hasMore.answers);
-  const activePreferenceCount = preferences
-    ? [preferences.notifyFavoritedApps, preferences.notifyRecentlyViewedApps, preferences.notifyOwnedManagedApps].filter(Boolean).length
-    : 0;
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/");
-    }
+    if (!authLoading && !user) router.push("/");
   }, [authLoading, router, user]);
+
+  const loadFirst = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [r, q, a] = await Promise.all([loadInboxItems("all"), loadFAQNotifications("all"), loadFAQAnswerNotifications("all")]);
+      setReleases(r.items);
+      setQuestions(q.items);
+      setAnswers(a.items);
+      setPages({ release: r.page, question: q.page, answer: a.page });
+      setHasMore({ release: r.hasMore, question: q.hasMore, answer: a.hasMore });
+    } finally {
+      setLoading(false);
+    }
+  }, [loadFAQAnswerNotifications, loadFAQNotifications, loadInboxItems]);
 
   useEffect(() => {
     if (!user) return;
+    const timeout = window.setTimeout(() => void loadFirst(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadFirst, user]);
 
-    const timeoutId = window.setTimeout(async () => {
-      setPageLoading(true);
-      try {
-        const [nextItems, nextFAQNotifications, nextFAQAnswerNotifications] = await Promise.all([
-          loadInboxItems("all"),
-          loadFAQNotifications("all"),
-          loadFAQAnswerNotifications("all"),
-        ]);
-        setItems(nextItems.items);
-        setFAQNotifications(nextFAQNotifications.items);
-        setFAQAnswerNotifications(nextFAQAnswerNotifications.items);
-        setPages({ releases: nextItems.page, questions: nextFAQNotifications.page, answers: nextFAQAnswerNotifications.page });
-        setHasMore({ releases: nextItems.hasMore, questions: nextFAQNotifications.hasMore, answers: nextFAQAnswerNotifications.hasMore });
-      } finally {
-        setPageLoading(false);
-      }
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
+  // New entries arrive while the page is open in another tab; reload when it is looked at again.
+  const lastRefresh = useRef(0);
+  const refreshSummaryRef = useRef(refreshSummary);
+  useEffect(() => {
+    refreshSummaryRef.current = refreshSummary;
+  });
+  useEffect(() => {
+    if (!user) return;
+    lastRefresh.current = Date.now();
+    const onFocus = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastRefresh.current < 60_000) return;
+      lastRefresh.current = Date.now();
+      void refreshSummaryRef.current().then(loadFirst);
     };
-  }, [loadFAQAnswerNotifications, loadFAQNotifications, loadInboxItems, user]);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => document.removeEventListener("visibilitychange", onFocus);
+  }, [loadFirst, user]);
 
-  const handleRefresh = async () => {
-    setPageLoading(true);
-    try {
-      await refreshSummary();
-      const [nextItems, nextFAQNotifications, nextFAQAnswerNotifications] = await Promise.all([
-        loadInboxItems("all"),
-        loadFAQNotifications("all"),
-        loadFAQAnswerNotifications("all"),
-      ]);
-      setItems(nextItems.items);
-      setFAQNotifications(nextFAQNotifications.items);
-      setFAQAnswerNotifications(nextFAQAnswerNotifications.items);
-      setPages({ releases: nextItems.page, questions: nextFAQNotifications.page, answers: nextFAQAnswerNotifications.page });
-      setHasMore({ releases: nextItems.hasMore, questions: nextFAQNotifications.hasMore, answers: nextFAQAnswerNotifications.hasMore });
-    } finally {
-      setPageLoading(false);
-    }
-  };
+  const shows = (kind: Kind) => filter === "all" || filter === kind;
+  const moreAvailable = (["release", "question", "answer"] as const).some((kind) => shows(kind) && hasMore[kind]);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMoreVisible) return;
+    if (loadingMore || !moreAvailable) return;
     setLoadingMore(true);
     try {
-      const [nextReleases, nextQuestions, nextAnswers] = await Promise.all([
-        showsReleases && hasMore.releases ? loadInboxItems("all", pages.releases + 1, UPDATES_PAGE_SIZE) : null,
-        showsQuestions && hasMore.questions ? loadFAQNotifications("all", pages.questions + 1, UPDATES_PAGE_SIZE) : null,
-        showsAnswers && hasMore.answers ? loadFAQAnswerNotifications("all", pages.answers + 1, UPDATES_PAGE_SIZE) : null,
+      const want = (kind: Kind) => (filter === "all" || filter === kind) && hasMore[kind];
+      const [r, q, a] = await Promise.all([
+        want("release") ? loadInboxItems("all", pages.release + 1, PAGE_SIZE) : null,
+        want("question") ? loadFAQNotifications("all", pages.question + 1, PAGE_SIZE) : null,
+        want("answer") ? loadFAQAnswerNotifications("all", pages.answer + 1, PAGE_SIZE) : null,
       ]);
-      if (nextReleases) setItems((current) => [...current, ...nextReleases.items]);
-      if (nextQuestions) setFAQNotifications((current) => [...current, ...nextQuestions.items]);
-      if (nextAnswers) setFAQAnswerNotifications((current) => [...current, ...nextAnswers.items]);
-      setPages((current) => ({
-        releases: nextReleases?.page ?? current.releases,
-        questions: nextQuestions?.page ?? current.questions,
-        answers: nextAnswers?.page ?? current.answers,
-      }));
-      setHasMore((current) => ({
-        releases: nextReleases?.hasMore ?? current.releases,
-        questions: nextQuestions?.hasMore ?? current.questions,
-        answers: nextAnswers?.hasMore ?? current.answers,
-      }));
+      if (r) setReleases((current) => [...current, ...r.items]);
+      if (q) setQuestions((current) => [...current, ...q.items]);
+      if (a) setAnswers((current) => [...current, ...a.items]);
+      setPages((current) => ({ release: r?.page ?? current.release, question: q?.page ?? current.question, answer: a?.page ?? current.answer }));
+      setHasMore((current) => ({ release: r?.hasMore ?? current.release, question: q?.hasMore ?? current.question, answer: a?.hasMore ?? current.answer }));
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, hasMoreVisible, loadFAQAnswerNotifications, loadFAQNotifications, loadInboxItems, loadingMore, pages, showsAnswers, showsQuestions, showsReleases]);
+  }, [filter, hasMore, loadFAQAnswerNotifications, loadFAQNotifications, loadInboxItems, loadingMore, moreAvailable, pages]);
 
   useEffect(() => {
     const target = loadMoreRef.current;
-    if (!target || pageLoading || !hasMoreVisible) return;
+    if (!target || loading || !moreAvailable) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting) void loadMore();
     }, { rootMargin: "320px 0px" });
     observer.observe(target);
     return () => observer.disconnect();
-  }, [hasMoreVisible, loadMore, pageLoading]);
+  }, [loadMore, loading, moreAvailable]);
 
-  const handleMarkSeen = async (itemId: string) => {
-    setUpdatingItemId(itemId);
+  const entries = useMemo<Entry[]>(() => [
+    ...releases.map((item) => ({ kind: "release" as const, id: item.id, at: item.publishedAt, seen: !!item.seenAt, item })),
+    ...questions.map((item) => ({ kind: "question" as const, id: item.id, at: item.createdAt, seen: !!item.seenAt, item })),
+    ...answers.map((item) => ({ kind: "answer" as const, id: item.id, at: item.createdAt, seen: !!item.seenAt, item })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()), [releases, questions, answers]);
+
+  const unread = (kind?: Kind) => entries.filter((entry) => !entry.seen && (!kind || entry.kind === kind)).length;
+  const visible = entries.filter((entry) => shows(entry.kind) && (!unreadOnly || !entry.seen));
+  const groups = visible.reduce<{ label: string; entries: Entry[] }[]>((list, entry) => {
+    const label = dayGroup(entry.at);
+    const last = list[list.length - 1];
+    if (last?.label === label) last.entries.push(entry);
+    else list.push({ label, entries: [entry] });
+    return list;
+  }, []);
+
+  const markSeen = async (entry: Entry, quiet = false) => {
+    if (entry.seen) return;
+    setPendingId(entry.id);
     try {
-      const ok = await markAsSeen(itemId);
+      const ok = entry.kind === "release" ? await markAsSeen(entry.id) : entry.kind === "question" ? await markFAQAsSeen(entry.id) : await markFAQAnswerAsSeen(entry.id);
       if (!ok) {
-        toast.danger("Update konnte nicht als gelesen markiert werden.");
+        if (!quiet) toast.danger("Konnte nicht als gelesen markiert werden.");
         return;
       }
-      setItems((current) =>
-        current.map((item) =>
-          item.id === itemId
-            ? { ...item, seenAt: new Date().toISOString() }
-            : item,
-        ),
-      );
-    } finally {
-      setUpdatingItemId(null);
-    }
-  };
-
-  const handleMarkAllSeen = async () => {
-    if (!hasUnreadItems) return;
-
-    setMarkingAllSeen(true);
-    try {
-      const ok = await markAllAsSeen();
-      if (!ok) {
-        toast.danger("Updates konnten nicht als gelesen markiert werden.");
-        return;
-      }
-
       const seenAt = new Date().toISOString();
-      setItems((current) => current.map((item) => ({ ...item, seenAt })));
-      setFAQNotifications((current) =>
-        current.map((notification) => ({ ...notification, seenAt })),
-      );
-      setFAQAnswerNotifications((current) =>
-        current.map((notification) => ({ ...notification, seenAt })),
-      );
-      toast.success("Alle Updates wurden als gelesen markiert.");
+      const mark = <T extends { id: string; seenAt?: string | null }>(list: T[]) => list.map((item) => (item.id === entry.id ? { ...item, seenAt } : item));
+      if (entry.kind === "release") setReleases(mark);
+      else if (entry.kind === "question") setQuestions(mark);
+      else setAnswers(mark);
     } finally {
-      setMarkingAllSeen(false);
+      setPendingId(null);
     }
   };
 
-  const handleMarkFAQSeen = async (notificationId: string) => {
-    setUpdatingItemId(`faq:${notificationId}`);
+  const markAll = async () => {
+    setMarkingAll(true);
     try {
-      const ok = await markFAQAsSeen(notificationId);
-      if (!ok) {
-        toast.danger("FAQ-Benachrichtigung konnte nicht als gelesen markiert werden.");
+      if (!(await markAllAsSeen())) {
+        toast.danger("Die Updates konnten nicht als gelesen markiert werden.");
         return;
       }
-      setFAQNotifications((current) =>
-        current.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, seenAt: new Date().toISOString() }
-            : notification,
-        ),
-      );
+      const seenAt = new Date().toISOString();
+      setReleases((list) => list.map((item) => ({ ...item, seenAt })));
+      setQuestions((list) => list.map((item) => ({ ...item, seenAt })));
+      setAnswers((list) => list.map((item) => ({ ...item, seenAt })));
+      toast.success("Alles als gelesen markiert.");
     } finally {
-      setUpdatingItemId(null);
+      setMarkingAll(false);
     }
   };
 
-  const handleMarkFAQAnswerSeen = async (notificationId: string) => {
-    setUpdatingItemId(`faq-answer:${notificationId}`);
-    try {
-      const ok = await markFAQAnswerAsSeen(notificationId);
-      if (!ok) {
-        toast.danger("Antwort-Benachrichtigung konnte nicht als gelesen markiert werden.");
-        return;
-      }
-      setFAQAnswerNotifications((current) =>
-        current.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, seenAt: new Date().toISOString() }
-            : notification,
-        ),
-      );
-    } finally {
-      setUpdatingItemId(null);
-    }
-  };
-
-  const handlePreferenceChange = async (patch: {
-    notifyFavoritedApps: boolean;
-    notifyRecentlyViewedApps: boolean;
-    notifyOwnedManagedApps: boolean;
-  }) => {
-    setSavingPreferences(true);
-    try {
-      const ok = await updatePreferences(patch);
-      if (!ok) {
-        toast.danger(
-          "Benachrichtigungseinstellungen konnten nicht gespeichert werden.",
-        );
-      }
-    } finally {
-      setSavingPreferences(false);
-    }
-  };
-
-  if (authLoading || (!loaded && pageLoading)) {
+  if (authLoading) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3">
+      <div className="flex min-h-[40vh] items-center justify-center gap-3 text-muted-foreground">
         <Spinner />
-        <p className="text-sm text-muted-foreground">Updates werden geladen...</p>
+        Updates werden geladen …
       </div>
     );
   }
 
+  const totalUnread = unread();
+
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow="Posteingang"
-        title="Updates"
-        description="Neue Releases und wichtige FAQ-Aktivitäten zu Ihren Apps und Fragen."
-        actions={
-          <>
-          <Button
-            variant="secondary"
-            isDisabled={!hasUnreadItems || markingAllSeen}
-            isPending={markingAllSeen}
-            onPress={() => void handleMarkAllSeen()}
-            className="gap-2"
-          >
-            <CheckCheck className="h-4 w-4" />
-            Alle als gelesen markieren
-          </Button>
-          <Button variant="secondary" onPress={handleRefresh} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Aktualisieren
-          </Button>
-          </>
-        }
-      />
-
-      <PageFilters>
-        <span className="text-sm font-medium text-foreground">Benachrichtigungstyp</span>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Benachrichtigungen nach Typ filtern">
-          {([
-            ["all", "Alle"],
-            ["release", "Releases"],
-            ["question", "FAQ-Fragen"],
-            ["answer", "FAQ-Antworten"],
-          ] as const).map(([value, label]) => (
-            <Button key={value} size="sm" variant={notificationType === value ? "primary" : "secondary"} aria-pressed={notificationType === value} onPress={() => setNotificationType(value)}>
-              {label}
-            </Button>
-          ))}
+    <div className="flex w-full flex-col gap-6 pb-16">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Updates</h1>
+          <p className="text-muted-foreground">
+            {totalUnread > 0 ? `${totalUnread} ungelesen. ` : "Alles gelesen. "}
+            Neue Versionen deiner Apps und Neuigkeiten zu Fragen.
+          </p>
         </div>
-      </PageFilters>
+        <PreferencesDialog />
+      </header>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-        <Disclosure isExpanded={preferencesExpanded} onExpandedChange={setPreferencesExpanded}>
-          <Disclosure.Heading>
-            <Button
-              slot="trigger"
-              variant="ghost"
-              className="h-auto w-full justify-between rounded-none px-4 py-3.5 text-left sm:px-5"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted-foreground">
-                  <Settings2 className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold text-foreground">Benachrichtigungseinstellungen</span>
-                  <span className="block truncate text-xs font-normal text-muted-foreground">
-                    {preferences ? `${activePreferenceCount} von 3 Release-Regeln aktiv` : "Einstellungen werden geladen"}
-                  </span>
-                </span>
-              </span>
-              <Disclosure.Indicator className="ml-2 shrink-0 text-muted-foreground" />
-            </Button>
-          </Disclosure.Heading>
-          <Disclosure.Content>
-            <Disclosure.Body className="border-t border-border px-4 py-4 sm:px-5">
-              <p className="mb-4 text-sm text-muted-foreground">
-                Steuern Sie, für welche App-Beziehungen neue Releases in Ihrem Posteingang auftauchen.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Switch
-                  isSelected={preferences?.notifyFavoritedApps ?? true}
-                  isDisabled={savingPreferences || !preferences}
-                  onChange={(value) => {
-                    if (!preferences) return;
-                    void handlePreferenceChange({
-                      notifyFavoritedApps: value,
-                      notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
-                      notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
-                    });
-                  }}
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                    Favorisierte Apps
-                  </Switch.Content>
-                </Switch>
-                <Switch
-                  isSelected={preferences?.notifyRecentlyViewedApps ?? true}
-                  isDisabled={savingPreferences || !preferences}
-                  onChange={(value) => {
-                    if (!preferences) return;
-                    void handlePreferenceChange({
-                      notifyFavoritedApps: preferences.notifyFavoritedApps,
-                      notifyRecentlyViewedApps: value,
-                      notifyOwnedManagedApps: preferences.notifyOwnedManagedApps,
-                    });
-                  }}
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                    Zuletzt angesehene Apps
-                  </Switch.Content>
-                </Switch>
-                <Switch
-                  isSelected={preferences?.notifyOwnedManagedApps ?? true}
-                  isDisabled={savingPreferences || !preferences}
-                  onChange={(value) => {
-                    if (!preferences) return;
-                    void handlePreferenceChange({
-                      notifyFavoritedApps: preferences.notifyFavoritedApps,
-                      notifyRecentlyViewedApps: preferences.notifyRecentlyViewedApps,
-                      notifyOwnedManagedApps: value,
-                    });
-                  }}
-                >
-                  <Switch.Content>
-                    <Switch.Control>
-                      <Switch.Thumb />
-                    </Switch.Control>
-                    Eigene und verwaltete Apps
-                  </Switch.Content>
-                </Switch>
-              </div>
-            </Disclosure.Body>
-          </Disclosure.Content>
-        </Disclosure>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+          <Tabs.List aria-label="Updates filtern">
+            <Tabs.Trigger value="all">Alle{totalUnread > 0 && <Tabs.Badge>{totalUnread}</Tabs.Badge>}</Tabs.Trigger>
+            <Tabs.Trigger value="release">Versionen{unread("release") > 0 && <Tabs.Badge>{unread("release")}</Tabs.Badge>}</Tabs.Trigger>
+            <Tabs.Trigger value="question">Fragen{unread("question") > 0 && <Tabs.Badge>{unread("question")}</Tabs.Badge>}</Tabs.Trigger>
+            <Tabs.Trigger value="answer">Antworten{unread("answer") > 0 && <Tabs.Badge>{unread("answer")}</Tabs.Badge>}</Tabs.Trigger>
+          </Tabs.List>
+        </Tabs>
+        <Button variant={unreadOnly ? "secondary" : "ghost"} size="sm" shape="pill" aria-pressed={unreadOnly} onClick={() => setUnreadOnly(!unreadOnly)}>
+          <span aria-hidden="true" className={`size-2 rounded-full ${unreadOnly ? "bg-info" : "border border-muted-foreground/60"}`} />
+          Nur ungelesene
+        </Button>
+        <Button variant="ghost" size="sm" className="ms-auto" disabled={totalUnread === 0} loading={markingAll} onClick={() => void markAll()}>
+          <CheckCheck />
+          Alle als gelesen markieren
+        </Button>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {pageLoading ? (
-          <div className="flex min-h-[20vh] flex-col items-center justify-center gap-3">
-            <Spinner />
-            <p className="text-sm text-muted-foreground">
-              Updates und FAQ-Benachrichtigungen werden geladen...
-            </p>
-          </div>
-        ) : !hasVisibleNotifications ? (
-          <Card variant="default">
-            <Card.Content className="flex flex-col items-center gap-3 py-12 text-center">
-              <Bell className="h-8 w-8 text-muted-foreground" />
-              <div>
-                <p className="font-semibold text-foreground">
-                  Keine Updates vorhanden
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Sobald verfolgte Apps neue Releases veröffentlichen oder
-                  neue FAQ-Aktivitäten entstehen, erscheinen sie hier.
-                </p>
-              </div>
-            </Card.Content>
-          </Card>
-        ) : (
-          <>
-            {showsAnswers && safeFAQAnswerNotifications.length > 0 && (
-              <section className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <MessageCircleReply className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Antworten auf Ihre Fragen
-                  </h2>
-                  <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold">
-                    {safeFAQAnswerNotifications.length}
-                  </Chip>
-                </div>
-                {safeFAQAnswerNotifications.map((notification) => (
-                  <Card
-                    key={notification.id}
-                    variant={notification.seenAt ? "default" : "secondary"}
-                  >
-                    <Card.Content className="flex flex-col gap-4 p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex min-w-0 items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-secondary">
-                            <MessageCircleReply className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-base font-semibold text-foreground">
-                                {notification.scope === "global" ? "Globales FAQ" : notification.appName}
-                              </p>
-                              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
-                                Neue Antwort
-                              </Chip>
-                              {!notification.seenAt && (
-                                <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
-                                  Neu
-                                </Chip>
-                              )}
-                            </div>
-                            <p className="text-sm font-medium text-foreground">
-                              {notification.answerer || "Ein Nutzer"} hat auf Ihre Frage geantwortet
-                            </p>
-                            <p className="line-clamp-2 text-sm text-muted-foreground">„{notification.question}“</p>
-                            <p className="whitespace-pre-wrap text-sm text-foreground">{notification.answer}</p>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(notification.createdAt).toLocaleString("de-DE")}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                          <Button
-                            variant="secondary"
-                            className="gap-2"
-                            onPress={() => {
-                              if (!notification.seenAt) void handleMarkFAQAnswerSeen(notification.id);
-                              router.push(notification.scope === "global" ? "/faq" : `/apps/${notification.appId}#faq`);
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            Antwort öffnen
-                          </Button>
-                          {!notification.seenAt && (
-                            <Button
-                              variant="secondary"
-                              className="gap-2"
-                              isPending={updatingItemId === `faq-answer:${notification.id}`}
-                              onPress={() => void handleMarkFAQAnswerSeen(notification.id)}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Gelesen
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </Card.Content>
-                  </Card>
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
+          <Spinner />
+          Updates werden geladen …
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
+          <Bell className="size-7 text-muted-foreground/50" />
+          <p className="font-medium">{unreadOnly && entries.length > 0 ? "Nichts Ungelesenes" : "Noch keine Updates"}</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {unreadOnly && entries.length > 0
+              ? "Du bist auf dem neuesten Stand."
+              : "Sobald Apps, denen du folgst, neue Versionen bekommen oder es Neues zu Fragen gibt, erscheint es hier. Folgen kannst du einer App mit dem Herz."}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6">
+          {groups.map((group) => (
+            <section key={group.label} aria-label={group.label} className="flex flex-col gap-2">
+              <h2 className="px-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{group.label}</h2>
+              <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+                {group.entries.map((entry) => (
+                  <EntryRow
+                    key={`${entry.kind}-${entry.id}`}
+                    entry={entry}
+                    pending={pendingId === entry.id}
+                    onMarkSeen={() => void markSeen(entry)}
+                    onOpen={() => void markSeen(entry, true)}
+                  />
                 ))}
-              </section>
-            )}
-            {showsQuestions && safeFAQNotifications.length > 0 && (
-              <section className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <MessageCircleQuestion className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Offene FAQ-Fragen
-                  </h2>
-                  <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold">
-                    {safeFAQNotifications.length}
-                  </Chip>
-                </div>
-                {safeFAQNotifications.map((notification) => (
-                  <Card
-                    key={notification.id}
-                    variant={notification.seenAt ? "default" : "secondary"}
-                  >
-                    <Card.Content className="flex flex-col gap-4 p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface-secondary">
-                            <MessageCircleQuestion className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-base font-semibold text-foreground">
-                                {notification.appName}
-                              </p>
-                              <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
-                                FAQ
-                              </Chip>
-                              {!notification.seenAt && (
-                                <Chip size="sm" color="accent" variant="soft" className="text-[10px] font-bold uppercase">
-                                  Neu
-                                </Chip>
-                              )}
-                            </div>
-                            <p className="text-sm font-medium text-foreground">
-                              Neue Frage von {notification.questioner || "einem Nutzer"}
-                            </p>
-                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                              {notification.question}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span>{new Date(notification.createdAt).toLocaleString("de-DE")}</span>
-                              <span>•</span>
-                              <span>
-                                {notification.answerCount} {notification.answerCount === 1 ? "Antwort" : "Antworten"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                          <Button
-                            variant="secondary"
-                            className="gap-2"
-                            onPress={() => {
-                              if (!notification.seenAt) {
-                                void handleMarkFAQSeen(notification.id);
-                              }
-                              router.push(`/apps/${notification.appId}#faq`);
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            Frage öffnen
-                          </Button>
-                          {!notification.seenAt && (
-                            <Button
-                              variant="secondary"
-                              className="gap-2"
-                              isPending={updatingItemId === `faq:${notification.id}`}
-                              onPress={() => void handleMarkFAQSeen(notification.id)}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              Gelesen
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </Card.Content>
-                  </Card>
-                ))}
-              </section>
-            )}
-            {showsReleases && safeItems.map((item) => {
-            const iconSrc = getImageAssetUrl(item.appIcon);
-
-            return (
-              <Card
-                key={item.id}
-                variant={item.seenAt ? "default" : "secondary"}
-              >
-                <Card.Content className="flex flex-col gap-4 p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-border bg-surface-secondary">
-                        {iconSrc ? (
-                          <Image
-                            src={iconSrc}
-                            alt={item.appName}
-                            fill
-                            className="object-contain p-2"
-                            sizes="48px"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-lg font-semibold text-muted-foreground">
-                            {item.appName.slice(0, 1)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold text-foreground">
-                            {item.appName}
-                          </p>
-                          <Chip
-                            size="sm"
-                            color={
-                              item.releaseType === "minor"
-                                ? "accent"
-                                : "success"
-                            }
-                            variant="soft"
-                            className="text-[10px] font-bold uppercase"
-                          >
-                            {item.releaseType}
-                          </Chip>
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            className="text-[10px] font-bold uppercase"
-                          >
-                            v{item.version}
-                          </Chip>
-                          {!item.seenAt && (
-                            <Chip
-                              size="sm"
-                              color="accent"
-                              variant="soft"
-                              className="text-[10px] font-bold uppercase"
-                            >
-                              Neu
-                            </Chip>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-foreground">
-                          {item.title}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{item.summary}</p>
-                        {item.diffPreview && (
-                          <p className="text-sm font-medium text-foreground/85">
-                            {item.diffPreview}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>
-                            {new Date(item.publishedAt).toLocaleString("de-DE")}
-                          </span>
-                          <span>•</span>
-                          <span>{reasonLabel(item.reason)}</span>
-                        </div>
-                        {item.changedAreas.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {item.changedAreas.map((area) => (
-                              <Chip
-                                key={area}
-                                size="sm"
-                                variant="soft"
-                                className="text-[10px] font-semibold uppercase"
-                              >
-                                {area}
-                              </Chip>
-                            ))}
-                          </div>
-                        )}
-                        {item.changeDetails.length > 0 && (
-                          <Accordion
-                            variant="surface"
-                            className="rounded-2xl bg-surface-secondary/50"
-                          >
-                            <Accordion.Item>
-                              <Accordion.Heading>
-                                <Accordion.Trigger className="text-sm font-medium">
-                                  Diff anzeigen
-                                  <Accordion.Indicator />
-                                </Accordion.Trigger>
-                              </Accordion.Heading>
-                              <Accordion.Panel>
-                                <Accordion.Body className="flex flex-col gap-3">
-                                  {item.changeDetails.map((detail) => (
-                                    <ReleaseDiffViewer
-                                      key={`${detail.area}-${detail.field}`}
-                                      detail={detail}
-                                    />
-                                  ))}
-                                </Accordion.Body>
-                              </Accordion.Panel>
-                            </Accordion.Item>
-                          </Accordion>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        className="gap-2"
-                        onPress={() =>
-                          router.push(`/apps/${item.appId}#changelog`)
-                        }
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Öffnen
-                      </Button>
-                      {!item.seenAt && (
-                        <Button
-                          variant="secondary"
-                          className="gap-2"
-                          isPending={updatingItemId === item.id}
-                          onPress={() => void handleMarkSeen(item.id)}
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Gelesen
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </Card.Content>
-              </Card>
-            );
-            })}
-            {hasMoreVisible && (
-              <div ref={loadMoreRef} className="flex min-h-16 items-center justify-center" aria-live="polite">
-                {loadingMore && <Spinner size="sm" />}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </PageContainer>
+              </ul>
+            </section>
+          ))}
+          {moreAvailable && (
+            <div ref={loadMoreRef} className="flex min-h-16 items-center justify-center" aria-live="polite">
+              {loadingMore && <Spinner />}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

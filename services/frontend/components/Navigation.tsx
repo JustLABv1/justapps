@@ -6,13 +6,13 @@ import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
 import { Input } from "@/components/panelui/input";
 import { Menu } from "@/components/panelui/menu";
+import { NavigationMenu } from "@/components/panelui/navigation-menu";
 import { Sheet } from "@/components/panelui/sheet";
 import { Tooltip } from "@/components/panelui/tooltip";
 import {
   Bell,
   Bot,
   BookOpen,
-  ChevronDown,
   Layers,
   Layers2,
   LayoutDashboard,
@@ -129,6 +129,18 @@ export function Navigation() {
     ].includes(item.href)),
   ];
 
+  // The destinations admins reach most often, with a line saying what each holds.
+  const adminShortcuts = adminNavGroups
+    .flatMap((group) => group.items)
+    .filter((item) => [
+      "/verwaltung/katalog/apps",
+      "/verwaltung/katalog/gruppen",
+      "/verwaltung/sicherheit/benutzer",
+      "/verwaltung/sicherheit/zugriff",
+      "/verwaltung/plattform/gestaltung",
+      "/verwaltung/katalog/gesundheit",
+    ].includes(item.href));
+
   const handleLogout = () => {
     logout();
     router.push("/");
@@ -219,70 +231,93 @@ export function Navigation() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
+    <header className="sticky top-0 z-40 w-full bg-background/80 px-4 py-2 backdrop-blur-md sm:px-6 lg:px-8">
+      <NavigationMenu
+        aria-label="Hauptnavigation"
+        variant="bar"
+        className="mx-auto max-w-7xl"
+        barClassName="gap-3 ps-2 pe-2"
+      >
         <NextLink
           href="/"
-          className="flex shrink-0 items-center gap-2 rounded-md text-foreground outline-none transition-opacity hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          aria-label={`${storeName} – Startseite`}
+          className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {resolvedLogoSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolvedLogoSrc}
-              alt=""
-              width={24}
-              height={24}
-              className="rounded-sm object-contain"
-              style={{ maxHeight: 24 }}
-            />
-          ) : (
-            <JustAppsLogo className="size-6" />
-          )}
-          <span className="text-sm font-semibold tracking-tight">{storeName}</span>
+          <NavigationMenu.Brand>
+            {resolvedLogoSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resolvedLogoSrc} alt="" width={28} height={28} className="size-7 rounded-md object-contain" />
+            ) : (
+              <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
+                <JustAppsLogo className="size-6" />
+              </span>
+            )}
+            <span className="tracking-tight">{storeName}</span>
+          </NavigationMenu.Brand>
         </NextLink>
 
-        {/* Desktop nav */}
-        <nav className="ml-4 hidden min-w-0 flex-1 items-center gap-0.5 xl:flex" aria-label="Hauptnavigation">
+        <NavigationMenu.List className="hidden flex-1 xl:flex">
           {desktopNavLinks.map((link) => {
             const Icon = link.icon;
             return (
-              <Button
-                key={link.href}
-                size="sm"
-                variant={link.active ? "secondary" : "ghost"}
-                aria-current={link.active ? "page" : undefined}
-                render={<NextLink href={link.href} />}
-              >
-                <Icon />
-                {link.label}
-                {countBadge(link.href)}
-              </Button>
+              <NavigationMenu.Item key={link.href}>
+                <NavigationMenu.Link
+                  active={link.active}
+                  aria-current={link.active ? "page" : undefined}
+                  icon={<Icon className={link.active ? "text-primary" : "text-muted-foreground"} />}
+                  className={link.active ? "bg-foreground/[0.06]" : undefined}
+                  render={<NextLink href={link.href} />}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {link.label}
+                    {countBadge(link.href)}
+                  </span>
+                </NavigationMenu.Link>
+              </NavigationMenu.Item>
             );
           })}
 
-          {/* Verwaltung (admins only) */}
           {user?.role === "admin" && (
-            <Menu>
-              <Menu.Trigger render={<Button size="sm" variant={isInVerwaltung ? "secondary" : "ghost"} />}>
-                <LayoutDashboard />
+            <NavigationMenu.Item value="verwaltung">
+              <NavigationMenu.Trigger
+                icon={<LayoutDashboard className={isInVerwaltung ? "text-primary" : "text-muted-foreground"} />}
+                className={isInVerwaltung ? "bg-foreground/[0.06]" : undefined}
+              >
                 Verwaltung
-                <ChevronDown />
-              </Menu.Trigger>
-              <Menu.Content className="min-w-52">
-                {visibleAdminNavLinks.map(({ href, label, icon: Icon }) => (
-                  <Menu.Item key={href} onClick={() => router.push(href)}>
-                    <Icon />
-                    {label}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu>
+              </NavigationMenu.Trigger>
+              <NavigationMenu.Content className="w-[36rem] gap-1">
+                <NavigationMenu.Card
+                  icon={<LayoutDashboard />}
+                  tone="primary"
+                  eyebrow="Verwaltung"
+                  active={pathname === "/verwaltung"}
+                  render={<NextLink href="/verwaltung" />}
+                >
+                  Übersicht und alle Einstellungen
+                </NavigationMenu.Card>
+                <div className="grid grid-cols-2 gap-x-1 pt-1">
+                  {adminShortcuts.map(({ href, label, description, icon: Icon }) => (
+                    <NavigationMenu.Link
+                      key={href}
+                      icon={<Icon />}
+                      description={<span className="line-clamp-2">{description}</span>}
+                      active={pathname === href || pathname.startsWith(`${href}/`)}
+                      render={<NextLink href={href} />}
+                    >
+                      {label}
+                    </NavigationMenu.Link>
+                  ))}
+                </div>
+              </NavigationMenu.Content>
+            </NavigationMenu.Item>
           )}
-        </nav>
+        </NavigationMenu.List>
+
+        {/* Pushes the actions to the end below xl, where the list is hidden. */}
+        <span aria-hidden="true" className="flex-1 xl:hidden" />
 
         {/* Right side */}
-        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+        <NavigationMenu.Actions className="gap-1 sm:gap-1.5">
           {/* Guests keep direct access because they do not have a profile menu. */}
           {(!user || loading) && (
             <Button
@@ -524,8 +559,8 @@ export function Navigation() {
               )}
             </Sheet.Content>
           </Sheet>
-        </div>
-      </div>
+        </NavigationMenu.Actions>
+      </NavigationMenu>
     </header>
   );
 }

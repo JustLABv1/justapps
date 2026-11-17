@@ -7,13 +7,13 @@ import type { AppRelease } from "@/config/apps";
 import { BookOpen, ChevronDown, Server, Tags } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-const RELEASE_TYPE: Record<string, { label: string; variant: BadgeVariant }> = {
+export const RELEASE_TYPE: Record<string, { label: string; variant: BadgeVariant }> = {
   major: { label: "Großes Update", variant: "info" },
   minor: { label: "Update", variant: "info" },
   patch: { label: "Kleine Änderung", variant: "secondary" },
 };
 
-const AREAS: Record<string, { label: string; icon: ReactNode }> = {
+export const AREAS: Record<string, { label: string; icon: ReactNode }> = {
   docs: { label: "Dokumentation", icon: <BookOpen /> },
   deployment: { label: "Installation", icon: <Server /> },
   metadata: { label: "Beschreibung und Angaben", icon: <Tags /> },
