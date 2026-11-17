@@ -18,6 +18,14 @@ type AppStatusMeta = {
   sortOrder: number;
 };
 
+/** The Badge variant each status colour is drawn in. */
+export const STATUS_BADGE_VARIANT: Record<AppStatusColor, 'secondary' | 'info' | 'success' | 'warning'> = {
+  default: 'secondary',
+  accent: 'info',
+  success: 'success',
+  warning: 'warning',
+};
+
 const STATUS_META: Record<string, AppStatusMeta> = {
   entwurf: { label: DRAFT_STATUS, color: 'default', isDraft: true, sortOrder: 0 },
   poc: { label: 'POC', color: 'default', isDraft: false, sortOrder: 1 },

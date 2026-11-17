@@ -5,7 +5,7 @@ import { AppHealthCopilot } from '@/components/AppHealthCopilot';
 import { getReadiness } from '@/components/app-editor/readiness';
 import { Alert } from '@/components/panelui/alert';
 import { AlertDialog } from '@/components/panelui/alert-dialog';
-import { Badge, type BadgeVariant } from '@/components/panelui/badge';
+import { Badge } from '@/components/panelui/badge';
 import { Button } from '@/components/panelui/button';
 import { Input } from '@/components/panelui/input';
 import { Menu } from '@/components/panelui/menu';
@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
 import { getRelativeTimeMeta } from '@/lib/appFreshness';
 import { getAppHealthIssueColor, getAppHealthIssueDescription, getAppHealthIssueLabel } from '@/lib/appHealth';
-import { getAppStatusMeta, isDraftStatus } from '@/lib/appStatus';
+import { getAppStatusMeta, isDraftStatus, STATUS_BADGE_VARIANT } from '@/lib/appStatus';
 import { getImageAssetUrl } from '@/lib/assets';
 import { toast } from '@/lib/toast';
 import {
@@ -56,7 +56,6 @@ const SORT_ITEMS: { value: Sort; label: string }[] = [
   { value: 'name', label: 'Name' },
   { value: 'status', label: 'Status' },
 ];
-const STATUS_VARIANT: Record<string, BadgeVariant> = { default: 'secondary', accent: 'info', success: 'success', warning: 'warning' };
 
 function AppLogo({ app }: { app: AppConfig }) {
   const src = getImageAssetUrl(app.icon);
@@ -402,7 +401,7 @@ function MyAppsContent() {
                       ) : (
                         <span className="font-medium">{app.name}</span>
                       )}
-                      {status && <Badge variant={draft ? 'secondary' : STATUS_VARIANT[status.color] ?? 'secondary'} size="sm" dot={!draft}>{status.label}</Badge>}
+                      {status && <Badge variant={draft ? 'secondary' : STATUS_BADGE_VARIANT[status.color] ?? 'secondary'} size="sm" dot={!draft}>{status.label}</Badge>}
                       {app.spaceId && <Badge variant="outline" size="sm"><Lock />Privater Space</Badge>}
                       {app.isHidden && <Badge variant="warning" size="sm"><EyeOff />Versteckt</Badge>}
                       {app.isLocked && <Badge variant="warning" size="sm"><Lock />Gesperrt</Badge>}

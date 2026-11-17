@@ -28,4 +28,7 @@ type AuditWithUser struct {
 	Username  string    `bun:"username,type:text" json:"username"`
 	Email     string    `bun:"email,type:text" json:"email"`
 	Role      string    `bun:"role,type:text" json:"role"`
+	// The actor's profile, for showing who it was. Empty when they set none.
+	DisplayName string `bun:"display_name,type:text" json:"displayName,omitempty"`
+	AvatarURL   string `bun:"avatar_url,type:text" json:"avatarUrl,omitempty"`
 }

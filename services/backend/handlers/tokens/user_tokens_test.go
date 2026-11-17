@@ -30,8 +30,8 @@ func TestSanitizeUserTokenDoesNotExposeSecret(t *testing.T) {
 	if strings.Contains(string(encoded), secret) {
 		t.Fatalf("sanitized token contains the full secret: %s", encoded)
 	}
-	if response.KeyPreview != secret[:12]+"…" {
-		t.Fatalf("key preview = %q, want a 12-character preview", response.KeyPreview)
+	if response.KeyPreview != "…"+secret[len(secret)-6:] {
+		t.Fatalf("key preview = %q, want the last 6 characters", response.KeyPreview)
 	}
 }
 

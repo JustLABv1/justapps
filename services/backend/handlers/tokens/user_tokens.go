@@ -216,10 +216,12 @@ func sanitizeUserToken(token models.Tokens) userTokenResponse {
 	}
 }
 
+// tokenKeyPreview is the end of a key, enough to tell tokens apart. The keys
+// are JWTs, whose start is the same for every token.
 func tokenKeyPreview(key string) string {
-	const previewLength = 12
+	const previewLength = 6
 	if len(key) <= previewLength {
 		return key
 	}
-	return key[:previewLength] + "…"
+	return "…" + key[len(key)-previewLength:]
 }

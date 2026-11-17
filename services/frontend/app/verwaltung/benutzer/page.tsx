@@ -1,274 +1,281 @@
 'use client';
 
-import Link from 'next/link';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { UserTable } from '@/components/UserTable';
+import { UserTable, type AdminUser } from '@/components/UserTable';
+import { Alert } from '@/components/panelui/alert';
+import { Button } from '@/components/panelui/button';
+import { Dialog } from '@/components/panelui/dialog';
+import { Field } from '@/components/panelui/field';
+import { Input } from '@/components/panelui/input';
+import { Select } from '@/components/panelui/select';
+import { Switch } from '@/components/panelui/switch';
+import { useAuth } from '@/context/AuthContext';
 import { fetchApi } from '@/lib/api';
-import {
-  Button,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  Select,
-  TextField,
-  Switch,
-} from '@heroui/react';
 import { toast } from '@/lib/toast';
-import { Loader2, ShieldCheck, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-interface SystemUser {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  disabled: boolean;
-  canSubmitApps?: boolean;
-  canCreateSpaces?: boolean;
-  disabledReason?: string;
-  createdAt?: string;
-  authType?: string;
-  lastLoginAt?: string;
-}
+import { UserPlus } from 'lucide-react';
+import NextLink from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
 
 interface RoleOption {
   key: string;
   name: string;
 }
 
-export default function BenutzerPage() {
-  const [users, setUsers] = useState<SystemUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
-  const [formData, setFormData] = useState<Partial<SystemUser & { password?: string }>>({});
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  const [isDeletingUser, setIsDeletingUser] = useState(false);
-  const [roles, setRoles] = useState<RoleOption[]>([]);
+const FALLBACK_ROLES: RoleOption[] = [
+  { key: 'user', name: 'Mitglied' },
+  { key: 'moderator', name: 'Moderation' },
+  { key: 'admin', name: 'Administration' },
+];
 
-  const loadUsers = async () => {
+type UserForm = Partial<AdminUser> & { password?: string };
+
+async function messageOf(response: Response, fallback: string) {
+  const body = await response.json().catch(() => ({})) as { message?: string };
+  return body.message || fallback;
+}
+
+function UserDialog({
+  user,
+  open,
+  roles,
+  onOpenChange,
+  onSaved,
+}: {
+  user: AdminUser | null;
+  open: boolean;
+  roles: RoleOption[];
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<UserForm>({});
+  const [saving, setSaving] = useState(false);
+  const editing = !!user;
+  const sso = user?.authType === 'oidc';
+  const admin = form.role === 'admin';
+  const roleItems = roles.map((role) => ({ value: role.key, label: role.name }));
+
+  useEffect(() => {
+    // Filled again each time it opens, so a cancelled edit leaves nothing behind.
+    if (!open) return;
+    const id = window.setTimeout(() => setForm(user ? { ...user } : { username: '', email: '', role: 'user', password: '', canCreateSpaces: false }), 0);
+    return () => window.clearTimeout(id);
+  }, [open, user]);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
     try {
-      const res = await fetchApi('/admin/users');
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-      } else if (res.status === 401) {
-        setError('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
-      } else {
-        setError(`Fehler beim Laden: ${res.status} ${res.statusText}`);
-      }
-    } catch (err) {
-      setError(`Verbindungsfehler: ${err instanceof Error ? err.message : String(err)}`);
+      const response = await fetchApi(editing ? `/admin/users/${user.id}` : '/admin/users', {
+        method: editing ? 'PUT' : 'POST',
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) throw new Error(await messageOf(response, 'Der Benutzer konnte nicht gespeichert werden.'));
+      toast.success(editing ? 'Änderungen gespeichert.' : 'Benutzer angelegt.');
+      onOpenChange(false);
+      onSaved();
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : 'Der Benutzer konnte nicht gespeichert werden.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadUsers();
-    }, 0);
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
+      <Dialog.Content>
+        <Dialog.Header
+          title={editing ? 'Benutzer bearbeiten' : 'Benutzer anlegen'}
+          description={editing
+            ? sso ? 'Name und E-Mail kommen aus der Anmeldung über Single Sign-on.' : undefined
+            : 'Das Konto meldet sich mit Benutzername und Passwort an.'}
+        />
+        <Dialog.Body>
+          <form id="user-form" onSubmit={submit} className="flex flex-col gap-4">
+            <Field>
+              <Field.Label required>Benutzername</Field.Label>
+              <Input required disabled={sso} value={form.username ?? ''} placeholder="max.mustermann" onChange={(event) => setForm({ ...form, username: event.target.value })} />
+            </Field>
+            <Field>
+              <Field.Label required>E-Mail</Field.Label>
+              <Input required type="email" disabled={sso} value={form.email ?? ''} placeholder="max@beispiel.de" onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            </Field>
+            {!editing && (
+              <Field>
+                <Field.Label required>Passwort</Field.Label>
+                <Input required type="password" minLength={8} autoComplete="new-password" value={form.password ?? ''} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+                <Field.Description>Mindestens 8 Zeichen. Teilen Sie es auf sicherem Weg mit.</Field.Description>
+              </Field>
+            )}
+            <Field>
+              <Field.Label>Rolle</Field.Label>
+              <Select items={roleItems} value={form.role ?? 'user'} onValueChange={(value) => setForm({ ...form, role: String(value) })}>
+                <Select.Trigger className="w-full"><Select.Value /></Select.Trigger>
+                <Select.Content>{roleItems.map((item) => <Select.Item key={item.value} value={item.value}>{item.label}</Select.Item>)}</Select.Content>
+              </Select>
+            </Field>
+            <div className="flex flex-col gap-4 rounded-xl bg-muted/40 p-4">
+              {editing && (
+                <div className="flex items-start justify-between gap-4">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">Apps erstellen</span>
+                    <span className="text-xs text-muted-foreground">Darf eigene Apps anlegen und einreichen.</span>
+                  </span>
+                  <Switch label="Apps erstellen" checked={form.canSubmitApps !== false} onCheckedChange={(value) => setForm({ ...form, canSubmitApps: value })} />
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium">Spaces erstellen</span>
+                  <span className="text-xs text-muted-foreground">
+                    {admin ? 'Administration darf immer Spaces erstellen.' : 'Gilt, wenn die globale Regel „Nur für erlaubte Nutzer“ lautet.'}
+                  </span>
+                </span>
+                <Switch label="Spaces erstellen" checked={admin || !!form.canCreateSpaces} disabled={admin} onCheckedChange={(value) => setForm({ ...form, canCreateSpaces: value })} />
+              </div>
+            </div>
+          </form>
+        </Dialog.Body>
+        <Dialog.Footer>
+          <Dialog.Close render={<Button variant="secondary" disabled={saving} />}>Abbrechen</Dialog.Close>
+          <Button type="submit" form="user-form" loading={saving}>{editing ? 'Speichern' : 'Anlegen'}</Button>
+        </Dialog.Footer>
+      </Dialog.Content>
+    </Dialog>
+  );
+}
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+export default function BenutzerPage() {
+  const { user: me } = useAuth();
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [roles, setRoles] = useState<RoleOption[]>(FALLBACK_ROLES);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await fetchApi('/admin/users');
+      if (!response.ok) {
+        throw new Error(response.status === 401 ? 'Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.' : await messageOf(response, 'Benutzer konnten nicht geladen werden.'));
+      }
+      const data = await response.json() as { users?: AdminUser[] };
+      setUsers(data.users || []);
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Verbindungsfehler.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => void loadUsers(), 0);
+    return () => window.clearTimeout(id);
+  }, [loadUsers]);
 
   useEffect(() => {
     void fetchApi('/admin/roles')
-      .then((response) => response.ok ? response.json() : { roles: [] })
-      .then((data: { roles?: RoleOption[] }) => setRoles(data.roles || []))
-      .catch(() => setRoles([]));
+      .then((response) => (response.ok ? response.json() : { roles: [] }))
+      .then((data: { roles?: RoleOption[] }) => { if (data.roles?.length) setRoles(data.roles); })
+      .catch(() => {});
   }, []);
 
-  const handleCreateUser = () => {
-    setSelectedUser(null);
-    setFormData({ username: '', email: '', role: 'user', password: '' });
-    setIsModalOpen(true);
+  /** Changes one setting of a user, keeping everything else as it is. */
+  const update = async (user: AdminUser, patch: Partial<AdminUser>, done: string) => {
+    try {
+      const response = await fetchApi(`/admin/users/${user.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ id: user.id, username: user.username, email: user.email, role: user.role, ...patch }),
+      });
+      if (!response.ok) throw new Error(await messageOf(response, 'Die Änderung konnte nicht gespeichert werden.'));
+      toast.success(done);
+      await loadUsers();
+    } catch (updateError) {
+      toast.danger(updateError instanceof Error ? updateError.message : 'Die Änderung konnte nicht gespeichert werden.');
+    }
   };
 
-  const handleEditUser = (u: SystemUser) => {
-    setSelectedUser(u);
-    setFormData({ ...u });
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    setDeleteUserId(userId);
+  const toggleState = async (user: AdminUser) => {
+    try {
+      const response = await fetchApi(`/admin/users/${user.id}/state`, { method: 'PUT', body: JSON.stringify({ disabled: !user.disabled }) });
+      if (!response.ok) throw new Error(await messageOf(response, 'Der Status konnte nicht geändert werden.'));
+      toast.success(user.disabled ? 'Konto aktiviert.' : 'Konto deaktiviert.');
+      await loadUsers();
+    } catch (stateError) {
+      toast.danger(stateError instanceof Error ? stateError.message : 'Der Status konnte nicht geändert werden.');
+    }
   };
 
   const confirmDeleteUser = async () => {
     if (!deleteUserId) return;
-
     setIsDeletingUser(true);
     try {
-      const res = await fetchApi(`/admin/users/${deleteUserId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success('Der Benutzer wurde gelöscht.');
-        setDeleteUserId(null);
-        await loadUsers();
-      } else {
-        toast.danger('Der Benutzer konnte nicht gelöscht werden.');
-      }
-    } catch (err) {
-      console.error(err);
-      toast.danger('Beim Löschen des Benutzers ist ein Fehler aufgetreten.');
+      const response = await fetchApi(`/admin/users/${deleteUserId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error(await messageOf(response, 'Der Benutzer konnte nicht gelöscht werden.'));
+      toast.success('Benutzer gelöscht.');
+      setDeleteUserId(null);
+      await loadUsers();
+    } catch (deleteError) {
+      toast.danger(deleteError instanceof Error ? deleteError.message : 'Der Benutzer konnte nicht gelöscht werden.');
     } finally {
       setIsDeletingUser(false);
     }
   };
 
-  const handleToggleUserState = async (u: SystemUser) => {
-    try {
-      const res = await fetchApi(`/admin/users/${u.id}/state`, {
-        method: 'PUT',
-        body: JSON.stringify({ disabled: !u.disabled }),
-      });
-      if (res.ok) loadUsers();
-    } catch (err) { console.error(err); }
-  };
-
-  const handleToggleUserSubmission = async (u: SystemUser) => {
-    try {
-      const res = await fetchApi(`/admin/users/${u.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          id: u.id,
-          username: u.username,
-          email: u.email,
-          role: u.role,
-          canSubmitApps: !(u.canSubmitApps === true),
-        }),
-      });
-      if (res.ok) loadUsers();
-      else console.error('Aktualisierung des Einreichungsstatus fehlgeschlagen');
-    } catch (err) { console.error(err); }
-  };
-
-  const handleToggleUserSpaces = async (u: SystemUser) => {
-    try { const response=await fetchApi(`/admin/users/${u.id}`,{method:'PUT',body:JSON.stringify({...u,canCreateSpaces:!u.canCreateSpaces})});if(!response.ok)throw new Error('Berechtigung konnte nicht geändert werden.');await loadUsers();toast.success('Space-Berechtigung aktualisiert.'); }catch(err){toast.danger(err instanceof Error?err.message:'Aktualisierung fehlgeschlagen.');}
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const method = selectedUser ? 'PUT' : 'POST';
-    const url = selectedUser ? `/admin/users/${selectedUser.id}` : '/admin/users';
-    try {
-      const res = await fetchApi(url, { method, body: JSON.stringify(formData) });
-      if (res.ok) {
-        setIsModalOpen(false);
-        loadUsers();
-      }
-    } catch (err) { console.error(err); }
-  };
+  const disabledCount = users.filter((user) => user.disabled).length;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div><p className="text-sm text-muted-foreground">{users.length} Benutzer registriert</p><p className="mt-1 text-xs text-muted-foreground">Individuelle Freigaben pro Konto. <Link href="/verwaltung/sicherheit/zugriff" className="font-medium text-primary hover:underline">Globale Regeln und Rollen verwalten</Link></p></div>
-        <Button size="sm" onPress={handleCreateUser} className="bg-primary text-white gap-2">
-          <UserPlus className="w-4 h-4" /> Benutzer einladen
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Benutzer &amp; Freigaben</h1>
+          <p className="max-w-2xl text-pretty text-muted-foreground">
+            {loading ? 'Benutzer werden geladen …' : `${users.length} Konten${disabledCount > 0 ? `, ${disabledCount} deaktiviert` : ''}.`}{' '}
+            Freigaben gelten pro Konto; die Regeln für alle stehen unter{' '}
+            <NextLink href="/verwaltung/sicherheit/zugriff" className="font-medium text-foreground underline underline-offset-4">Zugriff &amp; Berechtigungen</NextLink>.
+          </p>
+        </div>
+        <Button onClick={() => { setSelectedUser(null); setDialogOpen(true); }}>
+          <UserPlus />
+          Benutzer anlegen
         </Button>
-      </div>
+      </header>
 
       {error && (
-        <div className="mb-6 p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-medium flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div className="flex-grow">{error}</div>
-          <Button size="sm" variant="secondary" onPress={loadUsers} className="h-8">Wiederholen</Button>
-        </div>
+        <Alert variant="plain" tone="destructive">
+          <Alert.Icon />
+          <Alert.Title>{error}</Alert.Title>
+          <Alert.Actions>
+            <Button size="sm" variant="secondary" onClick={() => void loadUsers()}>Erneut versuchen</Button>
+          </Alert.Actions>
+        </Alert>
       )}
 
-      {loading ? (
-        <div className="py-20 flex justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <UserTable
-          users={users}
-          handleEditUser={handleEditUser}
-          handleDeleteUser={handleDeleteUser}
-          handleToggleUserState={handleToggleUserState}
-          handleToggleUserSubmission={handleToggleUserSubmission}
-          handleToggleUserSpaces={handleToggleUserSpaces}
-          roleLabels={Object.fromEntries(roles.map((role) => [role.key, role.name]))}
-        />
-      )}
+      <UserTable
+        users={users}
+        currentUserId={me?.id}
+        isLoading={loading}
+        handleEditUser={(user) => { setSelectedUser(user); setDialogOpen(true); }}
+        handleDeleteUser={setDeleteUserId}
+        handleToggleUserState={toggleState}
+        handleToggleUserSubmission={(user) => update(user, { canSubmitApps: user.canSubmitApps === false }, user.canSubmitApps === false ? 'App-Erstellung erlaubt.' : 'App-Erstellung gesperrt.')}
+        handleToggleUserSpaces={(user) => update(user, { canCreateSpaces: !user.canCreateSpaces }, user.canCreateSpaces ? 'Space-Erstellung gesperrt.' : 'Space-Erstellung erlaubt.')}
+        roleLabels={Object.fromEntries(roles.map((role) => [role.key, role.name]))}
+      />
 
-      <Modal>
-        <Modal.Backdrop isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
-          <Modal.Container>
-            <Modal.Dialog className="sm:max-w-md">
-              <form onSubmit={handleSubmit}>
-                <Modal.CloseTrigger />
-                <Modal.Header className="px-8 py-6 border-b border-border">
-                  <Modal.Heading className="text-xl font-semibold text-foreground">
-                    {selectedUser ? 'Benutzer bearbeiten' : 'Neuer Benutzer'}
-                  </Modal.Heading>
-                </Modal.Header>
-                <Modal.Body className="px-8 py-6 space-y-4">
-                  <TextField isRequired onChange={(val) => setFormData({ ...formData, username: val })}>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Benutzername</Label>
-                    <Input value={formData.username || ''} placeholder="max.mustermann" className="bg-field-background" />
-                  </TextField>
-                  <TextField isRequired type="email" onChange={(val) => setFormData({ ...formData, email: val })}>
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">E-Mail</Label>
-                    <Input value={formData.email || ''} placeholder="max@beispiel.de" className="bg-field-background" />
-                  </TextField>
-                  {!selectedUser && (
-                    <TextField isRequired type="password" onChange={(val) => setFormData({ ...formData, password: val })}>
-                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Passwort</Label>
-                      <Input value={formData.password || ''} placeholder="******" className="bg-field-background" />
-                    </TextField>
-                  )}
-                  <Select
-                    value={formData.role || 'user'}
-                    onChange={(key) => setFormData({ ...formData, role: key as string })}
-                    className="w-full"
-                  >
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Rolle</Label>
-                    <Select.Trigger className="bg-field-background border-border">
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {(roles.length > 0 ? roles : [{ key: 'user', name: 'Benutzer' }, { key: 'moderator', name: 'Moderator' }, { key: 'admin', name: 'Administrator' }]).map((role) => (
-                          <ListBox.Item key={role.key} id={role.key} textValue={role.name}>
-                            {role.name}<ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  <div className="rounded-xl border border-border p-3"><Switch isSelected={formData.role === 'admin' || !!formData.canCreateSpaces} isDisabled={formData.role === 'admin'} onChange={(value) => setFormData({...formData,canCreateSpaces:value})}><Switch.Control><Switch.Thumb /></Switch.Control><Switch.Content><Label>Spaces erstellen erlauben</Label><p className="text-xs text-muted-foreground">Gilt bei der globalen Regel „Nur für erlaubte Nutzer“. Bestehende Mitgliedschaften bleiben beim Entzug erhalten.</p></Switch.Content></Switch></div>
-                </Modal.Body>
-                <Modal.Footer className="px-8 py-6 border-t border-border">
-                  <div className="flex justify-end gap-3 w-full">
-                    <Button variant="ghost" slot="close" className="px-6 font-bold">Abbrechen</Button>
-                    <Button type="submit" className="bg-primary text-white px-8 font-medium">Speichern</Button>
-                  </div>
-                </Modal.Footer>
-              </form>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      <UserDialog user={selectedUser} open={dialogOpen} roles={roles} onOpenChange={setDialogOpen} onSaved={() => void loadUsers()} />
 
       <ConfirmDialog
         confirmLabel="Benutzer löschen"
-        description="Der Benutzerzugang wird dauerhaft entfernt. Dieser Schritt kann nicht rückgängig gemacht werden."
+        description="Das Konto wird dauerhaft entfernt. Das lässt sich nicht rückgängig machen."
         isDanger
         isLoading={isDeletingUser}
         isOpen={!!deleteUserId}
         onConfirm={confirmDeleteUser}
-        onOpenChange={(open) => {
-          if (!open && !isDeletingUser) setDeleteUserId(null);
-        }}
+        onOpenChange={(open) => { if (!open && !isDeletingUser) setDeleteUserId(null); }}
         title="Benutzer wirklich löschen?"
       />
     </div>

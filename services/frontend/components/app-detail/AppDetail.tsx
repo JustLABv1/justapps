@@ -7,7 +7,7 @@ import { GitHubIcon } from "@/components/GitHubIcon";
 import { LinkStatusDot } from "@/components/LinkStatusDot";
 import { RatingSection } from "@/components/RatingSection";
 import { Alert } from "@/components/panelui/alert";
-import { Badge, type BadgeVariant } from "@/components/panelui/badge";
+import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
 import { Menu } from "@/components/panelui/menu";
 import { Spinner } from "@/components/panelui/spinner";
@@ -18,7 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { fetchApi } from "@/lib/api";
 import { getAppBannerMeta } from "@/lib/appBanner";
-import { APP_MATURITY_DESCRIPTIONS, APP_STATUS_OPTIONS, DRAFT_STATUS, getAppStatusMeta, isDraftStatus } from "@/lib/appStatus";
+import { APP_MATURITY_DESCRIPTIONS, APP_STATUS_OPTIONS, DRAFT_STATUS, getAppStatusMeta, isDraftStatus, STATUS_BADGE_VARIANT } from "@/lib/appStatus";
 import { getImageAssetUrl } from "@/lib/assets";
 import { resolveIcon } from "@/lib/detailFieldIcons";
 import { hasPermission, Permission } from "@/lib/permissions";
@@ -40,7 +40,6 @@ import { ChangelogTab } from "./ChangelogTab";
 type TabId = "docs" | "deployment" | "ratings" | "faq" | "changelog";
 const TAB_IDS: TabId[] = ["docs", "deployment", "ratings", "faq", "changelog"];
 
-const STATUS_VARIANT: Record<string, BadgeVariant> = { default: "secondary", accent: "info", success: "success", warning: "warning" };
 
 interface LinkItem {
   label: string;
@@ -476,7 +475,7 @@ export function AppDetail({ id }: { id: string }) {
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
           <AppLogo icon={app.icon} name={app.name} small />
           <span className="min-w-0 truncate font-medium">{app.name}</span>
-          {statusInfo && !draft && <Badge variant={STATUS_VARIANT[statusInfo.color] ?? "secondary"} size="sm" dot className="hidden sm:inline-flex xl:hidden">{statusInfo.label}</Badge>}
+          {statusInfo && !draft && <Badge variant={STATUS_BADGE_VARIANT[statusInfo.color] ?? "secondary"} size="sm" dot className="hidden sm:inline-flex xl:hidden">{statusInfo.label}</Badge>}
           <nav aria-label="Bereiche der App" className="ms-4 hidden items-center gap-0.5 lg:flex">
             {tabItems.map((item) => (
               <Button
@@ -527,7 +526,7 @@ export function AppDetail({ id }: { id: string }) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <h1 className="text-3xl font-semibold tracking-tight">{app.name}</h1>
               {statusInfo && (
-                <Badge variant={draft ? "secondary" : STATUS_VARIANT[statusInfo.color] ?? "secondary"} dot={!draft}>
+                <Badge variant={draft ? "secondary" : STATUS_BADGE_VARIANT[statusInfo.color] ?? "secondary"} dot={!draft}>
                   {statusInfo.label}
                 </Badge>
               )}
