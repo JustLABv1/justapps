@@ -1,7 +1,7 @@
+import { Card } from '@/components/panelui/card';
 import type { LucideIcon } from 'lucide-react';
-
 import { ChevronRight } from 'lucide-react';
-import Link from 'next/link';
+import NextLink from 'next/link';
 
 type AdminOverviewCard = {
   href: string;
@@ -18,39 +18,37 @@ type AdminOverviewPageProps = {
   children?: React.ReactNode;
 };
 
+/** A group's landing page: what is in it, one row per page. */
 export function AdminOverviewPage({ title, description, cards, children }: AdminOverviewPageProps) {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
-      </div>
+    <div className="flex flex-col gap-8">
+      <header className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <p className="max-w-3xl text-pretty text-muted-foreground">{description}</p>
+      </header>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {cards.map(({ href, title: cardTitle, description: cardDescription, icon: Icon, note }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group flex min-h-[200px] flex-col justify-between rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
-              </div>
-              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </div>
-
-            <div className="mt-8 space-y-3">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{cardTitle}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{cardDescription}</p>
-              </div>
-
-              {note ? <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{note}</p> : null}
-            </div>
-          </Link>
-        ))}
-      </div>
+      <Card className="gap-0 py-0">
+        <ul className="divide-y">
+          {cards.map(({ href, title: cardTitle, description: cardDescription, icon: Icon, note }) => (
+            <li key={href}>
+              <NextLink
+                href={href}
+                className="group flex items-center gap-4 px-5 py-4 outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="size-5" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="font-medium">{cardTitle}</span>
+                  <span className="text-sm text-muted-foreground">{cardDescription}</span>
+                  {note && <span className="text-xs text-muted-foreground">{note}</span>}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </NextLink>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
       {children}
     </div>

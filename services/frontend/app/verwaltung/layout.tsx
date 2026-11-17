@@ -1,8 +1,8 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
-import { AdminNavigation } from '@/components/admin/AdminNavigation';
-import { Loader2 } from 'lucide-react';
+import { AdminShell } from '@/components/admin/AdminShell';
+import { Spinner } from '@/components/panelui/spinner';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -27,7 +27,7 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <Spinner />
     </div>
   );
 
@@ -38,8 +38,6 @@ export default function VerwaltungLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="relative left-1/2 w-screen max-w-[1720px] -translate-x-1/2 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-      <AdminNavigation>{children}</AdminNavigation>
-    </div>
+    <AdminShell>{children}</AdminShell>
   );
 }

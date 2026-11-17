@@ -94,6 +94,8 @@ export function Navigation() {
   // Cmd+K / Ctrl+K opens search; Escape closes
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // In the Verwaltung, ⌘K searches the settings instead.
+      if (pathname.startsWith("/verwaltung")) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
@@ -105,7 +107,7 @@ export function Navigation() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [searchOpen]);
+  }, [pathname, searchOpen]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
