@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 func CreateApp(c *gin.Context, db *bun.DB) {
@@ -133,6 +134,11 @@ func CreateApp(c *gin.Context, db *bun.DB) {
 
 	_, err = insertQuery.Exec(c)
 	if err != nil {
+		var pgErr pgdriver.Error
+		if errors.As(err, &pgErr) && pgErr.Field('C') == "23505" && pgErr.Field('n') == "apps_pkey" {
+			httperror.StatusConflict(c, "Diese technische ID ist bereits vergeben. Ändere den Namen oder die ID.", err)
+			return
+		}
 		httperror.InternalServerError(c, "Error creating app", err)
 		return
 	}
