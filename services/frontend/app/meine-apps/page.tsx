@@ -2,6 +2,7 @@
 
 import { AppEditorsModal } from '@/components/AppEditorsModal';
 import { AppHealthCopilot } from '@/components/AppHealthCopilot';
+import { MoveAppDialog } from '@/components/MoveAppDialog';
 import { getReadiness } from '@/components/app-editor/readiness';
 import { Alert } from '@/components/panelui/alert';
 import { AlertDialog } from '@/components/panelui/alert-dialog';
@@ -22,7 +23,7 @@ import { getAppStatusMeta, isDraftStatus, STATUS_BADGE_VARIANT } from '@/lib/app
 import { getImageAssetUrl } from '@/lib/assets';
 import { toast } from '@/lib/toast';
 import {
-  ArrowUpDown, CircleAlert, CircleCheck, Copy, ExternalLink, Eye, EyeOff, Globe, Lock, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Trash2, UsersRound, X,
+  ArrowUpDown, CircleAlert, CircleCheck, Copy, ExternalLink, Eye, EyeOff, FolderInput, Globe, Lock, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Trash2, UsersRound, X,
 } from 'lucide-react';
 import Image from 'next/image';
 import NextLink from 'next/link';
@@ -89,6 +90,7 @@ function MyAppsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [publishCandidate, setPublishCandidate] = useState<AppConfig | null>(null);
+  const [moveCandidate, setMoveCandidate] = useState<AppConfig | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<AppConfig | null>(null);
   const [editorApp, setEditorApp] = useState<AppConfig | null>(null);
   const [visibilityPending, setVisibilityPending] = useState<Set<string>>(new Set());
@@ -152,6 +154,8 @@ function MyAppsContent() {
       canDelete: app.viewerPermissions?.canDelete ?? ownerOrAdmin,
       canManageEditors: app.viewerPermissions?.canManageEditors ?? ownerOrAdmin,
       canCopy: ownerOrAdmin,
+      // Moving changes who can see the app at all, so it stays with the owner and admins (the server checks the same).
+      canMove: ownerOrAdmin,
       accessRole: app.viewerPermissions?.accessRole ?? (ownerOrAdmin ? (isAdmin ? 'admin' : 'owner') : 'viewer'),
     };
   };
@@ -469,6 +473,9 @@ function MyAppsContent() {
                       {app.spaceId && app.ownerId === user.id && (
                         <Menu.Item disabled={app.isLocked} onClick={() => setPublishCandidate(app)}><Globe />Für alle veröffentlichen</Menu.Item>
                       )}
+                      {permissions.canMove && (
+                        <Menu.Item disabled={app.isLocked} onClick={() => setMoveCandidate(app)}><FolderInput />Verschieben …</Menu.Item>
+                      )}
                       {permissions.canDelete && (
                         <>
                           <Menu.Separator />
@@ -505,6 +512,13 @@ function MyAppsContent() {
           </AlertDialog.Footer>
         </AlertDialog.Content>
       </AlertDialog>
+
+      <MoveAppDialog
+        app={moveCandidate}
+        open={!!moveCandidate}
+        onOpenChange={(open) => { if (!open) setMoveCandidate(null); }}
+        onMoved={() => void loadData()}
+      />
 
       <AppEditorsModal
         key={editorApp?.id ?? 'no-editor-app'}

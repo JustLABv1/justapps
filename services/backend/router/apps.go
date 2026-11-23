@@ -114,6 +114,7 @@ func RegisterApps(router *gin.RouterGroup, db *bun.DB) {
 		userGroup.Use(middlewares.Auth(db))
 		{
 			userGroup.POST("/:id/publish", func(c *gin.Context) { apps.PublishSpaceApp(c, db) })
+			userGroup.POST("/:id/move", func(c *gin.Context) { apps.MoveApp(c, db) })
 			userGroup.POST("", func(c *gin.Context) {
 				apps.CreateApp(c, db)
 			})

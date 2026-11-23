@@ -23,11 +23,18 @@ export interface Hit {
 /** What counts as a field's name inside a section: form labels, card titles and setting rows. */
 const LABEL_SELECTOR = "label, h3, [data-search-label]";
 
+/** The block a label explains: its field, its setting row, or the header of its card (title and description). */
+const CONTEXT_SELECTOR = "[data-search-target], [data-slot='field'], [data-slot='card-header']";
+
 const normalize = (text: string) => text.toLocaleLowerCase("de-DE").replace(/\s+/g, " ").trim();
 
 /**
  * Every section is mounted (only the open one is shown), so the fields are read from the page itself:
  * whatever a section renders, including platform-defined detail fields, can be found without a list to keep in sync.
+ *
+ * A field is found by its label, by the words around it (its description) and by `data-search-keywords`
+ * for words people search for that the field does not say, such as "Space" for where an app lives.
+ * Hits on the label come first.
  */
 function findHits(query: string, sections: SearchableSection[]): Hit[] {
   const words = normalize(query).split(" ").filter(Boolean);
@@ -37,10 +44,10 @@ function findHits(query: string, sections: SearchableSection[]): Hit[] {
     return words.every((word) => haystack.includes(word));
   };
 
-  const hits: Hit[] = [];
+  const scored: { hit: Hit; score: number }[] = [];
   for (const section of sections) {
     if (matches(`${section.label} ${section.description}`)) {
-      hits.push({ key: section.id, sectionId: section.id, sectionLabel: section.label, field: null, element: null });
+      scored.push({ hit: { key: section.id, sectionId: section.id, sectionLabel: section.label, field: null, element: null }, score: matches(section.label) ? 3 : 1 });
     }
     const root = document.getElementById(`section-${section.id}`);
     if (!root) continue;
@@ -48,12 +55,16 @@ function findHits(query: string, sections: SearchableSection[]): Hit[] {
     for (const element of root.querySelectorAll<HTMLElement>(LABEL_SELECTOR)) {
       // The label's own text, without a "(optional)" or required marker drawn inside it.
       const text = (element.dataset.searchLabel || element.textContent || "").replace(/\s*\((optional|Pflicht)\)\s*$/i, "").replace(/\*$/, "").trim();
-      if (!text || text.length > 80 || seen.has(text) || !matches(text)) continue;
+      if (!text || text.length > 80 || seen.has(text)) continue;
+      const context = `${element.dataset.searchKeywords ?? ""} ${(element.closest(CONTEXT_SELECTOR)?.textContent ?? "").slice(0, 400)}`;
+      const score = matches(text) ? 2 : matches(`${text} ${context}`) ? 1 : 0;
+      if (!score) continue;
       seen.add(text);
-      hits.push({ key: `${section.id}:${text}`, sectionId: section.id, sectionLabel: section.label, field: text, element });
+      scored.push({ hit: { key: `${section.id}:${text}`, sectionId: section.id, sectionLabel: section.label, field: text, element }, score });
     }
   }
-  return hits.slice(0, 12);
+  // Stable: equal scores keep the order of the page.
+  return scored.sort((left, right) => right.score - left.score).slice(0, 12).map((entry) => entry.hit);
 }
 
 /** Brings a field into view once its section is shown, puts the cursor in it and marks it for a moment. */

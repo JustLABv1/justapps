@@ -1,6 +1,7 @@
 "use client";
 
 import { AppCard } from "@/components/AppCard";
+import { AppLocationRow } from "@/components/MoveAppDialog";
 import { AlertDialog } from "@/components/panelui/alert-dialog";
 import { Button } from "@/components/panelui/button";
 import { Card } from "@/components/panelui/card";
@@ -74,7 +75,7 @@ export function PublishDialog({
           description="Wähle, wie weit die App ist. Offene Änderungen werden dabei mitgespeichert, den Reifegrad kannst du jederzeit ändern."
         />
         <Dialog.Body>
-          <RadioGroup value={maturity} onValueChange={(value) => setMaturity(value as string)} aria-label="Reifegrad">
+          <RadioGroup value={maturity} onValueChange={(value) => setMaturity(value as string)} aria-label="Reifegrad" className="pt-1">
             {PUBLISHED_STATUSES.map((status) => (
               <RadioGroup.Card key={status} value={status}>
                 <RadioGroup.CardBody>
@@ -105,6 +106,7 @@ export function OverviewSection({
   busy,
   onNavigate,
   onUnpublish,
+  canMove,
 }: {
   app: AppDraft;
   update: UpdateApp;
@@ -113,6 +115,8 @@ export function OverviewSection({
   busy: boolean;
   onNavigate: (section: SectionId) => void;
   onUnpublish: () => Promise<boolean>;
+  /** Owner or admin: may move the app between the catalog and spaces. */
+  canMove: boolean;
 }) {
   const draft = isDraftStatus(app.status || DRAFT_STATUS);
   const missingRequired = readiness.filter((item) => item.required && !item.done);
@@ -186,7 +190,7 @@ export function OverviewSection({
           footer={
             <div className="flex w-full justify-end">
               <AlertDialog>
-                <AlertDialog.Trigger render={<Button variant="ghost" size="sm" disabled={busy} />}>
+                <AlertDialog.Trigger render={<Button variant="ghost" size="sm" disabled={busy} className="text-warning hover:not-disabled:bg-warning/10 hover:not-disabled:text-warning" />}>
                   <Undo2 />
                   Zurück zum Entwurf
                 </AlertDialog.Trigger>
@@ -224,6 +228,7 @@ export function OverviewSection({
       )}
 
       <EditorCard title="Sichtbarkeit">
+        {canMove && app.id && <AppLocationRow app={{ id: app.id, name: app.name || "App", status: app.status, spaceId: app.spaceId }} />}
         <SettingRow
           title="Vorübergehend verstecken"
           description={draft ? "Wirkt erst nach der Veröffentlichung: Die App bleibt dann nur für Eigentümer, Bearbeiter und Moderatoren sichtbar." : "Solange die App versteckt ist, sehen sie nur Eigentümer, Bearbeiter und Moderatoren."}

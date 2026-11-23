@@ -565,7 +565,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
   const renderSection = (id: SectionId) => {
     switch (id) {
       case "overview":
-        return <OverviewSection app={app} update={update} readiness={readiness} isAdmin={isAdmin} busy={busy} onNavigate={openSection} onUnpublish={unpublish} />;
+        return <OverviewSection app={app} update={update} readiness={readiness} isAdmin={isAdmin} busy={busy} onNavigate={openSection} onUnpublish={unpublish} canMove={canManageStructure} />;
       case "basics":
         return <BasicsSection app={app} update={update} nameMissing={nameMissing && !app.name?.trim()} />;
       case "classification":
