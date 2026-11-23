@@ -13,7 +13,7 @@ RUN pnpm build
 
 # Keep package managers and build headers out of the runtime layers.
 FROM alpine:3.24 AS runner
-RUN apk add --no-cache ca-certificates libstdc++ libatomic \
+RUN apk add --upgrade --no-cache ca-certificates libstdc++ libatomic libcrypto3 libssl3 \
     && addgroup -g 1000 node \
     && adduser -D -u 1000 -G node node
 COPY --from=builder /usr/local/bin/node /usr/local/bin/node
