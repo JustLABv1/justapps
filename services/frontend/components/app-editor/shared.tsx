@@ -42,9 +42,9 @@ export function EditorCard({
 /** A switch with its name and a line of help, for a setting inside a card. */
 export function SettingRow({ title, description, control }: { title: string; description: ReactNode; control: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-6">
+    <div data-search-target className="flex items-start justify-between gap-6 rounded-lg">
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-sm font-medium">{title}</span>
+        <span data-search-label={title} className="text-sm font-medium">{title}</span>
         <span className="text-sm text-muted-foreground">{description}</span>
       </div>
       <div className="shrink-0 pt-0.5">{control}</div>

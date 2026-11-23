@@ -16,7 +16,7 @@ import { DRAFT_STATUS, getAppStatusLabel, isDraftStatus } from "@/lib/appStatus"
 import { suggestChangelog } from "@/lib/ai";
 import { toast } from "@/lib/toast";
 import {
-  ArrowLeft, BookOpen, Check, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags, Sparkles
+  ArrowLeft, ArrowRight, BookOpen, Check, ExternalLink, FolderGit2, LayoutDashboard, Link2, Megaphone, Network, PencilLine, Rocket, Save, ScrollText, Tags, Sparkles
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +26,8 @@ import { BannerSection, DetailsSection } from "./DetailsSection";
 import { DeploymentSection } from "./DeploymentSection";
 import { DocumentationSection } from "./DocumentationSection";
 import { LinksSection } from "./LinksSection";
+import { EditorSearch, EditorSearchInput, groupHits, useEditorSearch } from "./EditorSearch";
+import { EditorTips } from "./EditorTips";
 import { OverviewSection, PublishDialog } from "./OverviewSection";
 import { getReadiness, type SectionId } from "./readiness";
 import { type AppGroup, type RelatedApp, RelationsSection } from "./RelationsSection";
@@ -82,6 +84,27 @@ const GROUP_LABELS: Record<SectionMeta["group"], string | undefined> = {
   more: "Weiteres",
 };
 
+/** Back and forward between sections, so the editor can be worked through from top to bottom. */
+function SectionPager({ previous, next, onOpen }: { previous?: SectionMeta; next?: SectionMeta; onOpen: (id: SectionId) => void }) {
+  if (!previous && !next) return null;
+  return (
+    <nav aria-label="Bereiche durchblättern" className="mt-4 flex items-center justify-between gap-3 border-t pt-5">
+      {previous ? (
+        <Button type="button" variant="ghost" size="sm" onClick={() => onOpen(previous.id)}>
+          <ArrowLeft />
+          {previous.label}
+        </Button>
+      ) : <span />}
+      {next && (
+        <Button type="button" variant="outline" size="sm" onClick={() => onOpen(next.id)}>
+          Weiter: {next.label}
+          <ArrowRight />
+        </Button>
+      )}
+    </nav>
+  );
+}
+
 function buildSnapshot(app: AppDraft, relatedApps: RelatedApp[], groupIds: Set<string>) {
   return JSON.stringify({
     groupIds: Array.from(groupIds).sort(),
@@ -111,7 +134,11 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
   const appId = initialApp.id;
 
   const [app, setApp] = useState<AppDraft>(initialApp);
-  const [section, setSection] = useState<SectionId>("overview");
+  // A link to `#section` opens that section. The editor only mounts in the browser, after the app has loaded.
+  const [requestedSection, setSection] = useState<SectionId>(() => {
+    const hash = typeof window === "undefined" ? "" : window.location.hash.slice(1);
+    return SECTIONS.some((item) => item.id === hash) ? hash as SectionId : "overview";
+  });
   const [publishOpen, setPublishOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -163,6 +190,8 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     () => SECTIONS.filter((item) => canManageStructure || (item.id !== "repository" && item.id !== "relations")),
     [canManageStructure],
   );
+  // A section this user cannot see (from an old link) falls back to the overview.
+  const section = visibleSections.some((item) => item.id === requestedSection) ? requestedSection : "overview";
   const dirtySections = useMemo(() => {
     const dirty = new Set<SectionId>();
     const before = JSON.parse(initialSnapshot) as { app: Record<string, unknown>; relatedApps: string[]; groupIds: string[] };
@@ -175,45 +204,16 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
     return dirty;
   }, [app, relatedApps, groupIds, initialSnapshot, repoDirty, pendingUnlink]);
 
-  // Clicking a section pins it as current until scrolling settles there.
-  const scrollLock = useRef<number | null>(null);
+  // One section at a time: the rail switches what is shown, the hash keeps it linkable.
   const openSection = (id: SectionId) => {
     setSection(id);
     window.history.replaceState(null, "", `#${id}`);
-    const target = document.getElementById(`section-${id}`);
-    if (!target) return;
-    if (scrollLock.current) window.clearTimeout(scrollLock.current);
-    scrollLock.current = window.setTimeout(() => { scrollLock.current = null; }, 800);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    // A section opened from further down starts at its top, not mid-way through.
+    if (window.scrollY > 0) {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    }
   };
-
-  // Scroll-spy: the current section is the last one whose heading has passed
-  // the sticky header, or the last one when the page is scrolled to the end.
-  useEffect(() => {
-    const onScroll = () => {
-      if (scrollLock.current) return;
-      const ids = visibleSections.map((item) => item.id);
-      let next = ids[0];
-      for (const id of ids) {
-        const element = document.getElementById(`section-${id}`);
-        if (element && element.getBoundingClientRect().top <= 180) next = id;
-      }
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) next = ids[ids.length - 1];
-      setSection((previous) => {
-        if (previous !== next) window.history.replaceState(null, "", `#${next}`);
-        return next;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [visibleSections]);
-
-  // A link to `#section` opens there; the scroll-spy then marks it.
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash && hash !== "overview") document.getElementById(`section-${hash}`)?.scrollIntoView({ block: "start" });
-  }, []);
 
   useEffect(() => {
     if (!canManageGroups) return;
@@ -628,6 +628,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
   };
 
   const missingRequired = readiness.filter((item) => item.required && !item.done).length;
+  const search = useEditorSearch(visibleSections, openSection);
 
   const navGroups = (["start", "content", "connections", "more"] as const).map((group) => ({
     group,
@@ -651,6 +652,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
         </div>
         <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
           {hasUnsavedChanges && !saving && <span className="hidden text-sm text-muted-foreground md:inline" aria-live="polite">Ungespeicherte Änderungen</span>}
+          <EditorTips section={section} sectionLabel={visibleSections.find((item) => item.id === section)?.label ?? ""} draft={draft} />
           <Button variant="ghost" size="sm" render={<a href={`/apps/${encodeURIComponent(appId)}`} />}>
             <ExternalLink />
             <span className="hidden sm:inline">Ansehen</span>
@@ -723,6 +725,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
 
       {/* On small screens the sections are a select instead of a rail. */}
       <div className="mb-6 lg:hidden">
+        <EditorSearch search={search}>
         <Select
           items={visibleSections.map((item) => ({ value: item.id, label: item.label }))}
           value={section}
@@ -737,45 +740,76 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
             ))}
           </Select.Content>
         </Select>
+        </EditorSearch>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-32">
             <NavRail aria-label="Bereiche der App" collapsible="none" expandedWidth="15rem">
+              <NavRail.Header>
+                <EditorSearchInput search={search} className="w-full" />
+              </NavRail.Header>
               <NavRail.Content>
-                {navGroups.map(({ group, items }) => (
-                  <NavRail.Group key={group} label={GROUP_LABELS[group]}>
-                    {items.map((item) => {
-                      const missing = missingBySection.get(item.id) || 0;
-                      return (
-                        <NavRail.Item
-                          key={item.id}
-                          href={`#${item.id}`}
-                          icon={item.icon}
-                          active={item.id === section}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            openSection(item.id);
-                          }}
-                        >
-                          {item.label}
-                          {dirtySections.has(item.id) && <NavRail.Badge aria-label="Ungespeicherte Änderungen">•</NavRail.Badge>}
-                          {missing > 0 && <NavRail.Badge aria-label={`${missing} Pflichtangaben fehlen`}>{missing}</NavRail.Badge>}
-                        </NavRail.Item>
-                      );
-                    })}
-                  </NavRail.Group>
-                ))}
+                {search.searching ? (
+                  search.hits.length > 0 ? (
+                    groupHits(search.hits).map((group) => (
+                      <NavRail.Group key={group.sectionId} label={group.label}>
+                        {group.items.map((hit) => (
+                          <NavRail.Item
+                            key={hit.key}
+                            href={`#${hit.sectionId}`}
+                            icon={SECTIONS.find((item) => item.id === hit.sectionId)?.icon}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              search.open(hit);
+                            }}
+                          >
+                            {hit.field ?? hit.sectionLabel}
+                          </NavRail.Item>
+                        ))}
+                      </NavRail.Group>
+                    ))
+                  ) : (
+                    <p className="px-2.5 py-2 text-sm text-muted-foreground">Kein Feld gefunden.</p>
+                  )
+                ) : (
+                  <>
+                    {navGroups.map(({ group, items }) => (
+                      <NavRail.Group key={group} label={GROUP_LABELS[group]}>
+                        {items.map((item) => {
+                          const missing = missingBySection.get(item.id) || 0;
+                          return (
+                            <NavRail.Item
+                              key={item.id}
+                              href={`#${item.id}`}
+                              icon={item.icon}
+                              active={item.id === section}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                openSection(item.id);
+                              }}
+                            >
+                              {item.label}
+                              {dirtySections.has(item.id) && <NavRail.Badge aria-label="Ungespeicherte Änderungen">•</NavRail.Badge>}
+                              {missing > 0 && <NavRail.Badge aria-label={`${missing} Pflichtangaben fehlen`}>{missing}</NavRail.Badge>}
+                            </NavRail.Item>
+                          );
+                        })}
+                      </NavRail.Group>
+                    ))}
+                  </>
+                )}
               </NavRail.Content>
             </NavRail>
           </div>
         </aside>
 
         <main className="min-w-0">
-          <fieldset disabled={busy} aria-busy={busy} className="flex min-w-0 flex-col gap-14">
-            {visibleSections.map((item) => (
-              <section key={item.id} id={`section-${item.id}`} aria-labelledby={`heading-${item.id}`} className="flex scroll-mt-36 flex-col gap-4">
+          <fieldset disabled={busy} aria-busy={busy} className="flex min-w-0 flex-col">
+            {visibleSections.map((item, index) => (
+              // Every section stays mounted, so its inputs keep their state while another one is open.
+              <section key={item.id} id={`section-${item.id}`} hidden={item.id !== section} aria-labelledby={`heading-${item.id}`} className="flex flex-col gap-4 [&[hidden]]:hidden">
                 <div className={item.id === "overview" ? "sr-only" : "flex flex-col gap-0.5"}>
                   <h2 id={`heading-${item.id}`} className="flex items-center gap-2 text-lg font-semibold tracking-tight">
                     {item.title}
@@ -784,6 +818,7 @@ export function AppEditor({ initialApp, existingApps }: { initialApp: AppConfig;
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
                 {renderSection(item.id)}
+                <SectionPager previous={visibleSections[index - 1]} next={visibleSections[index + 1]} onOpen={openSection} />
               </section>
             ))}
           </fieldset>

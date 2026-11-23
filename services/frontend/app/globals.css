@@ -289,6 +289,19 @@ body {
   .metal-button::after { animation: none; opacity: 0; }
 }
 
+/* ── App editor: the field a search jumped to ── */
+@keyframes editor-search-hit {
+  0%, 60% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 55%, transparent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+.editor-search-hit { animation: editor-search-hit 1.6s ease-out; }
+.editor-search-hit:not([data-slot="card"]) { border-radius: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-search-hit { animation-duration: 0.01s; }
+}
+
 /* ── Auth screens (floating app tiles) ── */
 @keyframes auth-tile-enter {
   from { opacity: 0; scale: 0.85; }
