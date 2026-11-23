@@ -1,7 +1,6 @@
 'use client';
 
 import type { AppConfig } from '@/config/apps';
-import { GroupIcon } from '@/components/GroupIcon';
 import { JustAppsLogo } from '@/components/JustAppsLogo';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useSettings } from '@/context/SettingsContext';
@@ -64,11 +63,66 @@ const SURFACE = 'border border-foreground/[0.08] bg-card shadow-[0_16px_40px_-16
 /** Shown in the free slots when the catalog is private or has fewer apps than slots. */
 const FALLBACK_ICONS: LucideIcon[] = [Workflow, Database, ShieldCheck, MessagesSquare, CalendarDays, BarChart3, FileText, Users, Mail, MapIcon];
 
-/** Apps with a real logo first, so the stage shows recognisable icons rather than letters. */
-function pickShowcaseApps(apps: AppConfig[]): AppConfig[] {
-  const withImage = apps.filter((app) => getImageAssetUrl(app.icon));
-  const withEmoji = apps.filter((app) => !getImageAssetUrl(app.icon) && app.icon);
-  return [...withImage, ...withEmoji].slice(0, SLOTS.length);
+const FAQ_EXAMPLES = [
+  { question: 'Wie binde ich die App an unseren Keycloak an?', answers: 3 },
+  { question: 'Gibt es ein Helm-Chart für OpenShift?', answers: 4 },
+  { question: 'Welche Ressourcen braucht die App im Cluster?', answers: 2 },
+  { question: 'Wie aktualisiere ich ohne Ausfallzeit auf die neue Version?', answers: 5 },
+];
+
+const DEMAND_STATUS = {
+  open: { label: 'Offen', className: 'bg-muted text-muted-foreground' },
+  planned: { label: 'Geplant', className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+  fulfilled: { label: 'Erfüllt', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+} as const;
+
+const DEMAND_EXAMPLES: { title: string; status: keyof typeof DEMAND_STATUS; votes: number }[] = [
+  { title: 'Gesucht: Self-hosted Whiteboard für Workshops', status: 'planned', votes: 12 },
+  { title: 'Gesucht: Open-Source-Tool für Umfragen', status: 'open', votes: 8 },
+  { title: 'Gesucht: Passwortmanager für Teams', status: 'planned', votes: 15 },
+  { title: 'Gesucht: Ticketsystem für den IT-Support', status: 'fulfilled', votes: 21 },
+];
+
+const RATING_EXAMPLES = ['Erfahrungen anderer Behörden', 'Bewertungen aus der Praxis', 'Erfahrungsberichte aus dem Betrieb'];
+
+/** What the stage shows on this visit; drawn once per page load so every refresh looks a little different. */
+interface Stage {
+  /** The app (or nothing) shown in each slot, indexed like SLOTS. */
+  slotApps: (AppConfig | undefined)[];
+  fallbacks: LucideIcon[];
+  faq: (typeof FAQ_EXAMPLES)[number];
+  demand: (typeof DEMAND_EXAMPLES)[number];
+  rating: string;
+  appCount: number | null;
+}
+
+function shuffle<T>(items: readonly T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+const pickOne = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)];
+
+/** A random selection of apps with a real logo first (so the stage shows recognisable icons rather than letters), scattered over random slots. */
+function buildStage(apps: AppConfig[] | null): Stage {
+  const list = apps ?? [];
+  const withImage = shuffle(list.filter((app) => getImageAssetUrl(app.icon)));
+  const withEmoji = shuffle(list.filter((app) => !getImageAssetUrl(app.icon) && app.icon));
+  const chosen = [...withImage, ...withEmoji].slice(0, SLOTS.length);
+  const slotApps: (AppConfig | undefined)[] = Array(SLOTS.length).fill(undefined);
+  shuffle(SLOTS.map((_, index) => index)).forEach((slot, k) => { slotApps[slot] = chosen[k]; });
+  return {
+    slotApps,
+    fallbacks: shuffle(FALLBACK_ICONS),
+    faq: pickOne(FAQ_EXAMPLES),
+    demand: pickOne(DEMAND_EXAMPLES),
+    rating: pickOne(RATING_EXAMPLES),
+    appCount: apps ? apps.length : null,
+  };
 }
 
 /** Positions an element on the stage, fades it in, then lets it bob. */
@@ -87,21 +141,49 @@ function Floating({ x, y, float, duration, delay, enterDelay, children }: {
   );
 }
 
-function FloatingTiles({ apps }: { apps: AppConfig[] }) {
+/**
+ * An app's logo in a stage tile. The frame shows straight away and the logo fades in once loaded,
+ * so tiles never wait on slow images; a logo that fails to load becomes the slot's line icon instead of a broken image.
+ */
+function AppTile({ app, tile, fallback }: { app: AppConfig; tile: string; fallback: React.ReactNode }) {
+  const src = getImageAssetUrl(app.icon);
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>('loading');
+
+  if (!src) {
+    return <span className={`inline-flex items-center justify-center ${tile}`}>{app.icon}</span>;
+  }
+  if (status === 'failed') {
+    return <span className={`inline-flex items-center justify-center text-muted-foreground ${tile}`}>{fallback}</span>;
+  }
+  return (
+    <span className={`relative inline-flex overflow-hidden ${tile}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        decoding="async"
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('failed')}
+        className={`size-full object-contain p-3 transition-opacity duration-300 ${status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </span>
+  );
+}
+
+function FloatingTiles({ stage }: { stage: Stage }) {
   return (
     <>
       {SLOTS.map((slot, index) => {
-        const app = apps[index];
-        const Fallback = FALLBACK_ICONS[index % FALLBACK_ICONS.length];
+        const app = stage.slotApps[index];
+        const Fallback = stage.fallbacks[index % stage.fallbacks.length];
         const tile = `${SIZE_CLASSES[slot.size]} ${SURFACE} text-foreground`;
+        const fallbackIcon = <Fallback className={slot.size === 'sm' ? 'size-6' : 'size-7'} strokeWidth={1.75} />;
         return (
           <Floating key={index} {...slot} enterDelay={120 + index * 50}>
             {app ? (
-              <GroupIcon icon={app.icon} name="" className={`${tile} [&_img]:!p-3`} fallback={<span className="text-base font-semibold">{app.name.charAt(0)}</span>} />
+              <AppTile app={app} tile={tile} fallback={fallbackIcon} />
             ) : (
-              <span className={`inline-flex items-center justify-center text-muted-foreground ${tile}`}>
-                <Fallback className={slot.size === 'sm' ? 'size-6' : 'size-7'} strokeWidth={1.75} />
-              </span>
+              <span className={`inline-flex items-center justify-center text-muted-foreground ${tile}`}>{fallbackIcon}</span>
             )}
           </Floating>
         );
@@ -126,23 +208,24 @@ function FeatureCard({ icon: Icon, kicker, title, children }: { icon: LucideIcon
   );
 }
 
-function FeatureCards({ faqEnabled }: { faqEnabled: boolean }) {
+function FeatureCards({ stage, faqEnabled }: { stage: Stage; faqEnabled: boolean }) {
+  const status = DEMAND_STATUS[stage.demand.status];
   return (
     <>
       {faqEnabled && (
         <Floating x={84} y={12} float="float2" duration={10} delay={-3} enterDelay={420}>
-          <FeatureCard icon={MessageCircleQuestion} kicker="FAQ" title="Wie binde ich die App an unseren Keycloak an?">
+          <FeatureCard icon={MessageCircleQuestion} kicker="FAQ" title={stage.faq.question}>
             <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="size-3.5" /> Beantwortet
             </span>
-            <span>3 Antworten</span>
+            <span>{stage.faq.answers} Antworten</span>
           </FeatureCard>
         </Floating>
       )}
       <Floating x={14} y={86} float="float3" duration={11} delay={-6} enterDelay={500}>
-        <FeatureCard icon={Lightbulb} kicker="Bedarfsmeldung" title="Gesucht: Self-hosted Whiteboard für Workshops">
-          <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/10 px-1.5 py-0.5 font-medium text-sky-600 dark:text-sky-400">Geplant</span>
-          <span className="inline-flex items-center gap-1"><ThumbsUp className="size-3.5" /> 12 Stimmen</span>
+        <FeatureCard icon={Lightbulb} kicker="Bedarfsmeldung" title={stage.demand.title}>
+          <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium ${status.className}`}>{status.label}</span>
+          <span className="inline-flex items-center gap-1"><ThumbsUp className="size-3.5" /> {stage.demand.votes} Stimmen</span>
         </FeatureCard>
       </Floating>
       <Floating x={86} y={82} float="float1" duration={9.5} delay={-2} enterDelay={580}>
@@ -150,7 +233,7 @@ function FeatureCards({ faqEnabled }: { faqEnabled: boolean }) {
           <span className="flex gap-0.5 text-amber-500">
             {Array.from({ length: 5 }, (_, i) => <Star key={i} className="size-3.5 fill-current" />)}
           </span>
-          <span className="text-xs text-muted-foreground">Erfahrungen anderer Behörden</span>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">{stage.rating}</span>
         </div>
       </Floating>
     </>
@@ -168,16 +251,20 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   const logoSrc = isDark ? (settings.logoDarkUrl || settings.logoUrl || null) : (settings.logoUrl || null);
   const resolvedLogoSrc = resolveAssetUrl(logoSrc);
 
-  const [apps, setApps] = useState<AppConfig[] | null>(null);
+  // Drawn on the client only (no hydration mismatch) and only once the apps are known, so tiles never swap icons after appearing.
+  const [stage, setStage] = useState<Stage | null>(null);
   useEffect(() => {
-    if (!settingsLoaded || settings.requireAuthForAppStore) return;
-    fetchApi('/apps')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => { if (Array.isArray(data)) setApps(data as AppConfig[]); })
-      .catch(() => {});
+    if (!settingsLoaded) return;
+    let active = true;
+    const load: Promise<AppConfig[] | null> = settings.requireAuthForAppStore
+      ? Promise.resolve(null)
+      : fetchApi('/apps')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: unknown) => (Array.isArray(data) ? data as AppConfig[] : null))
+        .catch(() => null);
+    void load.then((apps) => { if (active) setStage(buildStage(apps)); });
+    return () => { active = false; };
   }, [settings.requireAuthForAppStore, settingsLoaded]);
-
-  const showcase = apps ? pickShowcaseApps(apps) : [];
 
   const logo = (className: string) => resolvedLogoSrc ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -217,8 +304,12 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
               </div>
             </div>
 
-            <FloatingTiles apps={showcase} />
-            <FeatureCards faqEnabled={settings.faqEnabled} />
+            {stage && (
+              <>
+                <FloatingTiles stage={stage} />
+                <FeatureCards stage={stage} faqEnabled={settings.faqEnabled} />
+              </>
+            )}
           </div>
         </div>
 
@@ -226,7 +317,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           <dl className="flex gap-10">
             <div className="flex flex-col-reverse">
               <dt className="text-xs text-muted-foreground">Apps im Katalog</dt>
-              <dd className="text-xl font-semibold tabular-nums">{apps ? apps.length : '–'}</dd>
+              <dd className="text-xl font-semibold tabular-nums">{stage?.appCount ?? '–'}</dd>
             </div>
             <div className="flex flex-col-reverse">
               <dt className="text-xs text-muted-foreground">Open Source</dt>
