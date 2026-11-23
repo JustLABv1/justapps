@@ -216,7 +216,7 @@ export function Navigation() {
       <NavigationMenu
         aria-label="Hauptnavigation"
         variant="bar"
-        className="mx-auto max-w-7xl"
+        className="mx-auto max-w-screen-2xl"
         barClassName="gap-3 ps-2 pe-2"
       >
         {/* Brand and actions take equal room, so the links sit in the true centre. */}

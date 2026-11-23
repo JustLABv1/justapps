@@ -23,6 +23,13 @@ const heading = (Tag: "h1" | "h2" | "h3" | "h4") => {
   return Heading;
 };
 
+// Created once: a fresh component per render would make React remount every heading,
+// and the table of contents would keep watching the detached ones.
+const H1 = heading("h1");
+const H2 = heading("h2");
+const H3 = heading("h3");
+const H4 = heading("h4");
+
 /** Fenced code becomes the same copyable block as on the installation tab. */
 function Pre({ children }: WithNode<ComponentProps<"pre">>) {
   const code = Children.toArray(children).find(isValidElement) as ReactElement<{ className?: string; children?: ReactNode }> | undefined;
@@ -93,12 +100,24 @@ function Note({ tone, title, children }: { tone: AlertTone; title: string; child
 }
 
 /** Renderers for app documentation: anchored headings, copyable code, notes as alerts, repository-relative links. */
+let cached: { key: string; components: Components } | undefined;
+
+/**
+ * The renderers for one repository, reused while the repository stays the same. ReactMarkdown remounts
+ * everything whose renderer changes identity, so a new set on every render would rebuild the whole document.
+ */
 export function docComponents(repository: MarkdownRepository): Components {
+  const key = JSON.stringify(repository);
+  if (cached?.key !== key) cached = { key, components: buildDocComponents(repository) };
+  return cached.components;
+}
+
+function buildDocComponents(repository: MarkdownRepository): Components {
   return {
-    h1: heading("h1"),
-    h2: heading("h2"),
-    h3: heading("h3"),
-    h4: heading("h4"),
+    h1: H1,
+    h2: H2,
+    h3: H3,
+    h4: H4,
     pre: Pre,
     blockquote: Blockquote,
     // Wide tables scroll inside the column instead of pushing the page wider.

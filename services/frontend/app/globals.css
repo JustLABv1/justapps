@@ -235,6 +235,95 @@ body {
   50% { transform: translateY(-22px) rotate(1.5deg); }
 }
 
+/* ── Metal button (the one call to action a page must not hide) ── */
+/* Gunmetal on light pages, polished silver on dark ones: the strongest contrast either way.
+   Unlayered, so it wins over the button variant's own background and colour utilities. */
+.metal-button {
+  overflow: hidden;
+  color: #fafafa;
+  border: 1px solid #18181b;
+  background: linear-gradient(180deg, #5b5b63 0%, #3a3a41 48%, #26262b 52%, #44444c 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35),
+    0 1px 2px rgb(0 0 0 / 0.2),
+    0 6px 16px -6px rgb(0 0 0 / 0.45);
+}
+
+.metal-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6b6b74 0%, #47474f 48%, #303036 52%, #52525b 100%);
+}
+
+:where(.dark, [data-theme="dark"]) .metal-button {
+  color: #18181b;
+  border-color: #a1a1aa;
+  background: linear-gradient(180deg, #fafafa 0%, #e4e4e7 45%, #b4b4bc 55%, #ececef 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 -1px 0 rgb(0 0 0 / 0.18),
+    0 0 0 1px rgb(0 0 0 / 0.4),
+    0 6px 20px -6px rgb(255 255 255 / 0.25);
+}
+
+:where(.dark, [data-theme="dark"]) .metal-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f0f2 45%, #c4c4cc 55%, #f4f4f5 100%);
+}
+
+/* A glint sweeping across the face now and then, which is what makes the eye land on it. */
+.metal-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: metal-sheen 4.5s ease-in-out 1s infinite;
+}
+
+@keyframes metal-sheen {
+  0% { transform: translateX(-120%); }
+  25%, 100% { transform: translateX(120%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metal-button::after { animation: none; opacity: 0; }
+}
+
+/* ── App editor: the field a search jumped to ── */
+@keyframes editor-search-hit {
+  0%, 60% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 55%, transparent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+.editor-search-hit { animation: editor-search-hit 1.6s ease-out; }
+.editor-search-hit:not([data-slot="card"]) { border-radius: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-search-hit { animation-duration: 0.01s; }
+}
+
+/* ── Auth screens (floating app tiles) ── */
+@keyframes auth-tile-enter {
+  from { opacity: 0; scale: 0.85; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes auth-glow {
+  0%, 100% { opacity: 0.7; scale: 0.95; }
+  50% { opacity: 1; scale: 1.05; }
+}
+
+.auth-tile-enter { animation: auth-tile-enter 420ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.auth-glow { animation: auth-glow 9s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-tile-enter,
+  .auth-glow,
+  .auth-float {
+    animation: none !important;
+  }
+}
+
 /* ── Maintenance screen ── */
 @keyframes maintenance-enter {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }

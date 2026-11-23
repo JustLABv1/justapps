@@ -14,9 +14,25 @@ function isCreationRoute(pathname: string) {
     || pathname === '/verwaltung/katalog/apps/new';
 }
 
+/** Sign-in and registration fill the whole screen with their own split layout. */
+function isAuthRoute(pathname: string) {
+  return pathname === '/login' || pathname === '/register';
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const creationRoute = isCreationRoute(pathname);
+
+  if (isAuthRoute(pathname)) {
+    return (
+      <div className="relative flex min-h-screen flex-col">
+        <FlagBar />
+        <main className="w-full flex-grow">
+          <ErrorBoundary><PageTransition>{children}</PageTransition></ErrorBoundary>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -27,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={
           creationRoute
             ? 'flex-grow w-full'
-            : 'flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+            : 'flex-grow w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
         }
       >
         <ErrorBoundary><PageTransition>{children}</PageTransition></ErrorBoundary>

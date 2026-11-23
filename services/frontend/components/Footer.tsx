@@ -71,7 +71,7 @@ export function Footer({ className = '', contentClassName = '' }: { className?: 
   return (
     <footer className={`mt-auto w-full px-4 pt-12 pb-4 sm:px-6 lg:px-8 ${className}`.trim()}>
       <div
-        className={`mx-auto max-w-7xl rounded-2xl bg-card ring-1 ring-foreground/[0.07] dark:ring-foreground/10 ${contentClassName}`.trim()}
+        className={`mx-auto max-w-screen-2xl rounded-2xl bg-card ring-1 ring-foreground/[0.07] dark:ring-foreground/10 ${contentClassName}`.trim()}
       >
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 p-6 sm:p-8 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div className="col-span-2 flex flex-col gap-4 md:col-span-1">
