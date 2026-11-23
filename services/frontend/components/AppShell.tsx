@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={
           creationRoute
             ? 'flex-grow w-full'
-            : 'flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+            : 'flex-grow w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
         }
       >
         <ErrorBoundary><PageTransition>{children}</PageTransition></ErrorBoundary>
