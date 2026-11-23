@@ -163,7 +163,7 @@ function HomeContent() {
             }
             catalogAction={
               profileReady && user && (user.role === "admin" || user.canSubmitApps) && (!spaceId || visibleSpaces.some((space) => space.id === spaceId)) ? (
-            <Button size="sm" variant="outline" onClick={() => router.push(spaceId ? `/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}` : "/meine-apps/new")}>
+            <Button size="sm" className="metal-button" onClick={() => router.push(spaceId ? `/meine-apps/new?spaceId=${encodeURIComponent(spaceId)}` : "/meine-apps/new")}>
               <Plus />
               App erstellen
             </Button>
