@@ -161,6 +161,51 @@ body {
   }
 }
 
+/* ── View transitions (home card -> app detail) ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.2s;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+::view-transition-group(app-logo) {
+  animation-duration: 0.3s;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Card grows into the detail header: the card snapshot fades out, the header fades in. */
+::view-transition-group(app-card) {
+  animation-duration: 0.35s;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+::view-transition-old(app-card),
+::view-transition-new(app-card) {
+  height: 100%;
+  object-fit: cover;
+  overflow: clip;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(app-card) {
+  animation: vt-fade-out 0.18s ease-out both;
+}
+
+::view-transition-new(app-card) {
+  animation: vt-fade-in 0.25s ease-out 0.1s both;
+}
+
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @keyframes fadeSlideUp {
   0% {
     opacity: 0;

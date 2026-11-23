@@ -13,7 +13,8 @@ import { Menu } from "@/components/panelui/menu";
 import { BookOpen, Clock, ExternalLink, Landmark, MoreHorizontal, Star } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { navigateWithTransition } from "@/lib/viewTransition";
 import { FavoriteButton } from "./FavoriteButton";
 import { GitHubIcon } from "./GitHubIcon";
 import { LinkStatusDot } from "./LinkStatusDot";
@@ -27,6 +28,8 @@ const BADGE_VARIANT: Record<'default' | 'accent' | 'success' | 'warning', BadgeV
 
 export function AppCard({ app }: { app: AppConfig }) {
   const router = useRouter();
+  const logoRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const { settings } = useSettings();
   const { appUnreadCounts } = useUpdates();
   const probeEnabled = settings.enableLinkProbing && !app.skipLinkProbe;
@@ -59,12 +62,13 @@ export function AppCard({ app }: { app: AppConfig }) {
   return (
     <Card
       as="article"
+      ref={cardRef}
       className="relative h-full cursor-pointer transition-shadow hover:shadow-md"
-      onClick={() => router.push(`/apps/${app.id}`)}
+      onClick={() => navigateWithTransition(router, `/apps/${app.id}`, { card: cardRef.current, logo: logoRef.current })}
     >
       <Card.Header>
         <div className="flex min-w-0 items-start gap-3">
-          <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted text-xl">
+          <div ref={logoRef} className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted text-xl">
             {iconSrc ? (
               <Image src={iconSrc} alt="" fill className="object-contain p-1.5" sizes="44px" unoptimized />
             ) : (
