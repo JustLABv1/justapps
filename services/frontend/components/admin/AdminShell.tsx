@@ -103,7 +103,9 @@ function AdminSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
 /**
  * The frame of every Verwaltung page: a rail of the areas beside the page,
  * folded to icons on request and a drawer on narrow screens, with a trail
- * above the page saying where it sits.
+ * above the page saying where it sits. The app editor has a section nav of its
+ * own, so on a wide screen it gets the full width and the rail steps aside;
+ * the trail and the editor's back button lead out of it.
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -117,7 +119,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <NavRail
         aria-label="Verwaltung"
         expandedWidth="16rem"
-        className="lg:sticky lg:top-24 lg:h-[calc(100svh-8rem)]"
+        className={editing ? "lg:hidden" : "lg:sticky lg:top-24 lg:h-[calc(100svh-8rem)]"}
       >
         <NavRail.Header>
           <NavRail.Brand

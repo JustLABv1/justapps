@@ -28,6 +28,7 @@ import {
   ArrowLeft, BookOpen, ChevronDown, ExternalLink, GitBranch, History, Link2, ListTree, MessageCircleQuestion, Pencil, Recycle, Server, Share2, Star,
 } from "lucide-react";
 import Image from "next/image";
+import { APP_CARD_TRANSITION_NAME, APP_LOGO_TRANSITION_NAME, resolveViewTransition } from "@/lib/viewTransition";
 import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -58,6 +59,7 @@ function AppLogo({ icon, name, small = false }: { icon?: string; name: string; s
   const src = getImageAssetUrl(icon);
   return (
     <div
+      style={small ? undefined : { viewTransitionName: APP_LOGO_TRANSITION_NAME }}
       className={`relative flex shrink-0 items-center justify-center overflow-hidden border bg-card ${small ? "size-8 rounded-lg text-lg" : "size-16 rounded-2xl text-4xl shadow-xs sm:size-20 sm:text-5xl"}`}
     >
       {src ? <Image src={src} alt={small ? "" : name} fill sizes={small ? "32px" : "80px"} className={`object-contain ${small ? "p-1" : "p-2"}`} unoptimized /> : icon || "🏛️"}
@@ -256,6 +258,7 @@ export function AppDetail({ id }: { id: string }) {
   // Old links pointed at tabs that now live elsewhere on the page.
   useEffect(() => {
     if (loading || !app) return;
+    resolveViewTransition();
     const hash = window.location.hash.slice(1);
     if (hash === "related" || hash === "details") document.getElementById(hash)?.scrollIntoView({ block: "start" });
   }, [loading, app]);
@@ -519,7 +522,7 @@ export function AppDetail({ id }: { id: string }) {
       </div>
 
       {/* ── Header ── */}
-      <header ref={headerRef} className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+      <header ref={headerRef} style={{ viewTransitionName: APP_CARD_TRANSITION_NAME }} className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
         <AppLogo icon={app.icon} name={app.name} />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex flex-col gap-2">

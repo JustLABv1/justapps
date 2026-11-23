@@ -4,7 +4,6 @@ import { AppConfig } from "@/config/apps";
 import { useFavorites } from "@/context/FavoritesContext";
 import { fetchApi } from "@/lib/api";
 import { getAppStatusLabel, sortAppStatuses } from "@/lib/appStatus";
-import { getImageAssetUrl } from "@/lib/assets";
 import { emptyRecentlyViewed, getRecentlyViewed, subscribeToRecentlyViewed } from "@/lib/recentlyViewed";
 import { Badge } from "@/components/panelui/badge";
 import { Button } from "@/components/panelui/button";
@@ -12,8 +11,6 @@ import { Input } from "@/components/panelui/input";
 import { Select } from "@/components/panelui/select";
 import { Tooltip } from "@/components/panelui/tooltip";
 import { Activity, ArrowUpDown, Check, Heart, Layers2, Package, Search, SlidersHorizontal, Sparkles, Tag, X } from "lucide-react";
-import Image from "next/image";
-import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AppCard } from "./AppCard";
@@ -450,48 +447,15 @@ export function AppGrid({ initialApps, spaceId = "", scopeControl, catalogAction
         </div>
       </section>
 
-      {/* Recently viewed — only when no active filters */}
-      {!hasActiveFilters && !recentHidden && recentApps.length > 0 && (
-        <section className="flex items-center gap-3" aria-labelledby="recently-viewed">
-          <h2 id="recently-viewed" className="shrink-0 text-sm text-muted-foreground">
-            Zuletzt gesehen
-          </h2>
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
-            {recentApps.slice(0, 5).map((app) => {
-              const iconSrc = getImageAssetUrl(app.icon);
-              return (
-                <Button
-                  key={app.id}
-                  variant="outline"
-                  size="sm"
-                  shape="pill"
-                  className="shrink-0"
-                  render={<NextLink href={`/apps/${app.id}`} />}
-                >
-                  {iconSrc ? (
-                    <span className="relative size-4 shrink-0">
-                      <Image src={iconSrc} alt="" fill className="object-contain" sizes="16px" unoptimized />
-                    </span>
-                  ) : (
-                    <span className="text-sm leading-none">{app.icon || '🏛️'}</span>
-                  )}
-                  {app.name}
-                </Button>
-              );
-            })}
-          </div>
-          <Tooltip>
-            <Tooltip.Trigger
-              render={<Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground" aria-label="„Zuletzt gesehen“ ausblenden" onClick={hideRecent} />}
-            >
-              <X />
-            </Tooltip.Trigger>
-            <Tooltip.Content>Ausblenden – bleibt in der Suche (⌘K)</Tooltip.Content>
-          </Tooltip>
-        </section>
+      {/* Changes since the last visit + recently viewed — only when no active filters */}
+      {!hasActiveFilters && (
+        <RecentChanges
+          apps={initialApps}
+          showChanges={!spaceId}
+          recentApps={recentHidden ? emptyRecentlyViewed : recentApps}
+          onHideRecent={hideRecent}
+        />
       )}
-
-      {!hasActiveFilters && !spaceId && <RecentChanges apps={initialApps} />}
 
       {(() => {
         const visibleApps = filteredApps.slice(0, visibleCount);
