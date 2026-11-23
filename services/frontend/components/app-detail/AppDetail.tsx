@@ -550,9 +550,13 @@ export function AppDetail({ id }: { id: string }) {
                 <span>Noch keine Bewertung</span>
               )}
               {user && (
-                <button type="button" onClick={() => openTab("ratings")} className="cursor-pointer rounded font-medium text-foreground underline-offset-4 hover:underline">
-                  Bewerten
-                </button>
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button type="button" onClick={() => openTab("ratings")} className="inline-flex cursor-pointer items-center gap-1 rounded transition-colors hover:text-foreground">
+                    <Star className="size-3.5" />
+                    Bewerten
+                  </button>
+                </>
               )}
             </div>
           </div>
