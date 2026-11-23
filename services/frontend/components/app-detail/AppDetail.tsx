@@ -115,17 +115,12 @@ function Aside({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** A label and its value; a long value goes under its label instead of being squeezed beside it. */
+/** A label with its value underneath; short facts sit two to a row, a long one takes the whole row. */
 function Fact({ label, children, long = false }: { label: string; children: ReactNode; long?: boolean }) {
-  return long ? (
-    <div className="flex flex-col gap-0.5 py-1.5 text-sm">
-      <dt className="text-muted-foreground">{label}</dt>
+  return (
+    <div className={`flex min-w-0 flex-col gap-0.5 text-sm ${long ? "col-span-2" : ""}`}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-medium [overflow-wrap:anywhere]">{children}</dd>
-    </div>
-  ) : (
-    <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
-      <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-end font-medium [overflow-wrap:anywhere]">{children}</dd>
     </div>
   );
 }
@@ -176,7 +171,8 @@ function Maturity({ label }: { label: string }) {
   );
 }
 
-const isLong = (label: string, value: string) => label.length + value.length > 28 || EMAIL.test(value.trim()) || URL_PATTERN.test(value.trim());
+/** Whether a fact needs the whole row: a half-width column fits about 16 characters. */
+const isLong = (label: string, value: string) => label.length > 16 || value.trim().length > 16 || EMAIL.test(value.trim()) || URL_PATTERN.test(value.trim());
 
 export function AppDetail({ id }: { id: string }) {
   const { user } = useAuth();
@@ -410,8 +406,8 @@ export function AppDetail({ id }: { id: string }) {
   const glanceRest = (
     <>
       <Aside title="Details">
-        <dl id="details" className="flex scroll-mt-24 flex-col">
-          {statusInfo && (draft ? <Fact label="Status">{statusInfo.label}</Fact> : <Maturity label={statusInfo.label} />)}
+        <dl id="details" className="grid scroll-mt-24 grid-cols-2 gap-x-4 gap-y-3.5">
+          {statusInfo && (draft ? <Fact label="Status" long>{statusInfo.label}</Fact> : <div className="col-span-2"><Maturity label={statusInfo.label} /></div>)}
           {app.version && <Fact label="Version"><span className="font-mono">v{app.version}</span></Fact>}
           {app.license && <Fact label="Lizenz" long={isLong("Lizenz", licenseLabel(app.license))}>{licenseLabel(app.license)}</Fact>}
           {app.authority && <Fact label="Herausgeber" long={isLong("Herausgeber", app.authority)}>{app.authority}</Fact>}

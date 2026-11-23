@@ -175,7 +175,7 @@ export function RatingSection({ appId, appName, onChange }: { appId: string; app
 
   const deleteButton = (rating: Rating, label: string) => (
     <AlertDialog>
-      <AlertDialog.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={label} />}>
+      <AlertDialog.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={label} className="text-destructive hover:not-disabled:bg-destructive/10 hover:not-disabled:text-destructive" />}>
         <Trash2 />
       </AlertDialog.Trigger>
       <AlertDialog.Content tone="destructive">
