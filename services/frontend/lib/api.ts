@@ -67,6 +67,8 @@ export async function fetchApi(endpoint: string, options: FetchApiOptions = {}) 
 
     return response;
   } catch (err) {
+    if (requestOptions.signal?.aborted) throw err;
+
     if (typeof window === 'undefined') {
       console.error(`Fetch error in SSR for ${url}:`, err);
     }
